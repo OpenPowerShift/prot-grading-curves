@@ -1,0 +1,7 @@
+node_modules
+dist
+lib
+test-results
+.local
+*.log
+.DS_Store

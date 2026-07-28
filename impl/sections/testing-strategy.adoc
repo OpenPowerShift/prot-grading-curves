@@ -1,0 +1,90 @@
+== Testing strategy
+
+Five classes of test. Each class has its own acceptance gate; the
+suite is run automatically on every CI commit.
+
+=== Unit tests
+
+* `tests/unit/parser.spec.ts` -- round-trips each spec example and
+  asserts AST shape.
+* `tests/unit/curves.spec.ts` -- constants table values match the
+  spec within `+/- 0.005 s` on the worked numerical table.
+* `tests/unit/stages.spec.ts` -- multi-stage composite is pointwise
+  min; `view.stages = "individual"` produces exactly N visible
+  curves per element with N-stages.
+* `tests/unit/combine.spec.ts` -- `envelope_min`, `envelope_max`,
+  `sum`, `select_first` reduce properly.
+* `tests/unit/solver.spec.ts` -- closed-form `tms` solver matches
+  spec _Worked solver case_ within `+/- 0.001`; Newton iteration
+  converges for two free variables.
+* `tests/unit/axes.spec.ts` -- `axis = primary | secondary |
+  multiples` produces the right tick labels and references; the
+  secondary axis numerical labels reflect the picked `reference_ct`.
+* `tests/unit/xvoltage.spec.ts` -- cross-voltage grading with
+  automatic voltage-ratio application; the secondary-side multiple
+  is called out at the rendered curve annotation. The processor
+  converts via the two named voltage levels (e.g. `33 kV` and
+  `11 kV`) without any explicit transformer declaration.
+* `tests/unit/devices.spec.ts` -- device catalog resolution;
+  fuse-band shading; cable-withstand and transformer-damage
+  rendering; `flex_points` piecewise log-log interpolation.
+* `tests/unit/margins.spec.ts` -- margin table for `grade` and
+  `solve` blocks is correct.
+* `tests/unit/renderer.spec.ts` -- SVG-element invariants (every
+  curve is a `<path>`, every annotation has the right `class=`).
+* `tests/unit/completions.spec.ts` -- the autocompletion source
+  produces the right candidates at every cursor position (top
+  level, inside a block, at `curve =`, at `primary =`); snapping
+  to the nearest enclosing block; snippet-prefix matching.
+* `tests/unit/hover.spec.ts` -- the hover-source emits the right
+  doc object for each recognised identifier and `null` for
+  unknown tokens; doc content matches `help-data.ts` snapshot.
+* `tests/unit/scale.spec.ts` -- hand-rolled `LogScale` produces
+  the canonical sub-decade ticks (`1, 2, ..., 9`) at known
+  domains; SI-prefix formatter returns expected strings.
+* `tests/unit/palette.spec.ts` -- named palettes return the
+  expected colour sequences.
+* `tests/unit/theme.spec.ts` -- each theme preset produces a
+  consistent set of colours (axes, grid, labels, legend, points,
+  curves).
+* `tests/unit/page.spec.ts` -- `page { ... }` block parses to a
+  layout object; the CLI override flags take precedence at render
+  time but do not mutate the source AST; the
+  `size / orientation / margins_mm` and `scale.x_min/x_max/y_min/y_max`
+  computed geometry matches the expected canvas dimensions.
+
+=== Conformance tests
+
+`tests/conformance/` runs the entire spec against the implementation
+on each CI run:
+
+* parses every spec example,
+* rejects every example in _Validation_,
+* produces the values in _Worked numerical examples_ and _Worked
+  solver case_,
+* the renderer matches the formula tabulated values within `+/- 1 px`
+  at the plot's nominal scale (1 px / sub-decade tick on each axis
+  at `1000x700 px` viewport).
+
+This is the *primary gate* for tagging a release.
+
+=== Visual regression
+
+Playwright renders the playground for every `examples/*.tc` file and
+captures the resulting PNG. `tests/visual/*.png` baselines. Updates
+require an explicit `vitest -u` and a human reviewer.
+
+=== Sanity / contract tests
+
+* `npm pack` followed by a `node` smoke test of `./lib/index.js`
+  exercises the published library entry.
+* `tc-curves render tests/conformance/examples/01.tc --png` exits
+  with code 0 and writes the expected PNG.
+
+=== Test-data
+
+* `tests/conformance/examples/*.tc` is the *test bed*: one example
+  per spec section that exercises a non-obvious path.
+* Curated table-driven tests keep small mismatches visible (the
+  margin report for any specific fault becomes a single tap-of-the-
+  test fixture).

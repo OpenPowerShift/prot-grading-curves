@@ -1,0 +1,52 @@
+== Linting rules (warnings)
+
+The processor emits a *warning*, not an error, on the following
+situations. Warnings appear in the margin report and on the rendered
+plot but do not block grading computation.
+
+* *Unit confusion.* `I_pu = 1.2` (no `A` or `xIn` suffix) in a
+  curve-bearing element. *Warning*.
+* *Bare curve names.* `curve = si;` -- resolved via the disambiguation
+  table, but flagged so the engineer chooses IEC vs ANSI explicitly.
+* *Non-monotonic `tms` backup.* `tms` for the backup element larger
+  than `tms` for the primary at the same fault level is fine; but
+  the inverse situation (backup with a steeper index, e.g. VI over
+  primary SI) -- flagged per Schneider NPAG Section 6.
+* *Pick-up discrimination insufficient.* `I_pu_backup / I_pu_primary`
+  less than 1.2 -- flagged per IEEE 242 Section 15.3.2 and BS 7671.
+* *TMS outside device characteristic range.* A TMS within the parser
+  range but outside the relay vendor range (e.g. 1.2 on a relay
+  that tops out at 1.0) -- flagged (v0.2; uses relay-compatibility
+  table).
+* *CT-ratio spread wide in a multi-relay study.* When the ratio of
+  largest to smallest `n_CT` exceeds 5:1 -- *Warning* in the renderer
+  when `axis = "secondary"` mode is requested (see
+  <<semantics,Semantics>> _Units and axes_).
+* *Curve producer both in shorthand form and in a `stages` sub-block.*
+  *Error* (see <<validation,Validation>>), but the parser reports it
+  as a clear warning when the file appears to come from an older
+  author across the v0.1.0 release.
+* *A `combine` whose `as` value is `envelope_min` with two curves
+  drawn on different elements* (typical OR logic) -- *info* in
+  grading report, since the resulting curve does not coordinate with
+  either source individually.
+* *Cross-voltage study requested in `primary`-axis display.* The
+  renderer recommends `multiples` when voltages differ --
+  *Warning* `CROSS_VOLTAGE_AXIS_PRIMARY_UNSUITABLE`.
+* *A curve with `kind = sub_kind = "fuse"` and only one of
+  `min_melt`/`total_clear` is declared.* The renderer warns
+  suggesting the user also declare the missing pair.
+* *Mixing `abb.ri` / `abb.rd` (linear / logarithmic) curves in the
+  same grading pair with IDMT curves.* *Warning* -- the operate-
+  time math is not aligned; the engineer should verify the
+  coordination intent.
+* *A `page { theme = "monochrome"; ... }` with curves whose
+  `line_width_px < 0.4`.* *Warning*; monochrome print with thin
+  lines is hard to read -- the engineer should bump to `~0.7`.
+* *Page block declares `legend = false` while a `combine` block
+  instructs the renderer to attach multiple synthetic curves.*  
+  *Warning* `-- without a legend the user cannot identify which
+  envelope is which.
+* *A `page { watermark = "DRAFT"; }` while a `meta.standard`
+  declaration is non-empty.* *Warning*; the user should consider
+  `watermark = "FOR REVIEW"` to differentiate the draft state.

@@ -1,0 +1,1585 @@
+== Semantics
+
+=== Curve model
+
+For an inverse-time element the operate time at primary current `I` is
+computed from the *multiple* `M = I_secondary / I_pu_secondary`,
+or equivalently `M = I_primary / I_pu_primary`. The unit-free
+multiple is the only input to the curve formula; the processor
+performs the conversion once at parse time.
+
+==== Function-specific multiple derivation
+
+The `function` keyword determines how the *measured current* is
+derived for the multiple computation:
+
+[cols="1,3", options="header"]
+|===
+| `function` | Measured current for `M`
+
+| `phase_oc`     | Phase current `I_phase` (RMS).
+| `earth_fault`  | Residual current `I_residual = 3 * I_0` (zero-sequence).
+| `neg_seq`      | Negative-sequence current `I_2`.
+| `thermal`      | RMS current `I_rms` (heating model; use `flex_points` for thermal curves).
+| `breaker_fail` | Sustained phase current after breaker-fail initiation (same as `phase_oc`).
+|===
+
+For `earth_fault` and `neg_seq`, the fault data must include the
+relevant sequence component (`I0_A` or `I2_A` in the `faults` block);
+otherwise the multiple is computed from `I_A` directly (with a
+*Warning* `MISSING_SEQUENCE_DATA`).
+
+For `thermal`, the operate time is best modelled with `flex_points`
+(a heating curve table) rather than an IDMT formula, because thermal
+protection integrates current over time (I²t) and does not follow
+the `k / (M^alpha - 1)` form.
+
+For `breaker_fail`, the operate time is a definite time `t_delay`
+(the breaker-fail timer). The pickup is typically set at or below
+the main protection pickup to detect sustained fault current after
+the main breaker is commanded to open.
+
+The standard curve (IEC 60255-151 Clause 4.4.1.3, Equation 1):
+
+[source]
+----
+t_trip(M)  =  TMS * [ k / (M^alpha - 1) + c ]       for M < G_D
+            =  TMS * [ k / ((G_D)^alpha - 1) + c ]  for M >= G_D
+----
+
+`G_D` is the ceiling multiple at which dependent time ends: above it
+the characteristic stops being current-dependent and holds flat. Per
+the standard, `G_D_min = 20 * G_S`.
+
+In v0.1.0 the ceiling is *not applied by default*. A per-element
+`G_D = <multiple>` override is deferred to v0.2, so there is nothing
+in the v0.1.0 grammar that switches it on; the processor evaluates
+the dependent-time branch across the whole range and honours a
+ceiling only where a curve's own constants declare one.
+
+[NOTE]
+====
+This is what the <<_operate_time,operate-time table>> tabulates.
+It lists `iec.si` at `M = 50` as `1.720 s`, which is the unclamped
+value; a ceiling at `G_D = 20` would hold the curve at its `M = 20`
+value of `2.267 s` instead. Implementations must match the table.
+
+The practical effect is small -- real relays reach their
+instantaneous stage well before the ceiling matters, and a study
+that needs a flat high-current shelf should declare an explicit
+definite-time stage rather than rely on `G_D`.
+====
+
+The reset curve (when `reset = "dependent"` or `"disk_emulation"`):
+
+[source]
+----
+t_reset(M)  =  TMS * [ t_r / (1 - M^2) ]      for M < 1
+----
+
+with `t_r` from the standard constant table. Curves A, B, C of
+IEC 60255-151 leave `t_r` to the manufacturer; the processor falls
+back to `t_r = 0` (instantaneous reset) unless the source specifies
+`reset = "disk_emulation"` and supplies an explicit `t_reset` value.
+See <<validation,Validation>> for the error on misconfigured reset.
+
+=== Definite time
+
+[source]
+----
+t_trip(I) = t_delay_s     for I >= I_pu
+            +infinity     for I <  I_pu
+----
+
+This corresponds to IEC 60255-151 Clause 4.4.1.2 _Independent time
+characteristic_, the IEEE C37.112-1996 Section 7 "Definite Time"
+half-characteristic, and the behaviour of any vendor's instantaneous
+stage above its pickup.
+
+=== Custom formula (vendor extension)
+
+When a curve is not in the published standard table, the user may
+declare a formula directly:
+
+[source]
+----
+formula = { k = <s>; c = <s>; alpha = <->; }
+----
+
+The processor must validate `k > 0`, `0 <= alpha <= 5` (the realistic
+range covers IEEE/IEC standards and vendor extensions), and `c >= 0`.
+
+=== Piecewise / FlexCurve
+
+`flex_points` is a list of `(I_A, t_s)` pairs with at least two
+entries. The processor
+
+* sorts by `I_A`,
+* absorbs `tms` linearly: `t_use(I) = t_table(I) * tms`,
+* interpolates *log-log* between adjacent points (linear in
+  `(log10(I), log10(t))` space; this matches IEC 60255-151 for
+  FlexCurve-style piecewise data, see Schneider NPAG Section 6 and
+  GE Multilin 745 Manual _FlexCurve_).
+
+Below the smallest `I` the curve is `+infinity`; above the largest
+the curve holds at its last value.
+
+=== Standard curve identifiers
+
+The full identifier table implemented by the processor. Reference
+documents are listed to support audit. Curves are grouped by
+*vendor family*; each vendor's block of curves is contiguous. Only
+*modern platforms* are referenced -- specifically those in
+production as of 2024 (avoiding vintage electromechanical
+emulations and discontinued product lines).
+
+==== IEC 60255-151:2009 Annex A (curves A-F)
+
+The normative IEC inverse-time curves.
+
+[cols="1,1,1,1,1,2", options="header"]
+|===
+| Identifier | k (s) | c (s) | alpha | t_r (s) | Source
+
+| `iec.si`     | 0.14    | 0      | 0.02 | _mfr_   | IEC 60255-151:2009 Annex A.1 A
+| `iec.vi`     | 13.5    | 0      | 1.0  | _mfr_   | IEC 60255-151:2009 Annex A.1 B
+| `iec.ei`     | 80      | 0      | 2.0  | _mfr_   | IEC 60255-151:2009 Annex A.1 C
+| `ansi.mi`    | 0.0515  | 0.114  | 0.02 | 4.85    | IEC 60255-151:2009 Annex A.1 D
+| `ansi.vi`    | 19.61   | 0.491  | 2.0  | 21.6    | IEC 60255-151:2009 Annex A.1 E
+| `ansi.ei`    | 28.2    | 0.1217 | 2.0  | 29.1    | IEC 60255-151:2009 Annex A.1 F
+|===
+
+==== IEC 60255-3:1989 legacy (carried by modern relays)
+
+Withdrawn standard, retained for *backwards compatibility* with
+existing installed numerical relays.
+
+[cols="1,1,1,1,1,2", options="header"]
+|===
+| Identifier | k (s) | c (s) | alpha | t_r (s) | Source
+
+| `iec.lti`   | 120   | 0      | 1.0  | _mfr_   | IEC 60255-3:1989 §3.5.2 char. 1 (legacy long-time, vendor extension)
+| `iec.sti`   | 0.05  | 0      | 0.04 | _mfr_   | IEC 60255-3:1989 §3.5.2 char. 2 (legacy short-time, vendor extension)
+|===
+
+==== SEL -- SEL-451 / SEL-751 family (modern)
+
+Schweitzer Engineering Laboratories -- current SEL-451 and SEL-751
+platforms provide the `C1..C5` IEC-style aliases and the
+`U1..U5` ANSI-style CO/IAC emulations. SEL's `U1` is the
+*CO-2 electromechanical emulation* and is **not** numerically
+identical to IEEE C37.112 U1 (which the spec exposes as `ansi.mi`).
+
+[cols="1,1,1,1,1,2", options="header"]
+|===
+| Identifier | k (s) | c (s) | alpha | t_r (s) | Source
+
+| `sel.c1`    | 0.14   | 0      | 0.02  | 13.5    | SEL-451 IM; SEL IEC SI
+| `sel.c2`    | 13.5   | 0      | 1.0   | 47.3    | SEL-451 IM; SEL IEC VI
+| `sel.c3`    | 80     | 0      | 2.0   | 80      | SEL-451 IM; SEL IEC EI
+| `sel.c4`    | 120    | 0      | 1.0   | 120     | SEL-451 IM; SEL IEC LTI (legacy)
+| `sel.c5`    | 0.05   | 0      | 0.04  | 4.85    | SEL-451 IM; SEL IEC STI (legacy)
+| `sel.u1`    | 0.0226 | 0.0104 | 0.02  | 1.08    | SEL-451 IM; SEL CO-2 emulation (NOT C37.112 U1)
+| `sel.u2`    | 0.180  | 5.95   | 2.0   | 5.95    | SEL-451 IM; SEL IAC emulation
+| `sel.u3`    | 0.0963 | 3.88   | 2.0   | 3.88    | SEL-451 IM; SEL very inverse
+| `sel.u4`    | 0.0352 | 5.67   | 2.0   | 5.67    | SEL-451 IM; SEL extreme inverse
+| `sel.u5`    | 0.00262 | 0.00342 | 0.02 | 0.323  | SEL-451 IM; SEL short-time inverse
+|===
+
+==== Siemens -- SIPROTEC 5 platform (modern)
+
+Current Siemens 7-platform: 7SJ85, 7SA52, 7SD86, 7VK87 etc. The
+ANSI long-time inverse variants below are *vendor extensions* in
+addition to the IEC 60255-151 standard set.
+
+[cols="1,1,1,1,1,2", options="header"]
+|===
+| Identifier | k (s) | c (s) | alpha | t_r (s) | Source
+
+| `siemens.inv`     | 0.0086  | 0.0185 | 0.02  | 9.7    | SIPROTEC 5 7SJ85 manual (vendor extension; *not* C37.112 U1)
+| `siemens.long_inv`| 0.086   | 0.185  | 0.02  | 9.7    | SIPROTEC 5 7SJ85 manual
+| `siemens.long_vi` | 28.55   | 0.712  | 2.0   | 43.2   | SIPROTEC 5 7SJ85 manual
+| `siemens.long_ei` | 64.07   | 0.250  | 2.0   | 58.2   | SIPROTEC 5 7SJ85 manual
+|===
+
+==== GE -- UR-series (modern)
+
+Modern GE Multilin UR-platform (T60, L60, B30, B90,
+B90_plus). The IAC family from the GE Multilin 745 (a 1990s
+product line) has been **dropped**: the IAC family is now expressed
+as FlexCurve piecewise tables rather than as a vendor-supplied
+constant set, since the IEC 60255-187-1 vendor table is more
+trustworthy than the GE electromechanical emulation.
+
+[cols="1,1,1,1,1,2", options="header"]
+|===
+| Identifier | k (s) | c (s) | alpha | t_r (s) | Source
+
+| `ge.ur.mi`  | 0.0515  | 0.114  | 0.02 | 4.85   | UR-series T60 instruction manual (C37.112 mi, default)
+| `ge.ur.vi`  | 19.61   | 0.491  | 2.0  | 21.6   | UR-series T60 instruction manual (C37.112 vi)
+| `ge.ur.ei`  | 28.2    | 0.1217 | 2.0  | 29.1   | UR-series T60 instruction manual (C37.112 ei)
+| `ge.ur.si`  | 0.14    | 0      | 0.02 | _mfr_  | UR-series T60 (IEC SI)
+|===
+
+==== ABB -- Relion 615/620/630 platform (modern)
+
+Modern ABB Relion 615/620/630 series. ABB RI / RD types are
+formulated as `t = a + b * (I / I_p)` (RI, linear) or
+`t = a - b * ln(I / I_p)` (RD, logarithmic), not in IDMT form; they
+are *separate* from the IEC 60255-151 set. The linter warns on
+mixing RI/RD with IDMT in the same grading pair.
+
+[cols="1,1,1,1,1,2", options="header"]
+|===
+| Identifier | form      | constants                          | Source
+
+| `abb.ri`   | linear    | `t = 5.8 - 1.35 * (I/I_p)`         | Relion 615 IM, RI-type
+| `abb.rd`   | logarith. | `t = a + b * ln(I/I_p)`            | Relion 615 IM, RD-type
+|===
+
+[NOTE]
+====
+The constant table is part of the processor, not the user source, to
+guarantee a single source of truth. Future additions (IEC 60255-181,
+IEC 60255-149 thermal) extend this table only by adding to a new
+processor version.
+====
+
+[NOTE]
+.Two rows that deserve a second look
+====
+*`sel.u1`* is tabulated above as `k = 0.0226, c = 0.0104`. SEL
+publishes the CO-2 emulation as
+`t = TD * (0.0226 + 0.0104 / (M^0.02 - 1))`, i.e. with the constants
+the other way round in this spec's `k / (M^alpha - 1) + c` form.
+The table is normative as written; a future revision should confirm
+the intended orientation against the SEL-451 instruction manual
+before any study relies on this curve.
+
+*`abb.rd`* gives its form as `t = a + b * ln(I/I_p)` but tabulates
+no constants, while the surrounding prose writes `t = a - b * ln(...)`.
+Processors implement it as `t = a - b * ln(M)` with `a = 5.8`,
+`b = 1.35`, matching both the prose and the `abb.ri` row.
+====
+
+=== CTI computation
+
+For each `grade { primary = R_p:e_p; backup = R_b:e_b;
+fault = "F"; ... }` block, the processor computes the margin at
+the named fault's current `I_f`. If the fault declares `min_A` and
+`max_A`, the constraint check sweeps across that range; if only
+`I_A` is declared, `min_A` and `max_A` default to `I_A` (a single
+point). If `CTI_min_s` is declared as a constraint, the check is
+applied at `I_A`, `min_A`, and `max_A`:
+
+[source]
+----
+margin(I_f) = t_trip(R_b, I_f) - t_trip(R_p, I_f)
+----
+
+The report is a table of `{ I_f_A, t_primary_s, t_backup_s,
+margin_s }`. The grade is reported as *passing* when
+`min_margin >= CTI_min_s` over the full declared fault range, else
+*failing* with the failing bus flagged and the failing `I_f`
+identified.
+
+When the `fault` field is omitted from a `grade` block, the
+processor emits a *Warning* (`FAULT_OPTIONAL_NO_GRADE_CHECK`)
+and renders the TCC without computing a margin. The `grade` block
+still validates that `primary` and `backup` exist, but no margin
+report row is produced. If the user intends to grade, the `fault`
+field must be declared explicitly.
+
+==== Upstream sweep
+
+A pair that grades at the declared fault can still fail *above* it.
+Two characteristics of different families converge as the multiple
+rises -- an extremely-inverse backup will eventually overtake a
+standard-inverse primary -- and a high-set stage on the backup can
+undercut the primary outright. Checking only the declared fault
+points hides both.
+
+[source,tc]
+----
+grade {
+    primary     = R_FDR_1:51;
+    backup      = R_TRF_INC:51;
+    fault       = "F_FDR1_max";
+    CTI_min_s   = 0.30;
+
+    upstream    = true;          // sweep above the declared fault
+    // upstream_to = 25 kA;      // explicit ceiling (optional)
+}
+----
+
+`upstream = true` sweeps logarithmically from the highest declared
+fault current up to a ceiling, evaluating the margin at each sample
+exactly as at a declared point, and reports the *tightest* margin
+found together with the current at which it occurs. Samples
+participate in the `CTI_min_s` verdict, so a pair that inverts
+anywhere in the swept band fails the grade.
+
+The ceiling is, in order of precedence:
+
+. `upstream_to`, when declared;
+. otherwise the largest fault current declared anywhere in the study,
+  referred to the primary's level -- the most severe current the
+  study contemplates;
+. with a floor of `20 * I_pu_primary`, so a study whose declared
+  faults are all modest still gets a meaningful sweep.
+
+[NOTE]
+====
+The sweep reports the worst point rather than every sample: the
+useful fact is *where* grading is tightest. A negative margin means
+the backup operates before the primary at that current -- a
+mis-coordination that would trip the upstream device for a
+downstream fault.
+====
+
+[IMPORTANT]
+====
+The default ceiling is the largest fault *anywhere in the study*,
+which for a pair deep in a cascade may be a current that pair can
+never experience. A sub-feeder graded against a feeder will be swept
+up to the busbar fault level, and can be reported as failing against
+the feeder's high-set at a current no sub-feeder fault could reach.
+
+Declare `upstream_to` with the maximum fault the *primary* can
+actually see whenever the study's largest fault belongs to a
+different part of the network. The default is deliberately
+conservative -- it would rather ask the question than miss a real
+inversion -- but a bounded sweep is the more meaningful check.
+====
+
+==== Margin target vs CTI minimum
+
+Two fields make different design-intent declarations. Both are bound
+to *one* fault current each -- the named fault declared via
+`fault = "<id>"`. The engineer reads this as: "at this current, I
+want exactly this margin" (target) or "at every current in the
+range, I want at least this margin" (constraint).
+
+* `CTI_min_s = 0.30;` -- a *constraint*: the engineer requires at
+  least 0.30 s of margin at every fault current in the grade's range.
+  The processor emits a *pass* / *fail* report; it does not change the
+  source file.
+* `margin_s = 0.30;` -- a *target*, *at the declared `fault`*: the
+  engineer requires *exactly* 0.30 s of margin at the named fault's
+  current (e.g. `"F_INC_max"` declared in the file). Combined with a
+  `solve` block (below), the processor computes the backup's `tms`
+  (or other free variables) such that the margin matches.
+
+[NOTE]
+====
+Both `margin_s` and the `solve` target are *single-point*: they are
+defined at exactly one fault current (the `fault` keyword). The
+margin at *other* currents in the range is not directly controlled by
+this field, only reported. Use `CTI_min_s` for a continuous
+constraint across the whole range.
+====
+
+A `grade` block's `margin_s` is treated as a *report target* at the
+declared fault current: the margin report includes a row showing
+achieved margin vs target. Without `solve`, a sub-target margin is a
+flag (informational) -- the engineer is *not* asking the tool to
+make it happen, only to report the gap. With `solve`, the tool
+adjusts free variables to hit the target.
+
+A `grade` block may declare either, both, or neither. The semantics
+of each combination:
+
+[cols="1,2,3,1", options="header"]
+|===
+| CTI_min_s | margin_s | solve | Behaviour
+
+| absent | absent | absent | Informational report; no constraint.
+| present | absent | absent | Pass/fail grading check across the bus-fault range.
+| present | present | absent | `margin_s` reported as a target; `CTI_min_s` enforced as a constraint at every fault current.
+| absent | present | absent | `margin_s` reported as a target at `fault`; no constraint. *Warning* (`SOMETHING-IS-MISSING`: margin_s declared without an action).
+| any | present | present | `solve` adjusts free variables to hit `margin_s` (within `tolerance_pct`); `CTI_min_s` continues to act as a floor.
+|===
+
+[NOTE]
+====
+The row labelled "absent, present, absent" warns because a
+`margin_s` declared alone is ambiguous between (a) "I want exactly
+this margin" (intent: solve) and (b) "I want to know what this
+margin is" (intent: compare-margin-only). The default behaviour is
+(b); the engineer can override by adding `solve { ... }`.
+====
+
+=== Solver -- automatic grading
+
+The `solve` block inside `grade` declares that the *processor* should
+*compute* the free variables (`tms`, optionally also `t_delay` or
+`I_pu`) such that the grading constraint matches the design target.
+
+[source,tc]
+----
+grade {
+    primary   = R_FDR_1:51;
+    backup    = R_TRF_INC:51;
+    fault     = "F_FDR1_max";       // a named fault from faults { ... }
+    margin_s  = 0.30;                // design target
+
+    solve {
+        strategy       = "tight";    // minimum tms that meets the margin
+        tolerance_pct  = 5;          // accept 5% overshoot above target
+    }
+}
+----
+
+==== Algorithm
+
+For an IDMT backup curve
+
+`t = TMS_b * [ k / (M^alpha - 1) + c ]`
+
+and a known primary operate time `t_p`, the processor solves for
+`TMS_b` at the declared fault current `I_f`:
+
+[source]
+----
+t_p_at(I_f)        = t_trip(R_p, I_f)
+target_margin      = margin_s * (1 + tolerance_pct / 100)
+t_b_target         = t_p_at(I_f) + target_margin
+M_b                = I_f / I_pu_b                     # without current_pct
+                   = (I_f * current_pct / 100) / I_pu_b  # with current_pct
+bracket            = k / (M_b^alpha - 1) + c
+TMS_b              = t_b_target / bracket          # closed-form
+----
+
+For an `iec.si / v / ei / lti / sti / ansi.mi / ansi.vi / ansi.ei`
+backup with `c > 0`, the additive `c` term must be included in the
+denominator; this is the difference between the closed-form above
+and the naive `t_b_target * (M_b^alpha - 1) / k` rearrangement that
+*underestimates* `TMS_b` by `t_b_target * c` seconds when `c` is
+material. Tests in `tests/unit/solver.spec.ts` assert this.
+
+For a *multi-stage* backup the solver's "default" `free = [tms]`
+adjusts the single IDMT-bearing stage whose `curve = <inverse>` and
+whose `tms` is the controlling slow stage at the declared fault.
+When the controlling stage is not obvious, the solver picks the
+stage with the *largest* `t_trip(I_f)`.
+
+The result is snapped onto the device's settable grid and clamped
+per `strategy`. Every strategy rounds *up*: the closed-form answer
+lands exactly on the target, so rounding down would place the
+achieved margin *below* the declared target and defeat the purpose
+of solving for it.
+
+* `tight` -- round *up* to the nearest 0.005 (positive; reject if
+  unsatisfiable). This is the smallest setting that still meets the
+  margin.
+* `loose` -- round *up* to the nearest standard dial step (IEC:
+  0.025 in `[0.025, 1.5]`; ANSI: 0.05 in `[0.5, 15]`).
+* `safety_factor` -- v0.2; multiplies the tight result by
+  `(1 + safety_value)`.
+
+The <<_worked_solver_case,worked solver case>> exercises this:
+`TMS_b = 0.28859` snaps to `0.290` under `tight`, not `0.285`.
+
+The computed value is *not* written back into the source file; the
+processor stores it on the AST node as `tms = { value, source: "auto" }`.
+
+==== Tolerance band
+
+`tolerance_pct` declares how much *overshoot above* the target the
+engineer will accept. It plays two distinct roles, and conflating
+them is the usual source of confusion:
+
+* as an *aim point*, it inflates the target the closed-form solution
+  is computed against (`target_margin` above);
+* as an *acceptance band*, it decides whether the solved result is
+  reported as satisfactory.
+
+The acceptance test is applied *after* snapping `tms` to the settable
+grid, so the band must account for the snap. Since the snap is always
+upward and never exceeds one grid step, the band is widened by exactly
+the time that step contributed:
+
+[source]
+----
+quantisation_s = (tms_snapped - tms_exact) * bracket
+within_band    = achieved_margin >= margin_s
+              && achieved_margin <= target_margin + quantisation_s
+----
+
+Without that term the feature would be unusable: the closed-form
+answer always lands on `target_margin`, so *any* upward snap would
+report an overshoot, and even `tolerance_pct = 0` could never pass.
+The worked solver case is reported as "within tolerance (0.0 %)"
+precisely because the 0.28859 -> 0.290 snap is quantisation, not
+a design overshoot.
+
+==== Reporting
+
+The margin report lists *all* of:
+
+* the design target (`margin_s = 0.30 s`),
+* the computed `tms` value (e.g. `tms = 0.345 (auto)`),
+* the achieved margin at the declared fault (e.g.
+  `achieved_margin = 0.30 s @ I_f = 6400 A`),
+* whether the achieved margin fell inside the tolerance band.
+
+==== On-graph annotation
+
+When a curve's `tms` (or other) value is set by the solver, the
+renderer draws the curve with the *automatic* value and labels the
+curve legend entry with `tms=0.345 (auto)` plus a small `A` (or
+solver icon) glyph. Hovering the label shows the source target and
+the tolerance. (Renderer behaviour only; no graph is rendered in
+text-only mode.)
+
+==== Unsatisfiable targets
+
+If no TM setting in the device's range `[TMS_min, TMS_max]` can
+satisfy the declared margin, the solver reports:
+
+[source,console]
+----
+grade R_FDR_1:51 / R_TRF_INC:51 unsatisfiable:
+    target margin 0.30 s at I_f = 6400 A
+    primary t_p = 0.566 s
+    t_b_min = 0.866 s
+    required TMS = 0.866 / k * (M^alpha - 1) = 0.124
+    -- fallback: increase tms backup to maximum allowed
+       (TMS_max = 1.500 gives t_b = 9.05 s, margin = 8.49 s)
+    -- suggested next:
+       1. change primary curve family (e.g. iec.si -> iec.vi)
+       2. increase I_pu of primary
+       3. lower CTI to allow tighter margin
+----
+
+The report includes suggested next steps and is included in the
+graded-blocking summary; the parser does not error out (the issue is
+human-judgement and should be visible).
+
+==== Free variables
+
+By default the solver adjusts `tms` of the backup element. The
+user may extend the set of free variables with `free = [...]`:
+
+[source,tc]
+----
+grade {
+    primary        = R_FDR_1:51;
+    backup         = R_TRF_INC:51;
+    fault          = "F_FDR1_max";
+    margin_s       = 0.30;
+    tolerance_pct  = 5;
+
+    solve {
+        strategy = "tight";
+        free      = ["tms"];        // default
+        // free = ["tms", "I_pu"];  // also touch pickup discrimination
+    }
+}
+----
+
+The solver stage order: first adjust `tms` (linearly), then adjust
+`I_pu` (within pickup-discrimination bounds, dispose the smallest
+free `I_pu` that also meets the margin). The set is solved
+simultaneously with a Newton iteration if more than one variable is
+free; with a single variable it's a closed-form solution.
+
+==== Solver with `I_pu` as free variable
+
+When `I_pu` is in `free`, the solver adjusts the backup's pickup
+current such that `M_backup = I_f_at_backup / I_pu_backup` produces
+the required operate time. Since `I_pu_backup` appears in the
+denominator of `M_backup`, decreasing `I_pu_backup` increases
+`M_backup` and *decreases* the operate time (for IDMT curves).
+The solver bounds `I_pu_backup` within pickup-discrimination
+limits (`I_pu_backup >= 1.2 * I_pu_primary` per IEEE 242 §15.3.2)
+and the relay's vendor range.
+
+==== Multi-stage solve (v1 behaviour)
+
+When the backup element has multiple stages, the solver's
+`free = ["tms"]` adjusts the *single IDMT-bearing stage* whose
+`t_trip(I_f)` is the largest (the controlling slow stage at the
+declared fault). If the controlling stage is a definite-time stage
+(`t_delay`), the solver does not adjust it (a definite-time stage
+has no `tms`); the solver reports `SOLVER_NO_IDMT_STAGE` and falls
+back to reporting the existing margin.
+
+Multi-stage `free = ["tms", "I_pu"]` is *not* supported in v1
+(deferred to v0.2; requires a two-variable Newton iteration with
+stage-level constraints).
+
+==== Interactive curve editing (v0.2, playground)
+
+The playground renders the TCC on a log-log canvas. In v0.2 the
+engineer may *drag a curve* with the pointer; the tool
+reverse-solves the free variable (`tms` by default, or `I_pu` /
+`t_delay` depending on which segment the drag grips) from the new
+visual position and *writes the computed value back into the
+source text*, preserving formatting and comments.
+
+Conceptually the drag is a *visual solver*: instead of declaring
+`margin_s` and `solve { ... }` in the source, the engineer
+manipulates the curve directly and the tool runs the same
+closed-form / Newton machinery to find the parameter that places
+the curve at the pointer's `(I, t)` coordinate.
+
+Rules (planned for v0.2):
+
+* Dragging the IDMT body of an inverse-time curve adjusts `tms`
+  (single free variable, closed-form from the dragged point).
+* Dragging the pickup knee (the left end of the curve) adjusts
+  `I_pu`.
+* Dragging a definite-time stage adjusts `t_delay`.
+* A multi-stage element's composite curve is dragged by gripping
+  the *controlling stage* at the dragged current (same selection
+  rule as the text solver).
+* The write-back replaces only the numeric token of the affected
+  field; surrounding comments, whitespace, and other fields are
+  preserved (round-trip stable).
+* The undo stack (playground) treats a drag as a single edit unit.
+* Devices (`fuse`, `cable`, ...) are *read-only* in the drag
+  interaction -- their `flex_points` are manufacturer data and
+  are not adjusted by dragging.
+
+This feature does not change the grammar; it is a renderer +
+editor integration that reuses the solver's mathematics.
+
+=== Directional elements
+
+A relay or element with `direction = "forward"` (default) or
+`directional = true` is flagged as a *directional* element on the
+TCC. The processor does not (v1) compute the directional
+characteristic itself; v0.2 is the first cut at directional logic
+and polarised curves.
+
+=== Voltage levels and cross-voltage grading
+
+Modern protection studies frequently span multiple voltage levels
+through a single transformer (e.g. a 33 kV incomer relay coordinates
+with an 11 kV downstream feeder relay through a 25 MVA 33/11 kV
+power transformer). Currents on either side of the transformer are
+*different* by the turns ratio. The language names voltage levels
+and lets the processor work out the ratio automatically.
+
+==== Declaring voltage levels
+
+[source,tc]
+----
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV incomer side"; }
+        "LV" { kV = 11.0; description = "11 kV feeder side"; }
+    }
+}
+----
+
+A voltage-level entry has just one required field, `kV`, plus
+an optional `description`. The user names a level with a string
+identifier (no quotes required for bare identifiers). Relays and
+faults reference these names.
+
+==== Relays and faults reference the level by name
+
+A *relay* declares the level it sits on with `voltage = "<name>"`:
+
+[source,tc]
+----
+relay R_INC_330 {
+    voltage   = "HV";             // 33 kV side
+    ct_ratio  = 200/5;
+    ...
+}
+
+relay R_FDR_110 {
+    voltage   = "LV";             // 11 kV side
+    ct_ratio  = 600/5;
+    ...
+}
+----
+
+A *fault* is also at a level. Its declared current is the
+primary-ampere value of the fault *as seen from that level*:
+
+[source,tc]
+----
+faults {
+    "F1_lv_3000" { I_A = 3000 A; voltage = "LV"; }
+    "F2_hv_max"  { I_A = 18400 A; voltage = "HV"; }
+}
+----
+
+`F2_hv_max` declares a 3-phase fault current of `18.4 kA` *as
+seen on the HV (33 kV) side*. The processor does *not* require
+the engineer to specify a transformer; the ratio between `HV`
+and `LV` is `33 / 11 = 3`, applied automatically on demand.
+
+==== Cross-voltage grading
+
+A `grade` block places the fault on the *primary* side and
+automatically derives the equivalent current on the *backup* side
+via the ratio of their voltage levels:
+
+[source,tc]
+----
+grade {
+    primary   = R_FDR_110:51;     // LV (11 kV)
+    backup    = R_INC_330:51;     // HV (33 kV)
+    fault     = "F2_hv_max";      // 18.4 kA at HV side
+    margin_s  = 0.30;
+}
+----
+
+The fault sits *on the primary's voltage* by default: `F2_hv_max`
+declares `voltage = "HV"`, but `R_FDR_110` (primary) is on `LV`.
+The processor therefore *applies the ratio* to bring the fault
+onto the primary side before computing margins:
+
+[source]
+----
+I_at(L)      = I_fault * V_fault / V_L      # current in level L's winding
+
+I_at_primary = I_at(V_primary)
+M_primary    = I_at_primary / I_pu_primary
+
+I_at_backup  = I_at(V_backup)
+M_backup     = I_at_backup / I_pu_backup
+----
+
+Each relay is evaluated at the current *it* measures, against its
+own pick-up. If both relays and the fault sit on one level every
+ratio is identity and the arithmetic collapses to the
+single-voltage case. A fault declared on a *third* level needs no
+special handling: `I_at(L)` already refers it to whichever level is
+asked for.
+
+[IMPORTANT]
+====
+*One fault, but not one current.* Ampere-turns balance across a
+transformer, so its two windings carry currents in inverse
+proportion to their voltages. A 6.4 kA fault on an 11 kV bus drives
+`6.4 kA * 11 / 33 = 2.13 kA` through the 33 kV winding. The
+incomer's relay measures 2.13 kA and nothing else, so its multiple
+must be computed from 2.13 kA against its own HV pick-up.
+
+Evaluating the backup at the *primary's* current instead -- dividing
+an LV current by an HV pick-up -- mixes frames. It inflates the
+backup's multiple, understates its operate time, and so reports a
+grading margin that does not physically exist. That is a dangerous
+failure mode: the study says the pair is graded when it is not.
+
+Margins themselves need no conversion. An operate *time* does not
+depend on which winding you measure from, so once each side is
+evaluated in its own frame the difference between the two times is
+the margin, whatever levels they sit on.
+====
+
+The renderer draws the resulting curves in a single chosen frame --
+see `view { voltage = ... }` -- or in `view { axis = "multiples"; }`
+so each pick-up lands on `M = 1` regardless of voltage.
+
+==== Mixed-voltage graduation (default per-relay)
+
+By default, *all* elements in a study declare
+`voltage = "some_name"`; the relay-internal `I_units` field
+(`primary` / `secondary`) is separate and toggles the units the
+user types in for `I_pu` only. The processor does *not* require
+`voltage = ...` to be omitted on every relay for a single-voltage
+study -- it is required for each relay but the level name is
+freely chosen (e.g. `LV` for all relays in a 11 kV study).
+
+If a `relay` *does not* declare a voltage but a `fault` does, the
+processor treats the relay as on the same voltage as the fault
+and emits a *Warning* `RELAY_VOLTAGE_UNSPECIFIED`. If neither
+is specified, the processor falls back to the `system.I_base_A`
+value (per-unit) -- a single-voltage plot in dimensionless
+multiples.
+
+==== Voltage / pick-up self-check
+
+The processor checks each `I_pu` declared in *primary amps*
+against the typical equipment current for the declared voltage:
+
+* If `I_pu < 5% * (base_MVA / kV / sqrt(3))` (i.e. `I_pu` is
+  implausibly low for that voltage base), the
+  `PICKUP_TOO_LOW_FOR_VOLTAGE` warning fires -- usually a unit
+  error (`720 A` instead of `7.20 kA`).
+
+==== Defaults
+
+* `voltage` on a relay: if absent and the study has exactly one
+  voltage level, defaults to that level. If absent and multiple
+  levels exist, *Warning* (`RELAY_VOLTAGE_UNSPECIFIED`) and the
+  relay is treated as being on the fault's voltage.
+* `ct_ratio` on a relay: if absent, defaults to `1/1` (unity).
+  *Warning* (`CT_RATIO_UNSPECIFIED`) when `I_units = "secondary"`
+  is declared on any element (secondary amps require a CT ratio
+  for conversion).
+* `faults` on a relay: optional. If absent, the relay has no
+  named fault references; a `grade` block must reference a fault
+  directly by name.
+* `I_units` on a relay: defaults to `system.I_units` (which
+  defaults to `"primary"`).
+
+==== Annotations on devices
+
+`annotate { on_curve = <device-ref>; at_I_A = <A>; ... }` places
+the annotation at the device's TCC at the declared current. The
+`at_I_A` value is interpreted in the *device's own* amps (the
+`flex_points` table's units); no voltage-level conversion is
+applied. If the device is on a different voltage level than the
+plot's axis mode, the renderer emits a *Warning*
+(`ANNOTATE_VOLTAGE_MISMATCH`).
+
+==== Comparison with the rejected design
+
+Earlier drafts of the spec carried both a `system.transformers`
+clause and a per-relay `voltage_kV` field. The user feedback
+that prompted v0.1.0's revision was: "transformers and buses
+should not be specified; just give voltage levels and the
+processor will compute ratios". This revised design drops:
+
+* `system.transformers.transformer { from_kV, to_kV, ... }`
+* `faults { bus "..." { ... } }` (`bus` is replaced by a flat
+  named table)
+* per-relay `voltage_kV = 33.0;` (a number) -- replaced by
+  per-relay `voltage = "HV"` (a *named* level)
+* `relay.location_bus` -- dropped; relays access faults by
+  `$faults["F1_lv_max"]` reference through the `faults = [...]`
+  list.
+* `grade.transformer = ...` -- dropped; the processor finds the
+  ratio implicitly from the relays' voltage levels.
+
+The net effect: the user's source file is
+shorter, and the refactor moves domain knowledge of transformer
+ratios *out* of the author and into the processor. This is
+explicitly by design.
+
+=== Current-share factor (parallel lines / transformers)
+
+Protection engineers routinely encounter situations where a single
+relay does *not* see the full system fault current. Two important
+cases:
+
+* *Parallel lines* -- e.g. two 11 kV feeders in parallel from a single
+  bus. A fault on the downstream bus produces half the total fault
+  current in *each* parallel feeder. The OC relay on each feeder
+  therefore sees `I_total / n_parallel`.
+* *Parallel transformers* -- two transformers in parallel, inrush
+  and through-fault scenarios handled similarly.
+
+Optional parameter `current_pct` declares what fraction of the total
+fault current the relay sees, expressed as a percentage of `100`:
+
+[source,tc]
+----
+element 51 {
+    curve        = iec.si;
+    I_pu         = 600 A;
+    current_pct  = 50;       // this relay sees 50% of I_total
+    tms          = 0.30;
+}
+----
+
+The processor multiplies the relay's effective primary current by
+`current_pct / 100` before evaluating `M`:
+
+[source]
+----
+I_eff = I_total * (current_pct / 100)
+M     = I_eff / I_pu
+----
+
+(Defaults to `100`, equivalent to `100 %`. Constraint: `0 <
+current_pct <= 100`.)
+
+`current_pct` is *optional*: a relay that sees the full fault current
+*does not* declare it. The processor supplies the default of `100`.
+
+Two adjacent relays on parallel feeders should declare complementary
+`current_pct` values (`50` and `50`) so that the per-relay envelope
+shows the operating time of each relay individually; the system-level
+response time of the parallel pair (the fastest clearance) is the
+*pointwise minimum* of the two per-relay TCCs.
+
+`current_pct` is also valid on `stage` blocks, applied per-stage, so
+that a composite element can declare one stage that sees half and
+another that sees all (e.g. an instantaneous stage does not see the
+parallel division because it is bolted-fault only).
+
+See <<validation,Validation>> for the value constraints; see
+<<examples-extended,Extended examples>> for a worked parallel-
+transformer TCC.
+
+== Extensibility and user-defined curves
+
+The namespace identifiers (`iec`, `ansi`, `sel`, `ge`, `abb`,
+`schneider`, `siemens`) are *processor-known*: they appear in the
+constants table at the bottom of this section, and they are the only
+identifiers accepted in a `curve = X.Y;` assignment.
+
+Adding a new vendor curve (e.g. `schneider.c10`) requires a single
+addition to `src/constants/curves.ts` -- *not* a grammar change.
+
+*User-defined curves use the `formula` block only*:
+
+[source,tc]
+----
+element 51 {
+    formula      = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
+    I_pu         = 600 A;
+    tms          = 0.30;
+}
+----
+
+A `curve = "X.Y"` reference that does not match the constants table
+emits an error with a closest-match suggestion (Levenshtein distance
+<= 2). This is the *single* validation rule that couples the parser
+to the constants table; the parser itself remains a pure shape
+recogniser.
+
+=== Auxiliary devices -- fuses, cables, transformers, reclosers, motors
+
+Real TCC studies co-ordinate not only relays against each other, but
+relays against other TCC assets whose operating time is set by the
+asset's own thermal or mechanical limits rather than by an IDMT
+formula:
+
+* *Fuses* -- a thermal-melt-and-arc TCC published by the fuse
+  manufacturer. Two curves are needed per fuse: the *minimum melt*
+  time (when the fuse element first starts to melt) and the *total
+  clear* time (when the fault is fully cleared). The two curves are
+  drawn as a *single band* (shaded region) between them on the TCC.
+* *Cable-withstand curves* -- the thermal-withstand limit of a
+  cable's insulation. Currents above the curve damage the cable.
+  Source typically ICEA P-32-382 (workmanship) and ICEA S-75-381 /
+  S-93-639 (utility cables).
+* *Transformer damage curves* -- the through-fault-withstand limit
+  per IEEE C57.91.6. For oil-immersed transformers, an I²t integral
+  limit per `sqrt(2)` short-circuit currents.
+* *Recloser control curves* -- TCC of the recloser's fast and slow
+  operations; published by the manufacturer (Cooper Form 6, ABB OVR,
+  Siemens 3AD).
+* *Motor starting curves* -- the motor's start-up current vs time;
+  protection must not trip during a normal motor start.
+* *Breaker clearing time* -- the breaker's `t_open` time; an
+  instantaneous definite time added as the *final* operating time
+  to any IDMT curve.
+
+In the language, each of these is a `device` block; see the
+<<_Device___auxiliary_TCC_assets,Device>> grammar production. A
+device TCC curve is **always piecewise** and is determined by a
+`flex_points` table; the standard inverse-time formulas are not used.
+
+=== Fuse semantics -- the min-melt / total-clear band
+
+A fuse entry declares `kind = "fuse"` with *both* `min_melt` and
+`total_clear` tables (the fuse band), *or* a single `flex_points`
+table (a single-curve fuse). The renderer shades the band between
+`min_melt` and `total_clear` automatically; no `combine` block is
+needed.
+
+[source,tc]
+----
+device "ferraz_abc_100a" {
+    kind        = "fuse";
+    rating_A    = 100 A;
+    min_melt    = [(150 A, 100 s), (300 A, 1.5 s), (1000 A, 0.05 s)];
+    total_clear = [(150 A, 60 s), (300 A, 0.6 s), (1000 A, 0.02 s)];
+}
+----
+
+The renderer draws the band as a *hatched region* between the two
+boundaries, with minimum melt dashed and total clear solid. The
+hatch is deliberate: a solid fill invites reading the region as a
+tolerance band on one curve, whereas the fuse may open anywhere
+inside it. Texture also keeps the band distinguishable in monochrome
+print and to a colour-blind reader, where a colour wash alone would
+not be.
+
+A fuse-relay combination grade in the same study:
+
+[source,tc]
+----
+grade {
+    primary   = ferraz_abc_100a;           // fuse total-clear (from band)
+    backup    = R_TRF_INC:51;              // upstream relay
+    fault     = "F_FDR1_max";
+    margin_s  = 0.15;                      // typical fuse-relay CTI
+}
+----
+
+-- with the semantics: "the removable primary is a fuse whose total
+clear must be 0.15 s ahead of the upstream relay at the declared
+fault." This is the standard fuse-relay coordination principle per
+Schneider NPAG §8.1.
+
+=== Cable / transformer damage semantics
+
+A cable or transformer damage block declares a single
+`flex_points` table; the renderer draws it on the TCC as a
+*damage curve* (red dashed line by default, separately styled).
+Margin is reported as the *time* between the operating relay's TCC
+and the damage curve at every fault current in the bus range; the
+grade must keep the relay's curve *below* the damage curve, with
+a `margin_s` below the damage curve.
+
+`transformer_damage` curves are computed against the transformer's
+rated current `I_FLA = MVA / (sqrt(3) * kV)`. The user may declare
+either `flex_points` directly, or supply `rating_MVA` and
+`rating_kV` and let the processor generate default points per
+IEEE C57.91.6 / IEC 60076-5.
+
+=== Recloser / motor / breaker semantics
+
+`recloser` devices carry published TCC curves (fast / slow / delayed)
+with implicit `number_of_shots` and `reclosing_time_s` metadata;
+the renderer may show the discrete fast/slow steps.
+
+`motor_startup` devices are a *trip-protector* envelope: the OC
+relay must NOT trip during a normal motor start, so the start curve
+is drawn on the TCC as a *non-trip envelope* and the relay's TCC
+must sit *above* it. The grade's `margin_s` is the time gap above
+the start curve.
+
+`breaker` devices declare their clearing time as a single definite
+time `t_delay` (no `flex_points`); the resulting curve is a single
+horizontal line drawn as a *post-trip envelope*.
+
+=== Reference: see also
+
+* IEC 60269-1 (low-voltage fuses) -- the international standard for
+  fuse TCC.
+* IEEE C57.91.6 -- transformer through-fault withstand.
+* IEEE C37.91 -- transformer protection (mostly out-of-scope for
+  v1, but the curve coordinates apply).
+* ICEA P-32-382 -- cable short-circuit withstand.
+* NEMA MG-1 -- motor starting curves.
+
+=== Stages and composite curves
+
+A real protection function typically carries *multiple stages*: an
+IDMT (or thermal) *low-set* plus one or more *high-set* definite-time
+stages (instantaneous, time-delayed, breaker-failure, ...). The
+language exposes this via the `stages` sub-block of `element`.
+
+A single `element` block is either:
+
+* (shorthand form) a single curve producer (`curve`, `formula`,
+  `flex_points`, or `curve=definite`) plus the relevant scalar
+  fields. Treated by the processor as one implicit stage named `main`.
+* (stages form) a `stages { ... }` block containing one or more
+  named `stage <id> { ... }` sub-blocks. Each `stage` may carry its
+  own curve producer, pickup, tms/t_delay, reset, etc.
+
+The two forms are *mutually exclusive* in one element block; the
+validator rejects a block that mixes them. (Forwarded to
+<<validation,Validation>>.)
+
+The rendered TCC draws a *single curve per element* by default. The
+curve is the *operative-time envelope* across the element's stages:
+
+[source]
+----
+t_composite(I) = min over stages s of t_s(I)
+----
+
+`min` because whichever stage trips first at current `I` is the one
+that operates the breaker; the operate time of the element as a
+whole is the smallest among its stages.
+
+The plot toggle `view { stages = "individual"; }` reveals each stage
+as a separate visible curve; useful for diagnosing why the envelope
+takes a particular shape.
+
+* *Default* (no `view` block): composite mode (one curve per element).
+
+==== Stage idempotency
+
+A stage with only a pickup and no curve is interpreted as a *purely
+definite-time* stage -- the curve degenerates to `t = 0` for
+`I >= I_pu` and `t = +inf` for `I < I_pu`. The stage must carry
+either an explicit `curve = definite` (prescribed) or `t_delay`
+(legacy), or the validator *errors out* (see
+<<validation,Validation>>).
+
+==== Stage ordering and shading
+
+When in `composite` mode and more than one stage is faster than
+another over a current *interval*, the renderer shades the
+*fastest* stage a solid line and the slower stages as
+increasingly transparent dashed lines on the same element-coloured
+stroke. This is purely visual.
+
+=== Combine -- synthetic curves
+
+The `combine` top-level block declares a *synthetic curve* derived
+from one or more existing `relay:element` references. The sources it
+references must exist before `combine` is parsed -- the parser
+does *not* reorder source code to satisfy dependencies; the user
+orders the source so that all `relay` and `element` blocks appear
+before any `combine` block that references them.
+
+[source]
+----
+combine {
+    name        = "A_OR_B";
+    sources     = [R_FDR_1:51, R_TRF_INC:51];
+    as          = "envelope_min";     // OR of trips
+    color       = "#888";
+    style       = "dashed";
+    label       = "OR of A and B";
+}
+----
+
+The `as` keyword selects the operator:
+
+[cols="1,4,3", options="header"]
+|===
+| Keyword            | Operate time at current `I`         | Common use
+
+| `envelope_min`     | `min(t1, t2, ...)`                  | OR -- whichever trips first
+| `envelope_max`     | `max(t1, t2, ...)`                  | AND -- slowest path must trip
+| `sum`              | `t1 + t2 + ...`                     | Cascaded cable / breaker
+| `select_first`     | `t1`                                | Documentation only
+|===
+
+A `combine` curve is *not* a relay; it cannot appear in a `grade`
+or `combine` block as a source. (This constraint simplifies the
+language and prevents cycles; see
+<<validation,Validation>>.)
+
+== View (display directives)
+
+The optional top-level `view { ... }` block carries display-only
+directives. None of the curves change as a result of `view` -- it
+controls only what is *drawn*.
+
+[source,tc]
+----
+view {
+    stages        = "composite";        // composite | individual
+    axis          = "primary";          // primary | secondary | multiples
+    two_axes      = true;
+    reference_ct  = R_TRF_INC:67N;      // anchors the secondary axis
+}
+----
+
+`two_axes = true` adds a second X-axis below the primary, labelled in
+the alternate unit (`primary` ↔ `secondary`). The `reference_ct`
+selects which curve's CT anchors that secondary axis. If
+`reference_ct` is omitted, the renderer pegs the secondary axis to
+the *highest-ratio* curve in the plot (largest n_CT) and labels
+accordingly. If both axes are `multiples`, `two_axes` has no
+effect (single-axis mode).
+
+== Page (layout / theme / legend / colours)
+
+The optional top-level `page { ... }` block declares the page
+geometry, decoration, and theme for the rendered output. All three
+formats -- SVG, PNG, PDF -- consume the same block; for SVG the
+viewBox is computed from `size`, `orientation`, and `margins_mm`,
+for PNG it determines the canvas dimensions, and for PDF the
+physical page size matches `size`.
+
+[source,tc]
+----
+page {
+    size         = "A4";
+    orientation  = "landscape";
+    margins_mm   = { top = 12; right = 12; bottom = 14; left = 14; };
+    theme        = "light";
+
+    scale {
+        auto          = true;             // compute from fault range
+        x_min = 50 A; x_max = 50 kA;       // manual override when auto=false
+        y_min = 0.01 s; y_max = 1000 s;
+        tick_density  = "normal";         // sparse | normal | dense
+    }
+
+    legend {
+        show      = true;
+        position  = "right";
+        color     = "#222";
+        swatch    = "line";
+        title     = "Curve legend";
+    }
+
+    axes {
+        color        = "#444";
+        grid_color   = "#ccc";
+        label_color  = "#222";
+        label_size_px = 11;
+        frame         = true;
+        mirror        = true;             // repeat the scales top and right
+    }
+
+    faults {
+        width_px = 1.5;                   // marker weight
+        color    = "#c0392b";
+        style    = "dashed";              // omit for a distinct dash per fault
+        labels   = true;                  // names below the axis
+    }
+
+    curves {
+        palette       = "okabe_ito";      // colour-blind-friendly palette
+        line_width_px = 1.5;
+        auto_color    = true;             // match palette ↔ element order
+    }
+
+    points {
+        color   = "#0080c0";
+        shape   = "circle";
+        size_px = 4;
+        outline = true;                   // yes -- pin outline matches curve colour
+    }
+
+    leaders {
+        show        = true;
+        style       = "line";            // line | arrow | dot
+        width_px    = 1.0;
+        color       = "#888";
+        label_offset_px = 6;
+    }
+
+    title  = "Riverside 33/11 kV — OC grading";
+    title  = { text = "Riverside 33/11 kV — OC grading";
+               subtitle = "IEC 60255-151 SI curve, Computed TMS";
+               font_size_px = 18; align = "center"; };
+
+    footer {
+        left   = "[meta.project] -- [meta.engineer]";
+        center = "[date]";
+        right  = "[page] / [of]";
+        font_size_px = 9;
+        border = true;                    // horizontal line above the footer
+    }
+
+    watermark = "DRAFT";                  // diagonal across the page
+}
+----
+
+The block is optional; when absent, the renderer uses
+`size = "A4"`, `orientation = "landscape"`, `theme = "light"`,
+`legend.show = true` with `palette = "default"`, and a centred title
+built from `meta.project` / `meta.study`.
+
+=== Paper sizes and orientation
+
+`size` accepts either a paper keyword (`A4`, `A3`, `A5`, `Letter`,
+`Legal`, `Tabloid`, `A0..A2`) or a literal `{ width_mm = ..., height_mm = ...; }`
+clause for custom paper. The processor's built-in paper sizes
+(in mm):
+
+[cols="1,2", options="header"]
+|===
+| Keyword | Size (mm)
+
+| `A0`      | 841 x 1189
+| `A1`      | 594 x 841
+| `A2`      | 420 x 594
+| `A3`      | 297 x 420
+| `A4`      | 210 x 297
+| `A5`      | 148 x 210
+| `Letter`  | 215.9 x 279.4
+| `Legal`   | 215.9 x 355.6
+| `Tabloid` | 279.4 x 431.8
+|===
+
+`orientation` defaults to `landscape` for TCC plots (since the X-axis
+is logarithmic and benefits from horizontal layout); `portrait` is
+supported when the user wants to fit the plot into a tall page
+of a report.
+
+=== Axis scaling
+
+`scale.auto = true` (default) computes `x_min / x_max` from the
+smallest fault current in any `faults { ... }` block and the largest
+fault current *plus* a 1-decade padding. `scale.auto = false`
+honours `x_min / x_max / y_min / y_max` exactly.
+
+* `pow_10_padding_s = 0.5`: half-decade above the maximum
+  primary current (default; expandable to 1.0 for *clearance* from
+  the right edge).
+* `pow_10_scale_t_padding_s = 0.0`: no Y-axis padding above the
+  lowest t; the curve ought to start at its minimum at the left
+  edge of the rendered plot.
+
+`tick_density` controls the *minor-subdivision* count on the
+logarithmic decades:
+
+* `sparse` -- 1 sub-tick per decade (decades only).
+* `normal` -- 9 sub-ticks per decade (`1, 2, ..., 9`).
+* `dense` -- 9 sub-ticks per decade plus a `1/2, 1/5, 1/3` overlay
+  reserved for inspection.
+
+=== Axes
+
+`axes.frame = false` removes the plot rectangle, leaving the grid.
+
+`axes.mirror = true` repeats the tick labels on the opposite edges --
+current along the top as well as the bottom, time down the right as
+well as the left. On a wide sheet a point in the far corner is a long
+way from its scales, and mirrored axes are conventional on published
+TCC sheets for that reason. The legend column shifts right to make
+room.
+
+=== Fault markers
+
+Each fault in `faults { ... }` is drawn as a vertical rule with its
+name below the axis.
+
+By default *every marker gets its own dash pattern*. On a cascade with
+several faults a few hundred amps apart, identical dashes make it
+impossible to tell which rule belongs to which name; a distinct
+pattern, repeated on the legend swatch, lets the eye trace one line to
+its label. Setting `faults.style` explicitly overrides this and makes
+them uniform.
+
+Names are stacked into rows when they would otherwise overprint, so a
+cluster of nearby faults stays legible.
+
+=== Legend
+
+`legend.show = false` removes the legend block from the rendered
+page. The default is `true`. The legend is a vertical column to the
+right of the TCC plot in `landscape` mode (or below the plot in
+`portrait`); `position` accepts `right | left | top | bottom`.
+
+`legend.swatch` controls the per-curve swatch:
+
+* `line` -- a short stroked line in the curve's colour.
+* `box` -- a filled rectangle.
+* `circle` -- a filled circle with the curve's colour and an
+  outline matching the curve.
+
+`legend.title` is a free-form label rendered above the legend block
+(default `null` -- no title).
+
+=== Colour scheme
+
+`curves.palette` selects a coordinated colour scheme:
+
+[cols="1,2,2", options="header"]
+|===
+| Palette        | Colours                                  | Source
+
+| `default`      | 8 distinct hues, paired                  | tc-curves default
+| `pasteur`      | 10 hues, accessibility-tuned             | ibm / colour-science palette
+| `okabe_ito`    | 8 hues, colour-blind-friendly            | Okabe & Ito (2008) -- *recommended*
+| `monochrome`   | 5 distinct gray shades                   | tc-curves default
+| `grayscale`    | pure gray, 5 shades                      | -- monochrome themes (print)
+| `ieee`         | 6 hues, IEEE TCC conventions             | IEEE PSRC TG H7
+| `high_contrast`| 4 hues, maximum contrast                 | tc-curves default
+|===
+
+Per-element colour override (v0.2, not in v1 grammar): the v1
+grammar does not include a `style` sub-block on `element`; this
+is planned for v0.2 when per-element rendering options are needed.
+Per-`combine` colour override (common): `combine { ... color = "#ff0000"; style = "dashed"; }`.
+Per-`annotate` colour override: `annotate { ... color = "#0080c0"; }`.
+
+=== Leader lines
+
+`leaders.show = true` (default) attaches `line` or `arrow` leaders
+from each legend swatch to its corresponding curve on the plot.
+This is essential when several curves cluster tightly (`composite`
+mode in a multi-stage element with overlapping IDMT and definite
+curves) and the legend row alone is not enough to disambiguate.
+
+`leaders.style = "dot"` renders a small filled circle at the curve's
+right edge instead of a leader line; useful when the curves are
+non-overlapping but a marker adds visual heft.
+
+`leaders.label_offset_px` controls the offset between the leader's
+label and the legend swatch (default `6 px`).
+
+=== Title / footer / watermark
+
+`title` accepts either a single string (rendered as a centred title
+above the plot) or a `title { ... }` block with text + subtitle +
+font_size_px + colour + alignment.
+
+`footer` accepts three slots:
+
+* `left` /
+* `center` /
+* `right` -- each a string that may include `[date]`,
+  `[meta.project]`, `[meta.engineer]`, `[meta.study]`,
+  `[page]`, `[of]` macros. `[page]` and `[of]` are evaluated on
+  export; the renderer falls back to "?" if pagination is
+  undefined (e.g. for a single SVG `<svg>` that is not paginated).
+
+`watermark` accepts a string; the value is rendered diagonally
+across the page in a low-contrast colour. Use `watermark = ""` to
+disable.
+
+=== Theme presets
+
+`theme = "light"` (default) renders with a white background and
+dark axes / labels. Other presets:
+
+* `dark` -- background `#1e1e1e`, axes `#eeeeee`, labels `#eeeeee`,
+  legend `#dddddd`.
+* `monochrome` -- pure black-and-white for archival print.
+* `print` -- CMYK-friendly palette; exported PDF has an embedded
+  ICC profile (sRGB) and a `/OutputIntent` block per PDF/A-2
+  conformance.
+
+Theme presets are *bundles*: declaring `theme = "dark"` does not
+overwrite subsequent specific `axes.color = "#abc123"` overrides
+inside the same `page { ... }` block.
+
+== Marked points
+
+The `point` block marks a single `(I, t)` coordinate on the TCC. It is
+not a curve and takes no part in grading arithmetic -- it is a claim
+about one operating condition that the curves must respect.
+
+[source,tc]
+----
+point "TX1_inrush" {
+    I_A     = 5250 A;                     // 12 x FLC for a 25 MVA, 33 kV unit
+    t_s     = 0.10 s;
+    voltage = "HV";
+    label   = "TX1 inrush (12 x FLC)";
+    shape   = "cross";                    // circle | square | diamond | triangle | cross | x
+}
+----
+
+The canonical use is *transformer inrush*. Energising a transformer
+draws a large, brief magnetising current; a protection curve that
+passes below and to the left of the inrush point will trip the
+transformer every time it is switched in. Plotting the point makes
+that check visual: the relay curve must clear it.
+
+The same construct serves motor-starting points, transformer
+through-fault damage points, and any other coordinate the study needs
+to argue about. `voltage` places the current on a named level, so a
+point declared on one side of a transformer is drawn correctly in a
+plot framed on the other.
+
+[NOTE]
+====
+A point is *not* a device. A device has a characteristic that
+participates in grading (a fuse's total-clear time can be a `grade`
+primary); a point is a single marked coordinate. Use `device` with
+`flex_points` for a damage *curve*, and `point` for a damage
+*point*.
+====
+
+== Annotations
+
+=== Annotations
+
+`annotate` has two forms, distinguished by which references it
+carries.
+
+*Point form* -- `on_curve` with `at_I_A` -- places a label on one
+curve at one current:
+
+`(at_I_A, t) = (at_I_A, t_trip(R, at_I_A))`.
+
+*Margin form* -- `primary` and `backup`, with a `fault` or an
+`at_I_A` -- draws the vertical separation between two curves and
+labels it with the elapsed time:
+
+[source,tc]
+----
+annotate {
+    primary = R_FDR_1:51;
+    backup  = R_TRF_INC:51;
+    fault   = "F_FDR1_max";
+    label   = "CTI";              // optional prefix; the time is appended
+}
+----
+
+Each side is evaluated at the current *it* measures, exactly as
+<<_cti_computation,CTI computation>> does -- so a margin annotation
+and the margin report always agree for the same pair and fault. On a
+log-log axis equal pixel distances are not equal times, so labelling
+the number is not a convenience: it is the only way to read the gap
+correctly.
+
+* `style = "leader"` -- adds a leader line plus a label;
+* `style = "pin"` -- adds only a marker;
+* `style = "tag"` -- adds only a label.
+
+The annotation is rendered along with the curve's standard colour
+unless overridden per `annotate.color = "<css-color>"` (the colour
+override is optional in v1).
+
+=== Units and axes
+
+==== Input units -- primary vs secondary
+
+`I_pu` is *primary amps* by default. To type the relay's `1.2 * CT`
+pick-up directly in the relay's own frame, declare `I_units` on the
+element:
+
+[source]
+----
+element 51 {
+    I_pu        = 4  A;
+    I_units     = "secondary";          // or "primary" (default)
+    curve       = iec.si;
+    tms         = 0.30;
+}
+----
+
+The CT ratio comes from the parent `relay` block (`ct_ratio =
+600/5`). The processor converts the declared value to a primary-amp
+figure at parse time by `I_pu_primary = I_pu_declared * n_CT` when
+`I_units = "secondary"`, and leaves the value unchanged when
+`I_units = "primary"`.
+
+Rules:
+
+* Default is `I_units = "primary"`.
+* If `I_units = "secondary"` is declared on a relay missing a
+  `ct_ratio`, the parser emits an *error* (see <<validation,Validation>>).
+* The `xCT` and `xIn` unit suffixes remain valid alternatives and
+  need not change; they express the same information inline.
+
+==== Display axis modes (renderer option)
+
+The renderer offers three X-axis labelling modes, switched at view
+time:
+
+* `primary` -- current axis labelled in primary amps. *Default.*
+* `secondary` -- current axis labelled in secondary amps, using a
+  reference curve's `ct_ratio`. The reference curve is chosen in the
+  playground UI (default: the curve currently focused; if no focus,
+  the most upstream primary in the first `grade` block). Every curve
+  in the plot still uses its own CT for its own computation; only
+  the *labelling* of the axis is affected by the reference CT.
+* `multiples` -- current axis labelled in `M = I / I_p` (per-curve
+  multiple), so each curve's pickup lands on `M = 1`. This mode is
+  the only one in which the curves line up vertically by their
+  pickup; primary and secondary do not since the curves have
+  different physical CTs.
+
+NOTE: A study mixing radically different CTs (e.g. incomer 600/5
+A, feeder 100/5 A) is still displayed with one X-axis option in
+either `primary` or `secondary`. The renderer warns the user when
+the spread between CT ratios exceeds 5:1 (the secondary axis would
+become effectively un-readable with the same one-axis treatment).
+
+==== Two-axes display (optional)
+
+The user can toggle a *secondary horizontal axis* below the
+*primary* one when the primary is `primary` or `secondary`. Both axes
+carry distinct labels and tick marks; curves are drawn against the
+*primary* axis while the secondary axis provides reference guidance
+for the chosen CT.
+
+The renderer allows pegging the secondary axis to a single reference
+CT; the user selects which curve's CT anchors the secondary axis. If
+no reference is selected, the renderer pegs the secondary axis to the
+*highest-ratio* curve in the plot (the largest n_CT) and labels the
+axis accordingly, with the legend showing each curve's own pickup
+mark on its own effective I_p.
+
+The two-axis toggle does not change the curve math; it is purely a
+display option.
+

@@ -1,0 +1,203 @@
+= tc-curves API Reference
+:toc: macro
+:toclevels: 3
+
+The library entry point is `@openpowershift/time-current-grading-language`.
+Everything below is exported from the package root.
+
+toc::[]
+
+== Pipeline
+
+A `.tc` source goes through four stages. Each is separately callable, but most
+consumers want `process()`, which runs all of them.
+
+[cols="1,3",options="header"]
+|===
+| Stage | What it produces
+
+| *parse*    | An AST — a faithful record of what was written, plus parse errors
+| *resolve*  | A `Study` — what those words mean, with units folded and references resolved
+| *validate* | `Diagnostic[]` — the rules in the spec's _Validation_ section
+| *grade*    | `GradeReport[]` — margins, pass/fail, and any solver-computed settings
+|===
+
+=== `process(source: string): ProcessResult`
+
+Runs the whole pipeline.
+
+[source,ts]
+----
+const result = process(source);
+
+result.document     // Document | undefined — the AST
+result.study        // Study | undefined — the resolved model
+result.parseErrors  // ParseError[] — syntax problems
+result.diagnostics  // Diagnostic[] — semantic findings
+result.reports      // GradeReport[] — one per `grade` block
+----
+
+Grading runs the solver, so any `tms` it computes is already recorded on the
+returned `study` by the time this returns. That matters for rendering: pass the
+*same* study object to `renderStudy()` or the solved settings will not be drawn.
+
+=== `parseAndRender(source, options?): { svg, result }`
+
+Convenience wrapper — `process()` followed by `renderStudy()`. This is the call
+the Asciidoctor extension and the CLI both wrap.
+
+=== `renderStudy(result: ProcessResult, options?): string`
+
+Renders an already-processed study to an SVG string.
+
+== Rendering
+
+=== `renderSvg(doc: Document | undefined, opts: RenderOptions): string`
+
+The composer itself. Useful when you want to drive the options directly.
+
+[cols="1,1,3",options="header"]
+|===
+| Option | Type | Meaning
+
+| `width` / `height` | `number` | Pixel dimensions of the emitted `<svg>`
+| `page`   | `PageBlock \| null`   | Page geometry, theme, palette, title
+| `system` | `SystemBlock \| null` | Voltage levels (also read from the study)
+| `faults` | `FaultsBlock \| null` | Fault markers to draw
+| `view`   | `ViewBlock \| null`   | Display directives; also the interactive zoom bounds
+| `study`  | `Study \| null`       | Resolved study — pass the graded one to draw solver results
+| `theme`  | `ThemeName \| null`   | Overrides `page.theme`; used for on-screen light/dark
+| `highlightLabel` | `string \| null` | Draw one curve bolder (playground snap)
+|===
+
+Explicit `view.current_min` / `current_max` / `time_min` / `time_max` are
+*authoritative*: they replace the auto-fitted domain rather than widening it,
+which is what makes interactive zoom possible.
+
+=== Themes and palettes
+
+`theme(name)` returns a `Theme` for `light`, `dark`, `monochrome`, or `print`.
+`palette(name)` returns a colour list for `default`, `pasteur`, `okabe_ito`,
+`monochrome`, `grayscale`, `ieee`, or `high_contrast`.
+
+== Export
+
+All three formats start from the same rendered SVG, so geometry is identical
+whichever you choose.
+
+[source,ts]
+----
+import { toExportableSvg, exportPng, exportPdf } from "@openpowershift/time-current-grading-language";
+
+const standalone = toExportableSvg(svg, { xmlProlog: true });   // string
+const png = await exportPng(svg, { width: 2400 });              // Uint8Array
+const pdf = await exportPdf(svg, { size: "A3", orientation: "landscape" });
+----
+
+`exportPng` uses `@resvg/resvg-js` under Node and the canvas in a browser.
+`exportPdf` lazily loads `jspdf` + `svg2pdf.js`, and needs a DOM — in Node,
+register a `DOMParser` (jsdom) first.
+
+== Semantics
+
+=== Curve evaluation
+
+Every characteristic reduces to `t(I) -> seconds`, with `Infinity` meaning "does
+not operate".
+
+[source,ts]
+----
+tTripIDMT(M, { k, c, alpha }, tms)   // IEC / IEEE dependent time
+tTripDefinite(I, I_pu, t_delay_s)    // definite time
+tTripFlex(I, points, tms)            // piecewise, log-log interpolated
+tTripLinear(M, a, b, tms)            // ABB RI
+tTripLog(M, a, b, tms)               // ABB RD
+tReset(M, t_r, tms)                  // reset characteristic
+
+tTripStage(stage, I_total)           // one stage, honouring current_pct
+tTripElement(element, I_total)       // composite: min over stages
+tTripCombine(study, combine, I)      // synthetic curve
+----
+
+=== Curve constants
+
+[source,ts]
+----
+lookupCurve(namespace, family)   // CurveConstants | undefined
+allCurveIds()                    // every `namespace.family` accepted
+suggestCurveId(id, maxDistance)  // "did you mean" for a typo
+tmsRangeFor(curveId)             // { min, max, step } — IEC vs ANSI dials
+----
+
+=== Solver
+
+[source,ts]
+----
+solveGrade({
+  backup,          // Element whose settings are computed
+  t_primary_s,     // primary operate time at the declared fault
+  margin_s,        // design target
+  I_f_A,           // fault current in the backup's frame
+  strategy,        // "tight" | "loose" | "safety_factor"
+  tolerance_pct,
+  free,            // ["tms"] by default; may add "I_pu"
+})
+----
+
+Returns the computed `tms` (snapped to the settable grid), the unrounded
+`tms_exact`, the achieved margin, and — when the target cannot be met within the
+device's range — an `unsatisfiable` block with suggested next steps.
+
+=== Reports
+
+`reportGrades(study)` returns one `GradeReport` per `grade` block;
+`formatGradeReport(report)` and `formatGradeReports(reports)` render them as the
+plain text the CLI prints and the playground shows.
+
+== Validation
+
+`validate(study)` returns `Diagnostic[]`, each with a stable `code`, a
+`severity` of `error` / `warning` / `info`, and a source position. The codes are
+keyed to the spec's _Validation_ section so the editor's lint gutter, the CLI's
+exit status, and the conformance suite all agree.
+
+Frequently seen codes:
+
+[cols="1,1,3",options="header"]
+|===
+| Code | Severity | Meaning
+
+| `CURVE_UNKNOWN` | error | `curve = ...` is not in the constants table
+| `TMS_OUT_OF_RANGE` | error | Outside `[0.025, 1.5]` (IEC) or `[0.5, 15]` (ANSI)
+| `ELEMENT_MIXED_FORMS` | error | Shorthand curve *and* a `stages { }` block
+| `UNRESOLVED_REFERENCE` | error | A `grade`/`combine` names something undeclared
+| `MARGIN_BELOW_CTI` | error | `margin_s` below the `CTI_min_s` constraint
+| `SOLVE_WITHOUT_TARGET` | error | A `solve` block with nothing to aim at
+| `MARGIN_NO_SOLVE` | warning | `margin_s` declared but never acted on
+| `FAULT_OPTIONAL_NO_GRADE_CHECK` | warning | `grade` with no `fault`
+| `SOLVER_NO_IDMT_STAGE` | warning | Controlling stage is definite-time
+| `PICKUP_TOO_LOW_FOR_VOLTAGE` | warning | Likely a unit error on `I_pu`
+| `FAULT_SINGLE_POINT` | info | No `min_A`/`max_A`; both default to `I_A`
+|===
+
+== Editor integration
+
+For hosting the language in CodeMirror 6:
+
+[source,ts]
+----
+import { tcLanguage } from ".../highlight/tc-language.js";
+import { tcEditorAppearance } from ".../highlight/tc-highlight-style.js";
+import { tcCompletionSource } from ".../editor/completions.js";
+import { tcHoverSource } from ".../editor/hover.js";
+----
+
+The highlight style references CSS custom properties (`--tc-syn-*`) rather than
+literal colours, so a light/dark switch re-colours the editor through the
+cascade with no reconfiguration.
+
+== Types
+
+`Study`, `Relay`, `Element`, `Stage`, `Device`, `Combine`, `Grade`, `Fault`,
+`VoltageLevel`, `CurveProducer`, `GradeReport`, `MarginRow`, `SolveResult`,
+`Diagnostic`, and the full AST node set are all exported.

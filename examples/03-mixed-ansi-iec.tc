@@ -1,0 +1,63 @@
+# Sample 03 — ANSI MI + IEC VI mix across voltages
+#
+# A North-American utility study deliberately mixing curve families
+# (ANSI moderately inverse on the LV feeder, IEC very inverse on
+# the HV incomer) so the engineer can see normalised TCC curves line
+# up at M=1.
+
+meta {
+    project  = "Cross-vendor study";
+    standard = ["IEEE_C37_112", "IEC_60255_151"];
+}
+
+system {
+    voltages {
+        "HV" { kV = 115.0; }
+        "LV" { kV =  12.47; }
+    }
+    frequency_Hz = 60;
+}
+
+faults {
+    "F_lv_3ph" { I_A =  5500 A; voltage = "LV"; }
+    "F_hv_3ph" { I_A = 12000 A; voltage = "HV"; }
+}
+
+relay R_FDR {
+    voltage  = "LV";
+    maker    = "GE";
+    model    = "UR T60";
+    ct_ratio = 1200/5;
+
+    element 51 {
+        curve = ansi.mi;
+        I_pu  = 480 A;
+        tms   = 0.50;
+    }
+}
+
+relay R_INC {
+    voltage  = "HV";
+    maker    = "ABB";
+    model    = "REL-615";
+    ct_ratio = 1200/5;
+
+    element 51 {
+        curve = iec.vi;
+        I_pu  = 600 A;
+        tms   = 0.35;
+    }
+}
+
+grade {
+    primary  = R_FDR:51;
+    backup   = R_INC:51;
+    fault    = "F_lv_3ph";
+    margin_s = 0.35;
+}
+
+page {
+    size  = "A4";
+    theme = "light";
+    title = "Cross-vendor TCC comparison";
+}

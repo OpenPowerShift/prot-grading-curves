@@ -1,0 +1,59 @@
+== Introduction
+
+The Time-Current-Grading Language (tc-curves) is a domain-specific
+language for capturing protection-relay time-current coordination
+studies. The source text declares the configuration of one or more
+relays, the system fault-level data, and the grading intent; the
+processor computes the time-current characteristics (TCC), checks
+coordination time intervals (CTI) against grading pairs, and renders
+the result as a log-log plot for inspection and export.
+
+=== Audience
+
+This language is for *protection engineers* preparing TCC coordination
+studies. It is intended to replace or augment the spreadsheet /
+handwritten workflow currently in widespread use. Source files are
+plain UTF-8 text and reviewed in version control alongside the project
+IED settings.
+
+=== What it _is_
+
+* A *declarative* data language: you describe relays, faults, and
+  grading pairs; the tool computes the TCC and grades them.
+* *Type-checked and unit-checked* at parse time. Currents in amperes,
+  times in seconds, angles in degrees, lengths in km -- explicit units
+  everywhere.
+* *Reuse-friendly*: standard relay settings, fault libraries, and
+  curve families are referenced as *fully-qualified identifiers*
+  (`iec.si`, `ansi.ei`), not opaque numbers.
+* *Engineer-readable*: a relay block reads like a relay setting sheet
+  drawn from a settings file.
+
+=== What it _is not_
+
+* It is *not* a settings file for the relay itself. The output of the
+  tool is a *report*, not an IED configuration. (Future work: emit
+  ICD/IID fragments in a separate package once the TCC software is
+  mature.)
+* It is *not* a programming language. There is no control flow, no
+  functions, no I/O. One input file per study.
+
+=== What tc-curves _does_
+
+Given a `.tc` source file, the processor:
+
+. Parses and validates.
+. Builds the AST.
+. Resolves curve constants from the standard tables baked into the
+  processor.
+. Resolves user-provided point tables (`flex_points`) and formula
+  tables (`formula`).
+. Computes CTI margins for every declared grading pair at the
+  named fault current referenced in the `grade` block, and
+  writes a margin report. (Cross-voltage grading applies the
+  voltage ratio automatically; see
+  <<semantics,Semantics>> _Voltage levels and cross-voltage
+  grading_.)
+. Renders a log-log TCC via the embedded Lit web component
+  (`<tc-app>` in the browser playground) or via the Node CLI for
+  headless export.

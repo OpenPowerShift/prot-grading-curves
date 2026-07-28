@@ -1,0 +1,139 @@
+[[validation]]
+== Validation
+
+The processor *must reject* the following situations with a parser or
+semantic error.
+
+. *Two curves with the same `(pickup, tms, curve)` on the same
+  relay.* Duplicate-element double-trip. *Error*.
+. *A `grade` or `combine` referencing a relay or element that does
+  not exist.* *Error* with the missing id quoted.
+. *`I_pu` not strictly positive.* *Error*.
+. *`tms` outside* `0.025 <= tms <= 1.5` for IEC curves, *or*
+  `0.5 <= tms <= 15` for ANSI curves. *Error* with the valid range
+  in the message.
+. *`at_I_A` below `I_pu`* for the anchored curve. *Warning*.
+. *`flex_points` not monotone in `I`* (after sorting). *Error*.
+. *`flex_points` with fewer than 2 entries.* *Error*.
+. *A declared curve name not in the table.* *Error* with a
+  suggestion (closest edit distance <= 2).
+. *`reset = "dependent"` on a curve without a published `t_r`* (i.e.
+  `iec.si`, `iec.vi`, `iec.ei`, `iec.lti`, `iec.sti`). *Error*; the
+  user must use `"instant"` or supply a `"disk_emulation"` override
+  with an explicit `t_reset`.
+. *Two `grade` blocks with the same `(primary, backup, fault)`
+  triple.* *Error*. Grading one pair at *several* fault levels is
+  normal practice -- a maximum and a minimum, or a bus fault and a
+  remote one -- and each produces its own report row; only a
+  genuinely repeated check is a duplicate.
+. *An `element` block that* mixes the shorthand form (inline
+  `curve` / `formula` / `flex_points` / `curve=definite`) with
+  a `stages { ... }` block. *Error*.
+. *An `element` block that defines neither a curve producer nor a
+  `stages` block.* *Error*.
+. *A `stage` block with neither `curve`, `formula`, `flex_points`
+  nor `curve=definite`. A pure definite-time stage is allowed but
+  must carry `t_delay` or `curve = definite`.* *Error*.
+. *A `stage` block that mixes `curve = definite` with `tms`.*
+  *Error*.
+. *A `stage` block that itself contains a `stages` sub-block* -- no
+  nesting of stages. *Error*.
+. *`I_units = "secondary"` on an element of a relay missing a
+  `ct_ratio`.* *Error*.
+. *A `combine` whose source list is empty.* *Error*.
+. *A `combine` whose source list contains another `combine`'s
+  synthetic name* -- no chains of synthetic curves. *Error*.
+. *A `view { two_axes = true; ... }` where `axis = "multiples"`.*
+  *Error*.
+. *A `grade` block without a `fault` field.* *Warning*
+  (`FAULT_OPTIONAL_NO_GRADE_CHECK`); the block renders but no
+  margin is computed.
+. *A `grade` block with both `margin_s` and `CTI_min_s` declared
+  where `margin_s < CTI_min_s`.* *Error* (the design target asks for
+  less margin at the declared fault current than the engineering
+  constraint allows). The engineer's expectation must be consistent.
+. *A `grade` block with a `solve` block but neither `margin_s` nor
+  `CTI_min_s`. The solver has no target at the declared fault.* *Error*.
+. *A `solve` block with `strategy = "loose"` and `tolerance_pct`
+  outside `[0, 50]`.* *Error*.
+. *A `grade` block with `margin_s` declared but no `solve`
+  block.* *Warning* (`MARGIN_NO_SOLVE`) -- the
+  margin is reported as a target only; the engineer should either
+  add a solve directive or change `margin_s` to `CTI_min_s`.
+. *A `curve` identifier on the right side of `=` whose namespace
+  part (`X.Y`) does not resolve to a row in
+  `src/constants/curves.ts`.* *Error* with the closest edit-distance
+  suggestion (Levenshtein <= 2).
+. *`current_pct` outside the range `(0, 100]`.* *Error*.
+. *`current_pct` declared on an element with `function = "phase_oc"`
+  but using an inverse-time curve while `direction = "forward"`
+  but the relay participates in an `envelope_min` combine whose
+  sources span multiple CT ratios that differ by more than 5:1.*
+  *Warning* (the parallel-shared current is modelled, but downstream
+  combine mixing may make the resulting synthetic curve
+  non-physical -- engineer should review).
+. *A `device` block missing `flex_points` (and, for fuses, missing
+  both `min_melt` and `total_clear`).* *Error* (device TCCs are
+  piecewise by definition; cannot be expressed by an IDMT formula).
+  Exception: a `breaker` device may carry only `t_delay` and no
+  `flex_points`.
+. *A `device` block whose shorthand is unknown to the catalog and
+  whose `device` block is missing `kind`.* *Error* (catalog fallback
+  requires a `kind` discriminator).
+. *A `grade.primary` or `grade.backup` (or `combine.sources[i]`)
+  referencing a `device-id` matching both a built-in catalog entry
+  and a user `device` block.* *Error*; the user must rename the
+  device block to break the tie.
+. *A `grade` block with `primary` and `backup` whose voltage
+  levels (per `relay.voltage`) are different and whose `fault`
+  declares a third voltage. The processor composes the ratios;
+  if no ratio yields a finite result (e.g. `kV = 0`), *Error*.
+. *A `fault` referenced by a `grade` whose `voltage` field is
+  undefined.* *Error* (`FAULT_VOLTAGE_UNSPECIFIED`); every fault
+  in a study that participates in a cross-voltage grading must
+  declare its voltage level.
+. *A `relay` whose `voltage` field is absent but which feeds a
+  `grade` whose partner relay has a different voltage.* *Warning*
+  (`RELAY_VOLTAGE_UNSPECIFIED`); the processor defaults to `LV`
+  for the unspecified side but warns the user.
+. *An element's `I_pu` in primary amps below 5% of the relay's
+  voltage base (computed as `base_MVA / V_kV / sqrt(3)`).*
+  *Warning* (`PICKUP_TOO_LOW_FOR_VOLTAGE`); this is often a
+  unit error (`I_pu = 720 A` instead of `I_pu = 7.20 kA`).
+. *A `voltage` reference (in `relay.voltage`, `fault.voltage`,
+  or other) that does not resolve to a level in
+  `system.voltages`.* *Error* with a "did you mean"
+  suggestion (Levenshtein <= 2).
+. *A `page { size = ...; }` declaring an unknown paper keyword.*
+  *Error* with a list of valid keywords.
+. *A `page { size = { ... } }` only providing `width_mm` or
+  `height_mm` (the other is missing).* *Error*.
+. *A `page { margins_mm = { x = ... ; } }` where any side is
+  negative.* *Error*.
+. *A `page { scale = { auto = false; ... } }` where `x_min >=
+  x_max` or `y_min >= y_max`.* *Error*.
+. *A `page { legend = { position = "right"; } }` combined with
+  `page { title = { ... long title that exceeds 30 chars ...; } }`.*
+  *Warning* when in `landscape + legend.right` mode the available
+  plot width falls below 60% of the page -- a layout problem the
+  engineer should resolve by reducing margins or moving the legend.
+. *A `page { watermark = "DRAFT"; }` while a `meta.study = "final";`
+  situation also exists.* *Warning* `-- a study labelled "final"
+  in metadata but marked `DRAFT` on the page is at risk of being
+  mis-archived.
+. *A `page { footer = { right = "[page] / [of]"; } }` while the
+  output is `svg` (single page).* *Warning*; the macros resolve
+  to "?" -- the user should remove `[of]` for single-page output.
+. *A `relay` without `ct_ratio` when any element declares
+  `I_units = "secondary"`.* *Warning* (`CT_RATIO_UNSPECIFIED`).
+. *A `fault` with only `I_A` declared (no `min_A` / `max_A`).*
+  *Info* (`FAULT_SINGLE_POINT`); `min_A` and `max_A` default to
+  `I_A`.
+. *An `annotate` on a device whose voltage level differs from
+  the plot's axis mode.* *Warning* (`ANNOTATE_VOLTAGE_MISMATCH`).
+. *A `solve` block on a multi-stage backup whose controlling
+  stage is definite-time.* *Warning* (`SOLVER_NO_IDMT_STAGE`);
+  the solver falls back to reporting the existing margin.
+
+These rules are referenced from the conformance test suite; see
+<<conformance,Conformance>>.

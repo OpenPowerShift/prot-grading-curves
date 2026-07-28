@@ -1,0 +1,99 @@
+{
+  "name": "@openpowershift/time-current-grading-language",
+  "version": "0.1.0",
+  "description": "Render protection-relay time-current grading curves (TCC) from a compact text language to SVG, PNG, or PDF.",
+  "keywords": [
+    "protection-relay",
+    "time-overcurrent",
+    "tcc",
+    "iec-60255-151",
+    "ieee-c37-112",
+    "ground-fault",
+    "grading",
+    "fuse",
+    "svg",
+    "sel",
+    "ge",
+    "abb"
+  ],
+  "license": "MIT",
+  "author": "Daniel Mulholland",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenPowerShift/time-current-grading-language.git"
+  },
+  "homepage": "https://github.com/OpenPowerShift/time-current-grading-language#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "bin": {
+    "tc-curves": "./lib/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "**/components/*",
+    "**/main.ts",
+    "**/*.css"
+  ],
+  "files": [
+    "lib",
+    "docs",
+    "spec",
+    "examples",
+    "README.adoc",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:lib": "tsc -p tsconfig.lib.json",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:visual": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build:lib && node scripts/prepublish",
+    "postpublish": "node scripts/postpublish"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.0",
+    "jspdf": "^4.2.1",
+    "svg2pdf.js": "^2.6.0"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
+    "@playwright/test": "^1.52.0",
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^26.0.0",
+    "codemirror": "^6.0.0",
+    "eslint": "^9.0.0",
+    "jsdom": "^29.1.1",
+    "lit": "^3.2.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.62.0",
+    "vite": "^6.3.0",
+    "vitest": "^3.2.0"
+  },
+  "optionalDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

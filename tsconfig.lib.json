@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "outDir": "./lib",
+    "rootDir": "./src",
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+  "include": [
+    "src/index.ts",
+    "src/cli.ts",
+    "src/parser/index.ts",
+    "src/semantics/index.ts",
+    "src/renderer/index.ts",
+    "src/constants/index.ts",
+    "src/export/index.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "lib",
+    "tests",
+    "src/main.ts",
+    "src/components"
+  ]
+}

@@ -1,0 +1,138 @@
+== Stack
+
+Decisions, with rationale and the alternatives considered. Each is
+the result of one focused investigation in 2026; the chosen option
+is the *minimal* answer that still preserves the requirement.
+
+=== Language + runtime
+
+* TypeScript ^5.7, target ES2022, module ESM. Required by Lit and
+  the modern Node 20+ LTS.
+
+=== Bundler / dev server
+
+* Vite ^6 (`vite`, `@vitejs/plugin-...`).
+* Rationale: aligned with sibling project
+  `logic-diagram-language`; efficient dev-HMR; trivial ESM library
+  build via `vite build --mode lib`.
+
+=== Parser
+
+* Primary: *Chevrotain ^13*. Zero dependencies, no codegen, hand-
+  written TS grammar is debuggable. Best fit for "executable
+  parser + rich error messages" on Node 20. The grammar lives at
+  `src/parser/grammar.ts`.
+* Fallback: Lezer (a single `.grammar` file doubles as CodeMirror
+  syntax highlighting). Considered only if Chevrotain's verbose
+  TS grammar becomes a maintenance burden.
+* Out of scope: Peggy (acceptable fallback but separate from CM
+  rules), Langium (workbench overhead), ANTLR / `antlr4ng`
+  (codegen), Nearley (no maintenance since 2020), `arcsecond`
+  (abandoned since 2022).
+
+=== CodeMirror (editor only)
+
+* CodeMirror 6 (`@codemirror/state`, `@codemirror/view`,
+  `@codemirror/language`, `@codemirror/commands`,
+  `@codemirror/autocomplete`). Used *only* in the playground web
+  component; not exposed as a library API.
+* Highlight grammar: hand-written `StreamParser` in
+  `src/highlight/tc-language.ts`, sharing token names with the
+  Chevrotain tokens. Keeps the playground highlight low-cost and
+  CM-version-independent.
+* Autocomplete: `@codemirror/autocomplete` driven by a
+  *completion source* in `src/editor/completions.ts` that produces
+  candidate keywords / field names from the same token table, so a
+  new top-level block automatically appears in the menu when
+  added. Snippet-style completions (e.g. `meta { ... }`) expand
+  into the skeleton on `Tab`.
+* Inline help: a *hover source* in `src/editor/hover.ts` that
+  shows a tooltip with the keyword's spec section, required vs
+  optional fields, and a one-line description sourced from
+  `src/help/help-data.ts`. The hover stays open on user request so
+  short doc strings (e.g. IEC curve constants) are visible without
+  leaving the editor.
+
+=== Lit / UI
+
+* Lit ^3.2 (`lit` + `lit/decorators.js`). Required for the
+  playground web component. The library itself does not depend on
+  Lit; the playground consumes the library and renders the TCC.
+
+=== Plotting
+
+The library uses *no* third-party plotting library. All scale,
+tick, and curve rendering is hand-rolled in `src/renderer/`:
+
+* *Log scale*: a `LogScale` class in `src/renderer/scale.ts`
+  (~60 LOC). Domain-to-pixel mapping is `xToPx(x) = m * log10(x) + b`
+  with a "nice" domain extension (`xMin: 1, xMax: 1000 -> (1, 1000)`).
+* *Sub-decade tick generator*: emit `1, 2, 3, ..., 9` per decade
+  for `n` decades between `xMin` and `xMax` (~50 LOC).
+* *SI-prefix label formatting*: `format(x): string` returning
+  `"100"`, `"1 k"`, `"5 ms"` etc. (~30 LOC).
+* *Axis rendering*: hand-coded SVG `<g>` with `<line>` and `<text>`
+  per tick (~120 LOC).
+* *Curve rendering*: hand-coded `<path d="M…L…">` strings from a
+  sampler (~50 LOC).
+* *`<title>`/`<desc>`/`<g class="tc-...">` accessibility hooks* (~30 LOC).
+
+Total renderer LOC: ~340. Total runtime dependency count: **zero
+plotting libs**.
+
+=== Export
+
+* *Library-driven*: PNG and PDF are produced by the library, not
+  the browser. The three exports share a single
+  `exportableSvg(diagram, opts): string` helper.
+* *SVG*: `XMLSerializer().serializeToString()` of the cloned SVG
+  with an injected `<style>` block (zero cost).
+* *PNG*: lazy-loaded `@resvg/resvg-js` ^0.6 (Node-native Rust
+  binding). ~5 MB installed. Used by the CLI and by the playground
+  via the same library path; falls back to `canvas.drawImage()` in
+  browser contexts where `@resvg/resvg-js` is unavailable. Code
+  path:
+
+[source,ts]
+----
+async renderToPng(diagram, opts) {
+   const svg = renderToSvg(diagram, opts);
+   if (await isResvgAvailable()) {
+      const { Resvg } = await import('@resvg/resvg-js');
+      return new Resvg(svg).render().asPng();
+   }
+   return canvas.drawImage(svg).asPng();  // browser fallback
+}
+----
+
+* *PDF*: lazy `jspdf` ^3 + `svg2pdf.js` ^2.6. The `jspdf` runtime
+  is loaded via dynamic `import()` so it stays off the
+  playground's critical path; it is a runtime `dependency`
+  because both the library and the CLI consume it every time they
+  emit a PDF.
+  * `jspdf` is ~150 kB gz; `svg2pdf.js` adds ~50 kB.
+* `exportableSvg()` helper produces one self-contained SVG used by
+  all three formats; CSS custom properties from the host page are
+  resolved at clone time.
+
+=== Catalog (built-in TCC assets)
+
+* `src/constants/catalog.ts` -- a TypeScript module shipping with
+  the library that provides default TCC data for the most-used
+  fuse, cable, transformer, recloser, and motor families. The
+  catalog is referenced in the language by the *device shorthand*
+  (e.g. `ferraz_abc_100a`) and re-exported with `version` and
+  `last_updated` metadata so an application that wants to override
+  or extend can do so.
+
+=== Testing
+
+* `vitest` ^3.x for unit and conformance tests. Same choice as the
+  sibling project.
+* Playwright (dev-time) for visual regression snapshots of the
+  playground.
+
+=== Linting
+
+* `eslint` (typescript-eslint), the same flat-config preset as
+  `logic-diagram-language`.

@@ -1,0 +1,72 @@
+# Sample 08 — Fuse / relay coordination
+#
+# A 100 A expulsion fuse on a spur, backed by the feeder relay. The
+# fuse is not one curve but a *band*: it may begin to melt anywhere
+# above its minimum-melt characteristic and is guaranteed clear by its
+# total-clear characteristic. Coordination is judged against the
+# *total-clear* boundary — the relay must still be holding when the
+# fuse has finished clearing.
+#
+# Manufacturer data is entered as (current, time) tables; fuse curves
+# are published, not computed, so no IDMT formula applies.
+
+meta {
+    project   = "Spur fuse coordination";
+    engineer  = "B. Singh";
+    date      = "2026-07-28";
+    CTI_min_s = 0.15;              # typical fuse-relay CTI
+}
+
+system {
+    voltages { "MV" { kV = 11.0; } }
+    frequency_Hz = 50;
+}
+
+faults {
+    "F_spur" { I_A = 900 A; }
+    "F_bus"  { I_A = 4200 A; }
+}
+
+device "fuse_100T" {
+    kind        = "fuse";
+    maker       = "Mersen";
+    model       = "100T";
+    rating_A    = 100 A;
+
+    min_melt    = [(200 A, 60 s), (300 A, 9.0 s), (600 A, 0.60 s),
+                   (1200 A, 0.10 s), (3000 A, 0.016 s)];
+    total_clear = [(200 A, 105 s), (300 A, 15.0 s), (600 A, 1.00 s),
+                   (1200 A, 0.17 s), (3000 A, 0.028 s)];
+}
+
+relay R_FEEDER {
+    voltage  = "MV";
+    maker    = "SEL";
+    model    = "SEL-751";
+    ct_ratio = 400/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.vi;
+        I_pu     = 200 A;
+        tms      = 0.35;
+    }
+}
+
+grade {
+    primary   = fuse_100T;         # fuse clears first
+    backup    = R_FEEDER:51;
+    fault     = "F_spur";
+    CTI_min_s = 0.15;
+}
+
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+    title       = { text     = "11 kV spur — fuse / relay coordination";
+                    subtitle = "Mersen 100T against an SEL-751 feeder element"; };
+}
+
+view { current_pad = 0.25; }

@@ -1,0 +1,119 @@
+== Worked numerical examples
+
+These values are computed at `TMS = 1.0` and `M = I / I_p` so the
+processor's implementation can be verified directly against the
+IEC 60255-151 / IEEE C37.112 mathematics.
+
+=== Operate time
+
+[cols="1,4,4,4,4", options="header"]
+|===
+| M | `iec.si` (k=0.14, c=0, alpha=0.02) | `iec.vi` (k=13.5, c=0, alpha=1.0) | `iec.ei` (k=80, c=0, alpha=2.0) | `ansi.mi` (k=0.0515, c=0.114, alpha=0.02)
+
+|  2 |  10.029 | 13.500 | 26.667 |  3.803
+|  5 |   4.280 |  3.375 |  3.333 |  1.688
+| 10 |   2.971 |  1.500 |  0.808 |  1.207
+| 20 |   2.267 |  0.711 |  0.201 |  0.948
+| 50 |   1.720 |  0.276 |  0.032 |  0.747
+|===
+
+A passing test of `t_trip(M=10, iec.si, TMS=1)` must equal
+`2.971 s +/- 0.005 s`.
+
+=== Worked grading case
+
+For the file in <<example-file,Example file>>, the `grade` block above
+grades an *11 kV feeder* against a *33 kV incomer*, so the two relays
+measure different currents for the same fault. The fault is declared
+on `LV`; the incomer's winding carries `I_f * 11 / 33`.
+
+* at `I_f = 6400 A` on `LV` (incomer sees `2133 A` on `HV`):
+** `R_FDR_1:51` operate time: `0.274 s` at `M = 13.333`,
+** `R_TRF_INC:51` operate time: `1.912 s` at `M = 2.963`,
+** margin: `1.639 s`, *pass* (constraint `0.30 s`).
+* at `I_f = 2500 A` on `LV` (incomer sees `833 A` on `HV`):
+** `R_FDR_1:51` operate time: `0.802 s` at `M = 5.208`,
+** `R_TRF_INC:51` operate time: `14.345 s` at `M = 1.157`,
+** margin: `13.543 s`, *pass*.
+
+These numbers are derived by direct application of `IEC 60255-151
+Annex A row A` (for `R_TRF_INC:51`, `iec.si`, `tms = 0.30`) and
+`IEC 60255-151 Annex A row B` (for `R_FDR_1:51`, `iec.vi`,
+`tms = 0.25`), with each multiple computed from the current in that
+relay's own winding. The renderer's numerical report must match this
+sample within `+/- 0.001 s`.
+
+[NOTE]
+====
+The incomer is slow here because the turns ratio puts it low on its
+own curve: at minimum fault it sits at `M = 1.157`, barely above
+pick-up, where an inverse characteristic is very steep. That is
+realistic, and it is exactly the information a grading study exists
+to surface. Computing the incomer's multiple from the *LV* current
+would have given `M = 8.889` and `0.940 s` -- a far tighter and
+entirely fictitious margin.
+====
+
+=== Worked solver case
+
+Given an alternative `grade` block in the same study -- compute the
+backup `tms` to hit a *target* margin of `0.30 s` at the
+"F_FDR2_max" fault current (declared in the study's `faults {}`):
+
+[source,tc]
+----
+faults {
+    "F_FDR2_max" { I_A = 4850 A; voltage = "LV"; }
+    "F_FDR2_min" { I_A = 1900 A; voltage = "LV"; }
+}
+
+grade {
+    primary    = R_FDR_2:51;
+    backup     = R_TRF_INC:51;
+    fault      = "F_FDR2_max";
+    margin_s   = 0.30;
+
+    solve {
+        strategy       = "tight";
+        tolerance_pct  = 0;
+    }
+}
+----
+
+At `I_f = 4850 A` (`F_FDR2_max` on `FDR_2`, voltage `LV`):
+
+* `R_FDR_2:51` (IEC Standard Inverse, `I_pu = 480 A`, `tms = 0.25`)
+  sits on `LV` with the fault, so it measures `4850 A`:
+  `M = 10.104`, `t_p = 0.739 s`.
+* Target `t_b_target = 0.739 + 0.30 = 1.039 s`.
+* `R_TRF_INC:51` sits on `HV`, so it measures
+  `4850 * 11 / 33 = 1616.7 A` against its own `I_pu = 720 A`:
+  `M = 2.2454`. IEC standard inverse with `c = 0`, so
+  `bracket = 0.14 / (2.2454^0.02 - 1) = 0.14 / 0.016309 = 8.584`,
+  and `TMS_b = 1.039 / 8.584 = 0.1211`.
+  Rounded *up* to the nearest 0.005, `TMS_b = 0.125`.
+
+The grade block above is purely declarative; the AST stores
+`tms = { value: 0.125, source: "auto" }` on the `R_TRF_INC:51`
+node. The margin report row reads:
+
+[source,console]
+----
+grade R_FDR_2:51 / R_TRF_INC:51:
+    fault           = F_FDR2_max (I_f = 4850 A on LV)
+    target margin   = 0.300 s
+    seen by primary = 4850 A    seen by backup = 1617 A
+    t_primary       = 0.739 s        (M = 10.10)
+    t_backup_auto   = 1.073 s        (TMS_b = 0.125  auto, tight, tol 0%)
+    achieved margin = 0.334 s        -- within tolerance (0.0 %)
+----
+
+A passing test of the solver on this exact case must return
+`tms = 0.125 +/- 0.001`.
+
+The achieved margin exceeds the 0.300 s target because the settable
+grid is coarse relative to this operating point: one 0.005 step of
+`tms` is worth `0.005 * 8.584 = 0.043 s` here. That quantisation is
+accounted for by the tolerance band (see
+<<_tolerance_band,Tolerance band>>) rather than reported as an
+overshoot.

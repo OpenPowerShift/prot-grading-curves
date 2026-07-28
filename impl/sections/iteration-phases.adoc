@@ -1,0 +1,206 @@
+== Iteration phases
+
+Six phases. Each ends in a reviewable unit (spec locked, tests pass,
+demo runs). The phases are *non-overlapping*: a phase 4 feature does
+not need to be designed in phase 2.
+
+=== Phase 0 -- repo skeleton
+
+* `package.json`, `tsconfig.json`, `tsconfig.lib.json`,
+  `vite.config.ts`, `eslint.config.js`.
+* `index.html` + `tc-app` element with empty tabs (Editor empty,
+  Viewer empty).
+* `npm run dev` boots the empty playground.
+* `npm run typecheck`, `npm run lint`, `npm run test` all return
+  no-op success.
+
+*Acceptance*: `npm run dev` shows the playground with two empty tabs.
+
+=== Phase 1 -- parser + AST + constants table
+
+* `src/parser/grammar.ts` (Chevrotain).
+* `src/parser/ast.ts` (typed AST nodes).
+* `src/parser/parser.ts` (`parse(source: string) -> { ast, errors }`).
+* `src/parser/errors.ts` (formatting Chevrotain errors with
+  line/column).
+* `src/constants/curves.ts` (IEC 60255-151, IEC 60255-3,
+  IEEE C37.112, Siemens 7SR45, SEL, GE Multilin, ABB RI/RD tables).
+* `tests/unit/parser.spec.ts` -- round-trips each spec example.
+* `tests/unit/curves.spec.ts` -- numerical conformance vs the
+  standard tables in `spec/sections/worked-examples.adoc`
+  _Worked numerical examples_.
+
+*Acceptance*: `parser('tests/conformance/examples/01.tc')` returns
+the expected AST and zero diagnostics. The numerical values in
+_Operate time_ match within `+/- 0.005 s`.
+
+=== Phase 2 -- semantics core
+
+* `src/semantics/curves.ts` evaluates `t_trip(M, curve, tms)` for
+  IEC, ANSI, definite, formula, and FlexCurve.
+* `src/semantics/stages.ts` resolves a multi-stage element into its
+  composite (pointwise min) curve.
+* `src/semantics/combine.ts` evaluates `envelope_min`, `envelope_max`,
+  `sum`, `select_first`.
+* `src/semantics/solver.ts` runs the closed-form `tms` solver and
+  the Newton iteration for multi-free variables.
+* `src/semantics/grades.ts` produces the margin report for the
+  declarative `grade { ... }` and the solver-target `grade { ...
+  margin_s ... solve { ... } }` form.
+* `src/semantics/xvoltage.ts` derives the multiple at the secondary
+  side of a *named voltage level* pair when the primary and backup
+  of a `grade` pair (or its referenced fault) sit on different
+  levels. No transformer block; the ratio is computed from
+  `system.voltages`.
+* `tests/unit/stages.spec.ts`,
+  `tests/unit/combine.spec.ts`,
+  `tests/unit/solver.spec.ts` -- including the numerical worked
+  example in the spec, _Worked solver case_.
+
+*Acceptance*: the worked examples in spec / _Worked numerical
+examples_ and _Worked solver case_ compute identical values within
+the spec tolerance.
+
+=== Phase 3 -- renderer (SVG, log-log axes)
+
+* `src/renderer/scale.ts` -- `LogScale` class, ~60 LOC.
+* `src/renderer/ticks.ts` -- sub-decade tick generator, ~50 LOC.
+* `src/renderer/format.ts` -- SI-prefix number formatter, ~30 LOC.
+* `src/renderer/palette.ts` -- named palettes (default, pasteur,
+  okabe_ito, monochrome, grayscale, ieee, high_contrast), ~80 LOC.
+* `src/renderer/theme.ts` -- light/dark/monochrome/print presets,
+  ~60 LOC.
+* `src/renderer/axes.ts` -- X (log, primary/secondary/multiples), Y, ~120 LOC.
+* `src/renderer/curves.ts` -- sampler + `<path d="...">`, ~50 LOC.
+* `src/renderer/devices.ts` -- fuse bands + cable damage rendering, ~80 LOC.
+* `src/renderer/legend.ts`, `annotations.ts`, `leaders.ts` -- ~210 LOC combined.
+* `src/renderer/page.ts` -- page-block geometry + decoration, ~150 LOC.
+* `src/renderer/svg.ts` -- composer.
+* `tests/unit/axes.spec.ts` -- axis mode (`primary`, `secondary`,
+  `multiples`) and `two_axes` toggle.
+* `tests/unit/palette.spec.ts`, `tests/unit/theme.spec.ts`,
+  `tests/unit/page.spec.ts` -- palettes, themes, page-block parsing.
+* `playwright visual regression` -- render every `examples/*.tc` to
+  PNG; diff against `tests/visual/*.png` baselines.
+
+*Acceptance*: `npm run test:visual` shows zero diffs vs baselines
+after the first deliberate run establishes the baseline. The
+playground renders a TCC matching the spec example modulo
+anti-aliasing.
+
+=== Phase 4 -- export (SVG / PNG / PDF, library-driven)
+
+* `src/export/exportable-svg.ts` -- self-contained `<svg>` with
+  injected `<style>` block and resolved CSS-custom-property
+  values.
+* `src/export/export-png.ts` -- lazy `@resvg/resvg-js` for the
+  library path; `canvas.drawImage()` as a browser-only fallback.
+  Both paths produce the same Buffer.
+* `src/export/export-pdf.ts` -- lazy `jspdf` + `svg2pdf.js`. Same
+  library call from playground and CLI.
+* `playground UI`: an "Export" menu with SVG / PNG / PDF choices
+  wired to the library functions.
+* `CLI`: `tc-curves render <file.tc> --png` and `--pdf` and
+  `--svg`; uses the same library functions -- no separate
+  rendering pipeline.
+* `asciidoctor extension`: trivial wrapper calling
+  `parseAndRender` then `renderTo{Fmt}` from `src/index.ts`.
+
+*Acceptance*: a round-trip
+`parse -> render -> export-png -> export-pdf` produces identical
+`<path d=...>` values regardless of whether the consumer is the
+playground, the CLI, or an Asciidoctor extension.
+
+=== Phase 5 -- CodeMirror highlight + editor ergonomics + playground polish
+
+* `src/highlight/tc-language.ts` -- hand-written `StreamParser`
+  using shared token types.
+* `src/help/help-data.ts` -- a typed map from keyword / field name
+  to a doc-object (summary, required-vs-optional, spec-section
+  anchor, example). Sourced from the spec by a *codegen step* (a
+  script under `scripts/build-help.ts` keeps `help-data.ts` in
+  lockstep with `spec/sections/*.adoc`; the build re-runs on
+  `npm run dev` if `spec/` is newer than the generated file).
+* `src/editor/completions.ts` -- CM autocompletion source emitting
+  `meta`, `system`, `faults`, `relay`, `element`, `device`,
+  `grade`, `annotate`, `combine`, `view`, `page`, `notes` at the
+  top level; field names inside each block; curve ids from
+  `src/constants/curves.ts` at `curve =`; device shorthands from
+  `src/constants/catalog.ts` at the `primary =` / `backup =`
+  position. Snippet expansions for `meta`, `relay`, `element`
+  insert a comment-tagged skeleton on `Tab`.
+* `src/editor/hover.ts` -- CM hover-source that pops a tooltip
+  showing the keyword's spec section, required-field list, and a
+  one-line description sourced from `help-data.ts`. Hover targets
+  *only* recognised identifiers; unrelated tokens fall through.
+* `src/editor/snippets.ts` -- snippet catalogue (prefix -> text).
+* `src/components/tc-editor.ts` -- CodeMirror host with the
+  highlight, autocomplete, hover, and lint extensions wired in.
+* `src/components/tc-viewer.ts` -- SVG renderer host.
+* `src/components/tc-app.ts` -- tabbed container, file loader, error
+  panel.
+* Toolbar controls for `view.stages`,
+  `view.axis`, `view.two_axes`, theme, font size, etc.
+* Theme: light + dark following `tc-curves` design tokens (aligned
+  with sibling LDL palette).
+
+*Acceptance*: the playground loaded at `npm run dev` correctly
+parses, renders, exports and highlights every example in
+`examples/*.tc`. Hovering a keyword (e.g. `tms`) shows a tooltip
+with its default unit and spec section. Typing `curve = iec.`
+and pressing `Ctrl-Space` lists `si / vi / ei / lti / sti`.
+Keyboard shortcuts: `Ctrl-Enter` to commit, `Ctrl-Space` to
+trigger autocompletion, `Ctrl-S` to download SVG.
+
+=== Phase 6 -- release prep
+
+* [x] `README.adoc` written. Its worked example and the console output
+  it quotes are generated from the real CLI, not hand-written.
+* [x] `CONTRIBUTING.adoc` written.
+* [x] `docs/api.adoc` -- library API reference.
+* [x] `LICENSE` (MIT) and `.nvmrc` (Node 24), matching LDL.
+* [x] `CHANGELOG.md` initialised; `release-please-config.json` +
+  `.release-please-manifest.json` pinned at `0.1.0`, configured with
+  `bump-minor-pre-major` so pre-1.0 `feat:` commits bump the minor.
+* [x] `publishConfig: access: public`; `npm pack --dry-run` verified
+  (78 files, 125 kB: `lib/`, `docs/`, `spec/`, `examples/`, README,
+  LICENSE).
+* [x] `scripts/prepublish.js` / `postpublish.js` -- npm renders
+  Markdown, not AsciiDoc, so the published tarball carries a generated
+  `README.md` and the repo keeps `README.adoc`.
+* [x] `.github/workflows/deploy.yml` -- typecheck, lint, test, build,
+  then GitHub Pages.
+* [x] `.github/workflows/release-please.yml` -- release PR, then npm
+  publish via *trusted publishing* (OIDC, no `NPM_TOKEN`) with build
+  provenance.
+* [x] Visual-regression *harness* written
+  (`playwright.config.ts`, `tests/visual/visual-regression.spec.ts`).
+* [ ] Visual-regression baselines *not* frozen -- see below.
+* [ ] Style guide for `.tc` reviewed against the spec.
+
+[NOTE]
+.Why the baselines are not committed
+====
+A screenshot baseline encodes a judgement about what the plot *should*
+look like. The renderer's geometry changed materially late in
+implementation (curve projection direction, pickup risers, composite
+step edges), so freezing a baseline now would lock in whatever is
+still wrong rather than protect against regressions.
+
+The harness is in place and asserts the structural invariants that
+*are* settled -- every example draws at least one curve and reports no
+error-severity finding. Run
+`npx playwright test --update-snapshots` once the rendered output has
+been reviewed, and commit the images in that same change.
+
+Playwright is deliberately outside the CI workflow (as it is in LDL):
+CI gates on `npm test`, which covers the numerical behaviour and does
+not flake on font rendering.
+====
+
+*Publishing prerequisites*, one-time, outside the repo:
+
+. Configure a trusted publisher for the package on npmjs.com, naming
+  this repository and `release-please.yml` as the workflow.
+. Enable GitHub Pages for the repository with "GitHub Actions" as the
+  source.

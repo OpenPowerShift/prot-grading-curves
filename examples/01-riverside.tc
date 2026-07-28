@@ -1,0 +1,90 @@
+# Sample 01 — Riverside 33/11 kV OC grading (default playground starter)
+#
+# Two relays on different voltage levels coordinated through a 33/11 kV
+# transformer. The LV-side feeder OC element (51) grades against the
+# HV-side transformer-incomer OC element (51). One instantaneous stage
+# (50) on the feeder trips on the local bus fault without coordinating
+# with the upstream relay.
+
+meta {
+    project  = "Riverside 33/11";
+    engineer = "A. Cooper";
+    date     = "2026-07-26";
+    standard = ["IEC_60255_151"];
+    CTI_min_s = 0.30;
+}
+
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV side"; }
+        "LV" { kV = 11.0; description = "11 kV side"; }
+    }
+    frequency_Hz = 50;
+    grounding    = "low_impedance";
+}
+
+faults {
+    "F1_lv_max"  { I_A =  6400 A; voltage = "LV"; }
+    "F2_hv_max"  { I_A = 18400 A; voltage = "HV"; }
+    "F1_lv_min"  { I_A =  1500 A; voltage = "LV"; }
+}
+
+relay R_FDR_110 {
+    voltage  = "LV";
+    maker    = "ABB";
+    model    = "REL-615";
+    ct_ratio = 600/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 480 A;
+        tms      = 0.30;
+    }
+    element 50 {
+        function = "phase_oc";
+        curve    = definite;
+        I_pu     = 4000 A;
+        t_delay  = 0.10 s;
+    }
+}
+
+relay R_TRF_INC {
+    voltage  = "HV";
+    maker    = "ABB";
+    model    = "REL-615";
+    ct_ratio = 600/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 720 A;
+        tms      = 0.45;
+    }
+}
+
+grade {
+    primary  = R_FDR_110:51;
+    backup   = R_TRF_INC:51;
+    fault    = "F1_lv_max";
+    margin_s = 0.30;
+    solve {
+        strategy      = "tight";
+        tolerance_pct = 5;
+    }
+}
+
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    title       = "Riverside 33/11 kV — OC grading";
+}
+
+view {
+    voltage     = "HV";           # project both LV and HV relays onto the HV frame
+    current_min = 100 A;          # don't show below 100 A on the current axis
+    current_max = 50 kA;
+    time_min    = 0.01 s;
+    time_max    = 1000 s;
+}

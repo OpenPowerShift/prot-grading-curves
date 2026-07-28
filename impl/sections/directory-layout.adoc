@@ -1,0 +1,116 @@
+== Directory layout
+
+The repository top-level mirrors the sibling project so that authors
+moving between the two repos know what to expect:
+
+[source,console]
+----
+time-current-grading-language/
+├── README.adoc
+├── IMPLEMENTATION.adoc           # this file
+├── CHANGELOG.md
+├── LICENSE
+├── CONTRIBUTING.adoc
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── tsconfig.lib.json
+├── eslint.config.js
+├── vite.config.ts
+├── index.html                   # playground
+├── examples/                    # .tc sample files used by tests + playground
+│   ├── 01-riverside-33kv.tc
+│   ├── 02-multi-stage.tc
+│   ├── 03-solve-tms.tc
+│   ├── 04-combine-or.tc
+│   └── 05-two-axes.tc
+├── spec/                        # the AsciiDoc language spec
+│   ├── spec.adoc
+│   └── sections/*.adoc          # includes
+├── impl/                        # this implementation plan
+│   ├── IMPLEMENTATION.adoc
+│   └── sections/*.adoc
+└── src/                         # implementation
+    ├── index.ts                 # library entry
+    ├── cli.ts                   # Node CLI entry
+    ├── constants/
+    │   ├── curves.ts            # IEC + IEEE + vendor constants tables
+    │   └── catalog.ts           # device catalog (fuses, cables, ...)
+    ├── parser/
+    │   ├── ast.ts               # typed AST (no curve tables)
+    │   ├── grammar.ts           # Chevrotain rules
+    │   ├── parser.ts            # facade parse(source) -> Ast
+    │   ├── errors.ts            # formatted parse errors
+    │   ├── voltage.ts           # cross-voltage resolution helpers
+    │   └── index.ts
+    ├── semantics/
+    │   ├── curves.ts            # t_trip(M, curve, tms) evaluator
+    │   ├── stages.ts            # element -> composite resolver
+    │   ├── combine.ts           # combine-as evaluator
+    │   ├── solver.ts            # solve / margins / TMS auto
+    │   ├── grades.ts            # margin report
+    │   ├── xvoltage.ts          # cross-voltage M derivation
+    │   └── index.ts
+    ├── renderer/
+    │   ├── scale.ts             # hand-rolled LogScale
+    │   ├── ticks.ts             # sub-decade tick generator
+    │   ├── format.ts            # SI-prefix number formatter
+    │   ├── palette.ts           # colour palette registry (default,
+    │   │                        # pasteur, okabe_ito, monochrome,
+    │   │                        # grayscale, ieee, high_contrast)
+    │   ├── axes.ts              # X (log, primary/secondary/multiples) + Y
+    │   ├── curves.ts            # SVG <path> from t(I) sampler
+    │   ├── legend.ts            # colour swatches + (auto) glyph
+    │   ├── annotations.ts       # leader / pin / tag rendering
+    │   ├── leaders.ts           # line / arrow / dot leader rendering
+    │   ├── devices.ts           # device curve rendering (fuse band, etc.)
+    │   ├── page.ts              # page block -> SVG composition layout
+    │   ├── theme.ts             # light/dark/monochrome/print presets
+    │   ├── svg.ts               # composer
+    │   ├── streaming-plot.ts    # overflow-aware layout
+    │   └── index.ts
+    ├── export/
+    │   ├── exportable-svg.ts    # self-contained <svg> factory
+    │   ├── export-png.ts        # @resvg/resvg-js (library path) +
+    │   │                        # canvas drawImage (browser fallback)
+    │   ├── export-pdf.ts        # lazy jspdf + svg2pdf.js
+    │   └── index.ts
+    ├── highlight/
+    │   └── tc-language.ts       # CodeMirror StreamParser
+    ├── editor/
+    │   ├── completions.ts       # CM autocompletion source
+    │   ├── hover.ts             # CM hover-source tooltips
+    │   └── snippets.ts          # CM snippet expansions
+    ├── help/
+    │   └── help-data.ts         # spec-derived keyword docs for hover/autocomplete
+    ├── theme/
+    │   ├── curves.ts            # default colour palette
+    │   └── index.ts
+    ├── examples.ts              # exports used by the playground
+    └── components/              # Lit elements (playground only)
+        ├── tc-app.ts
+        ├── tc-editor.ts         # CodeMirror 6 host
+        └── tc-viewer.ts         # SVG renderer host
+└── tests/
+    ├── unit/
+    │   ├── parser.spec.ts
+    │   ├── curves.spec.ts       # constants table values
+    │   ├── stages.spec.ts
+    │   ├── combine.spec.ts
+    │   ├── solver.spec.ts       # Newton + closed-form
+    │   ├── axes.spec.ts         # primary/secondary/multiples + two_axes
+    │   ├── margins.spec.ts
+    │   ├── completions.spec.ts  # autocompletion candidates per cursor position
+    │   ├── hover.spec.ts        # hover-source doc strings
+    │   └── renderer.spec.ts
+    ├── conformance/             # exhaustive spec rules (auto)
+    │   ├── examples/
+    │   │   └── *.tc             # one per spec section
+    │   └── conformance.spec.ts
+    └── visual/                  # playwright
+        └── visual-regression.spec.ts
+----
+
+Distribution CLI artefacts land in `/dist/` (Vite default for
+playground) and `/lib/` (the `tsc -p tsconfig.lib.json` output of
+the publishable package).

@@ -1,0 +1,236 @@
+= tc-curves — Time-Current Grading Language
+:toc: macro
+:toclevels: 2
+
+`tc-curves` is a small text language and renderer for *protection-relay
+time-current grading studies*. You describe the relays, the fault levels, and the
+grading intent; the tool computes the operate times, checks the margins, and draws
+a publication-quality log-log TCC — as SVG, PNG, or PDF.
+
+[TIP]
+====
+*Try it in the browser: https://openpowershift.github.io/time-current-grading-language/[openpowershift.github.io/time-current-grading-language]*
+— a live playground: type `.tc` on the left, see the curves and the margin report
+on the right.
+
+Published as `@openpowershift/time-current-grading-language`. See
+<<Use as a library>> for programmatic use.
+====
+
+[source,tc]
+----
+grade {
+    primary  = R_FDR_1:51;      // 11 kV feeder — trips first
+    backup   = R_TRF_INC:51;    // 33 kV incomer — backs it up
+    fault    = "F_FDR1_max";
+    margin_s = 0.30;
+
+    solve { strategy = "tight"; }
+}
+----
+
+That block is the whole point: the tool works out the backup's time multiplier,
+reports the margin actually achieved, and flags it if the target cannot be met.
+
+== Why
+
+A grading study is arithmetic that engineers redo by hand every time a setting
+moves — evaluating IEC/IEEE curve formulas at a fault current, subtracting two
+operate times, checking the result clears the CTI, then redrawing the chart.
+`tc-curves` treats the *study as the source of truth*: the curves, the margins,
+and the chart are all derived from one text file, so they are diffable,
+reviewable, and regenerated whenever a setting changes.
+
+== Goals & concepts
+
+* *Declarative.* You state pick-ups, curves, and the grading intent. Operate
+  times, margins, axis ranges, and the plot are all derived.
+* *Standards-backed.* Curve constants are part of the processor, not the source
+  file, transcribed from IEC 60255-151:2009 Annex A, IEC 60255-3:1989 (legacy
+  LTI/STI), and IEEE C37.112-1996, plus vendor families from SEL, Siemens, GE,
+  ABB, and Schneider. A study renders identically wherever it is processed.
+* *Voltage levels, not transformers.* Name the levels and let the processor
+  derive turns ratios; relays and faults reference a level by name. No
+  transformer block to declare and keep in sync.
+* *Two kinds of intent, kept distinct.* `CTI_min_s` is a *constraint* — at least
+  this margin at every current in the fault's range, reported pass/fail.
+  `margin_s` is a *target* at one declared fault current, which a `solve` block
+  turns into a computed setting.
+* *Everything is checked.* Around forty validation rules cover unknown curve
+  ids (with "did you mean"), time-multiplier ranges, mixed element forms,
+  unresolved references, combine cycles, implausible pick-ups, and more.
+
+== Use as a library
+
+[source,bash]
+----
+npm install @openpowershift/time-current-grading-language
+----
+
+[source,ts]
+----
+import {
+  process,
+  parseAndRender,
+  formatGradeReports,
+} from "@openpowershift/time-current-grading-language";
+
+const result = process(source);
+
+// Margin reports — one per `grade` block, with any solver-computed settings
+console.log(formatGradeReports(result.reports));
+
+// …or go straight to a chart
+const { svg } = parseAndRender(source);
+----
+
+`process()` runs the whole pipeline — parse, resolve, validate, grade — and
+returns the study, the diagnostics, and the reports. SVG rendering is isomorphic
+(Node + browser); `exportPng()` and `exportPdf()` produce bytes in either.
+
+Full API and the options tables are in the link:docs/api.adoc[API Reference].
+
+== Command line
+
+[source,bash]
+----
+npx tc-curves render study.tc              # → study.svg
+npx tc-curves render study.tc --png -o out.png
+npx tc-curves render study.tc --pdf --size A3 --landscape
+npx tc-curves report study.tc              # margin report only
+npx tc-curves check  study.tc              # diagnostics only
+----
+
+`check` exits `0` when clean and `1` on any error-severity finding, so it works
+as a CI gate on a repository of studies.
+
+== Playground / development
+
+Requires Node 20+ (the dev playground uses Node 24 — see `.nvmrc`).
+
+[source,bash]
+----
+npm install
+npm run dev        # live playground at the printed URL
+npm run build      # type-check + production build of the playground to dist/
+npm run build:lib  # build the publishable library to lib/
+npm test           # run the test suite (vitest)
+npm run typecheck  # tsc --noEmit
+npm run lint       # eslint
+----
+
+== A taste of the language
+
+[source,tc]
+----
+system {
+    voltages {
+        "HV" { kV = 33.0; }
+        "LV" { kV = 11.0; }
+    }
+}
+
+faults {
+    "F_FDR1_max" { I_A = 6.40 kA; voltage = "LV"; }
+}
+
+relay R_TRF_INC {
+    voltage  = "HV";
+    ct_ratio = 600/5;
+
+    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 720 A; tms = 0.30; }
+}
+
+relay R_FDR_1 {
+    voltage  = "LV";
+    ct_ratio = 400/5;
+
+    element 50 { curve = definite; I_pu = 3200 A; t_delay = 0.05 s; }
+    element 51 { curve = iec.vi;   I_pu =  480 A; tms = 0.25; }
+}
+
+grade {
+    primary   = R_FDR_1:51;
+    backup    = R_TRF_INC:51;
+    fault     = "F_FDR1_max";
+    CTI_min_s = 0.30;
+}
+----
+
+...which reports:
+
+[source,console]
+----
+grade R_FDR_1:51 / R_TRF_INC:51:
+    fault           = F_FDR1_max (I_f = 6400 A on LV)
+    CTI_min         = 0.300 s
+    seen by primary = 6400 A    seen by backup = 2133 A
+    t_primary       = 0.274 s        (M = 13.33)
+    t_backup        = 1.912 s        (M = 2.96)
+    achieved margin = 1.639 s        -- pass
+----
+
+The link:spec/spec.adoc[language specification] is the normative reference for
+the grammar, the curve tables, and the grading semantics. Implementation status
+and the resolved spec ambiguities are tracked in
+link:IMPLEMENTATION.adoc[IMPLEMENTATION.adoc].
+
+== Project layout
+
+[cols="1,3",options="header"]
+|===
+| Path | What
+
+| `src/index.ts`
+| Public library API (`process`, `parseAndRender`, `renderStudy`, re-exports)
+
+| `src/cli.ts`
+| Node CLI entry (`tc-curves`)
+
+| `src/parser/`
+| Tokeniser, recursive-descent parser, and AST for `.tc` source
+
+| `src/constants/`
+| Curve constants tables and the device catalog
+
+| `src/semantics/`
+| Study model, curve evaluators, stages, combines, cross-voltage, solver,
+  grading reports, validation
+
+| `src/renderer/`
+| Hand-rolled log-log SVG composer, scales, ticks, palettes, themes
+
+| `src/export/`
+| Self-contained SVG, PNG, and PDF export
+
+| `src/editor/`, `src/highlight/`, `src/help/`
+| CodeMirror autocompletion, hover help, snippets, and syntax highlighting
+
+| `src/components/`
+| Lit web components — the playground app, editor, and viewer
+
+| `spec/`
+| AsciiDoc language specification (`spec/spec.adoc`)
+
+| `examples/`
+| Sample `.tc` studies, used by the playground and the tests
+
+| `tests/`
+| Vitest unit tests, including the spec's normative worked examples
+|===
+
+== Status
+
+Under active development, tracking spec v0.1.0-draft. The language, the semantics
+(curves, stages, combines, cross-voltage grading, the solver), validation,
+rendering, export, the CLI, and the playground are implemented and tested against
+the spec's normative worked examples.
+
+Deferred to v0.2 by the spec: distance zones (21), transformer differential (87),
+voltage-restrained overcurrent (51V), auto-reclosing (79), per-element `G_D`
+override, `safety_factor` solving, multi-variable solving on multi-stage
+elements, and interactive curve dragging.
+
+== License
+
+link:LICENSE[MIT] © 2026 Daniel Mulholland

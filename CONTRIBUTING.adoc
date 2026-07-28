@@ -1,0 +1,96 @@
+= Contributing to tc-curves
+
+== Getting set up
+
+Node 20+ is required; the playground is developed on Node 24 (see `.nvmrc`).
+
+[source,bash]
+----
+npm install
+npm run dev        # playground at the printed URL
+npm test           # vitest unit suite
+npm run typecheck  # tsc --noEmit
+npm run lint       # eslint
+----
+
+Before opening a PR, all three of `npm test`, `npm run typecheck`, and
+`npm run lint` must pass. CI runs the same three plus `npm run build`.
+
+== The spec is normative
+
+`spec/spec.adoc` is the contract. The implementation follows it, not the other
+way round — so a behaviour change starts with a spec change.
+
+Two rules follow from that:
+
+* *The spec's worked examples are the conformance vectors.* The tables in
+  `spec/sections/worked-examples.adoc` are asserted directly by
+  `tests/unit/curves.spec.ts`, `margins.spec.ts`, and `solver.spec.ts`, to the
+  tolerances the spec states. Do not relax a tolerance to make a change pass.
+* *The canonical example is a live fixture.* `tests/unit/parser.spec.ts` reads
+  the `.tc` block straight out of `spec/sections/example-file.adoc` and parses
+  it. If you add a language construct, add it to that example — the spec says
+  every construct appears there at least once, and the test enforces it.
+
+If you find the spec contradicting itself, resolve it in favour of the worked
+examples, record the resolution in `IMPLEMENTATION.adoc` under
+_Spec discrepancies_, and fix the prose in the same PR.
+
+== Adding a curve
+
+Adding a vendor curve is a table edit, not a grammar change:
+
+. Add the row to the right vendor block in `src/constants/curves.ts`, with its
+  `ref` pointing at the manufacturer document.
+. Add the row to the matching table in
+  `spec/sections/semantics.adoc` — _Standard curve identifiers_.
+. Add its constants to the `EXPECTED` map in `tests/unit/curves.spec.ts`.
+
+`CURVE_HELP` (editor hover text) and the `curve =` autocompletion are both
+derived from the table, so they update automatically.
+
+== Adding a validation rule
+
+. Add the rule to `spec/sections/validation.adoc`, stating its severity.
+. Implement it in `src/semantics/validate.ts` with a stable `code`.
+. Assert the code *and* its severity in `tests/unit/validate.spec.ts` — the
+  suite checks codes, not just "something was reported", so a rule that
+  silently changes meaning fails.
+
+Codes are public API: the editor's lint gutter, the CLI's exit status, and
+downstream tooling all key off them. Renaming one is a breaking change.
+
+== Architecture in one paragraph
+
+`parse` produces an AST that faithfully records what was written.
+`buildStudy` resolves that into a study model — units folded to base units,
+secondary-amp pick-ups converted with the CT ratio, shorthand elements expanded
+to a single implicit stage, curve ids resolved against the constants table.
+Everything downstream — the solver, the margin report, the validator, and the
+renderer — reads the *study*, never the raw AST. That is deliberate: it is how
+the numbers on the chart and the numbers in the report are guaranteed to agree.
+
+== Commit messages
+
+https://www.conventionalcommits.org/[Conventional Commits]. `release-please`
+builds the changelog and the version bump from them, so the prefix matters:
+
+* `feat:` — a new capability (minor bump pre-1.0)
+* `fix:` — a bug fix (patch bump)
+* `docs:`, `test:`, `refactor:`, `chore:` — no release
+* `feat!:` / `BREAKING CHANGE:` in the body — breaking
+
+Releases are cut by merging the release PR that `release-please` maintains;
+that tags the version and publishes to npm via trusted publishing. No manual
+`npm publish`, and no `NPM_TOKEN`.
+
+== Visual regression
+
+`npm run test:visual` drives the playground with Playwright. It is not part of
+CI: baselines are a human judgement about what a plot should look like. Refresh
+them deliberately with `npx playwright test --update-snapshots` after reviewing
+the rendered output.
+
+== License
+
+Contributions are accepted under the link:LICENSE[MIT license].

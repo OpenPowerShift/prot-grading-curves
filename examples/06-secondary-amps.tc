@@ -1,0 +1,88 @@
+# Sample 06 — Settings in secondary amps
+#
+# Relay settings sheets are written in *secondary* amps: what the relay
+# actually measures behind its CT. Studies are computed in primary amps.
+# Declaring `I_units = "secondary"` lets the engineer type the number
+# that appears on the settings sheet and have the processor convert it,
+# which removes a common and silent source of error.
+#
+# `view { axis = "secondary" }` labels the current axis to match, so the
+# plot can be checked against the same sheet.
+
+meta {
+    project   = "Plant 11 kV — settings in secondary amps";
+    engineer  = "B. Singh";
+    date      = "2026-07-28";
+    CTI_min_s = 0.30;
+}
+
+system {
+    voltages { "MV" { kV = 11.0; } }
+    frequency_Hz = 50;
+    base_MVA     = 10.0;
+}
+
+faults {
+    "F_bus"  { I_A = 7.5 kA; min_A = 4.0 kA; max_A = 9.0 kA; }
+    "F_far"  { I_A = 1.8 kA; }
+}
+
+relay R_INCOMER {
+    voltage  = "MV";
+    maker    = "SEL";
+    model    = "SEL-751";
+    ct_ratio = 600/5;                 # n_CT = 120
+
+    element 51 {
+        function = "phase_oc";
+        curve    = sel.c1;            # SEL C1 == IEC standard inverse
+        I_pu     = 5.0 A;             # settings-sheet value -> 600 A primary
+        I_units  = "secondary";
+        tms      = 0.45;
+    }
+}
+
+relay R_FEEDER {
+    voltage  = "MV";
+    maker    = "SEL";
+    model    = "SEL-751";
+    ct_ratio = 300/5;                 # n_CT = 60
+
+    element 51 {
+        function = "phase_oc";
+        curve    = sel.c1;
+        I_pu     = 4.0 A;             # -> 240 A primary
+        I_units  = "secondary";
+        tms      = 0.15;
+    }
+    element 50 {
+        function = "phase_oc";
+        curve    = definite;
+        I_pu     = 40 A;              # -> 2400 A primary
+        I_units  = "secondary";
+        t_delay  = 0.08 s;
+    }
+}
+
+grade {
+    primary   = R_FEEDER:51;
+    backup    = R_INCOMER:51;
+    fault     = "F_bus";
+    CTI_min_s = 0.30;
+    upstream  = true;
+}
+
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+    title       = { text     = "Plant 11 kV — incomer / feeder grading";
+                    subtitle = "Pick-ups entered in secondary amps (SEL-751)"; };
+}
+
+view {
+    axis         = "secondary";
+    reference_ct = R_INCOMER:51;
+    current_pad  = 0.25;
+}

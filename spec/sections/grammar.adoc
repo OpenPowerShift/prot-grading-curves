@@ -1,0 +1,641 @@
+== Grammar
+
+The following is the formal grammar in EBNF notation. Terminals are
+quoted; productions `::=` use `|` for alternatives, `[ ]` for
+optional groups, `{ }` for zero-or-more, and `< >` for non-terminal
+names. Comments after `#` are not part of the grammar.
+
+=== Top-level
+
+[source,ebnf]
+----
+file            ::= { top-level } ;
+
+top-level       ::= meta-block
+                  | system-block
+                  | faults-block
+                  | relay-block
+                  | device-block
+                  | grade-block
+                  | annotate-block
+                  | combine-block
+                  | view-block
+                  | page-block
+                  | notes-block ;
+----
+
+=== Meta
+
+[source,ebnf]
+----
+meta-block      ::= "meta" "{" { meta-stmt } "}" ;
+meta-stmt       ::= identifier "=" value ";" ;
+                    (* open-ended; see the conventional keys below *)
+----
+
+=== System
+
+[source,ebnf]
+----
+system-block    ::= "system" "{" { system-assignment } "}" ;
+system-assignment ::=
+      "frequency_Hz"   "=" number "Hz" ";"
+    | "base_MVA"       "=" number power-unit ";"
+    | "grounding"      "=" string ";"
+    | "I_base_A"       "=" number current-unit ";"
+    | "I_units"        "=" pickup-units-keyword ";"
+    | voltages-block ;
+
+voltages-block  ::= "voltages" "{" { voltage-asg } "}" ;
+voltage-asg     ::= string "{" { voltage-member } "}" ;
+voltage-member  ::= "kV"         "=" number voltage-unit ";"
+                  | "description" "=" string ";" ;
+voltage-ref     ::= string ;
+----
+
+The `string` in `voltage-asg` is the *name* of the voltage level;
+all `voltage-ref`s elsewhere in the source refer to it by the
+same string. No `level` keyword is needed; quoting is optional
+when the name is a bare identifier.
+
+=== Faults (named fault currents, each at a voltage level)
+
+The `faults` block declares a flat, named table of fault currents.
+Each fault is *at a specific voltage level* (declared via
+`voltage = "<name>"`) so the *figure-of-merit* of the fault is a
+primary-ampere value at that level.
+
+[source,ebnf]
+----
+faults-block    ::= "faults" "{" { fault-asg } "}" ;
+fault-asg       ::= string "{" { fault-member } "}" ;
+fault-member    ::= "I_A"        "=" number current-unit ";"
+                  | "min_A"      "=" number current-unit ";"
+                  | "max_A"      "=" number current-unit ";"
+                  | "earth_A"    "=" number current-unit ";"
+                  | "I0_A"       "=" number current-unit ";"
+                  | "I2_A"       "=" number current-unit ";"
+                  | "voltage"    "=" voltage-ref
+                  | "description" "=" string ";" ;
+----
+
+There is no `bus` wrapper. A fault is a property of the system,
+not a physical bus -- the user's relay connects to it by name
+through `relay { faults = ["F1", "F2"]; }`, and a `grade` block
+references it as `fault = "F1";`. The processor uses the
+voltage-level name on the fault to compute cross-voltage grading
+margins automatically.
+
+=== Relay
+
+[source,ebnf]
+----
+relay-block     ::= "relay" identifier "{" { relay-member } "}" ;
+relay-member   ::= relay-scalar ";"
+                  | element-block ;
+relay-scalar   ::= "maker"      "=" string
+                  | "model"      "=" string
+                  | "voltage"    "=" voltage-ref
+                  | "ct_ratio"   "=" ratio
+                  | "direction"  "=" direction-keyword
+                  | "faults"     "=" "[" fault-ref-list "]" ";"
+                  | "comment"    "=" string ";"
+                  | "description" "=" string ";"
+                  | "reference"  "=" string ";"
+                  ;
+ratio           ::= number "/" number ;
+voltage-ref     ::= string ;
+fault-ref-list  ::= fault-ref { "," fault-ref } ;
+fault-ref       ::= fault-id ;
+fault-id        ::= string ;
+direction-keyword ::= "forward" | "reverse" | "none" ;
+----
+
+A `relay` block declares its voltage level by reference (using
+`voltage = "LV"` and similar). The relay does not carry the
+numerical voltage directly; the numeric value lives in the
+`system.voltages` block. The relay may also list the `faults` that
+it considers itself bounded-by (the engineer's fault list); a
+`grade` block may then reference any of those fault ids directly.
+
+=== Element
+
+The element block is the central entity in the language. An element
+block either:
+
+* declares its characteristic inline (one of `curve`, `formula`,
+  `flex_points`, or `curve=definite` plus optional pickup /
+  tms / t_delay / ... -- shorthand for a single implicit *stage*
+  named `main`), or
+* declares a `stages` sub-block containing one or more named
+  `stage <id> { ... }` sub-blocks.
+
+Both forms are equivalent in that at least one curve producer must be
+present; an element with `stages` cannot additionally carry inline
+producer fields -- the shorthand and explicit forms are mutually
+exclusive (validated in <<validation,Validation>>).
+
+The rendered TCC draws a *single curve per element* as the pointwise
+minimum across all of its stages (the operative-time envelope). The
+toggle `view.stages = "composite" | "individual"` switches between
+the composite and the per-stage individual visible curves. See
+<<semantics,Semantics>> for the default and rationale.
+
+[source,ebnf]
+----
+element-block   ::= "element" element-id "{" { element-member } "}" ;
+element-member  ::= function-asg
+                  | curve-asg
+                  | formula-asg
+                  | flex_points-asg
+                  | pickup-asg
+                  | pickup_units-asg
+                  | current_pct-asg
+                  | tms-asg
+                  | t_delay-asg
+                  | t_reset-asg
+                  | char_angle-asg
+                  | reset-asg
+                  | directional-asg
+                  | comment-asg
+                  | stages-block ;
+
+comment-asg     ::= "comment" "=" string ";" ;
+element-id      ::= number | identifier ;
+
+function-asg    ::= "function"    "=" function-keyword ";" ;
+function-keyword ::= "phase_oc" | "earth_fault" | "neg_seq"
+                   | "thermal" | "breaker_fail" ;
+
+curve-asg       ::= "curve" "=" ( curve-id | "definite" ) ";" ;
+curve-id        ::= identifier "." identifier ;
+
+[NOTE]
+====
+The grammar *only* requires `curve` to be the shape
+`identifier "." identifier`. The parser does *not* validate
+`"iec"`, `"ansi"`, etc.; the namespace list is a validator
+constant (in `src/constants/curves.ts`), not a parser-level
+clause. As a result, a new vendor can be added in a single
+loc without grammar rewrites -- and the parser does not need
+to be re-tested for the new namespace. See
+<<validation,Validation>> for the closure rule.
+====
+
+formula-asg     ::= "formula" "=" "{" { formula-member } "}" ";" ;
+formula-member  ::= "k"     "=" number time-unit ";"
+                  | "c"     "=" number time-unit ";"
+                  | "alpha" "=" number ";" ;
+
+flex_points-asg ::= "flex_points" "=" "[" flex-pt { "," flex-pt } "]" ";" ;
+flex-pt         ::= "(" number current-unit "," number time-unit ")" ;
+
+pickup-asg      ::= "I_pu"  "=" number current-unit ";" ;
+pickup_units-asg ::= "I_units" "=" pickup-units-keyword ";" ;
+pickup-units-keyword ::= "primary" | "secondary" ;
+current_pct-asg ::= "current_pct" "="
+                  number "%" ";" ;
+tms-asg         ::= "tms"       "=" number ";" ;
+t_delay-asg     ::= "t_delay"   "=" number time-unit ";" ;
+t_reset-asg     ::= "t_reset"   "=" number time-unit ";" ;
+char_angle-asg  ::= "char_angle" "=" number "deg" ";" ;
+reset-asg       ::= "reset"     "=" reset-keyword ";" ;
+reset-keyword   ::= "instant"     # immediate reset (t_r = 0)
+                  | "dependent"   # inverse-time reset using curve's t_r
+                  | "disk_emulation" ;  # inverse-time reset, requires t_reset
+directional-asg ::= "directional" "=" boolean ";" ;
+
+stages-block    ::= "stages" "{" { stage-block } "}" ;
+stage-block     ::= "stage" stage-id "{" { stage-member } "}" ;
+stage-id        ::= identifier | number ;
+stage-member    ::= curve-asg
+                  | formula-asg
+                  | flex_points-asg
+                  | pickup-asg
+                  | pickup_units-asg
+                  | current_pct-asg
+                  | tms-asg
+                  | t_delay-asg
+                  | t_reset-asg
+                  | char_angle-asg
+                  | reset-asg
+                  | directional-asg
+                  | comment-asg ;
+----
+
+=== Grade
+
+[source,ebnf]
+----
+grade-block     ::= "grade" "{" { grade-member } "}" ;
+grade-member    ::= "primary"   "=" ref ";"
+                  | "backup"    "=" ref ";"
+                  | "fault"     "=" fault-ref ";"
+                  | "CTI_min_s" "=" number time-unit ";"
+                  | "margin_s"  "=" number time-unit ";"
+                  | "tolerance_pct" "=" number ";"
+                  | "comment"   "=" string ";"
+                  | solve-block ;
+
+solve-block     ::= "solve" "{" { solve-member } "}" ;
+solve-member    ::= "strategy" "=" solve-strategy-keyword ";"
+                  | "tolerance_pct" "=" number ";"
+                  | "free" "=" "[" free-list "]" ";" ;
+free-list       ::= solve-free { "," solve-free } ;
+solve-free      ::= "tms" | "t_delay" | "I_pu" ;
+solve-strategy-keyword ::= "tight"  # minimum tms meeting the margin
+                         | "loose"  # tms rounded up to the standard step
+                         | "safety_factor" ;  # multiplied by safety factor
+                                       # (v0.2; requires value)
+----
+
+The `fault` field on a `grade` block is a *named fault reference*
+to an entry declared in the top-level `faults { ... }` block. There
+is no `transformer` clause and no keyword shorthand like
+`sc_3ph_max`: the user names faults explicitly (e.g., `F1`,
+`FDR_1_max`). The processor derives the cross-voltage
+transformation from the fault's `voltage` and the participating
+relay's `voltage` (using `system.voltages`).
+
+A `grade` block may carry *zero or more* of:
+
+* `CTI_min_s` -- minimum acceptable margin (a *constraint*);
+* `margin_s` -- *exact* design margin at the declared fault (a
+  *target*);
+* `tolerance_pct` (default 0) -- allowance above `margin_s` for the
+  solver.
+
+When the `solve` block is present, the engineer has declared that the
+tool should *compute* the free variables (default: `tms`) such that
+the grading margin matches `margin_s` (or `CTI_min_s` if `margin_s`
+is omitted) at the declared `fault`. See
+<<semantics,Semantics>> _Solver -- automatic grading_.
+
+=== Annotations
+
+[source,ebnf]
+----
+annotate-block  ::= "annotate" "{" { annotate-member } "}" ;
+annotate-member ::= "on_curve" "=" ref ";"
+                  | "at_I_A"   "=" number current-unit ";"
+                  | "label"    "=" string  ";"
+                  | "style"    "=" annotation-style ";"
+                  | "color"    "=" color-value ";" ;
+annotation-style ::= "leader" | "pin" | "tag" ;
+----
+
+=== Notes
+
+[source,ebnf]
+----
+notes-block     ::= "notes" "{" { identifier "=" value ";" } "}" ;
+----
+
+=== Device -- auxiliary TCC assets
+
+The `device` block declares an *auxiliary TCC asset*: a fuse, a
+cable-withstand curve, a transformer-damage curve, a recloser
+control curve, a motor-startup curve, or a breaker clearing-time
+curve. Devices may be referenced by name from `grade { primary ...;
+backup ...; }` and `combine { sources = [...]; }` blocks.
+
+A device TCC is **always piecewise** (the `flex_points` field is
+required); the standard inverse-time formulas are relay-element
+curves and not used for devices.
+
+[source,ebnf]
+----
+device-block    ::= "device" device-id "{" { device-member } "}" ;
+device-id       ::= string | identifier ;
+device-member   ::= "kind"      "=" device-kind-keyword ";"
+                  | "maker"     "=" string ";"
+                  | "model"     "=" string ";"
+                  | "rating_A"  "=" number current-unit ";"
+                  | "rating_kV" "=" number voltage-unit ";"
+                  | "rating_MVA" "=" number power-unit ";"
+                  | "comment"   "=" string ";"
+                  | "description" "=" string ";"
+                  | "reference" "=" string ";"
+                  | flex_points-asg
+                  | "min_melt"  "=" "[" flex-pt { "," flex-pt } "]" ";"
+                  | "total_clear" "=" "[" flex-pt { "," flex-pt } "]" ";"
+                  | "t_delay"   "=" number time-unit ";" ;
+
+device-kind-keyword ::= "fuse" | "recloser" | "cable"
+                      | "transformer_damage" | "motor_startup"
+                      | "breaker" ;
+----
+
+A `device` block with `kind = "fuse"` may carry *either* a single
+`flex_points` table (single-curve fuse) *or* both `min_melt` and
+`total_clear` tables (fuse band). The renderer shades the band
+between `min_melt` and `total_clear` automatically; no `combine`
+block is needed.
+
+A `breaker` device may carry only `t_delay` (no `flex_points`);
+the resulting curve is a single horizontal line.
+
+==== Built-in catalog (v0.1 effective)
+
+The processor ships with a built-in catalogue of common TCCs keyed
+by shorthand. The user references a catalogue entry by its shorthand
+in the language:
+
+[source,tc]
+----
+device "ferraz_abc_100a" { kind = "fuse"; }   // built-in catalog reference
+----
+
+Equivalent expansion (if the user wanted to override):
+
+[source,tc]
+----
+device "ferraz_abc_100a" {
+    kind        = "fuse";
+    maker       = "Ferraz Shawmut";
+    model       = "ABC";
+    rating_A    = 100 A;
+    min_melt    = [(130 A, 1000 s), (200 A, 100 s),
+                   (500 A, 1.0 s), (1000 A, 0.05 s),
+                   (2000 A, 0.005 s)];
+    total_clear = [(130 A, 60 s), (200 A, 0.6 s),
+                   (500 A, 0.02 s), (1000 A, 0.005 s)];
+}
+----
+
+Reference table for the v0.1.0 built-in catalog (each entry is *real*
+data sourced from the manufacturer's published TCC bulletin; the
+*full* table is shipped in `src/constants/catalog.ts`):
+
+[cols="1,1,2,3", options="header"]
+|===
+| Shorthand | Kind | Rating | Source
+
+| `ferraz_abc_100a`   | fuse | 100 A  | Ferraz Shawmut ABC bulletin
+| `bussmann_jjl_50a`  | fuse |  50 A  | Bussmann JJL bulletin
+| `mersen_a4bt_63a`   | fuse |  63 A  | Mersen A4BT bulletin
+| `urd_4_0_aepr_no7`  | cable | 350 A | Okonite AEPR cable, ICEA P-32-382
+| `tx_25mva_11kv`     | transformer_damage | 25 MVA | IEEE C57.91.6 curve
+| `recloser_cooper_form6_fast`   | recloser | _varies_ | Cooper Form 6 TCC fast curve
+| `recloser_cooper_form6_slow`   | recloser | _varies_ | Cooper Form 6 TCC slow curve
+| `motor_startup_induction_500hp`| motor_startup | 500 hp  | NEMA MG-1 typical curve
+|===
+
+The catalogue entries are queried by shorthand; references that miss
+the catalogue are looked up as user-defined `device` blocks; if
+neither resolves, *Error*.
+
+==== Reference syntax
+
+A device is referenced by its `device-id` *without* a colon, as
+distinct from a `relay:element` reference which always has a colon:
+
+[source,tc]
+----
+grade {
+    primary   = fuse_load:abc_min_melt;     // NOT a device-ref (see below)
+    backup    = R_TRF_INC:51;
+    fault     = "F_load_max";                // named fault reference
+    margin_s  = 0.15;
+}
+----
+
+Carefully: the suffix `fuse_load:abc_min_melt` does *not* resolve as
+a device reference (it has a colon). The correct reference for a
+device is the *plain* `device-id`:
+
+[source,tc]
+----
+grade {
+    primary   = ferraz_abc_100a;            // device-ref (no colon)
+    backup    = R_TRF_INC:51;               // relay-ref (with colon)
+    fault     = "F_load_max";               // named fault reference
+    margin_s  = 0.15;
+}
+----
+
+The same `primary` / `backup` fields accept either form, decided by
+the *presence of `:`*.
+
+=== Combine -- synthetic curves
+
+`combine` declares a *synthetic curve* drawn from one or more existing
+curves on the TCC. The processor produces a derived curve from the
+declared sources; it never modifies the source curves themselves.
+
+`combine` is analogous to a `view` directive and is *not* a grading
+construct: `grade { ... }` blocks still operate on real elements
+only.
+
+[source,ebnf]
+----
+combine-block   ::= "combine" "{" { combine-member } "}" ;
+combine-member  ::= "name"        "=" identifier ";"
+                  | "sources"     "=" "[" source-list "]" ";"
+                  | "as"          "=" combine-as-keyword ";"
+                  | "color"       "=" string ";"
+                  | "style"       "=" combine-style-keyword ";"
+                  | "label"       "=" string ";" ;
+source-list     ::= ref { "," ref } ;
+combine-as-keyword ::=
+      "envelope_min"       # pointwise min(t1, t2, ...)  -- "OR" of trips
+    | "envelope_max"       # pointwise max(t1, t2, ...)  -- "AND" of trips
+    | "sum"                # pointwise t1 + t2 + ...
+    | "select_first" ;     # adopt t of the first source only
+combine-style-keyword ::= "solid" | "dashed" | "dotted" ;
+
+# A 'source' in a `combine` block, or 'primary'/'backup' in a `grade`
+# block, may be either a relay-ref (with colon) or a device-ref
+# (plain identifier). The grammar disambiguates by the colon.
+ref ::= relay-ref | device-ref ;
+relay-ref   ::= identifier ":" ( element-id | identifier ) ;
+device-ref  ::= identifier ;
+----
+
+=== View (display directives)
+
+[source,ebnf]
+----
+view-block      ::= "view" "{" { view-member } "}" ;
+view-member     ::= "stages"        "=" view-stages-keyword ";"
+                  | "axis"          "=" view-axis-keyword ";"
+                  | "two_axes"      "=" boolean ";"
+                  | "reference_ct"  "=" ref ";" ;
+view-stages-keyword ::= "composite" | "individual" ;
+view-axis-keyword ::= "primary" | "secondary" | "multiples" ;
+----
+
+=== Page (page / theme / legend / colours)
+
+The `page` block declares layout, decoration, legend, and colour
+options for the rendered output. SVG, PNG, and PDF outputs *all*
+consume these settings; for PNG/PDF the page size and orientation
+map directly to canvas / PDF dimensions, while SVG honours the
+viewBox (with margins baked into the document).
+
+[source,ebnf]
+----
+page-block      ::= "page" "{" { page-member } "}" ;
+page-member     ::= "size"           "=" size-value ";"
+                  | "orientation"    "=" orientation-keyword ";"
+                  | "margins_mm"     "=" margins-block ";"
+                  | "scale"          "=" scale-block ";"
+                  | "legend"         "=" legend-block ";"
+                  | "axes"           "=" axes-block ";"
+                  | "curves"         "=" curves-block ";"
+                  | "points"         "=" points-block ";"
+                  | "leaders"        "=" leaders-block ";"
+                  | "title"          "=" title-block ";"
+                  | "footer"         "=" footer-block ";"
+                  | "theme"          "=" theme-keyword ";"
+                  | "watermark"      "=" string ";" ;
+
+size-value      ::= paper-keyword | "{" "width_mm" "=" number ";"
+                                            "height_mm" "=" number ";" "}" ;
+paper-keyword   ::= "A4" | "A3" | "A5" | "Letter" | "Legal"
+                  | "Tabloid" | "A0" | "A1" | "A2" ;
+orientation-keyword ::= "portrait" | "landscape" ;
+
+margins-block   ::= "{" { margin-member } "}" ;
+margin-member   ::= "top"    "=" number "mm" ";"
+                  | "right"  "=" number "mm" ";"
+                  | "bottom" "=" number "mm" ";"
+                  | "left"   "=" number "mm" ";" ;
+
+scale-block     ::= "{" { scale-member } "}" ;
+scale-member    ::= "auto"   "=" boolean ";"
+                  | "x_min"  "=" number current-unit ";"
+                  | "x_max"  "=" number current-unit ";"
+                  | "y_min"  "=" number time-unit ";"
+                  | "y_max"  "=" number time-unit ";"
+                  | "tick_density" "=" tick-density-keyword ";" ;
+tick-density-keyword ::= "sparse" | "normal" | "dense" ;
+
+legend-block    ::= "{" { legend-member } "}" ;
+legend-member   ::= "show"      "=" boolean ";"
+                  | "position"  "=" legend-position ";"
+                  | "color"     "=" color-value ";"
+                  | "swatch"    "=" legend-swatch-keyword ";"
+                  | "title"     "=" string ";" ;
+legend-position ::= "right" | "left" | "top" | "bottom" ;
+legend-swatch-keyword ::= "line" | "box" | "circle" ;
+
+axes-block      ::= "{" { axes-member } "}" ;
+axes-member     ::= "color"      "=" color-value ";"
+                  | "grid_color" "=" color-value ";"
+                  | "label_color" "=" color-value ";"
+                  | "label_size_px" "=" number ";"
+                  | "tick_size_px"   "=" number ";"
+                  | "frame"          "=" boolean ";" ;
+
+curves-block    ::= "{" { curves-member } "}" ;
+curves-member   ::= "palette"     "=" palette-value ";"
+                  | "line_width_px" "=" number ";"
+                  | "auto_color"   "=" boolean ";" ;
+palette-value   ::= palette-keyword | "[" color-value { "," color-value } "]" ;
+palette-keyword ::= "default" | "pasteur" | "okabe_ito" | "monochrome"
+                  | "grayscale" | "ieee" | "high_contrast" ;
+
+points-block    ::= "{" { points-member } "}" ;
+points-member   ::= "color"   "=" color-value ";"
+                  | "shape"   "=" marker-shape-keyword ";"
+                  | "size_px" "=" number ";"
+                  | "outline" "=" boolean ";" ;
+marker-shape-keyword ::= "circle" | "square" | "diamond"
+                       | "triangle" | "cross" | "x" ;
+
+leaders-block   ::= "{" { leaders-member } "}" ;
+leaders-member  ::= "show"       "=" boolean ";"
+                  | "style"      "=" leader-style-keyword ";"
+                  | "width_px"   "=" number ";"
+                  | "color"      "=" color-value ";"
+                  | "label_offset_px" "=" number ";" ;
+leader-style-keyword ::= "line" | "arrow" | "dot" ;
+
+title-block     ::= "{" { title-member } "}"
+                  | string ;
+title-member    ::= "text"   "=" string ";"
+                  | "font_size_px" "=" number ";"
+                  | "color" "=" color-value ";"
+                  | "subtitle" "=" string ";"
+                  | "align" "=" h-align-keyword ";" ;
+h-align-keyword ::= "left" | "center" | "right" ;
+
+footer-block    ::= "{" { footer-member } "}" ;
+footer-member   ::= "left"     "=" footer-text ";"
+                  | "center"   "=" footer-text ";"
+                  | "right"    "=" footer-text ";"
+                  | "font_size_px" "=" number ";"
+                  | "color"    "=" color-value ";"
+                  | "border"   "=" boolean ";" ;
+footer-text     ::= string | footer-macro ;
+footer-macro    ::= "[date]" | "[page]" | "[of]"
+                  | "[meta." identifier "]" ;
+
+theme-keyword   ::= "light" | "dark" | "monochrome" | "print" ;
+
+color-value     ::= "#" hex-digit hex-digit hex-digit
+                  | "#" hex-digit hex-digit hex-digit hex-digit hex-digit hex-digit
+                  | named-color ;
+named-color     ::= "black" | "white" | "red" | "green" | "blue"
+                  | "yellow" | "magenta" | "cyan" | "gray" | "grey" ;
+----
+
+==== Theme presets
+
+The `theme` keyword sets a coordinated bundle of colours:
+
+[cols="1,1,1,3", options="header"]
+|===
+| `theme` | background | axis colour | use case
+
+| `light`      | white    | dark gray  | default; playground & on-screen
+| `dark`       | #1e1e1e  | light gray | dark-mode playground
+| `monochrome` | white    | black      | black-and-white print, archival
+| `print`      | white    | black      | ICC-aware print (full CMYK separation, ICC profile in PDF)
+|===
+
+==== Precedence
+
+When more than one field affects the same rendering (e.g. a
+per-curve colour override vs the `curves.palette` setting), the
+*narrower* scope wins:
+
+. *Hard-coded render defaults* (lowest).
+. *Page-block declarations* (here).
+. *Per-element / per-stage colour overrides* (medium; rare).
+. *CLI / playground overrides* (highest; not persisted to source).
+
+A `theme = "dark"` declaration automatically sets `axes.color =
+#eee`, `axes.grid_color = #333`, `legend.color = #eee`,
+`points.color = #eee`, etc. Page-block fields may override
+specific `theme` choices without re-specifying the whole theme.
+
+=== Lexer-level
+
+[source,ebnf]
+----
+identifier      ::= letter { letter | digit | "_" } ;
+letter          ::= "A" ... "Z" | "a" ... "z" | "_" ;
+number          ::= digits [ "." digits ] ;
+digits          ::= digit { digit | "_" } ;   # "_" is a group separator
+digit           ::= "0" ... "9" ;
+hex-digit       ::= digit | "a" ... "f" | "A" ... "F" ;
+boolean         ::= "true" | "false" ;
+string          ::= '"' { char } '"' ;
+value           ::= number | string | boolean | ratio | relay-ref
+                  | function-keyword | reset-keyword | curve-id
+                  | flex-points-literal ;
+
+current-unit    ::= "A" | "kA" | "mA" ;
+time-unit       ::= "s" | "ms" | "min" ;
+voltage-unit    ::= "V" | "kV" | "MV" ;
+power-unit      ::= "W" | "kW" | "MW" | "VA" | "kVA" | "MVA" ;
+angle-unit      ::= "deg" ;
+impedance-unit  ::= "ohm" | "kohm" ;
+length-unit     ::= "m" | "km" ;
+frequency-unit  ::= "Hz" ;
+pickup-unit     ::= "pu" | "xCT" | "xIn" ;
+
+flex-points-literal ::= "[" flex-pt { "," flex-pt } "]" ;
+----

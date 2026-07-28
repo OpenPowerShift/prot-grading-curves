@@ -1,0 +1,158 @@
+# Sample 10 — Four-level substation cascade
+#
+# A realistic grading chain from an 33 kV incomer down to a spur fuse,
+# six characteristics on one sheet:
+#
+#   R_INC:51      33 kV incomer, IEC SI          (slowest, last resort)
+#   R_TIE:51      11 kV bus tie, IEC SI
+#   R_FDR:51/50   11 kV feeder, IDMT + high-set  (composite)
+#   R_SUB:51      11 kV sub-feeder, IEC VI
+#   spur_fuse_65T 65T expulsion fuse             (fastest, at the end)
+#
+# Each adjacent pair is graded, and each margin is annotated at the
+# fault that governs it — so the sheet carries the whole coordination
+# argument, not just the curves.
+
+meta {
+    project   = "Northgate 33/11 kV";
+    study     = "Phase overcurrent cascade";
+    engineer  = "B. Singh";
+    date      = "2026-07-28";
+    revision  = "B";
+    standard  = ["IEC_60255_151"];
+    CTI_min_s = 0.30;
+}
+
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV incomer"; }
+        "MV" { kV = 11.0; description = "11 kV switchboard"; }
+    }
+    frequency_Hz = 50;
+    base_MVA     = 25.0;
+}
+
+faults {
+    "F_bus_max"  { I_A = 8.20 kA; voltage = "MV"; }
+    "F_fdr_max"  { I_A = 5.60 kA; voltage = "MV"; }
+    "F_sub_max"  { I_A = 3.10 kA; voltage = "MV"; }
+    "F_spur_max" { I_A = 1.25 kA; voltage = "MV"; }
+    "F_sub_min"  { I_A = 0.95 kA; voltage = "MV"; }
+}
+
+device "spur_fuse_65T" {
+    kind        = "fuse";
+    maker       = "Mersen";
+    model       = "65T";
+    rating_A    = 65 A;
+    min_melt    = [(130 A, 60 s), (400 A, 0.42 s), (1500 A, 0.021 s)];
+    total_clear = [(130 A, 100 s), (400 A, 0.70 s), (1500 A, 0.036 s)];
+}
+
+relay R_INC {
+    voltage  = "HV";
+    maker    = "ABB";
+    model    = "REF615";
+    ct_ratio = 600/5;
+    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 700 A; tms = 0.40; }
+}
+
+relay R_TIE {
+    voltage  = "MV";
+    maker    = "ABB";
+    model    = "REF615";
+    ct_ratio = 800/5;
+    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 900 A; tms = 0.30; }
+}
+
+relay R_FDR {
+    voltage  = "MV";
+    maker    = "SEL";
+    model    = "SEL-751";
+    ct_ratio = 600/5;
+    element 51 {
+        function = "phase_oc";
+        stages {
+            stage main { curve = iec.si;   I_pu = 550 A;  tms = 0.20; }
+            stage inst { curve = definite; I_pu = 7000 A; t_delay = 0.06 s; }
+        }
+    }
+}
+
+relay R_SUB {
+    voltage  = "MV";
+    maker    = "SEL";
+    model    = "SEL-751";
+    ct_ratio = 300/5;
+    element 51 { function = "phase_oc"; curve = iec.vi; I_pu = 280 A; tms = 0.15; }
+}
+
+# ---- the coordination chain, checked at each level -------------------
+grade {
+    primary   = R_TIE:51;
+    backup    = R_INC:51;
+    fault     = "F_bus_max";
+    CTI_min_s = 0.30;
+    upstream  = true;
+}
+
+grade {
+    primary   = R_FDR:51;
+    backup    = R_TIE:51;
+    fault     = "F_fdr_max";
+    CTI_min_s = 0.30;
+    upstream  = true;
+}
+
+# The sweep's default ceiling is the largest fault anywhere in the
+# study — here the 8.2 kA bus fault. A sub-feeder can never see that:
+# its own maximum is 3.1 kA. Left unbounded the sweep runs into the
+# feeder's 7 kA high-set and reports a margin inversion for a current
+# this pair cannot experience. `upstream_to` bounds the sweep to what
+# is physically reachable.
+grade {
+    primary     = R_SUB:51;
+    backup      = R_FDR:51;
+    fault       = "F_sub_max";
+    CTI_min_s   = 0.30;
+    upstream_to = 3.1 kA;
+}
+
+grade {
+    primary   = spur_fuse_65T;
+    backup    = R_SUB:51;
+    fault     = "F_spur_max";
+    CTI_min_s = 0.15;              # fuse-relay pairs run tighter
+}
+
+# ---- each margin, on the sheet ---------------------------------------
+annotate { primary = R_TIE:51;      backup = R_INC:51; fault = "F_bus_max";  label = "CTI"; }
+annotate { primary = R_FDR:51;      backup = R_TIE:51; fault = "F_fdr_max";  label = "CTI"; }
+annotate { primary = R_SUB:51;      backup = R_FDR:51; fault = "F_sub_max";  label = "CTI"; }
+annotate { primary = spur_fuse_65T; backup = R_SUB:51; fault = "F_spur_max"; label = "CTI"; }
+
+annotate {
+    on_curve = R_INC:51;
+    at_I_A   = 8.2 kA;
+    label    = "Incomer at bus fault";
+    style    = "leader";
+    coords   = true;
+}
+
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+    title = { text     = "Northgate 33/11 kV — phase overcurrent cascade";
+              subtitle = "Incomer / tie / feeder / sub-feeder / spur fuse"; };
+    legend { title = "Devices"; }
+    axes   { mirror = true; }        # scales repeated top and right
+    faults { width_px = 1.5; }       # a touch heavier; each gets its own dash
+}
+
+view {
+    voltage     = "MV";
+    current_max = 60 kA;
+    time_pad_high = 0.2;
+}

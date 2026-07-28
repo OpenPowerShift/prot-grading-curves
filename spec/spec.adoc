@@ -1,0 +1,61 @@
+= tc-curves Language Specification
+:toc: macro
+:toclevels: 4
+:sectnums:
+:sectlinks:
+:version: 0.1.0-draft
+:revdate: 2026-07-26
+
+A domain-specific language for capturing protection-relay time-current
+grading studies. The source text describes the configuration of one or
+more relays, the system fault-level data, and the grading intent; the
+`tc-curves` tool produces a log-log TCC plot, time-margin reports, and
+exports to SVG / PNG / PDF.
+
+Conforms to:
+
+* IEC 60255-151:2009 / AMD1:2014 -- Annex A (curves A-F)
+* IEC 60255-3:1989 -- withdrawn, legacy LTI/STI curves
+* IEEE Std C37.112-1996 (reaffirmed 2018) -- Table III (U1..U5)
+* IEEE Std C37.2-2008 -- device numbers 50/51/51N/67
+* IEEE Std 242-2001 -- Clause 15.3 CTI recommendations
+
+Out of scope for v1: distance zones (21), transformer differential (87),
+voltage-restrained overcurrent (51V), auto-reclosing (79) -- staged for
+later versions; the spec leaves room for them.
+
+[NOTE]
+====
+This is **draft 0.1.0**. The language is wide open to changes in this
+phase. Once 0.2.0 ships, the file extension `.tc` will be frozen for
+that major version.
+====
+
+toc::[]
+
+include::sections/introduction.adoc[]
+
+include::sections/example-file.adoc[]
+
+include::sections/lexical-structure.adoc[]
+
+include::sections/grammar.adoc[]
+
+include::sections/semantics.adoc[]
+
+include::sections/validation.adoc[]
+
+include::sections/worked-examples.adoc[]
+
+include::sections/style-guide.adoc[]
+
+include::sections/linting-rules.adoc[]
+
+include::sections/versioning.adoc[]
+
+include::sections/examples-extended.adoc[]
+
+include::sections/conformance.adoc[]
+
+include::sections/revision-history.adoc[]
+

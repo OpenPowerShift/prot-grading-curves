@@ -1,0 +1,421 @@
+== Extended examples
+
+The example in <<example-file,Example file>> uses only the *simple*
+form of `element` (one curve per element). This section demonstrates
+the *extended* forms: `stages`, `combine`, and `view`.
+
+=== Page / theme / colour configuration
+
+The following `.tc` file produces a publication-grade A4 landscape
+PDF with the Okabe-Ito colour-blind-friendly palette, a centred
+title with subtitle, a footer showing project / engineer / date /
+page numbers, and a `DRAFT` watermark diagonal across the page:
+
+[source,tc]
+----
+meta {
+    project  = "Riverside 33/11";
+    study    = "OC grading";
+    engineer = "A. Cooper";
+    date     = "2026-03-14";
+}
+
+system {
+    voltages { "LV" { kV = 11.0; } }
+    frequency_Hz = 50;
+    base_MVA = 25.0;
+}
+
+faults {
+    "F_FDR1_max"     { I_A = 6.40 kA; voltage = "LV"; }
+    "F_FDR1_min"     { I_A = 2.50 kA; voltage = "LV"; }
+    "F_FDR1_earth_max" { I_A = 3.20 kA; voltage = "LV"; }
+    "F_FDR1_earth_min" { I_A = 1.40 kA; voltage = "LV"; }
+}
+
+relay R_FDR_1 {
+    maker   = "Schneider";
+    model   = "MiCOM_P122";
+    voltage = "LV";
+    ct_ratio = 600/5;
+    faults  = ["F_FDR1_max", "F_FDR1_min"];
+    element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25;
+                 reset = "instant"; }
+    element 51N { curve = iec.ei; I_pu = 96 A; tms = 0.20;
+                  reset = "instant"; }
+}
+
+page {
+    size         = "A4";
+    orientation  = "landscape";
+    margins_mm   = { top = 12; right = 14; bottom = 14; left = 14; };
+    theme        = "light";
+    watermark    = "DRAFT";
+
+    scale {
+        auto = true;
+        tick_density = "normal";
+    }
+
+    legend {
+        show     = true;
+        position = "right";
+        swatch   = "line";
+        title    = "Riverside 33/11 -- OC grading";
+    }
+
+    axes {
+        color         = "#444";
+        grid_color    = "#cccccc";
+        label_color   = "#222";
+        label_size_px = 11;
+        frame         = true;
+    }
+
+    curves {
+        palette       = "okabe_ito";
+        line_width_px = 1.5;
+        auto_color    = true;
+    }
+
+    points {
+        color   = "#0080c0";
+        shape   = "circle";
+        size_px = 4;
+        outline = true;
+    }
+
+    leaders {
+        show = true; style = "line"; width_px = 1;
+        color = "#888"; label_offset_px = 6;
+    }
+
+    title = {
+        text = "Riverside 33/11 -- IEC VI / EI OC grading";
+        subtitle = "Margins checked at F_FDR1_max and F_FDR1_min";
+        font_size_px = 16; align = "center";
+    };
+
+    footer {
+        left   = "[meta.project] -- [meta.engineer]";
+        center = "[date]"; right = "[page] / [of]";
+        font_size_px = 9; border = true;
+    };
+}
+
+grade {
+    primary   = R_FDR_1:51;
+    backup    = R_FDR_1:51N;       // self-grading sanity check
+    fault     = "F_FDR1_max";
+    CTI_min_s = 0.30;
+    margin_s  = 0.30;
+}
+----
+
+==== CLI overrides
+
+The above can be exported with a CLI override that *replaces* the
+language defaults at render time. The CLI flags:
+
+[source,console]
+----
+$ tc-curves render riverside.tc --pdf \
+    --page-size A3 \
+    --orientation landscape \
+    --theme dark \
+    --palette okabe_ito \
+    --legend-position top \
+    --watermark "FINAL -- NOT FOR CONSTRUCTION"
+----
+
+The CLI flags take precedence over the `.tc` file's `page { ... }`
+block but are *not* written back into the source file; the
+regenerated SVG/PNG/PDF reflects the runtime choice.
+
+[NOTE]
+====
+The CLI overrides are **not persisted** into the source file --
+they exist purely for one-shot exports (e.g. a quick dark-themed
+render for screen-share during an internal review). To make a
+chosen theme permanent, the user edits the `page` block in the
+source.
+====
+
+=== Multi-voltage grading via named voltage levels
+
+The following study covers a 33 kV incomer grading against an
+11 kV feeder relay through a transformer. The user names two
+voltage levels; the processor automatically applies the
+voltage ratio when computing the multiple at the secondary side.
+No transformer block, no `bus "..."` wrapper, no per-relay
+numeric `voltage_kV`. Just names.
+
+[source,tc]
+----
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV side"; }
+        "LV" { kV = 11.0; description = "11 kV side"; }
+    }
+    frequency_Hz = 50;
+    base_MVA     = 25.0;
+}
+
+faults {
+    // each fault is at a named level; the current is a
+    // primary-ampere value as seen from that level
+    "F_11_max"  { I_A = 9.40 kA; voltage = "LV"; }
+    "F_11_min"  { I_A = 4.50 kA; voltage = "LV"; }
+    "F_33_max"  { I_A = 17.20 kA; voltage = "HV"; }
+    "F_33_min"  { I_A = 6.70 kA; voltage = "HV"; }
+}
+
+relay R_INC_330 {
+    maker         = "ABB";
+    model         = "REL_615";
+    voltage       = "HV";            // 33 kV side
+    ct_ratio      = 1000/1;
+    faults        = ["F_33_max", "F_33_min"];
+    element 51 {
+        curve        = iec.si;
+        I_pu         = 600 A;         // 600 A on 33 kV side
+        tms          = 0.40;
+    }
+}
+
+relay R_FDR_110 {
+    maker         = "ABB";
+    model         = "REL_615";
+    voltage       = "LV";            // 11 kV side
+    ct_ratio      = 600/5;
+    faults        = ["F_11_max", "F_11_min"];
+    element 51 {
+        curve        = iec.vi;
+        I_pu         = 480 A;
+        tms          = 0.25;
+    }
+}
+
+grade {
+    primary   = R_FDR_110:51;        // 11 kV side (trips first)
+    backup    = R_INC_330:51;         // 33 kV side (backup)
+    fault     = "F_11_max";          // LV-side fault
+    margin_s  = 0.30;
+
+    solve {
+        strategy       = "tight";
+        tolerance_pct  = 0;
+    }
+}
+----
+
+At `I_f = 9400 A` on the `LV` side (`F_11_max`):
+
+* `R_FDR_110:51` operates at `M_LV = 9400 / 480 = 19.58`;
+  the processor evaluates `t_p` directly.
+* `R_INC_330:51` sees the same physical current *referred to
+  its HV side*: `I_HV = I_LV * V_LV / V_HV = 9400 * 11/33 = 3133 A`,
+  `M_HV = 3133 / 600 = 5.22`, and the processor evaluates `t_b`.
+* The margin is the time difference between `t_b` and `t_p`.
+
+A solver run with `margin_s = 0.30 s at fault = "F_11_max"`
+adjusts `tms` on `R_INC_330:51` until `t_b - t_p >= 0.30 s` at
+the same physical fault. The renderer overlays the two curves on
+a *multiples* axis (per-relay `M`), which is the conventional
+display for cross-voltage TCC overlays.
+
+==== Single-rendered plot for cross-voltage TCC
+
+By default `view { axis = "multiples"; }` is the right call for
+cross-voltage TCC overlays. Each curve's `M = 1.0` lands on the
+same vertical line, regardless of the relay's voltage level, and
+the operate times can be compared directly.
+
+The renderer emits a *Warning* `CROSS_VOLTAGE_AXIS_PRIMARY_UNSUITABLE`
+when the user requests `axis = "primary"` for a study with at least
+two voltage levels -- unless the user has manually selected *one*
+voltage as the basis for the axis label. This is informational;
+primary-axis mode requires the engineer to make an explicit
+decision.
+
+=== Multi-stage element
+
+The following element block reproduces a typical ABB REF615 function:
+
+* one IDMT low-set stage (51P1, IEC standard inverse),
+* one definite-time instantaneous high-set stage (51P2T),
+* one directional earth-fault (67N1) on a separate *element*.
+
+The `view` block at the bottom of the file requests the composite
+plot:
+
+[source,tc]
+----
+relay R_330_11_INC {
+    maker         = "ABB";
+    model         = "REF615";
+    voltage       = "LV";
+    ct_ratio      = 600/5;
+    direction     = "forward";
+
+    element 51 {
+        function  = "phase_oc";
+
+        stages {
+            stage lo_set {
+                curve      = iec.si;
+                I_pu       = 720 A;
+                tms        = 0.30;
+                reset      = "instant";
+            }
+            stage hi_set {
+                curve      = definite;
+                I_pu       = 4800 A;
+                t_delay    = 0.00 s;
+            }
+            stage dmt_hi_delayed {
+                curve      = definite;
+                I_pu       = 2400 A;
+                t_delay    = 0.30 s;
+            }
+        }
+    }
+}
+
+// Standalone 67 N element on the same relay but a different pickup target
+element 67N {
+    function     = "earth_fault";
+    curve        = ansi.e;
+    I_pu         = 120 A;
+    tms          = 0.40;
+    directional  = true;
+    char_angle   = -45 deg;
+    reset        = "dependent";
+}
+
+view {
+    stages        = "composite";      // one curve per element
+    axis          = "primary";
+    two_axes      = false;
+}
+----
+
+The element's composite curve is the pointwise minimum of
+`lo_set` (IDMT), `hi_set` (zero-delay definite) and `dmt_hi_delayed`
+(0.3 s definite). At the highest currents `hi_set` is fastest (zero
+delay), at low fault multiples `dmt_hi_delayed` is faster than
+`lo_set` only in a window where `lo_set` exceeds 0.3 s.
+
+=== Combining curves
+
+The following `combine` block creates a synthetic "OR" curve from the
+two IDMT elements of R_330_11_INC and R_FDR_1:
+
+[source,tc]
+----
+combine {
+    name        = "OR_51_330_FDR1";
+    sources     = [R_330_11_INC:51, R_FDR_1:51];
+    as          = "envelope_min";
+    color       = "#777";
+    style       = "dashed";
+    label       = "OR of 51 stages";
+}
+----
+
+The synthetic curve is *not* part of any grading; it is documentation
+for visual inspection.
+
+=== Two-axes primary + secondary
+
+[source,tc]
+----
+view {
+    axis          = "primary";
+    two_axes      = true;
+    reference_ct  = R_330_11_INC:51;     // n_CT = 600/5 = 120x
+}
+----
+
+The plot shows a primary-amp axis at the top and a secondary-amp
+axis at the bottom (using the reference CT ratio of R_330_11_INC).
+Curves whose pickup is referenced to a different CT-ratio are drawn
+as before, with their own markings; only the *reference* of the
+secondary axis changes.
+
+A CT-ratio spread warning is emitted if any relay in the study has a
+CT ratio outside a 5:1 band of `reference_ct`.
+
+=== Fuse-relay coordination with cable-withstand
+
+A typical 11 kV radial feeder with a fuse at the load end. The fuse
+*total-clear* curve must be 0.15 s ahead of the upstream relay's
+operate time, and *both* the fuse and the relay curves must be
+*below* the cable-withstand curve at every fault current.
+
+[source,tc]
+----
+device "ferraz_abc_100a"    { kind = "fuse"; rating_A = 100 A;
+                              min_melt    = [(150 A, 100 s), (300 A, 1.5 s),
+                                             (1000 A, 0.05 s)];
+                              total_clear = [(150 A, 60 s), (300 A, 0.6 s),
+                                             (1000 A, 0.02 s)]; }
+
+device "urd_4_0_aepr_no7"   { kind = "cable"; rating_A = 350 A;
+                              flex_points =
+                              [(350 A, 1000 s), (1500 A, 30 s),
+                               (5000 A, 1.0 s)]; }
+
+relay R_FEEDER {
+    maker    = "ABB"; model = "REL_615";
+    voltage  = "LV";
+    ct_ratio = 250/5;
+    element 51 { curve = iec.vi; I_pu = 300 A; tms = 0.25;
+                reset = "instant"; }
+}
+
+grade {
+    primary   = ferraz_abc_100a;          // fuse total-clear (from band)
+    backup    = R_FEEDER:51;
+    fault     = "F_FEEDER_max";
+    margin_s  = 0.15;                      // 0.15 s fuse-relay CTI
+}
+
+grade {
+    primary   = R_FEEDER:51;               // relay must trip FIRST (protects cable)
+    backup    = urd_4_0_aepr_no7;          // cable damage threshold (constraint)
+    fault     = "F_FEEDER_max";
+    margin_s  = 0.30;                      // relay must be 0.30 s FASTER than damage
+}
+----
+
+The renderer shades the band between the two fuse curves drawn via
+`combine`. The two `grade` blocks report separately:
+
+* the fuse-relay CTI report (pass/fail against `0.15 s @ I_f`);
+* the cable-withstand margin report (pass/fail against `0.30 s @ I_f`).
+
+[NOTE]
+====
+The `primary` / `backup` convention is consistent across all grade
+types:
+
+* *Fuse-relay*: `primary = fuse` (acts first), `backup = relay`
+  (acts second). `margin = t_relay - t_fuse >= margin_s`.
+* *Cable damage*: `primary = relay` (acts first, protects cable),
+  `backup = damage` (constraint). `margin = t_damage - t_relay >=
+  margin_s`.
+* *Motor start*: `primary = motor_start` (constraint), `backup =
+  relay` (must act after). `margin = t_relay - t_motor_start >=
+  margin_s`.
+
+In all cases, `margin = t_backup - t_primary >= margin_s`. The
+`primary` is "the element that must act first" (or the bounding
+constraint); the `backup` is "the element that must act second"
+(or the bounded constraint).
+====
+
+A *warning* `FUSE_AND_RELAY_BOTH_CURVE_ABOVE_CABLE` is emitted when
+both curves cross above the damage curve at any `I_f`; an *error*
+`FUSE_CLEARS_BEFORE_RELAY_VIOLATED` is emitted when the relay operates
+before the fuse's total clear at any fault current in the range.

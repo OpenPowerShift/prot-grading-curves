@@ -1,0 +1,76 @@
+== Risks
+
+Each risk carries a severity (S = significant, M = medium,
+L = low) and a mitigation path. Risks identified during the
+research and design phases; not exhaustive.
+
+[S] *Spec drift after release.* Once a major version ships, popping
+a constant or adding a curve is a *breaking change* for any engineer
+whose source depends on it.
+
+* Mitigation: keep curve constants in a single `src/constants/curves.ts`
+  file, with each constant carrying the source-citation comment
+  verbatim. Make shipping two sources of truth (constants in the
+  parser, constants in the validator) impossible; share via
+  Python-style `import { IEC_TABLE } from '.../constants/iec.js'`.
+
+[S] *Visual regression bait.* The TCC baseline visual layout is
+sensitive to small changes in the hand-rolled `LogScale.ticks()`
+behaviour and SVG font metrics. Refactoring axes sometimes
+produces a sub-px shift that diff-ping-pongs the visual tests.
+
+* Mitigation: keep the visual baseline stable *per example* rather
+  than snapshot a single baseline. Re-render every release-candidate
+  across the full example set; review diffs before tagging.
+
+[M] *Chevrotain grammar maintenance.* Hand-rolled TS grammar is more
+verbose than a `.pegjs` source. PR diffs touch more code.
+
+* Mitigation: keep grammar files small and well-commented; one rule
+  per logical concept; unit-tested per rule.
+
+[M] *SVG export resolution.* Browser SVG renderers differ on
+  `dominant-baseline` and rotated text metrics. A test vector that
+  passes in Chromium may render inconsistently in Firefox on
+  export.
+
+* Mitigation: where possible, use centred text and document the
+  browser where the visual layout was finalised.
+
+[M] *Multi-CT axis difficulty.* When the largest CT ratio is more
+  than 5:1 the smallest CT ratio, the secondary axis becomes
+  ineffective.
+
+* Mitigation: the renderer warns the user explicitly; the spec
+  documents this in `view { ... }`. Future v0.2 supports *per-curve*
+  secondary axis anchors with insets.
+
+[M] *PDF / SVG cross-import.* A reader receiving a PDF may want to
+  drill back into the source. v1 does not embed source text in PDF.
+
+* Mitigation: metadata in PDF -- `doc.setProperties({...})` carries
+  the title from `meta.project` and a `Subject` containing the
+  source file path. v0.2 will support PDF/A with embedded source.
+
+[L] *Curve name collision.* SEL `c2` (very inverse) and IEC C-curve
+  `b` are functionally similar but not identical. Engineers from a
+  SEL workflow might write `sel.c2` when they meant `iec.vi`.
+
+* Mitigation: lint warning on ambiguous curve family selection
+  ("`sel.c2` looks similar to `iec.vi`");
+
+[L] *Refresh on big studies.* With many elements (50+), the
+  pointwise-stitching in the composite envelope hits a squared
+  CPU-time cost.
+
+* Mitigation: an LRU sampler; the renderer renders at 4x decimated
+  resolution and refines on zoom (v0.2 feature).
+
+[L] *Toolchain coupling.* The library depends on `svg2pdf.js`
+  + `jspdf`. A future security advisory in either raises a release
+  flag.
+
+* Mitigation: the export pipeline is the only dependency on either
+  library, loaded via dynamic `import()`. If both are removed
+  permanently, the export-menu items can degrade to "Print to PDF"
+  (`window.print`) without redeploying the engine.

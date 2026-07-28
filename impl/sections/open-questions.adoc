@@ -1,0 +1,91 @@
+== Open questions
+
+These are unresolved at the spec level. Each is *known* but not
+critical for the v0.1.0 milestone; treating them as decisions to
+review with the user before implementation freezes the answer.
+
+=== Naming
+
+. *Package name on npm.* We have agreed on `@openpowershift/time-
+  current-grading-language` (matching sibling repo's pattern). Is
+  the *user-facing* name plain `tc-curves` sufficient? (Tentative
+  answer: yes.)
+. *CLI executable.* `tc-curves` works. Alternative: `tcg` or
+  `tcurve`.
+
+=== Domain coverage
+
+. *Manufacturer coverage (resolved).* SEL C1..C5 / U1..U5 (SEL-451
+  family), Siemens SIPROTEC 5 long-inverse extensions, GE
+  UR-series IED constants, ABB Relion 615 RI/RD types are all in
+  the spec for v1. The GE Multilin 745 IAC family has been *dropped*
+  (discontinued product line; modern equivalent is UR-series).
+  Confirm?
+. *Voltage-restrained OC (51V).* Stated as out-of-scope for v1.
+  Acceptable?
+. *Standards citation.* The spec cites IEC 60255-151:2009 / AMD1:2014
+  and C37.112-1996 (reaffirmed 2018). Should we also cite the
+  *IEC 60255-187-1:2023* if it has gained adoption by 2026? v0.2
+  candidate.
+
+=== Solver
+
+. *Free-variable set.* `solve { free = [tms] }` is the default. Are
+  `t_delay` and `I_pu` enough, or do we need to also let the solver
+  touch `tms` of multiple stages? (Currently `free = [...]` is
+  single-relay single-element; multi-stage free variables need v0.2.)
+. *Strategy `safety_factor`.* Currently deferred to v0.2. Is that
+  acceptable, or do we need it for v1?
+
+=== Axis / display
+
+. *Two-axes picked-CT behaviour.* Default: largest CT ratio. Should
+  this default be changed to "smallest CT ratio" (more conservative
+  for sub-station layouts) or stay as "largest"?
+. *Axis `multiples` with `two_axes = true`.* Spec says `Error`. Could
+  a *third* axis `multiples_top, multiples_bottom` (per-CT multiples)
+  be useful? v0.2 candidate.
+. *Cross-voltage TCC, default display axis.* The spec recommends
+  `multiples` when voltages differ. Should this be a hard default
+  or a warning-only suggestion?
+
+=== Logging and reports
+
+. *Margin report format.* v1 emits a textual margin table. Should it
+  also be available in JSON (`--report-format json`) for tooling?
+. *Visualisation `-animate`.* v0.2 flips through every declared fault
+  current in the margin report. Including in v1 would scope-creep.
+
+=== Catalog data sources
+
+. *Fuse/cable TCC data.* The catalog ships with constants that are
+  sourced from manufacturer bulletins. Engineers *must* verify the
+  data against their own installation -- is a "publisher + version
+  + last_updated" stamp on each catalog entry acceptable? Or do we
+  need to pin *per-device* sources (one URL per curve point)?
+. *License of catalog data.* Some manufacturer TCC tables are
+  copyrighted (most are not). For v1 we treat *all* entries as
+  "engineering data; no copyright claim; cite source"; if a vendor
+  objects during a future update, entries are replaced with
+  user-supplied `flex_points` declarations.
+
+=== Page / theme
+
+. *Default page orientation.* The spec defaults to `landscape`
+  for TCC plots. Is that the right default, or do we want to
+  switch to `portrait`? (TCC curves are wide; landscape tends
+  to give more horizontal room. Engineering reports are typically
+  portrait for narrative.)
+. *Theme selection logic.* The CLI flags `--theme`, `--palette`,
+  `--legend-position`, etc. override the source file's `page` block
+  at render time. Should the override also *write back* to the
+  source file ("sticky" overrides), or remain transparent
+  (current spec: transparent)?
+. *PDF/A-2 conformance.* `theme = "print"` produces a PDF with
+  embedded ICC profile. Is PDF/A-2 required for v1, or is plain
+  PDF acceptable? (Sticking with plain PDF in v1; PDF/A-2 deferred
+  to v0.2.)
+. *Curve colour overrides per-element.* v1 allows per-element
+  `style.color` overrides but not per-curve-within-element when
+  the element has multiple stages. Is v0.2 expected to extend
+  this?

@@ -1,0 +1,130 @@
+# Sample 05 — Transformer protection: inrush, damage, and grading
+#
+# A 25 MVA 33/11 kV transformer with HV incomer protection graded
+# against an LV feeder. The study has to satisfy three constraints at
+# once, which is what makes transformer protection awkward:
+#
+#   1. clear the LV feeder's backup duty with adequate margin,
+#   2. sit ABOVE the inrush point, or the transformer trips whenever
+#      it is energised,
+#   3. sit BELOW the through-fault damage curve, or the transformer is
+#      not protected against the damage the curve describes.
+
+meta {
+    project   = "Transformer inrush and damage";
+    engineer  = "A. Cooper";
+    date      = "2026-07-28";
+    standard  = ["IEC_60255_151", "IEEE_C57.109"];
+    CTI_min_s = 0.30;
+}
+
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV incomer"; }
+        "LV" { kV = 11.0; description = "11 kV feeders"; }
+    }
+    frequency_Hz = 50;
+    base_MVA     = 25.0;
+}
+
+faults {
+    "F_lv_max" { I_A = 6.40 kA; voltage = "LV"; }
+    "F_lv_min" { I_A = 2.50 kA; voltage = "LV"; }
+    "F_hv_max" { I_A = 18.4 kA; voltage = "HV"; }
+}
+
+# ---- transformer characteristic points -------------------------------
+#      25 MVA at 33 kV  ->  I_FLC = 25e6 / (sqrt(3) x 33e3) = 437 A
+#      Inrush is conventionally 12 x FLC held for 0.1 s.
+point "TX1_inrush" {
+    I_A     = 5250 A;
+    t_s     = 0.10 s;
+    voltage = "HV";
+    label   = "TX1 inrush — 12 x FLC";
+    shape   = "cross";
+    coords  = true;              # append (current, time) to the label
+}
+
+#      IEEE C57.109 category II through-fault: 2 s at 25 x FLC.
+point "TX1_damage" {
+    I_A     = 10900 A;
+    t_s     = 2.0 s;
+    voltage = "HV";
+    label   = "TX1 through-fault limit";
+    shape   = "triangle";
+    coords  = true;
+}
+
+relay R_TRF_HV {
+    voltage  = "HV";
+    maker    = "ABB";
+    model    = "REF615";
+    ct_ratio = 600/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 720 A;
+        tms      = 0.30;
+    }
+}
+
+relay R_FDR_LV {
+    voltage  = "LV";
+    maker    = "Schneider";
+    model    = "MiCOM_P122";
+    ct_ratio = 400/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.vi;
+        I_pu     = 480 A;
+        tms      = 0.25;
+    }
+    element 50 {
+        function = "phase_oc";
+        curve    = definite;
+        I_pu     = 3200 A;
+        t_delay  = 0.05 s;
+    }
+}
+
+grade {
+    primary   = R_FDR_LV:51;
+    backup    = R_TRF_HV:51;
+    fault     = "F_lv_max";
+    CTI_min_s = 0.30;
+    upstream  = true;          # verify the margin holds above the fault too
+}
+
+# ---- annotate the grading margins on the plot ------------------------
+#      A margin annotation draws the vertical gap between two curves at
+#      a fault current and labels it, so the number the coordination
+#      argument turns on is on the chart, not just in the report.
+annotate {
+    primary = R_FDR_LV:51;
+    backup  = R_TRF_HV:51;
+    fault   = "F_lv_max";
+    label   = "CTI";
+}
+
+annotate {
+    primary = R_FDR_LV:51;
+    backup  = R_TRF_HV:51;
+    fault   = "F_lv_min";
+    label   = "CTI";
+}
+
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+    title       = { text     = "25 MVA 33/11 kV — transformer protection";
+                    subtitle = "Inrush, through-fault withstand, and feeder grading"; };
+}
+
+view {
+    voltage      = "HV";
+    current_pad  = 0.25;
+}

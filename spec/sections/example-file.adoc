@@ -1,0 +1,141 @@
+== Example file (annotated)
+
+The following example file (`riverside-33kv.tc`) is the canonical
+example for the language. All language constructs in this specification
+appear at least once in this file.
+
+[source,tc]
+----
+// =========================================================================
+//  Riverside 33/11 kV substation --- overcurrent grading study
+// =========================================================================
+
+meta {
+    project       = "Riverside 33/11";
+    study         = "OC grading";
+    engineer      = "A. Cooper";
+    date          = "2026-03-14";
+    standard      = ["IEC_60255_151", "IEEE_C37_112"];
+    CTI_min_s     = 0.30;          # numerical relays (IEEE 242-2001 §15.3)
+}
+
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV side"; }
+        "LV" { kV = 11.0; description = "11 kV side"; }
+    }
+    frequency_Hz  = 50;
+    base_MVA      = 25.0;
+    grounding     = "low_impedance";
+}
+
+// ---- fault-level data  (kA primary, IEC 60909) -------------------------
+//      Each fault is at a named voltage level (its primary-ampere
+//      value is the figure of merit on that level's side).
+faults {
+    "F_INC_max"  { I_A = 18.43 kA; voltage = "HV"; }
+    "F_INC_min"  { I_A =  7.20 kA; voltage = "HV"; }
+    "F_FDR1_max" { I_A =  6.40 kA; voltage = "LV"; }
+    "F_FDR1_min" { I_A =  2.50 kA; voltage = "LV"; }
+}
+
+// ---- relays: one block per IED location --------------------------------
+relay R_TRF_INC {
+    maker         = "ABB";
+    model         = "REL_615";
+    voltage       = "HV";
+    ct_ratio      = 600/5;
+    faults        = ["F_INC_max", "F_INC_min"];
+    direction     = "forward";        # forward (default), reverse, none
+
+    // phase overcurrent, IEC standard inverse -------------------------
+    element 51 {
+        function     = "phase_oc";
+        curve        = iec.si;
+        I_pu     = 720  A;               // primary amps on the HV side
+        tms          = 0.30;
+        reset        = "instant";
+        directional  = false;
+    }
+
+    // directional earth-fault, IEEE very inverse ----------------------
+    element 67N {
+        function     = "earth_fault";
+        curve        = ansi.ei;
+        I_pu     =  120 A;
+        tms          = 2.40;             # ANSI time dial: 0.5 .. 15
+        char_angle   = -45 deg;
+        reset        = "dependent";
+        directional  = true;
+    }
+
+    // instantaneous definite-time stage -----------------------------
+    element 50 {
+        function     = "phase_oc";
+        curve        = definite;
+        I_pu     = 4800 A;
+        t_delay      = 0.00 s;
+    }
+
+    // user-defined formula (vendor extension) -----------------------
+    element 51X {
+        function     = "phase_oc";
+        formula      = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
+        I_pu     = 600 A;
+        tms          = 0.30;
+        reset        = "instant";
+    }
+
+    // piecewise FlexCurve-style table -------------------------------
+    element 51F {
+        function     = "phase_oc";
+        flex_points  = [(240 A, 50.0 s), (600 A, 5.0 s),
+                        (1200 A, 1.0 s), (5000 A, 0.20 s)];
+        I_pu     = 200 A;
+        tms          = 1.00;
+    }
+}
+
+relay R_FDR_1 {
+    maker        = "Schneider";
+    model        = "MiCOM_P122";
+    voltage      = "LV";
+    ct_ratio     = 400/5;
+    faults       = ["F_FDR1_max", "F_FDR1_min"];
+
+    element 50 { function = "phase_oc"; curve = definite;
+                 I_pu = 3200 A; t_delay = 0.05 s; }
+    element 51 { function = "phase_oc"; curve = iec.vi;
+                 I_pu = 480 A; tms = 0.25; reset = "instant"; }
+}
+
+// ---- grading pairs: upstream is the backup; downstream is the primary -
+//      `fault = "F_FDR1_max"` references the named fault at the LV side.
+//      The processor computes the equivalent HV-side current via the
+//      ratio 33/11 = 3 to evaluate the backup relay.
+// -----------------------------------------------------------------------
+
+grade {
+    primary   = R_FDR_1:51;                 // LV side -- trips first
+    backup    = R_TRF_INC:51;               // HV side -- backup
+    fault     = "F_FDR1_max";               // LV-side fault current
+    CTI_min_s = 0.30;
+}
+
+// ---- annotations on the plot ------------------------------------------
+//      Will appear on the rendered TCC at the indicated primary amps.
+// -----------------------------------------------------------------------
+
+annotate {
+    on_curve   = R_TRF_INC:51;
+    at_I_A     = 18430;                     // F_INC_max
+    label      = "I_kmax 18.43 kA";
+    style      = "leader";
+}
+
+// ---- notes / editorial comments carried through to the report --------
+notes {
+    grading_assumption = "Numerical relays; CTI_min = 0.30 s per IEEE 242.";
+    faults_source      = "IEC 60909 short-circuit study, March 2026.";
+}
+----

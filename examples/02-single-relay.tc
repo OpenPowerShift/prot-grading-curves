@@ -1,0 +1,38 @@
+# Sample 02 — Simple single-relay study
+#
+# Industrial 480 V feeder with one OC element plus an instantaneous
+# stage. Useful as a minimum working example when introducing the
+# language.
+
+meta {
+    project  = "Plant 480 V feeder";
+    engineer = "B. Singh";
+}
+
+system {
+    voltages {
+        "LV" { kV = 0.48; }
+    }
+    frequency_Hz = 60;
+}
+
+faults {
+    "F1" { I_A = 4500 A; }   # bolted fault at end of feeder
+}
+
+relay R_FDR_480 {
+    voltage  = "LV";
+    ct_ratio = 600/5;
+
+    element 51 {
+        curve = ansi.mi;
+        I_pu  = 600 A;
+        tms   = 2.00;        # ANSI time dial: 0.5 .. 15
+    }
+}
+
+page {
+    size  = "A4";
+    theme = "light";
+    title = "Plant 480 V — single-relay OC study";
+}

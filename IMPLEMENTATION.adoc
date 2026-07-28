@@ -1,0 +1,149 @@
+= time-current-grading-language Implementation Plan
+:toc: macro
+:toclevels: 3
+:sectnums:
+:sectlinks:
+:version: 0.1.0-draft
+:revdate: 2026-07-26
+
+[NOTE]
+====
+* 2026-07-26 -- spec and plan update:
+** Vendor curves regrouped (one contiguous block per vendor);
+   only *modern platforms* referenced. GE Multilin 745 IAC removed.
+** Hand-rolled renderer (no D3 dependency; ~340 LOC in
+   `src/renderer/` for scale, ticks, axes, and curve `<path>`s).
+** PNG/PDF moved into the library (`@resvg/resvg-js` for PNG,
+   lazy `jspdf`+`svg2pdf.js` for PDF). Browser playground and
+   CLI both flow through the same library functions.
+** Asciidoctor extensions are simple wrappers around
+   `parseAndRender` + `renderTo{Fmt}`.
+** `current_pct` (parallel-line / parallel-transformer current
+   share) added as optional per-element parameter.
+** Voltage-level model simplified: `system.voltages` named levels;
+   relay and fault reference levels by name; cross-voltage grading
+   applies the turns ratio automatically. No `transformers`
+   block, no `bus "..."` wrapper, no per-relay `voltage_kV`.
+====
+
+Build plan for the `tc-curves` library, the `<tc-app>` Lit web
+component, and a Node CLI. The plan is sized to ship the language
+spec v0.1.0 alongside the publishable library and the Vite
+playground.
+
+[NOTE]
+====
+Document is *review-ready for the user*. Stack choices are referenced
+in §2 with primary / fallback rationale; see the companion research
+notes in `spec/sections/semantics.adoc` for the language content
+itself.
+====
+
+[[spec-discrepancies]]
+== Spec discrepancies resolved during implementation
+
+Six places where the spec contradicts itself or its own worked
+examples. In every case the *normative worked example* was treated as
+authoritative, since those are the acceptance vectors the plan names,
+and the resolution is recorded in a comment at the implementation
+site. These want a spec edit to close.
+
+. *Cross-voltage backup current.* _Cross-voltage grading_ gave the
+  algorithm as `I_at_backup = I_at_primary` ("same physical current"),
+  while a later paragraph wrote
+  `I_at_backup = I_fault * V_fault / V_backup`. The two disagree
+  whenever the pair spans a transformer.
++
+--
+*The second form is the correct one*, and the spec has been rewritten
+around it. Ampere-turns balance across a transformer, so its windings
+carry currents in inverse proportion to their voltages: a 6.4 kA fault
+on an 11 kV bus drives 2.13 kA through the 33 kV winding. Each relay
+must be evaluated at the current *it* measures, against its own
+pick-up.
+
+This was initially resolved the *wrong* way. The spec's worked
+examples had been computed from `I_at_backup = I_at_primary`, and the
+rule adopted here was "the worked examples are the conformance
+vectors, so follow them". That was a mistake: the examples encoded the
+error rather than testing for it. Dividing an LV current by an HV
+pick-up inflates the backup's multiple and understates its operate
+time, so the tool reported a grading margin that does not physically
+exist -- 0.940 s instead of 1.912 s for the canonical case, a
+fictitious 0.666 s margin in place of the real 1.639 s.
+
+It surfaced because the *renderer* projects correctly and the
+*report* did not, so the plot and the report disagreed on the same
+study. Both worked examples and the solver case have been recomputed;
+`tests/unit/margins.spec.ts` now also pins report-versus-plot
+agreement in both voltage frames, so the two cannot drift apart again.
+
+*Lesson for the remaining items below*: a worked example is only a
+conformance vector to the extent that it is physically right.
+Where prose and example conflict, check the physics before picking a
+side.
+--
+
+. *Solver rounding for `strategy = "tight"`.* _Algorithm_ says "floor
+  to the nearest 0.005", but _Worked solver case_ rounds 0.28859 to
+  *0.290* and requires `tms = 0.290 +/- 0.001`. Flooring would give
+  0.285 and land the margin *below* the declared target, contradicting
+  "minimum tms that meets the margin". Implemented as ceiling -- see
+  `snapTms` in `src/semantics/solver.ts`.
+
+. *The `G_D` ceiling.* _Curve model_ says the processor defaults
+  `G_D = 20`, but the _Operate time_ table lists `iec.si` at `M = 50`
+  as 1.720 s, which is the *unclamped* value; clamping at 20 gives
+  2.267 s. Since per-element `G_D` is deferred to v0.2 there is
+  nothing that would switch the ceiling on, so it defaults off and is
+  honoured only when a caller supplies it -- see `tTripIDMT` in
+  `src/semantics/curves.ts`.
+
+. *Tolerance band vs aim point.* _Algorithm_ aims at
+  `margin_s * (1 + tolerance_pct/100)`, while the sample report calls
+  the worked case "within tolerance (0.0 %)" despite `tms` having been
+  rounded up. Read literally, snapping `tms` would always report an
+  overshoot and the tolerance feature could never pass. The band is
+  therefore widened by exactly the time the rounding step added --
+  see `quantisation_s` in `src/semantics/solver.ts`.
+
+. *Element identifiers.* _Identifiers_ says engineered identifiers
+  "must start with a letter or underscore", then offers `51` as an
+  example, and the canonical example file uses `50`, `51`, `67N`,
+  `51X`, `51F`. Element ids are IEEE C37.2 device numbers, so they may
+  lead with digits and carry a letter suffix -- see
+  `parseDeviceNumberId` in `src/parser/parser.ts`.
+
+. *`curve = ansi.e` in the canonical example.* The example file's
+  `67N` element references `ansi.e`, which is not a row in the
+  constants table (the ANSI families are `mi`, `vi`, `ei`). Read as
+  `ansi.ei` in `tests/unit/parser.spec.ts`.
+
+Two further notes on the constants table: the spec's `sel.u1` row
+lists `k = 0.0226, c = 0.0104`, which is the transpose of SEL's
+published CO-2 emulation (`t = TD * (0.0226 + 0.0104 / (M^0.02 - 1))`);
+the table is implemented as written. The `abb.rd` row gives its form
+as `t = a + b * ln(I/I_p)` with no constants, so it is implemented as
+`t = a - b * ln(M)` with `a = 5.8, b = 1.35`, matching the prose and
+the `abb.ri` row.
+
+toc::[]
+
+include::impl/sections/overview.adoc[]
+
+include::impl/sections/stack.adoc[]
+
+include::impl/sections/repository.adoc[]
+
+include::impl/sections/directory-layout.adoc[]
+
+include::impl/sections/dependencies.adoc[]
+
+include::impl/sections/iteration-phases.adoc[]
+
+include::impl/sections/testing-strategy.adoc[]
+
+include::impl/sections/risks.adoc[]
+
+include::impl/sections/open-questions.adoc[]
+

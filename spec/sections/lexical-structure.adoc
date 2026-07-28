@@ -1,0 +1,226 @@
+== Lexical structure
+
+* Encoding: UTF-8. ASCII is sufficient; future extensions may add
+  Greek / subscript glyphs.
+* Line endings: LF (recommended) or CRLF (tolerated).
+* One top-level block per line, terminated by `;` where applicable, or
+  delimited by `{ ... }`.
+
+=== Whitespace
+
+* Spaces and tabs are interchangeable tokens between identifiers and
+  operators.
+* Newlines separate statements *inside* a block. Block terminators
+  (`}`, `;`) do not require a following newline.
+* Blank lines, line comments, and block comments are tolerated anywhere
+  a newline is expected.
+
+=== Comments
+
+* `# ...` (to end of line) -- recommended for engineer notes.
+* `// ...` (to end of line) -- accepted for parity with C / JavaScript.
+* `/* ... */` -- block comments; do *not* nest.
+
+=== Identifiers
+
+There are three kinds, with different rules.
+
+*Curve identifiers* -- lowercase letters, digits, underscores, and
+periods. Must not start with a digit. The period (`.`) is the
+*namespace separator* (`iec.si`, `ge.ur.vi`); the namespace is the
+text before the *first* period, so a family may itself contain one.
+Namespaces are lowercase and processor-known: `iec`, `ansi`, `sel`,
+`ge`, `abb`, `schneider`, `siemens`.
+
+*Relay identifiers* -- uppercase and lowercase letters, digits, and
+underscores; must start with a letter or underscore: `R_TRF_INC`,
+`R_FDR_1`.
+
+*Element and stage identifiers* -- IEEE C37.2 *device numbers*, so
+they *may* start with a digit and may carry a letter suffix:
+`50`, `51`, `67N`, `51X`, `51F`, `87T`. Formally: one or more
+digits, optionally followed by letters, digits, and underscores; or
+a relay-style identifier (`main`, `inst`) for a `stage`.
+
+[NOTE]
+====
+Element ids are the one place a leading digit is allowed, because
+the device number *is* the industry's name for the function --
+writing `element 51` rather than `element E51` keeps the source
+readable to a protection engineer. Since a device number is a single
+token, `67N` must not be read as the number `67` followed by the
+identifier `N`; a digit-leading identifier absorbs any letters that
+follow it immediately, with no intervening whitespace.
+
+The whitespace rule is what keeps `I_pu = 480 A` unambiguous: the
+space separates the value from its unit, so `480 A` is a number and
+a suffix, while `67N` is one identifier.
+====
+
+=== Reserved keywords
+
+The following are reserved and cannot be used as identifiers:
+
+====
+*Top-level blocks* -- meta, system, faults, relay, element, device,
+grade, annotate, combine, view, page, point, notes
+
+*Inside `meta`* -- open-ended. The conventional keys, which the
+renderer's title block and the `[meta.*]` footer macros read, are
+`project`, `study`, `engineer`, `date`, `revision`, `standard`, and
+`CTI_min_s`. Any other key is carried through and available to a
+`[meta.<key>]` macro.
+
+*Inside `system`* -- voltages, frequency_Hz, base_MVA, grounding,
+I_base_A, I_units
+
+*Inside `system.voltages.<level>`* -- kV, description
+
+*Inside `faults.<name>`* -- I_A, min_A, max_A, earth_A, I0_A, I2_A,
+voltage, description
+
+*Inside `element` / `stage`* -- function, curve, formula,
+flex_points, I_pu, I_units, current_pct, tms, t_delay, t_reset,
+char_angle, reset, directional, direction, stages, stage, comment
+
+*Inside `relay`* -- voltage, ct_ratio, direction, faults, maker,
+model, comment, description, reference
+
+*Inside `grade`* -- primary, backup, fault, CTI_min_s, margin_s,
+tolerance_pct, upstream, upstream_to, comment, solve
+
+*Inside `annotate`* -- on_curve, at_I_A, primary, backup, fault,
+label, style, color
+
+*Inside `device`* -- kind, maker, model, rating_A, rating_kV,
+rating_MVA, flex_points, min_melt, total_clear, t_delay, comment,
+description, reference
+
+*Inside `combine`* -- name, sources, as, color, style, label
+
+*Inside `view`* -- stages, axis, two_axes, reference_ct, voltage,
+current_min, current_max, time_min, time_max, current_pad,
+current_pad_low, current_pad_high, time_pad, time_pad_low,
+time_pad_high
+
+*Inside `page`* -- size, orientation, margins_mm, scale, legend,
+axes, curves, points, leaders, title, footer, theme, watermark,
+position, swatch, palette, frame, label_color, label_size_px,
+tick_size_px, grid_color, line_width_px, auto_color, shape, size_px,
+outline, text, subtitle, align, font_size_px, border, top, right,
+bottom, left, center, show, x_min, x_max, y_min, y_max, auto,
+tick_density
+
+*Orientations* -- portrait, landscape
+
+*Page positions* -- right, left, top, bottom, center
+
+*Palette names* -- default, pasteur, okabe_ito, monochrome,
+grayscale, ieee, high_contrast
+
+*Marker shapes* -- circle, square, diamond, triangle, cross, x
+
+*Leader styles* -- line, arrow, dot
+
+*Themes* -- light, dark, monochrome, print
+
+*Solver (inside `grade.solve`)* -- solve, strategy, tolerance_pct,
+free, tight, loose, safety_factor
+
+*Function names* -- phase_oc, earth_fault, neg_seq, thermal,
+breaker_fail
+
+*Reset keywords* -- instant, dependent, disk_emulation
+
+*Curve family keywords* -- definite, instant, dependent,
+disk_emulation, forward, reverse, none,
+primary, secondary, multiples,
+composite, individual,
+envelope_min, envelope_max, sum, select_first,
+solid, dashed, dotted
+
+*Tick density* -- sparse, normal, dense
+
+*Device kinds* -- fuse, recloser, cable, transformer_damage,
+motor_startup, breaker
+
+*Inside `point`* -- I_A, t_s, label, voltage, color, shape,
+description
+
+*Meta keys* -- project, study, engineer, date, revision, standard,
+CTI_min_s, margin_s, curve_set
+
+*Vertical alignments* (in page block) -- top, center, bottom
+
+*Horizontal alignments* -- left, center, right
+
+*Named colours* -- black, white, red, green, blue, yellow,
+magenta, cyan, gray, grey
+
+*Constants / formula keys* -- k, c, alpha, p, A, B, t_r, G_S, G_T, G_D
+
+*Literals* -- true, false
+====
+
+=== Numbers
+
+* Integer or decimal. Group separator `_` is permitted anywhere inside
+  digits with no semantic meaning: `18_430` is identical to `18430`.
+* Unit suffix is *required* when the surrounding context expects a
+  unit and the suffix is *not* the default for that field. Bare numbers
+  without a suffix in a unit-bearing context are a *parse error*.
+
+=== Recognised units
+
+[cols="1,3", options="header"]
+|===
+| Category | Units
+
+| Current  | `A`, `kA`, `mA`
+| Time     | `s`, `ms`, `min`
+| Voltage  | `V`, `kV`, `MV`
+| Power    | `W`, `kW`, `MW`, `VA`, `kVA`, `MVA`
+| Angle    | `deg` (default)
+| Impedance| `ohm`, `kohm`
+| Length   | `m`, `km`
+| Frequency| `Hz`
+| Ratio    | _no unit_ (e.g. `ct_ratio = 600/5`)
+| Per-unit | `pu`, `xCT`, `xIn`
+|===
+
+When the unit suffix is the default for the field it may be omitted,
+but is *encouraged* for clarity. The linter warns on unit omissions.
+
+=== Default units per field
+
+[cols="1,1", options="header"]
+|===
+| Field            | Default unit
+
+| `tms`            | _none_
+| `t_delay`        | `s`
+| `t_reset`        | `s`
+| `CTI_min_s`      | `s`
+| Flex curve times | `s`
+| Char-angle       | `deg`
+|===
+
+=== Strings
+
+* Double-quoted only. Any UTF-8 character except `"` and `\`.
+* Escape sequences: `\"`, `\\`, `\n`, `\t`, `\u{XXXXX}` for arbitrary
+  code points.
+
+=== Block and statement syntax
+
+* `{` opens a block; `}` closes one.
+* A statement inside a block is one of:
+** `identifier = value ;` -- a scalar assignment.
+** `identifier { ... }` -- a sub-block.
+** `element <id> { ... }` -- a nested block of an element.
+* Top-level blocks (zero or more, in any order):
+  `meta { ... }`, `system { ... }`, `faults { ... }`,
+  `relay <id> { ... }`, `grade { ... }`, `annotate { ... }`,
+  `notes { ... }`.
+* Multiple `relay`, `grade`, `annotate`, and `notes` blocks are
+  permitted per file.

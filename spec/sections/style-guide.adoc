@@ -1,0 +1,20 @@
+== Style guide / conventions
+
+* One `.tc` file is one *study*. Multiple studies produce a directory
+  (and the multi-file mode is a v0.2 feature).
+* Names match the *device number* where possible: `element 51`,
+  `element 67N`, `element 50`.
+* `R_` prefix for relays is recommended for visual brevity:
+  `R_TRF_INC`, `R_FDR_1`.
+* `Z_` prefix for zones is reserved for v0.2 distance work.
+* Time values are expressed with the unit suffix `(0.30 s, not 0.30)`.
+  The processor accepts both forms but the linter warns on unit-less
+  time values.
+* `meta { study = "OC grading"; }` is mandatory; the study name is
+  used as the default title for the rendered plot and the PDF export.
+* Curves in a study should be *named-by-namespace* (`iec.si`, not
+  `si`). The linter warns on bare names to avoid the
+  IEC-vs-ANSI ambiguity.
+* Grading pairs list the primary first, backup second, on consecutive
+  lines; this matches the
+  IEEE PSRC TG H7 study-report convention.

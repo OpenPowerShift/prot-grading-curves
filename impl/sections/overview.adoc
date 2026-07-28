@@ -1,0 +1,102 @@
+== Overview
+
+The `tc-curves` project ships three artefacts under one repository,
+*all driven by the same library*:
+
+. *Library* (`@openpowershift/time-current-grading-language`,
+  nickname `tc-curves`) -- a TypeScript ESM module that parses a
+  `.tc` source file into an AST, validates it, resolves it against
+  the standard constants table, computes the TCC, and emits SVG,
+  PNG, or PDF (PNG and PDF produced by the library itself via
+  `@resvg/resvg-js` and lazy `jspdf`, *not* via the browser).
+  Published on npm.
+. *Web component* (`<tc-app>`) -- a Lit 3.x element that hosts the
+  CodeMirror 6 editor on one tab and the rendered SVG on the other.
+  The playground is a thin consumer of the library; it does *not*
+  have a separate rasterisation pipeline.
+. *Node CLI* (`tc-curves`) -- runs the parser from a `.tc` source
+  file, prints the margin report to stdout, and writes SVG/PNG/PDF
+  in headless mode using the same library calls as the playground.
+  The CLI's PNG and PDF paths therefore do not require a browser
+  runtime.
+
+The library API is *deliberately flat* so that an Asciidoctor
+extension -- which can be a Ruby or Node wrapper -- can call the
+parser/renderer from a few lines of glue. The intended consumer shape
+is:
+
+[source,ts]
+----
+import { parseAndRender, renderToSvg, renderToPng, renderToPdf } from 'tc-curves';
+const diagram = parseAndRender(source);          // parse + resolve
+const svg     = renderToSvg(diagram, { axis: 'primary' });    // string
+const png     = renderToPng(diagram, { dpi: 300 });           // Buffer
+const pdf     = renderToPdf(diagram, { title: meta.project }); // Buffer
+----
+
+An Asciidoctor extension for an `:include-tcc:` macro becomes a thin
+wrapper around these four lines -- the extension's only logic is
+reading the `:include-tcc:` attribute, calling the library, and
+emitting the buffer to the document's output graph.
+
+The package version 0.1.0 ships:
+
+* a parser that recognises the full language per
+  `spec/spec.adoc`,
+* the IEC 60255-151 Annex A curves, the IEC 60255-3 legacy LTI/STI,
+  the SEL C1..C5 / U1..U5 set (SEL-451 / SEL-751 family),
+  the Siemens SIPROTEC 5 long-curve extensions,
+  the GE UR-series (T60/L60/B30/B90) curves, and the
+  ABB Relion 615 RI / RD types,
+* curve *constants grouped by vendor* (one contiguous block per
+  vendor, no interleaving); only *modern platforms* are referenced
+  -- the GE 745 product line is dropped in favour of the modern
+  UR-series, and similarly for any other discontinued product
+  line,
+* the *device* block for fuses (Ferraz, Bussmann, Mersen built-in),
+  cable-withstand curves (Okonite / ICEA P-32-382 built-in),
+  transformer damage curves (IEEE C57.91.6 reference),
+  recloser curves (Cooper Form 6 built-in), motor-start curves
+  (NEMA MG-1 reference), and breakers,
+* the *named voltage-level* model: `system { voltages { "HV"
+  { kV = 33.0; } "LV" { kV = 11.0; } } }`, with relays and faults
+  referencing the level by name. Cross-voltage grading applies
+  the turns ratio automatically -- no transformer block, no
+  bus wrapper, no per-relay numeric `voltage_kV`.
+* the multi-stage element construct with pointwise-min composite
+  curves and the `view.stages = "individual" | "composite"` toggle,
+* the `current_pct` factor for parallel-line and parallel-transformer
+  current share,
+* the `combine` directive for OR / AND / sum synthetic curves
+  (now also across `device` and `relay:element` sources),
+* the `solve` directive for automatically computing `tms` to hit a
+  declared `margin_s` at a specific fault current,
+* the `view` directive for `--axis` (`primary` / `secondary` /
+  `multiples`) and `--two_axes` (top primary, bottom secondary),
+* the `page` top-level block for layout (`size`, `orientation`,
+  `margins_mm`), theming (`light` / `dark` / `monochrome` / `print`),
+  legend (`show`, `position`, `swatch`), colour palettes
+  (`default`, `pasteur`, `okabe_ito`, `monochrome`, `grayscale`,
+  `ieee`, `high_contrast`), axis / curve / point / annotation
+  colours, leader lines, title, footer with `[meta.*]` and
+  `[page]/[of]` macros, and watermarks,
+* SVG, PNG, and PDF export driven by the library, surfaced via
+  the playground as a download button and via the CLI as
+  `--svg / --png / --pdf` flags,
+* a *hand-rolled* renderer (no `d3-*` runtime dependency;
+  ~340 LOC of `src/renderer/` for log scales, ticks, axes, and
+  curve `<path>` strings),
+* editor ergonomics: CodeMirror 6 highlight *plus* an
+  autocompletion source and a hover-source tooltip, both
+  derived from the same keyword tables as the parser. Snippet
+  expansions (`Tab` on `meta `, `relay `, `element `) insert a
+  comment-tagged skeleton.
+
+== Non-goals for v1
+
+* Distance zones (ANSI 21), voltage-restrained OC (ANSI 51V),
+  differential (ANSI 87), auto-reclosing (ANSI 79). These are
+  scoped for v0.2 once the TCC engine is stable.
+* MathJax (no TeX inside labels; the IEC domain does not need it).
+* Playwright-based server-side rendering. Headless PNG uses
+  `@resvg/resvg-js`; headless PDF uses lazy `jspdf`.

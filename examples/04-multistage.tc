@@ -1,0 +1,53 @@
+# Sample 04 — Multi-stage element (composite IDMT + instantaneous)
+#
+# One element with two stages: an IEC SI inverse-time stage for the
+# slow trip + a definite-time stage for the high-set instantaneous.
+# The renderer draws a separate visible curve per stage (or the
+# pointwise-min composite, whichever `view.stages` is set to).
+
+meta {
+    project = "Multi-stage demo";
+}
+
+system {
+    voltages {
+        "MV" { kV = 11.0; }
+    }
+    frequency_Hz = 50;
+}
+
+faults {
+    "F_bus"   { I_A = 6000 A; }
+    "F_far"   { I_A = 1200 A; }
+}
+
+relay R_TGT {
+    voltage  = "MV";
+    ct_ratio = 600/5;
+
+    element 51 {
+        function = "phase_oc";
+        stages {
+            stage main {
+                curve = iec.si;
+                I_pu  = 400 A;
+                tms   = 0.35;
+            }
+            stage inst {
+                curve   = definite;
+                I_pu    = 4500 A;
+                t_delay = 0.08 s;
+            }
+        }
+    }
+}
+
+page {
+    size  = "A4";
+    theme = "light";
+    title = "Multi-stage element (composite view)";
+}
+
+view {
+    stages = "composite";
+}

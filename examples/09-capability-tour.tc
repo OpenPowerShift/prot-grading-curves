@@ -1,0 +1,153 @@
+# Sample 09 — Capability tour
+#
+# One study that exercises every block in the language, annotated with
+# what each one is for. Not a realistic design — it is a reference you
+# can copy from. For a study that reads like real work, see samples
+# 05 (transformer), 08 (fuse) or 10 (cascade).
+
+# ---- meta: who, what, when. Open-ended; the title block and the
+#      [meta.*] footer macros read these. ------------------------------
+meta {
+    project   = "Capability tour";
+    study     = "Every block, once";
+    engineer  = "A. Cooper";
+    date      = "2026-07-28";
+    revision  = "C";
+    standard  = ["IEC_60255_151"];
+    CTI_min_s = 0.30;
+}
+
+# ---- system: named voltage levels. Turns ratios are derived from
+#      these, so no transformer block is needed. ----------------------
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV incomer"; }
+        "LV" { kV = 11.0; description = "11 kV board"; }
+    }
+    frequency_Hz = 50;
+    base_MVA     = 25.0;
+    grounding    = "low_impedance";
+}
+
+# ---- faults: a single point, or a range with min_A / max_A that the
+#      CTI constraint sweeps across. ---------------------------------
+faults {
+    "F_lv_max" { I_A = 6.40 kA; min_A = 4.0 kA; max_A = 8.0 kA; voltage = "LV"; }
+    "F_lv_min" { I_A = 1.50 kA; voltage = "LV"; }
+    "F_hv_max" { I_A = 18.4 kA; voltage = "HV"; }
+}
+
+# ---- point: a marked (I, t) the curves must respect. ---------------
+point "TX1_inrush" {
+    I_A     = 5250 A;
+    t_s     = 0.10 s;
+    voltage = "HV";
+    label   = "TX1 inrush";
+    shape   = "cross";
+}
+
+# ---- device: a published characteristic. A fuse carries a band. ----
+device "spur_fuse_50T" {
+    kind        = "fuse";
+    maker       = "Mersen";
+    model       = "50T";
+    rating_A    = 50 A;
+    min_melt    = [(100 A, 60 s), (300 A, 0.85 s), (1500 A, 0.022 s)];
+    total_clear = [(100 A, 105 s), (300 A, 1.40 s), (1500 A, 0.038 s)];
+}
+
+relay R_INC {
+    voltage  = "HV";
+    maker    = "ABB";
+    model    = "REF615";
+    ct_ratio = 600/5;
+
+    # Shorthand element form: one curve producer, one implicit stage.
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 720 A;
+        tms      = 0.30;
+        reset    = "instant";
+    }
+}
+
+relay R_FDR {
+    voltage  = "LV";
+    maker    = "Schneider";
+    model    = "MiCOM_P122";
+    ct_ratio = 400/5;
+
+    # Staged element form: a composite of an IDMT low-set and a
+    # definite-time high-set. Drawn as their pointwise minimum.
+    element 51 {
+        function = "phase_oc";
+        stages {
+            stage main { curve = iec.vi;   I_pu = 480 A;  tms = 0.25; }
+            stage inst { curve = definite; I_pu = 3200 A; t_delay = 0.05 s; }
+        }
+    }
+
+    # A user-defined characteristic, when no table entry fits.
+    element 51X {
+        function = "phase_oc";
+        formula  = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
+        I_pu     = 900 A;
+        tms      = 0.20;
+    }
+}
+
+# ---- grade: the coordination claim, checked at the fault and above. -
+grade {
+    primary   = R_FDR:51;
+    backup    = R_INC:51;
+    fault     = "F_lv_max";
+    CTI_min_s = 0.30;
+    upstream  = true;
+}
+
+# ---- annotate: margin form draws the gap between two curves. -------
+annotate {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "F_lv_max";
+    label   = "CTI";
+}
+
+# ---- annotate: point form marks one curve at one current. ----------
+annotate {
+    on_curve = R_INC:51;
+    at_I_A   = 18.4 kA;
+    label    = "HV max fault";
+    style    = "leader";
+}
+
+# ---- view: display directives; none of these change the maths. -----
+view {
+    voltage     = "HV";
+    stages      = "composite";
+    axis        = "primary";
+    current_pad = 0.25;
+}
+
+# ---- page: sheet geometry, decoration, and theme. ------------------
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+
+    title = { text     = "Capability tour";
+              subtitle = "Every block in the language, once"; };
+
+    scale  { tick_density = "normal"; }
+    legend { show = true; title = "Curves"; }
+    axes   { frame = true; }
+    curves { line_width_px = 2; }
+}
+
+# ---- notes: editorial commentary carried with the study. -----------
+notes {
+    purpose = "Reference sheet for the .tc language, not a real design.";
+    source  = "See spec/spec.adoc for the normative definitions.";
+}

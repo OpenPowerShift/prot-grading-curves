@@ -1,0 +1,68 @@
+== Dependencies
+
+Minimal dependency surface, sized for the *publishable library* end
+of the spectrum. The runtime library has a deliberately short
+`dependencies` list; everything else is `devDependencies`. **No
+plotting library** is required -- the renderer is hand-rolled.
+
+=== Runtime (publishable library)
+
+[cols="1,1,2,2", options="header"]
+|===
+| Package             | Version  | Purpose                              | Bundle cost (gz)
+
+| `chevrotain`        | ^13.0.0  | runtime parser                       | 0 (zero transitive)
+| `jspdf`             | ^4.2.1   | runtime PDF output                   | ~150 kB
+| `svg2pdf.js`        | ^2.6.0   | SVG to PDF content                   | ~50 kB
+| `@resvg/resvg-js`   | ^0.6.0   | runtime PNG output (Node native)     | ~5 MB installed
+|===
+
+Total runtime dependency count: **4 packages**, ~200 kB gzipped
+plus ~5 MB native binary for `resvg-js`. The plotting stack
+(D3 family) is *not* included; everything is hand-rolled in
+`src/renderer/`.
+
+These are loaded by the *library*, not just the playground.
+
+*Out of the runtime dependency list intentionally*:
+
+* `d3-scale` / `d3-axis` / `d3-shape` / `d3-selection` / `d3-format`
+  -- the renderer is hand-rolled; saves ~40 kB gz and avoids a
+  transitive dependency.
+* `codemirror` -- editor only (`devDependencies`).
+* `lit` -- playground only (`devDependencies`).
+
+=== Dev dependencies
+
+[cols="1,1,2", options="header"]
+|===
+| Package           | Version   | Purpose
+
+| `lit`             | ^3.2.0    | Playground components
+| `codemirror`      | ^6.0.0    | Editor in playground
+| `@codemirror/state`     | ^6.5.0 |
+| `@codemirror/view`      | ^6.36.0 |
+| `@codemirror/language`  | ^6.11.0 |
+| `@codemirror/commands`  | ^6.8.0 |
+| `@codemirror/autocomplete` | ^6.18.0 | Completion popups in editor
+| `@codemirror/lint`      | ^6.8.0 | Inline parser-error gutter
+| `vite`            | ^6.3.0    | Dev + build
+| `vitest`          | ^3.2.0    | Unit / conformance tests
+| `eslint`          | ^9.0.0    | Lint (typescript-eslint)
+| `typescript`      | ^5.7.0    | Language + build
+| `typescript-eslint` | ^8.62.0 |
+| `@playwright/test` | ^1.52.0 | Visual regression (dev-time only)
+| `@types/node`     | ^26.0.0   |
+| `jsdom`           | ^29.1.0   |
+|===
+
+=== Rejected options
+
+* `d3-*` family -- replaced by hand-rolled `src/renderer/scale.ts`
+  (~340 LOC total). See `stack.adoc` _Plotting_.
+* `paper.js` / `canvg` -- wrong domain.
+* `pdfkit` -- bigger, no SVG story; we use jspdf + svg2pdf.js.
+* `pdf-lib` -- no full SVG-to-PDF round-trip without hand-walking.
+* `MathJax` -- unused in the TCC domain.
+* `mathjs` -- not needed; closed-form and a Newton iteration are
+  sufficient.

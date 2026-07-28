@@ -1,0 +1,422 @@
+/**
+ * Design tokens.
+ *
+ * Both themes define the same token names, so every rule downstream is
+ * written once against the token and never against a literal colour.
+ * The dark set is the default; `data-theme` on the root element,
+ * written by the playground's toggle, overrides in either direction
+ * and must win over the media query, which is only the initial guess.
+ *
+ * Syntax-highlight tokens are here too: the CodeMirror highlight style
+ * refers to them by `var()`, so switching theme re-colours the editor
+ * without rebuilding the editor's extensions.
+ */
+:root,
+:root[data-theme='dark'] {
+  --tc-bg: hsl(220 16% 12%);
+  --tc-bg-elevated: hsl(220 14% 16%);
+  --tc-bg-sunken: hsl(220 18% 8%);
+  --tc-fg: hsl(220 12% 88%);
+  --tc-fg-muted: hsl(220 10% 65%);
+  --tc-accent: hsl(195 80% 60%);
+  --tc-accent-fg: hsl(220 18% 8%);
+  --tc-border: hsl(220 10% 25%);
+  --tc-error: hsl(0 70% 65%);
+  --tc-warning: hsl(40 90% 65%);
+  --tc-ok: hsl(140 70% 60%);
+
+  --tc-syn-comment: hsl(220 10% 52%);
+  --tc-syn-keyword: hsl(280 65% 72%);
+  --tc-syn-property: hsl(195 70% 68%);
+  --tc-syn-string: hsl(95 45% 65%);
+  --tc-syn-number: hsl(30 85% 68%);
+  --tc-syn-unit: hsl(30 45% 58%);
+  --tc-syn-atom: hsl(340 70% 72%);
+  --tc-syn-variable: hsl(220 12% 88%);
+  --tc-syn-operator: hsl(220 10% 60%);
+}
+
+:root[data-theme='light'] {
+  --tc-bg: hsl(220 20% 97%);
+  --tc-bg-elevated: hsl(220 18% 93%);
+  --tc-bg-sunken: hsl(0 0% 100%);
+  --tc-fg: hsl(220 25% 16%);
+  --tc-fg-muted: hsl(220 12% 40%);
+  --tc-accent: hsl(205 85% 40%);
+  --tc-accent-fg: hsl(0 0% 100%);
+  --tc-border: hsl(220 14% 80%);
+  --tc-error: hsl(0 70% 42%);
+  --tc-warning: hsl(35 85% 35%);
+  --tc-ok: hsl(140 60% 30%);
+
+  --tc-syn-comment: hsl(220 10% 48%);
+  --tc-syn-keyword: hsl(280 60% 42%);
+  --tc-syn-property: hsl(205 80% 34%);
+  --tc-syn-string: hsl(120 45% 28%);
+  --tc-syn-number: hsl(25 85% 36%);
+  --tc-syn-unit: hsl(25 50% 42%);
+  --tc-syn-atom: hsl(340 70% 40%);
+  --tc-syn-variable: hsl(220 25% 16%);
+  --tc-syn-operator: hsl(220 10% 45%);
+}
+
+/* Initial guess only, when the user has not chosen explicitly. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --tc-bg: hsl(220 20% 97%);
+    --tc-bg-elevated: hsl(220 18% 93%);
+    --tc-bg-sunken: hsl(0 0% 100%);
+    --tc-fg: hsl(220 25% 16%);
+    --tc-fg-muted: hsl(220 12% 40%);
+    --tc-accent: hsl(205 85% 40%);
+    --tc-accent-fg: hsl(0 0% 100%);
+    --tc-border: hsl(220 14% 80%);
+    --tc-error: hsl(0 70% 42%);
+    --tc-warning: hsl(35 85% 35%);
+    --tc-ok: hsl(140 60% 30%);
+
+    --tc-syn-comment: hsl(220 10% 48%);
+    --tc-syn-keyword: hsl(280 60% 42%);
+    --tc-syn-property: hsl(205 80% 34%);
+    --tc-syn-string: hsl(120 45% 28%);
+    --tc-syn-number: hsl(25 85% 36%);
+    --tc-syn-unit: hsl(25 50% 42%);
+    --tc-syn-atom: hsl(340 70% 40%);
+    --tc-syn-variable: hsl(220 25% 16%);
+    --tc-syn-operator: hsl(220 10% 45%);
+  }
+}
+
+:root {
+  --tc-font: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--tc-bg);
+  color: var(--tc-fg);
+  font-family: var(--tc-font);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body { overflow: hidden; }
+
+/**
+ * Document-level rules for Lit custom elements.
+ *
+ * These components use light-DOM rendering (createRenderRoot() { return this }),
+ * which is required by Lit to render SVG children inline. Lit's `static styles`
+ * only attaches to a Shadow Root, so light-DOM components don't get those :host
+ * rules. Mirror the layout-relevant :host rules here at the document level
+ * so flex sizing actually works.
+ */
+tc-app,
+tc-viewer,
+tc-editor { display: block; }
+
+tc-app {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+tc-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  /* The plot's own background comes from the rendered SVG, which
+   * follows the same theme; this only fills the surround. */
+  background: var(--tc-bg-sunken);
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+tc-editor {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  background: var(--tc-bg-sunken);
+  color: var(--tc-fg);
+}
+
+/* Layout classes inside tc-viewer and tc-app — these live inside light DOM
+ * so their selectors have to be document-level. */
+
+/* Example picker, now hosted in the Source pane header. */
+/*
+ * Example picker. Sized to its content rather than capped: example
+ * names are descriptive ("Transformer inrush + damage") and a narrow
+ * box truncates exactly the part that distinguishes them.
+ */
+tc-app .picker {
+  margin-left: 10px;
+  flex: 0 1 auto;
+  min-width: 22ch;
+  font-family: inherit;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  background: var(--tc-bg-sunken);
+  color: var(--tc-fg);
+  border: 1px solid var(--tc-border);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+tc-app .counts {
+  margin-right: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+
+tc-app .pane {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+}
+/* Source pane default width. The plot needs the room: a log-log TCC
+ * with a legend is far less readable when squeezed, while the source
+ * is mostly short lines. Drag the splitter to change it (persisted),
+ * or double-click it to come back here. */
+:root { --tc-split-left: 20%; }
+
+tc-app .side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+tc-app .side.source { border-right: 1px solid var(--tc-border); }
+tc-app .side.plot   { }
+/* the splitter that sits between Source and Plot */
+tc-app .splitter {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  align-self: stretch;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+tc-app .splitter:hover > .splitter-grip,
+tc-app .pane.resizing .splitter > .splitter-grip {
+  background: var(--tc-accent);
+  width: 2px;
+}
+tc-app .splitter-grip {
+  width: 1px;
+  height: 100%;
+  background: var(--tc-border);
+  pointer-events: none;
+  transition: background 100ms ease-out, width 100ms ease-out;
+}
+tc-app .pane.resizing,
+tc-app .pane.resizing * { cursor: col-resize !important; user-select: none !important; }
+tc-app .pane.resizing .tc-curve { /* freeze curve highlighting during drag */ transition: none; }
+
+tc-app .tabs-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--tc-border);
+}
+tc-app .tabs-group .side-btn { margin-left: 0; }
+
+/* The plot pane no longer carries its own toolbar; the help popover
+ * anchors to the pane instead. */
+tc-viewer .help-popover { top: 8px; }
+
+tc-app .diagnostics {
+  flex: 0 0 auto;
+  max-height: 28%;
+  overflow: auto;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--tc-bg-sunken);
+  border-top: 1px solid var(--tc-border);
+  font-family: var(--tc-font);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+tc-app .diagnostics li {
+  display: grid;
+  grid-template-columns: 14px auto auto 1fr;
+  gap: 0 8px;
+  padding: 2px 10px;
+  align-items: baseline;
+}
+tc-app .diagnostics li.error   { color: var(--tc-error); }
+tc-app .diagnostics li.warning { color: var(--tc-warning); }
+tc-app .diagnostics li + li { border-top: 1px solid color-mix(in srgb, var(--tc-border) 45%, transparent); }
+tc-app .diag-icon { text-align: center; }
+tc-app .diag-where {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  opacity: 0.85;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+tc-app .diag-where:hover { opacity: 1; }
+tc-app .diag-code { opacity: 0.75; }
+tc-app .diag-msg { color: var(--tc-fg); }
+
+tc-app .side-title {
+  flex: 0 0 32px;
+  background: var(--tc-bg-elevated);
+  color: var(--tc-fg-muted);
+  border-bottom: 1px solid var(--tc-border);
+  padding: 4px 10px 2px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+tc-app .side-title-label { flex: 0 0 auto; }
+tc-app .side-title-spacer { flex: 1 1 auto; }
+tc-app .side-btn {
+  flex: 0 0 auto;
+  margin-left: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--tc-bg-sunken);
+  color: var(--tc-fg);
+  border: 1px solid var(--tc-border);
+  border-radius: 3px;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+tc-app .side-btn:hover { background: var(--tc-accent); color: var(--tc-accent-fg); }
+
+/* Highlight the curve the cursor is currently snapped to (set by
+ * tc-viewer.renderSvg(highlightLabel=...) in src/renderer/svg.ts). */
+tc-viewer .tc-curve-snap { stroke-width: 3.2; }
+
+tc-viewer .pane-host svg .tc-curve {
+  transition: stroke-width 100ms ease-out;
+}
+
+/* CodeMirror 6's default sheet sets min-height: 100% on cm-scroller,
+ * cm-gutters, and cm-content. Inside a flex chain that breaks parent
+ * sizing: the .cm-editor grows to fit the natural content height so
+ * the editor scrolls off the bottom. Override to min-height: 0 so
+ * flex 1 1 0 on the cm-editor resolves correctly. */
+.cm-editor, .cm-scroller, .cm-gutters, .cm-content {
+  min-height: 0 !important;
+}
+
+/*
+ * The editor needs a *bounded* height, not just a flexible one.
+ * Without one CodeMirror's viewport never learns it should scroll, so
+ * it stops rendering — and stops drawing gutter line numbers — a
+ * screenful in, which looked like the file ending at line 47.
+ */
+tc-editor .cm-editor { height: 100%; }
+tc-editor .cm-scroller { overflow: auto; }
+
+tc-viewer .toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 4px 10px;
+  flex: 0 0 28px;
+  background: var(--tc-bg-elevated);
+  border-bottom: 1px solid var(--tc-border);
+  font-family: var(--tc-font);
+  font-size: 11px;
+  color: var(--tc-fg);
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+tc-viewer .pane-host {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Middle-drag panning: grabbing cursor and no text selection. */
+tc-viewer .pane-host.panning,
+tc-viewer .pane-host.panning svg { cursor: grabbing; }
+tc-viewer .pane-host.panning * { user-select: none !important; }
+
+/* Default pointer; the crosshair appears only over a curve, set by
+ * tc-viewer as it snaps. */
+tc-viewer svg { width: 100%; height: 100%; display: block; cursor: default; }
+tc-viewer .pane-host.over-curve svg { cursor: crosshair; }
+
+/* Help popover, replacing the inline instruction text in the toolbar. */
+tc-viewer .export-error {
+  color: var(--tc-error);
+  font-size: 11px;
+  margin-left: 8px;
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+tc-viewer button[disabled] { opacity: 0.6; cursor: default; }
+
+tc-viewer .help-btn {
+  margin-left: auto;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+  font-weight: 600;
+}
+tc-viewer .help-popover {
+  position: absolute;
+  top: 34px; right: 10px;
+  z-index: 5;
+  background: var(--tc-bg-elevated);
+  color: var(--tc-fg);
+  border: 1px solid var(--tc-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+  min-width: 260px;
+}
+tc-viewer .help-popover h4 { margin: 0 0 6px; font-size: 12px; }
+tc-viewer .help-popover dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+tc-viewer .help-popover dt { color: var(--tc-accent); white-space: nowrap; }
+tc-viewer .help-popover dd { margin: 0; color: var(--tc-fg-muted); }
+
+h1, h2, h3, h4 { margin: 0.4em 0; font-weight: 600; }
+h1 { font-size: 1.15rem; }
+h2 { font-size: 1rem; }
+h3 { font-size: 0.95rem; }
+h4 { font-size: 0.9rem; color: var(--tc-fg-muted); }
+
+a { color: var(--tc-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }

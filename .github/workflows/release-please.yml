@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Serialise release runs per branch so concurrent pushes can't race the release-PR
+# branch ref (which previously left a release un-tagged). Never cancel in progress —
+# a run may be mid-tag/publish.
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Maintains a "release PR" that rolls up Conventional-Commit changes, bumps the version, and updates
+  # CHANGELOG.md. Merging that PR tags the release (vX.Y.Z) and creates the GitHub Release.
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Uses release-please-config.json + .release-please-manifest.json in the repo root.
+
+  # When a release is cut, build and publish the library to npm via TRUSTED PUBLISHING.
+  # No NPM_TOKEN: npm exchanges the GitHub OIDC id-token (permissions.id-token: write) for a
+  # short-lived credential, and attaches build provenance automatically. Requires a trusted publisher
+  # configured for this package on npmjs.com (repo + this workflow filename) and npm >= 11.5.1.
+  publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC token for npm trusted publishing + provenance
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false  # never use caching in release builds
+      - run: npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
+      - run: npm ci
+      - run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Workflow Ref: $GITHUB_WORKFLOW_REF"
+          # `npm publish` runs `prepublishOnly` (build:lib + README conversion), then publishes with OIDC.
+      - run: npm publish --provenance

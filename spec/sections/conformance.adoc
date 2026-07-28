@@ -1,0 +1,21 @@
+[[conformance]]
+== Conformance
+
+A `tc-curves` implementation is *conformant* with this specification
+when it satisfies the following four numerical criteria.
+
+. It parses every `.tc` example in the `examples/` directory of the
+  processor repository with no warnings other than those explicitly
+  listed per-example.
+. It rejects every example in *Validation* (above) with the
+  indicated *Error* code.
+. It produces the numerical values in *Worked numerical examples*
+  within `+/- 0.005 s`.
+. It produces a TCC whose curves visually match the formula tabulated
+  in *Worked numerical examples* within `+/- 1 px` at the plot's
+  nominal scale (where `1 px = 1 sub-decade tick on either axis at a
+  viewport scale of `1000x700 px`).
+
+Conformance is checked automatically by the test suite shipped with
+the processor (`npm test`); expectations are described in
+`tests/conformance.test.ts`.

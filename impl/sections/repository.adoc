@@ -1,0 +1,68 @@
+== Repository
+
+=== Identity
+
+* Package name: `tc-curves` (in `package.json`'s `name`).
+* Long name on disk: `time-current-grading-language`.
+* npm-published name: `@openpowershift/time-current-grading-language`
+  (mirrors the sibling `logic-diagram-language`). The
+  `tc-curves` short form is the conventional reference name in all
+  user-facing text.
+
+=== Source control
+
+* Local repo on `main`. `git init` ran at the start of the project;
+  no commits yet.
+* License: MIT. Same as sibling.
+* Initial commit is reserved for the moment the spec, plan, and
+  library skeleton are reviewable as a single unit (post-review).
+
+=== `package.json` shape
+
+The intended `package.json` (`type: "module"`, `Node 20+` engines,
+named exports for `.` and `./package.json`, similar to
+`logic-diagram-language/package.json`):
+
+[source,json]
+----
+{
+  "name": "@openpowershift/time-current-grading-language",
+  "version": "0.1.0",
+  "description": "Render protection-relay time-current grading curves from a compact text language (tc-curves) to SVG, PNG, or PDF.",
+  "keywords": [
+    "time-current-curve",
+    "protection-relay",
+    "overcurrent",
+    "coordination",
+    "idmt",
+    "svg"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "main":     "./lib/index.js",
+  "module":   "./lib/index.js",
+  "types":    "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "docs", "spec", "examples", "README.adoc", "LICENSE"],
+  "scripts": {
+    "dev":         "vite",
+    "build":       "tsc && vite build",
+    "build:lib":   "tsc -p tsconfig.lib.json",
+    "test":        "vitest run",
+    "test:watch":  "vitest",
+    "test:visual": "playwright test",
+    "typecheck":   "tsc --noEmit",
+    "lint":        "eslint src/"
+  }
+}
+----
+
+The full `package.json` is generated from this template at the start
+of Phase 4 (see below).

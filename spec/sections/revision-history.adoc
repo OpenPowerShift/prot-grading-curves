@@ -1,0 +1,215 @@
+== Revision history
+
+[cols="1,1,3", options="header"]
+|===
+| Date       | Version | Summary
+
+| 2026-07-26 | 0.1.0-draft | Initial draft; covers IEC 60255-151 Annex A
+                              curves A-F, IEEE C37.112 U1..U5,
+                              manufacturer-specific curves (SEL, GE,
+                              ABB, Schneider, Siemens), grading-pair
+                              margins, log-log TCC, SVG/PNG/PDF
+                              export. Distance zones, voltage-restrained
+                              OC, and auto-reclosing deferred to v0.2.
+
+| 2026-07-26 | 0.1.0-draft | Additions: `current_pct` factor for
+                              parallel-line/transformer current share;
+                              `device` block (fuses, cables,
+                              transformers damage, reclosers, motor
+                              startups, breakers) with built-in
+                              catalog; multi-stage element composite;
+                              `combine` directive for synthetic OR/AND
+                              curves; `solve` directive for
+                              auto-computing `tms` to hit
+                              `margin_s`; cross-voltage grading with
+                              `voltage_kV` + transformer turns ratio.
+
+| 2026-07-26 | 0.1.0-draft | Vendor curves regrouped into contiguous
+                              blocks per vendor. GE Multilin 745 IAC
+                              removed (legacy product line; replaced
+                              by UR-series). Siemens 7SR45 replaced
+                              by SIPROTEC 5 family. ABB REF615
+                              replaced by Relion 615. SEL-451
+                              constants filled in.
+
+| 2026-07-26 | 0.1.0-draft | Worked numerical tables and solver
+                              worked example corrected
+                              after domain-agent review (C1--C7).
+
+| 2026-07-26 | 0.1.0-draft | Added `page` top-level block:
+                              size (A0..A5 / Letter / Legal /
+                              Tabloid, or custom mm), orientation
+                              (portrait / landscape), margins_mm,
+                              scale (auto / manual / tick_density),
+                              legend (show / position / swatch /
+                              colour / title), axes (colour /
+                              grid colour / label colour / size /
+                              frame), curves (palette: default /
+                              pasteur / okabe_ito / monochrome /
+                              grayscale / ieee / high_contrast,
+                              line width), points (colour / shape /
+                              size / outline), leaders (line / arrow
+                              / dot, width, label offset), title /
+                              subtitle / footer with `[meta.*]` /
+                              `[page]` / `[of]` macros, watermark,
+                              themes (light / dark / monochrome /
+                              print). Validation rules added;
+                              CLI flag overrides documented.
+
+| 2026-07-26 | 0.1.0-draft | Voltage-level model simplified: dropped
+                              `system.transformers.transformer`
+                              block; replaced with `system.voltages`
+                              (`"HV" { kV = 33.0; }` etc). Relays
+                              declare `voltage = "<name>"` (a
+                              *named* level, not a numeric kV).
+                              Faults declare their `voltage` and are
+                              referenced from `grade { fault = ... }`
+                              by name. Removed `faults { bus "..."
+                              { ... } }` wrapper. Cross-voltage
+                              grading now applies the ratio
+                              automatically without an explicit
+                              transformer. `relay.location_bus`
+                              replaced by `relay.faults = ["F1", ...]`
+                              list.
+
+| 2026-07-26 | 0.1.0-draft | Final review fixes (pre-build):
+                              * Fixed cable-damage grade direction
+                                bug in examples-extended.adoc
+                                (`primary = relay, backup = damage`).
+                              * Simplified fuse to single `device`
+                                with `min_melt` + `total_clear`
+                                fields; renderer shades band
+                                automatically (no `combine` needed).
+                              * Added `breaker_fail` function keyword.
+                              * Clarified `thermal` (use `flex_points`)
+                                and `neg_seq` (`I2_A`) math.
+                              * Added `comment` / `description` /
+                                `reference` fields to relay, element,
+                                device, grade blocks.
+                              * Added `earth_A`, `I0_A`, `I2_A` to
+                                fault members.
+                              * `min_A` / `max_A` default to `I_A`
+                                when undeclared.
+                              * `fault` optional when only rendering
+                                (no grading check).
+                              * Clarified solver with `I_pu` free
+                                variable; multi-stage solve v1
+                                behaviour.
+                              * Clarified `ct_ratio` / `voltage` /
+                                `I_units` defaults.
+                              * Clarified `annotate` on devices.
+                              * Lexical-structure.adoc cleanup:
+                                removed stale `sub_kind` / fuse
+                                sub-kinds; added `breaker_fail`,
+                                `earth_A`/`I0_A`/`I2_A`, `t_reset`,
+                                `free`, reset keywords, unit
+                                terminals; split `combine`/`view`
+                                reserved lists; trimmed stale meta
+                                keys.
+                              * Grammar: defined `reset-keyword`,
+                                `t_reset-asg`, `fault-id`, unit
+                                terminals, `hex-digit`,
+                                `flex-points-literal`; added
+                                `color` to `annotate` members.
+                              * Validation: fixed inconsistent list
+                                markers; removed duplicate entries;
+                                fuse band exception for device
+                                `flex_points`.
+                              * Solver: fixed `current_pct` formula
+                                and `TMS`->`TMS` typo in
+                                unsatisfiable report.
+                              * Added interactive curve dragging
+                                (v0.2 roadmap) and versioning
+                                roadmap table.
+
+| 2026-07-26 | 0.1.0-draft | Self-consistency pass driven by the
+                              reference implementation. Six places
+                              where the prose contradicted the
+                              normative worked examples were resolved
+                              *in favour of the worked examples*,
+                              which are the conformance vectors:
+
+                              * *Cross-voltage grading*: the
+                                "compose the two ratios" passage
+                                contradicted the algorithm's
+                                `I_at_backup = I_at_primary`. Both
+                                relays are evaluated at the one
+                                physical fault current; only the
+                                fault's placement onto the primary's
+                                level uses a ratio. Rewritten with
+                                the rationale spelled out.
+                              * *Solver `tight`*: said "floor to the
+                                nearest 0.005" while the worked case
+                                requires 0.28859 -> 0.290. All
+                                strategies round *up*; rounding down
+                                would land under the declared target.
+                              * *`G_D` ceiling*: the default of 20
+                                contradicted the operate-time table,
+                                which lists the unclamped value at
+                                `M = 50`. The ceiling is off by
+                                default in v0.1.0, since the
+                                per-element override is a v0.2
+                                feature.
+                              * *Tolerance band*: added an explicit
+                                `quantisation_s` term, without which
+                                any upward snap of `tms` reports an
+                                overshoot and `tolerance_pct = 0`
+                                could never pass.
+                              * *Identifiers*: the rule required a
+                                leading letter while the canonical
+                                example uses `50`, `51`, `67N`,
+                                `51X`. Split into curve / relay /
+                                element-and-stage forms; element ids
+                                are IEEE C37.2 device numbers and may
+                                lead with a digit.
+                              * *Example file*: `curve = ansi.e` is
+                                not a table row -> `ansi.ei`, and its
+                                `tms` raised to a valid ANSI dial
+                                (0.5..15).
+
+                              Also flagged two constants rows for
+                              confirmation against vendor
+                              documentation: `sel.u1` (`k`/`c` appear
+                              transposed relative to SEL's published
+                              CO-2 emulation) and `abb.rd` (form
+                              given without constants).
+
+| 2026-07-28 | 0.1.0-draft | *Correction -- cross-voltage grading.*
+                              The previous revision resolved the
+                              `I_at_backup` contradiction the wrong
+                              way, in favour of the worked examples
+                              rather than the physics. Ampere-turns
+                              balance across a transformer, so its
+                              windings carry currents in inverse
+                              proportion to their voltages; each relay
+                              must be evaluated at the current *it*
+                              measures, against its own pick-up.
+
+                              * _Cross-voltage grading_ rewritten
+                                around `I_at(L) = I_fault * V_fault /
+                                V_L`, applied per relay. The claim
+                                that the backup is evaluated at the
+                                primary's current is withdrawn.
+                              * _Worked grading case_ recomputed. At
+                                `I_f = 6400 A` on LV the 33 kV incomer
+                                measures 2133 A, giving `M = 2.963`
+                                and `t = 1.912 s` (was `M = 8.889`,
+                                `0.940 s`); margin `1.639 s` (was
+                                `0.666 s`). The minimum-fault row is
+                                recomputed likewise.
+                              * _Worked solver case_ recomputed: the
+                                backup measures 1616.7 A, giving
+                                `bracket = 8.584` and
+                                `TMS_b = 0.125` (was `0.290`).
+                              * Margin reports now quote both
+                                currents when a pair spans a
+                                transformer, so the operate times can
+                                be reconciled with the fault.
+
+                              The old numbers understated the backup's
+                              operate time and so reported grading
+                              margins that do not physically exist --
+                              a study would read as graded when it is
+                              not. Implementations must adopt the
+                              corrected values.
+|===

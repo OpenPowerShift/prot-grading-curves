@@ -412,6 +412,20 @@ tc-viewer .help-popover dl { margin: 0; display: grid; grid-template-columns: au
 tc-viewer .help-popover dt { color: var(--tc-accent); white-space: nowrap; }
 tc-viewer .help-popover dd { margin: 0; color: var(--tc-fg-muted); }
 
+/* Route from the plot controls to the full language specification. */
+tc-viewer .help-guide {
+  margin-top: 10px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 8px;
+  color: var(--tc-fg);
+  background: var(--tc-bg-sunken);
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+}
+tc-viewer .help-guide:hover { background: var(--tc-accent); color: var(--tc-accent-fg); }
+
 h1, h2, h3, h4 { margin: 0.4em 0; font-weight: 600; }
 h1 { font-size: 1.15rem; }
 h2 { font-size: 1rem; }

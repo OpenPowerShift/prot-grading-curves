@@ -90,10 +90,13 @@ margins automatically.
 
 [source,ebnf]
 ----
+name-asg        ::= "name" "=" string ";" ;
+
 relay-block     ::= "relay" identifier "{" { relay-member } "}" ;
 relay-member   ::= relay-scalar ";"
                   | element-block ;
-relay-scalar   ::= "maker"      "=" string
+relay-scalar   ::= "name"       "=" string   # display name; id stays the reference
+                  | "maker"      "=" string
                   | "model"      "=" string
                   | "voltage"    "=" voltage-ref
                   | "ct_ratio"   "=" ratio
@@ -144,7 +147,8 @@ the composite and the per-stage individual visible curves. See
 [source,ebnf]
 ----
 element-block   ::= "element" element-id "{" { element-member } "}" ;
-element-member  ::= function-asg
+element-member  ::= name-asg
+                  | function-asg
                   | curve-asg
                   | formula-asg
                   | flex_points-asg
@@ -479,6 +483,7 @@ page-block      ::= "page" "{" { page-member } "}" ;
 page-member     ::= "size"           "=" size-value ";"
                   | "orientation"    "=" orientation-keyword ";"
                   | "margins_mm"     "=" margins-block ";"
+                  | "margins_mm"     "=" number ";"   # all four sides
                   | "scale"          "=" scale-block ";"
                   | "legend"         "=" legend-block ";"
                   | "axes"           "=" axes-block ";"
@@ -488,7 +493,8 @@ page-member     ::= "size"           "=" size-value ";"
                   | "title"          "=" title-block ";"
                   | "footer"         "=" footer-block ";"
                   | "theme"          "=" theme-keyword ";"
-                  | "watermark"      "=" string ";" ;
+                  | "watermark"      "=" string ";"
+                  | "stretch"        "=" boolean ";" ;
 
 size-value      ::= paper-keyword | "{" "width_mm" "=" number ";"
                                             "height_mm" "=" number ";" "}" ;
@@ -513,11 +519,18 @@ tick-density-keyword ::= "sparse" | "normal" | "dense" ;
 
 legend-block    ::= "{" { legend-member } "}" ;
 legend-member   ::= "show"      "=" boolean ";"
+                  | "style"     "=" legend-style ";"
                   | "position"  "=" legend-position ";"
                   | "color"     "=" color-value ";"
                   | "swatch"    "=" legend-swatch-keyword ";"
                   | "title"     "=" string ";" ;
-legend-position ::= "right" | "left" | "top" | "bottom" ;
+legend-style    ::= "column"    # default; a gutter down the right
+                  | "inside"    # the same panel, floated on the plot
+                  | "direct"    # no panel; each curve labelled in place
+                  | "none" ;    # no identification at all
+legend-position ::= "right" | "left" | "top" | "bottom"
+                  | "top_right" | "top_left"
+                  | "bottom_right" | "bottom_left" ;
 legend-swatch-keyword ::= "line" | "box" | "circle" ;
 
 axes-block      ::= "{" { axes-member } "}" ;
@@ -594,6 +607,87 @@ The `theme` keyword sets a coordinated bundle of colours:
 | `monochrome` | white    | black      | black-and-white print, archival
 | `print`      | white    | black      | ICC-aware print (full CMYK separation, ICC profile in PDF)
 |===
+
+==== Names
+
+`relay` and `element` may each carry a `name`: free text, shown
+wherever the drawing identifies that characteristic -- the legend, a
+direct label, the hover readout.
+
+[source,tc]
+----
+relay R_INC {
+    name = "Incomer 11 kV, panel 3";
+    element 51 { name = "Phase OC (main)"; curve = iec.si; I_pu = 600 A; tms = 0.3; }
+}
+----
+
+The `id` remains the reference. `grade`, `annotate`, and `combine`
+resolve `R_INC:51` exactly as before, so renaming something for the
+reader can never break a reference to it. Where both are named the
+parts are joined with a middot (`Incomer 11 kV, panel 3 · Phase OC
+(main)`) rather than a colon, which would read as though it were
+structural. A study that declares no names is unchanged: the label is
+the reference.
+
+==== Filling the sheet
+
+The drawing is sized to the *printable* area -- the paper less
+`margins_mm` -- so a portrait study fills its page rather than being
+letterboxed into it. `margins_mm = 0;` is shorthand for all four
+sides, and makes the sheet edge to edge.
+
+Within that sheet the plot rectangle still gives up a fixed band below
+the axis, sized for the worst case: several fault names stacked into
+rows. `page { stretch = true; }` measures that band instead of
+reserving for it, handing the difference to the plot. The reserve
+never drops below what the names actually need, so a study whose
+faults stack onto four rows keeps its room.
+
+`stretch` affects the vertical only. Width is governed by
+`legend.style` (below) and by `margins_mm`.
+
+==== Legend placement
+
+`legend.style` decides how the curves are identified, and therefore
+how much of the sheet the plot itself gets.
+
+[cols="1,3", options="header"]
+|===
+| Style | Behaviour
+
+| `column`
+| Default. A gutter down the right-hand side carrying the *Curves*,
+  *Points*, and *Faults* sections. Costs roughly 330 px of width.
+
+| `inside`
+| The same panel, floated over a corner of the plot on an opaque card
+  and pinned by `legend.position` (`top_right` by default). The gutter
+  is released to the plot.
+
+| `direct`
+| No panel. Each characteristic is labelled where it runs, in a boxed
+  label with a leader back to the curve. Points and faults keep the
+  labels they already carry on the plot.
+
+| `none`
+| No identification at all. Equivalent to the older `show = false`.
+|===
+
+An explicit `style` wins over `show`, so `show = false; style =
+"direct";` labels the curves directly rather than suppressing them.
+
+[NOTE]
+====
+On a *portrait* sheet the gutter is the difference between a readable
+decade span and a cramped one, so `inside` and `direct` are the
+placements to reach for there. `direct` is also the stronger reading
+on any crowded sheet: the eye never has to leave the curve to match a
+colour against a key. Labels are anchored at the right-hand end of
+each characteristic -- where TCC curves are flattest and furthest
+apart -- and then spread vertically so that none overlap, each keeping
+a leader to its true anchor.
+====
 
 ==== Precedence
 

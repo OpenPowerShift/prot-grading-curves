@@ -119,6 +119,14 @@ npm run typecheck  # tsc --noEmit
 npm run lint       # eslint
 ----
 
+The playground ships the language specification as its own help: the
+*Guide* button opens `spec/spec.adoc`, converted by Asciidoctor at
+build time (`scripts/guide-plugin.js`), with a contents list and a
+filter. Editing any `.adoc` under `spec/` reloads it in `npm run dev`,
+so the reference and the parser can never drift apart. The conversion
+runs in the build, not the browser -- Asciidoctor itself is never
+shipped, only the HTML it produced, in a chunk fetched on first open.
+
 == A taste of the language
 
 [source,tc]

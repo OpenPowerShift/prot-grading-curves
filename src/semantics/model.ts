@@ -95,6 +95,14 @@ export interface Stage {
 
 export interface Element {
   id: string;
+  /** Display name, as for {@link Relay.name}. */
+  name?: string;
+  /**
+   * What the drawing calls this characteristic: the declared names
+   * where given, otherwise `ref`. Legend entries, direct labels, and
+   * the hover readout all use it.
+   */
+  label: string;
   relayId?: string;
   /** Relay make and model, carried down for the legend. */
   maker?: string;
@@ -114,6 +122,13 @@ export interface Element {
 
 export interface Relay {
   id: string;
+  /**
+   * Display name. Free text -- spaces, punctuation, panel references
+   * -- shown wherever the relay is named on the drawing. The `id`
+   * stays the identifier that `grade` and `annotate` resolve against,
+   * so renaming for the reader never breaks a reference.
+   */
+  name?: string;
   maker?: string;
   model?: string;
   voltage?: string;
@@ -422,6 +437,7 @@ function resolveRelay(node: Extract<TopLevel, { type: 'relay' }>, study: Study):
   const voltage = readString(get('voltage'));
   const relay: Relay = {
     id: node.id,
+    name: readString(get('name')),
     maker: readString(get('maker')),
     model: readString(get('model')),
     voltage,
@@ -463,13 +479,21 @@ function resolveElement(
   const stagesValue = member(node, 'stages') as { stages?: StageBlock[] } | undefined;
   const staged = Array.isArray(stagesValue?.stages) && stagesValue.stages.length > 0;
 
+  const elementName = readString(
+    (node.members.find((m) => m.kind === 'scalar' && m.key === 'name') as
+      { value?: unknown } | undefined)?.value,
+  );
+  const ref = relayId ? `${relayId}:${node.id}` : node.id;
+
   const element: Element = {
     id: node.id,
+    name: elementName,
+    label: displayLabel(relay?.name, relayId, elementName, node.id, ref),
     relayId,
     maker: relay?.maker,
     model: relay?.model,
     ct_ratio: ctRatio,
-    ref: relayId ? `${relayId}:${node.id}` : node.id,
+    ref,
     stages: [],
     staged,
     voltage: relay?.voltage,
@@ -610,6 +634,27 @@ function scalarToPrimitive(v: unknown): string | number | boolean {
   }
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
   return String(v);
+}
+
+/**
+ * What to call a characteristic on the drawing.
+ *
+ * With no names declared this is exactly the reference (`R_FDR:51`),
+ * so nothing changes for a study that does not use them. Once either
+ * side is named the parts are joined with a middot instead: a name is
+ * free text, and `Incomer 11 kV, panel 3:Phase OC` reads as though the
+ * colon were structural when it is not.
+ */
+function displayLabel(
+  relayName: string | undefined,
+  relayId: string | undefined,
+  elementName: string | undefined,
+  elementId: string,
+  ref: string,
+): string {
+  if (!relayName && !elementName) return ref;
+  const parts = [relayId ? (relayName ?? relayId) : relayName, elementName ?? elementId];
+  return parts.filter(Boolean).join(' · ');
 }
 
 function readStringList(v: unknown): string[] {

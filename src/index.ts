@@ -18,8 +18,10 @@ import { buildStudy, type Study } from './semantics/model.js';
 import { validate, type Diagnostic } from './semantics/validate.js';
 import { reportGrades, type GradeReport } from './semantics/grades.js';
 import { renderSvg, type RenderOptions } from './renderer/svg.js';
-import type { Document, PageBlock, ParseError } from './parser/ast.js';
-import { resolvePageMm } from './export/export-pdf.js';
+import type { Document, ParseError } from './parser/ast.js';
+import { sheetSize } from './renderer/sheet.js';
+
+export { sheetSize } from './renderer/sheet.js';
 
 export interface ProcessResult {
   document?: Document;
@@ -100,30 +102,4 @@ export function renderStudy(
     height,
     ...options,
   });
-}
-
-/**
- * Canvas size for a study, in pixels, matching its paper aspect.
- *
- * Scaled so the *long* edge is a fixed size, which keeps a portrait
- * and a landscape sheet at comparable detail rather than making
- * portrait output tiny.
- */
-export function sheetSize(page: PageBlock | null): { width: number; height: number } {
-  const LONG_EDGE_PX = 1400;
-  const DEFAULT = { width: 1200, height: 750 };
-  if (!page?.size && !page?.orientation) return DEFAULT;
-
-  const [mmW, mmH] = resolvePageMm({
-    size: typeof page.size === 'string' || (page.size && typeof page.size === 'object')
-      ? page.size
-      : undefined,
-    orientation: page.orientation ?? 'landscape',
-  });
-
-  const scale = LONG_EDGE_PX / Math.max(mmW, mmH);
-  return {
-    width: Math.round(mmW * scale),
-    height: Math.round(mmH * scale),
-  };
 }

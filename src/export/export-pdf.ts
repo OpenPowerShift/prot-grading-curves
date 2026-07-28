@@ -25,6 +25,17 @@ export const PAPER_MM: Record<string, [number, number]> = {
   Tabloid: [279.4, 431.8],
 };
 
+/** Margin applied to each side when the study declares none. */
+export const DEFAULT_PAGE_MARGIN_MM = 10;
+
+/** Per-side page margins, in millimetres. */
+export interface PdfMargins {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
 export interface PdfOptions {
   /** Paper keyword (`"A4"`) or explicit millimetre dimensions. */
   size?: string | { width_mm: number; height_mm: number };
@@ -32,6 +43,15 @@ export interface PdfOptions {
   orientation?: 'portrait' | 'landscape';
   /** Page margin in millimetres, applied on all four sides. */
   margin_mm?: number;
+  /** Per-side margins from `page { margins_mm { ... } }`; wins over `margin_mm`. */
+  margins_mm?: PdfMargins;
+}
+
+/** Resolve the four margins, in `[top, right, bottom, left]` order. */
+export function resolveMarginsMm(options: PdfOptions = {}): [number, number, number, number] {
+  const fallback = options.margin_mm ?? DEFAULT_PAGE_MARGIN_MM;
+  const m = options.margins_mm;
+  return [m?.top ?? fallback, m?.right ?? fallback, m?.bottom ?? fallback, m?.left ?? fallback];
 }
 
 /**
@@ -100,7 +120,7 @@ export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<
   }
 
   const [pageW, pageH] = resolvePageMm(options);
-  const margin = options.margin_mm ?? 10;
+  const [mTop, mRight, mBottom, mLeft] = resolveMarginsMm(options);
 
   /*
    * PDFs are printed and filed, so callers render a *light* plot and
@@ -115,8 +135,8 @@ export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<
   );
   const { width: srcW, height: srcH } = svgDimensions(standalone);
 
-  const availW = Math.max(1, pageW - 2 * margin);
-  const availH = Math.max(1, pageH - 2 * margin);
+  const availW = Math.max(1, pageW - mLeft - mRight);
+  const availH = Math.max(1, pageH - mTop - mBottom);
   const scale = Math.min(availW / srcW, availH / srcH);
   const drawW = srcW * scale;
   const drawH = srcH * scale;
@@ -129,8 +149,10 @@ export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<
 
   try {
     await svg2pdf(await parseSvgElement(standalone), doc, {
-      x: (pageW - drawW) / 2,
-      y: (pageH - drawH) / 2,
+      /* Centred within the margin box, which is only the centre of the
+       * sheet when opposite margins are equal. */
+      x: mLeft + (availW - drawW) / 2,
+      y: mTop + (availH - drawH) / 2,
       width: drawW,
       height: drawH,
     });

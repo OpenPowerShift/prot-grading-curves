@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { guidePlugin } from './scripts/guide-plugin.js';
 
 export default defineConfig({
+  plugins: [guidePlugin()],
   root: '.',
   base: './',
   resolve: {

@@ -28,6 +28,7 @@ import { renderSvg, type RenderOptions } from '../renderer/index.js';
 import type { ThemeName } from '../renderer/theme.js';
 import type { Study } from '../semantics/model.js';
 import { exportPdf } from '../export/export-pdf.js';
+import { sheetSize } from '../renderer/sheet.js';
 
 /*
  * Snap radius. Tight enough that the readout tracks the curve the
@@ -127,6 +128,7 @@ export class TcViewer extends LitElement {
     }
     .diagnostics li.error   { color: var(--tc-error);   }
     .diagnostics li.warning { color: var(--tc-warning); }
+
     svg { width: 100%; height: 100%; display: block; cursor: crosshair; }
     .pane-host {
       flex: 1 1 0;
@@ -490,20 +492,72 @@ export class TcViewer extends LitElement {
     this.currentMax = Math.pow(10, newHi);
   }
 
+  /** Show or hide the controls crib. Driven by the toolbar's `?`. */
+  toggleHelp(): void {
+    this.showHelp = !this.showHelp;
+  }
+
+  /**
+   * Ask the host app to open the language guide.
+   *
+   * Raised as an event rather than owned here: the guide is a modal
+   * over the whole window, not a plot control, so the app places it.
+   */
+  private openGuide(): void {
+    this.showHelp = false;
+    this.dispatchEvent(new CustomEvent('tc-open-guide', { bubbles: true, composed: true }));
+  }
+
   resetZoom(): void {
     this.currentMin = null;
     this.currentMax = null;
   }
 
+  /**
+   * Canvas size for an exported sheet.
+   *
+   * A study that declares a `page` is drawn at *its* proportions, not
+   * the pane's. Exporting at the pane size instead produced a wide,
+   * short drawing that `exportPdf` then letterboxed into the middle of
+   * a portrait page, leaving most of the height empty -- the plot was
+   * the right shape for the screen and the wrong shape for the paper.
+   *
+   * With no page declared the pane size is still right: the export
+   * then matches what is on screen.
+   */
+  private exportSize(): { width: number; height: number } {
+    const page = this.study?.page;
+    if (!page?.size && !page?.orientation) {
+      return { width: this.measuredW, height: this.measuredH };
+    }
+    return sheetSize(page);
+  }
+
   /** Export the current SVG plot as a downloaded .svg file. */
   saveSvg(): void {
-    const svg = this.querySelector('svg') as SVGSVGElement | null;
-    if (!svg) return;
-    // The renderer already emits width/height/viewBox/style and an
-    // embedded <style> block with the curve / grid / axis colors.
-    // Serialise it as-is so the file opens at the same size and color
-    // scheme it had on-screen.
-    const xml = new XMLSerializer().serializeToString(svg);
+    const onScreen = this.querySelector('svg') as SVGSVGElement | null;
+    if (!onScreen) return;
+
+    /*
+     * Re-rendered at the declared sheet size when there is one, for
+     * the same reason as the PDF; otherwise the on-screen SVG is
+     * serialised as-is, keeping its theme and dimensions.
+     */
+    const page = this.study?.page;
+    const sized = page?.size || page?.orientation;
+    const { width, height } = this.exportSize();
+    const xml = sized
+      ? renderSvg(this.document, {
+        page: page ?? null,
+        system: null,
+        faults: null,
+        view: this.currentView(),
+        study: this.study ?? null,
+        theme: this.theme,
+        width,
+        height,
+      })
+      : new XMLSerializer().serializeToString(onScreen);
     const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', xml], {
       type: 'image/svg+xml;charset=utf-8',
     });
@@ -543,6 +597,7 @@ export class TcViewer extends LitElement {
        * recoloured dark capture, and drops the hover overlay, which
        * has no business in an exported document.
        */
+      const { width, height } = this.exportSize();
       const lightSvg = renderSvg(this.document, {
         page: page ?? null,
         system: null,
@@ -550,13 +605,14 @@ export class TcViewer extends LitElement {
         view: this.currentView(),
         study: this.study ?? null,
         theme: 'light',
-        width: this.measuredW,
-        height: this.measuredH,
+        width,
+        height,
       });
 
       const bytes = await exportPdf(lightSvg, {
         size: typeof page?.size === 'string' ? page.size : undefined,
         orientation: page?.orientation ?? 'landscape',
+        margins_mm: page?.margins_mm,
       });
 
       const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
@@ -683,11 +739,14 @@ render() {
         <div class="help-popover" role="dialog" aria-label="Plot controls">
           <h4>Plot controls</h4>
           <dl>
-            <dt>Hover</dt><dd>snap to the nearest curve (${SNAP_RADIUS_PX} px) and read I / t</dd>
+            <dt>Hover</dt><dd>snap to the nearest curve, fault rule, or point (${SNAP_RADIUS_PX} px) and read I / t</dd>
             <dt>Wheel</dt><dd>zoom the current axis about the pointer</dd>
             <dt>Middle-drag</dt><dd>pan the current axis</dd>
             <dt>Reset</dt><dd>return to the view block's bounds</dd>
           </dl>
+          <button class="help-guide"
+                  title="Open the language specification"
+                  @click=${() => this.openGuide()}>Language guide →</button>
         </div>` : ''}
       <div class="pane-host"
            @mousedown=${(e: MouseEvent) => this.handleMouseDown(e)}

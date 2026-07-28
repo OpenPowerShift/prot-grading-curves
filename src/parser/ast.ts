@@ -77,6 +77,7 @@ export interface RelayElementMember {
 }
 
 export type RelayScalarKey =
+  | 'name'
   | 'maker' | 'model' | 'voltage' | 'ct_ratio' | 'direction'
   | 'faults' | 'comment' | 'description' | 'reference';
 
@@ -279,9 +280,24 @@ export interface PageScale extends BaseNode {
   tick_density?: 'sparse' | 'normal' | 'dense';
 }
 
+/** Where the legend lives, and whether there is one at all. */
+export type LegendStyle = 'column' | 'inside' | 'direct' | 'none';
+
+/** Corner an inside legend panel is pinned to. */
+export type LegendCorner = 'top_right' | 'top_left' | 'bottom_right' | 'bottom_left';
+
 export interface PageLegend extends BaseNode {
   show?: boolean;
-  position?: 'right' | 'left' | 'top' | 'bottom';
+  /**
+   * `column` (default) reserves a gutter down the right-hand side.
+   * `inside` floats the same panel over a corner of the plot, giving
+   * the curves the full width of the sheet -- which is what a
+   * portrait study wants, having little width to spare. `direct`
+   * drops the panel and labels each characteristic in place, with a
+   * leader to the curve. `none` draws no identification at all.
+   */
+  style?: LegendStyle;
+  position?: 'right' | 'left' | 'top' | 'bottom' | LegendCorner;
   color?: string;
   swatch?: 'line' | 'box' | 'circle';
   title?: string;
@@ -373,6 +389,12 @@ export interface PageBlock extends BaseNode {
   footer?: PageFooter;
   theme?: 'light' | 'dark' | 'monochrome' | 'print';
   watermark?: string;
+  /**
+   * Let the plot take every pixel the furniture below it does not
+   * need, instead of a fixed reserve sized for the worst case. Most
+   * useful on a portrait sheet, where the unused band is tall.
+   */
+  stretch?: boolean;
   /**
    * Draw a drawing-office style frame around the sheet, with a title
    * block carrying the title, subtitle, and `meta` fields. Intended

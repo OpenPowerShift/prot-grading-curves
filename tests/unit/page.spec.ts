@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseAndRender } from '@tc/index';
+import { parseAndRender, sheetSize } from '@tc/index';
 
 const BASE = `
 meta { project = "Page options"; engineer = "A. Cooper"; }
@@ -90,13 +90,94 @@ describe('sheet aspect ratio', () => {
 
     expect(lw).toBeGreaterThan(lh);
     expect(ph).toBeGreaterThan(pw);
-    /* A4 is 1:sqrt(2) either way round. */
-    expect(lw / lh).toBeCloseTo(Math.SQRT2, 1);
-    expect(ph / pw).toBeCloseTo(Math.SQRT2, 1);
+
+    /*
+     * The aspect that has to match is the *printable* area, not the
+     * sheet: `exportPdf` fits the plot inside the margins, so matching
+     * 210:297 would leave the sheet short of its top and bottom
+     * margins. A4 less the default 10 mm on each side is 190 x 277.
+     */
+    expect(lw / lh).toBeCloseTo(277 / 190, 2);
+    expect(ph / pw).toBeCloseTo(277 / 190, 2);
+  });
+
+  it('reads a scalar margin as all four sides', () => {
+    const src = BASE + 'page { size = "A4"; orientation = "portrait"; margins_mm = 0; }';
+    const { svg, result } = parseAndRender(src, { theme: 'light' });
+
+    expect(result.parseErrors.filter((e) => e.severity === 'error')).toHaveLength(0);
+
+    /* Zero margins means the drawing matches the whole sheet, 210:297. */
+    const [, w, h] = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)!;
+    expect(Number(h) / Number(w)).toBeCloseTo(297 / 210, 2);
+  });
+
+  it('honours declared margins when sizing the sheet', () => {
+    const wide = sheetSize({
+      type: 'page', size: 'A4', orientation: 'portrait',
+      margins_mm: { top: 40, bottom: 40, left: 10, right: 10 },
+      loc: { line: 1, column: 1, offset: 0 },
+    } as never);
+
+    /* 190 x 217 once 40 mm is taken off each of top and bottom. */
+    expect(wide.height / wide.width).toBeCloseTo(217 / 190, 2);
   });
 
   it('leaves the default canvas alone when no page is declared', () => {
     const { svg } = parseAndRender(BASE, { theme: 'light' });
     expect(svg).toContain('viewBox="0 0 1200 750"');
+  });
+});
+
+describe('page { stretch }', () => {
+  const study = (page: string): string =>
+    parseAndRender(BASE + `page { ${page} }`, { theme: 'light' }).svg;
+
+  /** The plot rectangle the renderer embeds for the viewer. */
+  const plotRect = (svg: string): { x: number; y: number; w: number; h: number } => {
+    const [x, y, w, h] = svg.match(/data-plot="([^"]+)"/)![1].split(',').map(Number);
+    return { x, y, w, h };
+  };
+
+  it('gives the plot the band the furniture does not need', () => {
+    const plain = plotRect(study('size = "A4"; orientation = "portrait";'));
+    const tall = plotRect(study('size = "A4"; orientation = "portrait"; stretch = true;'));
+
+    expect(tall.h).toBeGreaterThan(plain.h);
+    /* Only the vertical is affected. */
+    expect(tall.w).toBe(plain.w);
+    expect(tall.y).toBe(plain.y);
+  });
+
+  it('still reserves room for the fault names it has to draw', () => {
+    /*
+     * Two faults far enough apart to pack onto one row, versus several
+     * at similar currents that must stack. The stacked case has to end
+     * up with the shorter plot, or the names collide with the axis
+     * title.
+     */
+    const oneRow = `
+      faults { "A" { I_A = 200 A; voltage = hv; } "B" { I_A = 9 kA; voltage = hv; } }
+      page { size = "A4"; orientation = "portrait"; stretch = true; }
+    `;
+    const manyRows = `
+      faults {
+        "F_alpha_one" { I_A = 3000 A; voltage = hv; }
+        "F_alpha_two" { I_A = 3100 A; voltage = hv; }
+        "F_alpha_three" { I_A = 3200 A; voltage = hv; }
+        "F_alpha_four" { I_A = 3300 A; voltage = hv; }
+      }
+      page { size = "A4"; orientation = "portrait"; stretch = true; }
+    `;
+
+    const a = plotRect(parseAndRender(BASE + oneRow, { theme: 'light' }).svg);
+    const b = plotRect(parseAndRender(BASE + manyRows, { theme: 'light' }).svg);
+    expect(b.h).toBeLessThan(a.h);
+  });
+
+  it('leaves the default layout alone', () => {
+    const off = plotRect(study('size = "A4"; orientation = "portrait"; stretch = false;'));
+    const absent = plotRect(study('size = "A4"; orientation = "portrait";'));
+    expect(off.h).toBe(absent.h);
   });
 });

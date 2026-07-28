@@ -26,7 +26,10 @@
 import type {
   Document,
   FaultsBlock,
+  LegendCorner,
+  LegendStyle,
   PageBlock,
+  PageLegend,
   SystemBlock,
   ViewBlock,
 } from '../parser/ast.js';
@@ -423,14 +426,68 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * identity line ("Schneider MiCOM_P122") without wrapping, and the
    * top margin to clear a title set at FONT_TITLE.
    */
+  /*
+   * How the curves are identified, which decides whether a gutter is
+   * reserved at all.
+   *
+   * Only `column` costs width. The other modes give that 330 px back
+   * to the plot, leaving just enough room for the last tick label --
+   * and for the right-hand scale, when the axes are mirrored.
+   */
+  const mirrorAxes = pageAxes?.mirror === true;
+  const legendMode = resolveLegendMode(opts.page?.legend);
+
+  const pageTitle = opts.page?.title;
+  const titleText = typeof pageTitle === 'string' ? pageTitle : pageTitle?.text;
+  const subtitleText = typeof pageTitle === 'string' ? undefined : pageTitle?.subtitle;
+
   const leftMargin = 92 + sheetInset;
-  const rightMargin = 330 + sheetInset;
-  const topMargin = (opts.page?.title ? 52 : 32) + sheetInset;
-  const bottomMargin = 140 + sheetInset + titleBlockH;
+  const rightMargin = (legendMode === 'column' ? 330 : (mirrorAxes ? 104 : 58)) + sheetInset;
+
+  /*
+   * Top margin: enough for the heading, plus clearance for whatever
+   * sits at the top of the plot.
+   *
+   * Mirrored axes print a second current scale *above* the frame, at
+   * `topMargin - 8` -- which is exactly where the subtitle's baseline
+   * falls, so the two overprinted. The scale needs its own band. A
+   * wrapped title or subtitle needs its extra lines counted too, or it
+   * grows down into the same place.
+   */
+  const headingExtra = titleText
+    ? labelExtraHeightPx(titleText, FONT_TITLE)
+      + (subtitleText ? labelExtraHeightPx(subtitleText, FONT_SUBTITLE) : 0)
+    : 0;
+  const topMargin =
+    (opts.page?.title ? 52 : 32) + (mirrorAxes ? 22 : 0) + headingExtra + sheetInset;
   const plotW = W - leftMargin - rightMargin;
+
+  /*
+   * The current scale is fixed by the horizontal margins alone, so it
+   * can be built before the vertical ones are settled -- which is what
+   * lets the fault labels be packed into rows *first*, and the band
+   * below the axis then be sized to the rows it actually needs.
+   */
+  const xScale = new LogScale(I_min, I_max, leftMargin, leftMargin + plotW);
+
+  /*
+   * `page { stretch = true; }` gives the plot every pixel the
+   * furniture below it does not need.
+   *
+   * The default reserve is a fixed 140 px, sized for the worst case:
+   * several fault names stacked into rows. A study with one row of
+   * labels leaves most of that unused, which on a tall portrait sheet
+   * is a visible band of nothing between the axis title and the plot.
+   * Stretching measures the band instead of reserving for it.
+   */
+  const stretch = opts.page?.stretch === true;
+  const faultLayout = packFaultLabels(faults, xScale, I_min, I_max, opts.page?.faults?.labels !== false);
+  const faultRows = faultLayout.reduce((n, f) => Math.max(n, f.row + 1), 0);
+
+  const faultBandH = faultRows > 0 ? 44 + (faultRows - 1) * (LINE_DETAIL - 1) + 6 : 26;
+  const bottomMargin = (stretch ? faultBandH + 34 : 140) + sheetInset + titleBlockH;
   const plotH = H - topMargin - bottomMargin;
 
-  const xScale = new LogScale(I_min, I_max, leftMargin, leftMargin + plotW);
   const yScale = new LogScale(t_min, t_max, topMargin + plotH, topMargin);
 
   /* Curves -- driven entirely by the resolved study model. */
@@ -716,7 +773,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         );
         if (!pathD) continue;
         curves.push({
-          label: `${element.ref}/${stage.id}`,
+          label: `${element.label}/${stage.id}`,
           color,
           pathD,
           pickupPx: stage.I_pu_A != null ? xScale.toPx(project(stage.I_pu_A, V_source)) : NaN,
@@ -735,7 +792,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const pathD = trace(V_source, (I) => tTripElement(element, I), breakpointsOf(element));
     if (!pathD) continue;
     curves.push({
-      label: element.ref,
+      label: element.label,
       color,
       pathD,
       pickupPx: pickupPxOf(element),
@@ -858,10 +915,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   );
 
   /* Sheet frame and title block. */
-  const pageTitle = opts.page?.title;
-  const titleText = typeof pageTitle === 'string' ? pageTitle : pageTitle?.text;
-  const subtitleText = typeof pageTitle === 'string' ? undefined : pageTitle?.subtitle;
-
   if (bordered) {
     const fx = sheetInset / 2;
     const fy = sheetInset / 2;
@@ -879,14 +932,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     );
 
     const padX = 14;
+    const tbTitle = titleText ?? 'Time-current grading study';
     out.push(
       `<text x="${fx + padX}" y="${tbY + 22}" font-size="${FONT_LABEL}" font-weight="600" ` +
-      `fill="${th.foreground}">${escapeXml(titleText ?? 'Time-current grading study')}</text>`,
+      `fill="${th.foreground}">${labelBody(tbTitle, fx + padX, FONT_LABEL, 'first')}</text>`,
     );
     if (subtitleText) {
+      /* Pushed clear of however many lines the title took. */
+      const subY = tbY + 40 + labelExtraHeightPx(tbTitle, FONT_LABEL);
       out.push(
-        `<text x="${fx + padX}" y="${tbY + 40}" font-size="${FONT_SUBTITLE}" ` +
-        `fill="${th.label}" opacity="0.85">${escapeXml(subtitleText)}</text>`,
+        `<text x="${fx + padX}" y="${subY}" font-size="${FONT_SUBTITLE}" ` +
+        `fill="${th.label}" opacity="0.85">` +
+        `${labelBody(subtitleText, fx + padX, FONT_SUBTITLE, 'first')}</text>`,
       );
     }
 
@@ -920,12 +977,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   } else if (titleText) {
     out.push(
       `<text x="${leftMargin}" y="26" font-size="${FONT_TITLE}" font-weight="600" ` +
-      `fill="${th.foreground}">${escapeXml(titleText)}</text>`,
+      `fill="${th.foreground}">${labelBody(titleText, leftMargin, FONT_TITLE, 'first')}</text>`,
     );
     if (subtitleText) {
+      const subY = 44 + labelExtraHeightPx(titleText, FONT_TITLE);
       out.push(
-        `<text x="${leftMargin}" y="44" font-size="${FONT_SUBTITLE}" ` +
-        `fill="${th.label}" opacity="0.85">${escapeXml(subtitleText)}</text>`,
+        `<text x="${leftMargin}" y="${subY}" font-size="${FONT_SUBTITLE}" ` +
+        `fill="${th.label}" opacity="0.85">` +
+        `${labelBody(subtitleText, leftMargin, FONT_SUBTITLE, 'first')}</text>`,
       );
     }
   }
@@ -939,12 +998,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   );
 
   /* ticks */
-  /*
-   * Mirrored scales push the legend right, so the gutter has to grow
-   * with them or the labels collide with the legend column.
-   */
-  const mirrorAxes = pageAxes?.mirror === true;
-
   /* `page { scale { tick_density } }`: sparse | normal | dense. */
   const tickDensity = opts.page?.scale?.tick_density ?? 'normal';
   const xTicks = ticks(I_min, I_max, tickDensity);
@@ -1101,6 +1154,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   }
 
   /*
+   * Direct labels, drawn here rather than with the legend so that the
+   * marked points and margin annotations that follow paint *over*
+   * them. A boxed name covering a CTI figure hides the study's
+   * conclusion; the reverse costs only part of a name that is still
+   * traceable by colour.
+   */
+  if (legendMode === 'direct') {
+    out.push(...directLabels(curves, {
+      leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground,
+    }));
+  }
+
+  /*
    * Marked points -- transformer inrush, motor starting, damage
    * points. Drawn inside the clip with the curves, since a point that
    * has been zoomed off the chart should disappear like everything
@@ -1116,7 +1182,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     const colour = point.color ?? th.fault;
     out.push(
-      `<g class="tc-point" data-point="${escapeXml(point.label ?? point.id)}" ` +
+      `<g class="tc-point" data-point="${escapeXml(oneLine(point.label ?? point.id))}" ` +
       `data-current="${I_view}" data-time="${point.t_s}" ` +
       `data-px="${px.toFixed(1)}" data-py="${py.toFixed(1)}">`,
     );
@@ -1246,29 +1312,40 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * Leader up and away from the curve, flipping to the left when a
        * right-hand label would run past the plot and under the legend.
        */
-      const labelWidth = text.length * FONT_DETAIL * CHAR_ADVANCE;
+      const labelWidth = labelWidthPx(text, FONT_DETAIL);
       const wantRight = px + 26 + 12 + 16 + labelWidth < leftMargin + plotW;
       const dir = wantRight ? 1 : -1;
 
       const lx = px + dir * 26;
-      const ly = py - 22;
+      /*
+       * A leader points *away* from its curve, so extra lines have to
+       * grow upwards; anchoring the block's middle would push the
+       * lower line back down onto the point being annotated.
+       */
+      const ly = py - 22 - labelExtraHeightPx(text, FONT_DETAIL);
       const elbow = lx + dir * 12;
       out.push(
         `<path d="M${px.toFixed(1)} ${py.toFixed(1)} L${lx.toFixed(1)} ${ly.toFixed(1)} ` +
         `L${elbow.toFixed(1)} ${ly.toFixed(1)}" fill="none" stroke="${colour}" stroke-width="1"/>`,
       );
+      const tx = elbow + dir * 4;
       out.push(
-        `<text x="${(elbow + dir * 4).toFixed(1)}" y="${(ly + 4).toFixed(1)}" ` +
+        `<text x="${tx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" ` +
         `text-anchor="${wantRight ? 'start' : 'end'}" ` +
-        `font-size="${FONT_DETAIL}" fill="${colour}">${escapeXml(text)}</text>`,
+        `font-size="${FONT_DETAIL}" fill="${colour}">` +
+        `${labelBody(text, tx, FONT_DETAIL, 'first')}</text>`,
       );
     } else if (annotation.style === 'tag') {
-      const labelWidth = text.length * FONT_DETAIL * CHAR_ADVANCE;
+      const labelWidth = labelWidthPx(text, FONT_DETAIL);
       const fitsRight = px + 6 + labelWidth < leftMargin + plotW;
+      const tx = px + (fitsRight ? 6 : -6);
+      /* Tags sit above their point, so they too grow upwards. */
+      const ty = py - 6 - labelExtraHeightPx(text, FONT_DETAIL);
       out.push(
-        `<text x="${(px + (fitsRight ? 6 : -6)).toFixed(1)}" y="${(py - 6).toFixed(1)}" ` +
+        `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" ` +
         `text-anchor="${fitsRight ? 'start' : 'end'}" ` +
-        `font-size="${FONT_DETAIL}" fill="${colour}">${escapeXml(text)}</text>`,
+        `font-size="${FONT_DETAIL}" fill="${colour}">` +
+        `${labelBody(text, tx, FONT_DETAIL, 'first')}</text>`,
       );
     }
   }
@@ -1284,25 +1361,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * produces an unreadable pile of overlapping text.
    */
   const faultBandY = topMargin + plotH + 44;
-  const placed: Array<{ right: number; row: number }> = [];
 
-  const visibleFaults = faults
-    .map((f, i) => ({ f, i, I: f.I_view ?? f.I_A }))
-    .filter(({ I }) => inDomain(I))
-    .sort((a, b) => a.I - b.I);
-
-  const showFaultLabels = faultStyle?.labels !== false;
-
-  for (const { f, i, I } of showFaultLabels ? visibleFaults : []) {
-    const px = xScale.toPx(I);
-    if (!Number.isFinite(px)) continue;
-
-    /* First row whose last label ends before this one starts. */
-    const width = f.name.length * FONT_DETAIL * CHAR_ADVANCE + 10;
-    let row = 0;
-    while (placed.some((p) => p.row === row && p.right > px)) row++;
-    placed.push({ right: px + width, row });
-
+  /* Rows were packed before the vertical margins were settled, so the
+   * band below the axis could be sized to them. */
+  for (const { f, i, px, row } of faultLayout) {
     const labelY = faultBandY + row * (LINE_DETAIL - 1);
     const dash = faultDash(i);
     out.push(
@@ -1324,122 +1386,174 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * cursor: a heading, then per-entry blocks of a title line plus
    * detail lines, with a gap between entries. Detail lines are wrapped
    * to the column width so a long relay model cannot run off the page.
+   *
+   * Built by a function of its origin so the same panel can be drawn
+   * down the right-hand gutter or floated over a corner of the plot;
+   * an inside panel has to be measured before it can be placed against
+   * a bottom corner, which a single pass over a moving cursor could
+   * not do.
    */
-  const legX = leftMargin + plotW + LEGEND_GUTTER + (mirrorAxes ? 46 : 0);
-  const legendWidth = rightMargin - LEGEND_GUTTER - 12 - (mirrorAxes ? 46 : 0);
-  const swatchW = 26;
-  const textX = legX + swatchW + 10;
-  const textWidth = legendWidth - swatchW - 10;
-
-  /* `page { legend { show = false; } }` drops the whole column. */
-  const showLegend = opts.page?.legend?.show !== false;
   const legendTitle = opts.page?.legend?.title ?? 'Curves';
   const legendInk = opts.page?.legend?.color ?? th.foreground;
+  const swatchW = 26;
 
-  let cursorY = topMargin + FONT_HEADING;
-  if (showLegend) {
-    out.push(
-      `<text x="${legX}" y="${cursorY}" font-size="${FONT_HEADING}" font-weight="600" class="tc-legend" fill="${legendInk}">${escapeXml(legendTitle)}</text>`,
-    );
-  }
-  cursorY += LINE_HEADING;
+  const buildLegend = (
+    originX: number,
+    originY: number,
+    width: number,
+    /** Column mode drops the faults to the foot of the plot. */
+    anchorFaultsToPlotBottom: boolean,
+  ): { lines: string[]; height: number } => {
+    const lines: string[] = [];
+    const textX = originX + swatchW + 10;
+    const textWidth = width - swatchW - 10;
 
-  for (const c of showLegend ? curves : []) {
-    const swatchY = cursorY - FONT_LABEL / 3;
-    if (c.band) {
-      /* A band's swatch is a hatched block, matching the plot. */
-      const bh = 9;
-      const clipId = `tc-swatch-${cursorY.toFixed(0)}`;
-      out.push(
-        `<defs><clipPath id="${clipId}">` +
-        `<rect x="${legX}" y="${(swatchY - bh / 2).toFixed(1)}" width="${swatchW}" height="${bh}"/>` +
-        `</clipPath></defs>`,
-      );
-      out.push(
-        `<rect x="${legX}" y="${(swatchY - bh / 2).toFixed(1)}" width="${swatchW}" height="${bh}" ` +
-        `fill="${c.color}" fill-opacity="0.10" stroke="${c.color}" stroke-width="1"/>`,
-      );
-      out.push(hatchLines(clipId, legX, swatchY - bh / 2, legX + swatchW, swatchY + bh / 2, c.color, 5));
-    } else {
-      out.push(
-        `<line x1="${legX}" y1="${swatchY}" x2="${legX + swatchW}" y2="${swatchY}" ` +
-        `stroke="${c.color}" stroke-width="2.5"` +
-        `${(c.dashArray ?? (c.dashed ? '6 4' : '')) ? ` stroke-dasharray="${c.dashArray ?? '6 4'}"` : ''}` +
-        ` stroke-linecap="round"/>`,
-      );
-    }
-    out.push(
-      `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_LABEL}" font-weight="600">` +
-      `${escapeXml(c.label)}</text>`,
-    );
-    cursorY += LINE_LABEL;
-
-    for (const line of c.detailLines) {
-      for (const wrapped of wrapText(line, textWidth, FONT_DETAIL)) {
-        out.push(
-          `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" font-size="${FONT_DETAIL}">` +
-          `${escapeXml(wrapped)}</text>`,
-        );
-        cursorY += LINE_DETAIL;
-      }
-    }
-    cursorY += LEGEND_ENTRY_GAP;
-  }
-
-  /*
-   * Points section: marked coordinates are part of the study's
-   * argument, so they belong in the legend with their values rather
-   * than only as a glyph on the plot.
-   */
-  if (showLegend && study.points.length > 0) {
-    out.push(
-      `<text x="${legX}" y="${cursorY}" font-size="${FONT_HEADING}" font-weight="600" fill="${legendInk}">Points</text>`,
+    let cursorY = originY + FONT_HEADING;
+    lines.push(
+      `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" font-weight="600" class="tc-legend" fill="${legendInk}">${escapeXml(legendTitle)}</text>`,
     );
     cursorY += LINE_HEADING;
 
-    for (const point of study.points) {
-      const colour = point.color ?? th.fault;
+    for (const c of curves) {
       const swatchY = cursorY - FONT_LABEL / 3;
-      out.push(pointMarker(point.shape ?? 'cross', legX + swatchW / 2, swatchY, colour));
-      out.push(
-        `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${legendInk}" ` +
-        `font-size="${FONT_LABEL}">${escapeXml(point.label ?? point.id)}</text>`,
-      );
-      cursorY += LINE_LABEL;
-      out.push(
-        `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
-        `font-size="${FONT_DETAIL}">${escapeXml(coordText(project(point.I_A, point.voltage_kV), point.t_s))}</text>`,
-      );
-      cursorY += LINE_DETAIL + LEGEND_ENTRY_GAP;
-    }
-  }
+      if (c.band) {
+        /* A band's swatch is a hatched block, matching the plot. */
+        const bh = 9;
+        const clipId = `tc-swatch-${originX.toFixed(0)}-${cursorY.toFixed(0)}`;
+        lines.push(
+          `<defs><clipPath id="${clipId}">` +
+          `<rect x="${originX}" y="${(swatchY - bh / 2).toFixed(1)}" width="${swatchW}" height="${bh}"/>` +
+          `</clipPath></defs>`,
+        );
+        lines.push(
+          `<rect x="${originX}" y="${(swatchY - bh / 2).toFixed(1)}" width="${swatchW}" height="${bh}" ` +
+          `fill="${c.color}" fill-opacity="0.10" stroke="${c.color}" stroke-width="1"/>`,
+        );
+        lines.push(hatchLines(clipId, originX, swatchY - bh / 2, originX + swatchW, swatchY + bh / 2, c.color, 5));
+      } else {
+        lines.push(
+          `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
+          `stroke="${c.color}" stroke-width="2.5"` +
+          `${(c.dashArray ?? (c.dashed ? '6 4' : '')) ? ` stroke-dasharray="${c.dashArray ?? '6 4'}"` : ''}` +
+          ` stroke-linecap="round"/>`,
+        );
+      }
+      /* Wrapped like the detail lines beneath it: a declared `name`
+       * is free text and routinely outruns the column. */
+      for (const wrapped of wrapText(c.label, textWidth, FONT_LABEL)) {
+        lines.push(
+          `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_LABEL}" font-weight="600">` +
+          `${escapeXml(wrapped)}</text>`,
+        );
+        cursorY += LINE_LABEL;
+      }
 
-  /* Faults legend, anchored to the bottom of the plot area. */
-  if (faults.length > 0 && showLegend) {
-    const faultLines = faults.length;
-    let faultsY = topMargin + plotH - (faultLines * LINE_LABEL) - LINE_HEADING + FONT_HEADING;
-    faultsY = Math.max(faultsY, cursorY + 12);
+      for (const line of c.detailLines) {
+        for (const wrapped of wrapText(line, textWidth, FONT_DETAIL)) {
+          lines.push(
+            `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" font-size="${FONT_DETAIL}">` +
+            `${escapeXml(wrapped)}</text>`,
+          );
+          cursorY += LINE_DETAIL;
+        }
+      }
+      cursorY += LEGEND_ENTRY_GAP;
+    }
+
+    /*
+     * Points section: marked coordinates are part of the study's
+     * argument, so they belong in the legend with their values rather
+     * than only as a glyph on the plot.
+     */
+    if (study.points.length > 0) {
+      lines.push(
+        `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" font-weight="600" fill="${legendInk}">Points</text>`,
+      );
+      cursorY += LINE_HEADING;
+
+      for (const point of study.points) {
+        const colour = point.color ?? th.fault;
+        const swatchY = cursorY - FONT_LABEL / 3;
+        lines.push(pointMarker(point.shape ?? 'cross', originX + swatchW / 2, swatchY, colour));
+        const name = point.label ?? point.id;
+        lines.push(
+          `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${legendInk}" ` +
+          `font-size="${FONT_LABEL}">${labelBody(name, textX, FONT_LABEL, 'first')}</text>`,
+        );
+        /* The legend is laid out top-down, so a wrapped name has to move
+         * the cursor by its full height or the coordinate under it lands
+         * on top of the second line. */
+        cursorY += LINE_LABEL + labelExtraHeightPx(name, FONT_LABEL);
+        lines.push(
+          `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+          `font-size="${FONT_DETAIL}">${escapeXml(coordText(project(point.I_A, point.voltage_kV), point.t_s))}</text>`,
+        );
+        cursorY += LINE_DETAIL + LEGEND_ENTRY_GAP;
+      }
+    }
+
+    /* Faults. */
+    if (faults.length > 0) {
+      let faultsY = cursorY + FONT_HEADING;
+      if (anchorFaultsToPlotBottom) {
+        const wanted = topMargin + plotH - (faults.length * LINE_LABEL) - LINE_HEADING + FONT_HEADING;
+        faultsY = Math.max(wanted, cursorY + 12);
+      }
+
+      lines.push(
+        `<text x="${originX}" y="${faultsY}" font-size="${FONT_HEADING}" font-weight="600" fill="${faultColour}">Faults</text>`,
+      );
+      faultsY += LINE_HEADING;
+
+      for (const [i, f] of faults.entries()) {
+        const swatchY = faultsY - FONT_LABEL / 3;
+        const dash = faultDash(i);
+        lines.push(
+          `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
+          `stroke="${faultColour}" stroke-width="${Math.max(faultWidth, 1.5)}"` +
+          `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
+        );
+        const where = f.voltageLabel ? ` · ${f.voltageLabel}` : '';
+        lines.push(
+          `<text x="${textX}" y="${faultsY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_DETAIL}">` +
+          `${escapeXml(`${f.name} · ${formatSi(f.I_view ?? f.I_A, 'A')}${where}`)}</text>`,
+        );
+        faultsY += LINE_LABEL;
+      }
+      cursorY = faultsY;
+    }
+
+    return { lines, height: cursorY - originY };
+  };
+
+  if (legendMode === 'column') {
+    const legX = leftMargin + plotW + LEGEND_GUTTER + (mirrorAxes ? 46 : 0);
+    const legendWidth = rightMargin - LEGEND_GUTTER - 12 - (mirrorAxes ? 46 : 0);
+    out.push(...buildLegend(legX, topMargin, legendWidth, true).lines);
+  } else if (legendMode === 'inside') {
+    /*
+     * Floated over the plot. Measured first, because a panel pinned to
+     * a bottom corner has to know its own height before it can be
+     * placed, and drawn on an opaque card so the gridlines beneath it
+     * do not read through the text.
+     */
+    const pad = 12;
+    const panelW = Math.min(300, Math.max(180, plotW * 0.42));
+    const measured = buildLegend(0, 0, panelW, false).height;
+    const panelH = measured + pad;
+
+    const corner = legendCorner(opts.page?.legend?.position);
+    const onLeft = corner === 'top_left' || corner === 'bottom_left';
+    const onTop = corner === 'top_left' || corner === 'top_right';
+    const panelX = onLeft ? leftMargin + 14 : leftMargin + plotW - panelW - 2 * pad - 14;
+    const panelY = onTop ? topMargin + 14 : topMargin + plotH - panelH - 14;
 
     out.push(
-      `<text x="${legX}" y="${faultsY}" font-size="${FONT_HEADING}" font-weight="600" fill="${faultColour}">Faults</text>`,
+      `<rect x="${panelX.toFixed(1)}" y="${panelY.toFixed(1)}" ` +
+      `width="${(panelW + 2 * pad).toFixed(1)}" height="${panelH.toFixed(1)}" rx="4" ` +
+      `fill="${th.background}" fill-opacity="0.92" stroke="${th.axis}" stroke-width="0.8"/>`,
     );
-    faultsY += LINE_HEADING;
-
-    for (const [i, f] of faults.entries()) {
-      const swatchY = faultsY - FONT_LABEL / 3;
-      const dash = faultDash(i);
-      out.push(
-        `<line x1="${legX}" y1="${swatchY}" x2="${legX + swatchW}" y2="${swatchY}" ` +
-        `stroke="${faultColour}" stroke-width="${Math.max(faultWidth, 1.5)}"` +
-        `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
-      );
-      const where = f.voltageLabel ? ` · ${f.voltageLabel}` : '';
-      out.push(
-        `<text x="${textX}" y="${faultsY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_DETAIL}">` +
-        `${escapeXml(`${f.name} · ${formatSi(f.I_view ?? f.I_A, 'A')}${where}`)}</text>`,
-      );
-      faultsY += LINE_LABEL;
-    }
+    out.push(...buildLegend(panelX + pad, panelY + pad / 2, panelW, false).lines);
   }
 
   /*
@@ -1540,10 +1654,234 @@ function escapeXml(s: string): string {
   }[c] as string));
 }
 
+/* ---------------------- fault label rows ---------------------- */
+
+interface PlacedFault {
+  f: FaultEntry;
+  /** Index in the declared fault order, which picks the dash. */
+  i: number;
+  px: number;
+  row: number;
+}
+
+/**
+ * Pack the fault names below the axis into non-overlapping rows.
+ *
+ * Run before the vertical margins are settled so the band can be
+ * sized to the rows it needs, then reused by the drawing pass -- one
+ * packing, so the reserve and the labels can never disagree.
+ */
+function packFaultLabels(
+  faults: FaultEntry[],
+  xScale: LogScale,
+  I_min: number,
+  I_max: number,
+  showLabels: boolean,
+): PlacedFault[] {
+  if (!showLabels) return [];
+
+  const placed: PlacedFault[] = [];
+  const taken: Array<{ right: number; row: number }> = [];
+
+  const visible = faults
+    .map((f, i) => ({ f, i, I: f.I_view ?? f.I_A }))
+    .filter(({ I }) => I > 0 && I >= I_min && I <= I_max)
+    .sort((a, b) => a.I - b.I);
+
+  for (const { f, i, I } of visible) {
+    const px = xScale.toPx(I);
+    if (!Number.isFinite(px)) continue;
+
+    /* First row whose last label ends before this one starts. */
+    const width = f.name.length * FONT_DETAIL * CHAR_ADVANCE + 10;
+    let row = 0;
+    while (taken.some((p) => p.row === row && p.right > px)) row++;
+    taken.push({ right: px + width, row });
+    placed.push({ f, i, px, row });
+  }
+  return placed;
+}
+
+/* ---------------------- legend placement ---------------------- */
+
+/**
+ * Which identification scheme a page has asked for.
+ *
+ * `show = false` is kept as the older spelling of `style = "none"`;
+ * an explicit style wins, so a study can say `show = true` alongside
+ * `style = "direct"` without contradiction.
+ */
+function resolveLegendMode(legend: PageLegend | undefined): LegendStyle {
+  if (legend?.style) return legend.style;
+  return legend?.show === false ? 'none' : 'column';
+}
+
+/** Corner an inside panel is pinned to; defaults to the top right. */
+function legendCorner(position: PageLegend['position']): LegendCorner {
+  switch (position) {
+    case 'top_left':
+    case 'bottom_left':
+    case 'bottom_right':
+    case 'top_right':
+      return position;
+    /* The edge keywords a column legend uses, read as a corner. */
+    case 'left':
+      return 'top_left';
+    case 'bottom':
+      return 'bottom_right';
+    default:
+      return 'top_right';
+  }
+}
+
+interface DirectLabelGeometry {
+  leftMargin: number;
+  topMargin: number;
+  plotW: number;
+  plotH: number;
+  background: string;
+  ink: string;
+}
+
+/**
+ * Label each characteristic where it lives, instead of in a legend.
+ *
+ * Direct labelling is the better reading on a crowded sheet -- the
+ * eye never leaves the curve to match a colour against a key -- and it
+ * costs no width, which is why it earns its place on a portrait page.
+ *
+ * Each label is anchored to the right-hand end of its curve, where TCC
+ * characteristics are flattest and furthest apart, then the column of
+ * labels is spread vertically so that none overlap, with a leader back
+ * to the true anchor. Curves that leave the top of the plot are
+ * anchored wherever they last crossed it.
+ */
+function directLabels(curves: CurveEntry[], geo: DirectLabelGeometry): string[] {
+  const { leftMargin, topMargin, plotW, plotH } = geo;
+  const boxH = FONT_LABEL + 8;
+  const gap = 3;
+
+  interface Placed {
+    label: string;
+    color: string;
+    anchorX: number;
+    anchorY: number;
+    y: number;
+    width: number;
+  }
+
+  /*
+   * Every box hangs off the same right-hand edge, just inside the
+   * plot, and each curve is anchored at its own rightmost visible
+   * point -- which on a TCC is where it leaves through the right or
+   * bottom edge. The leader is then a short stub running outward from
+   * the box to the curve, whatever the label's width.
+   *
+   * Sharing one *left* edge instead makes a short label's leader run
+   * back across the curves it passes, which long names make
+   * unmissable; anchoring at the x where each box begins trades that
+   * for a worse failure, since a curve that starts partway across --
+   * a definite-time stage picking up at 9 kA -- has no point there at
+   * all, and the label climbs its vertical riser.
+   */
+  const boxRight = leftMargin + plotW - 22;
+  const placed: Placed[] = [];
+  for (const c of curves) {
+    const anchor = lastPointInside(c.pathD, topMargin, topMargin + plotH);
+    if (!anchor) continue;
+    placed.push({
+      label: c.label,
+      color: c.color,
+      anchorX: anchor.x,
+      anchorY: anchor.y,
+      y: anchor.y,
+      width: labelWidthPx(c.label, FONT_LABEL) + 14,
+    });
+  }
+  if (placed.length === 0) return [];
+
+  /*
+   * Spread the labels apart, top-down then bottom-up, so the column
+   * stays inside the plot even when every curve converges -- which is
+   * the normal case at the right-hand end of a TCC.
+   */
+  placed.sort((a, b) => a.y - b.y);
+  const minY = topMargin + boxH / 2 + 2;
+  const maxY = topMargin + plotH - boxH / 2 - 2;
+  for (let i = 0; i < placed.length; i++) {
+    const floor = i === 0 ? minY : placed[i - 1].y + boxH + gap;
+    placed[i].y = Math.max(placed[i].y, floor);
+  }
+  for (let i = placed.length - 1; i >= 0; i--) {
+    const ceiling = i === placed.length - 1 ? maxY : placed[i + 1].y - boxH - gap;
+    placed[i].y = Math.min(placed[i].y, ceiling);
+  }
+
+  const out: string[] = [];
+  for (const p of placed) {
+    /* Each box hangs off the right edge; the leader is the short run
+     * from the curve to the box's own left edge. Drawn first, so the
+     * box paints over its end. */
+    const boxX = Math.max(leftMargin + 4, boxRight - p.width);
+    out.push(
+      `<path d="M${p.anchorX.toFixed(1)} ${p.anchorY.toFixed(1)} ` +
+      `L${(boxRight + 8).toFixed(1)} ${p.y.toFixed(1)} L${boxRight.toFixed(1)} ${p.y.toFixed(1)}" ` +
+      `fill="none" stroke="${p.color}" stroke-width="1" stroke-opacity="0.8"/>`,
+    );
+    out.push(
+      `<rect x="${boxX.toFixed(1)}" y="${(p.y - boxH / 2).toFixed(1)}" ` +
+      `width="${p.width.toFixed(1)}" height="${boxH}" rx="3" ` +
+      `fill="${geo.background}" fill-opacity="0.94" stroke="${p.color}" stroke-width="1.2"/>`,
+    );
+    out.push(
+      `<text x="${(boxX + 7).toFixed(1)}" y="${(p.y + FONT_LABEL / 3).toFixed(1)}" ` +
+      `class="tc-legend" font-size="${FONT_LABEL}" font-weight="600" fill="${geo.ink}">` +
+      `${escapeXml(p.label)}</text>`,
+    );
+  }
+  return out;
+}
+
+/**
+ * Rightmost point of a traced path that is still on the plot.
+ *
+ * Not simply the last point: a characteristic is sampled across the
+ * whole current domain and clipped for drawing, so a steep curve's
+ * final point routinely sits below the axis. Anchoring a label there
+ * would put it off the sheet -- or, when the anchor was rejected
+ * outright, leave that curve as the one thing on the plot with no
+ * name.
+ */
+function lastPointInside(
+  pathD: string,
+  topY: number,
+  bottomY: number,
+): { x: number; y: number } | null {
+  const matches = [...pathD.matchAll(/[ML]\s*(-?[\d.]+)[ ,]+(-?[\d.]+)/g)];
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const x = Number(matches[i][1]);
+    const y = Number(matches[i][2]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    if (y >= topY - 1 && y <= bottomY + 1) return { x, y };
+  }
+  return null;
+}
+
 /* ------------------- multi-line author text ------------------- */
 
 /** Line spacing for author-supplied labels, as a multiple of size. */
 const LINE_SPACING = 1.25;
+
+/**
+ * A label flattened to a single line.
+ *
+ * Used for `data-` attributes, which feed the viewer's readout: a
+ * newline there would be normalised to a space by the XML parser
+ * anyway, and the readout is one line of text.
+ */
+function oneLine(text: string): string {
+  return String(text).replace(/\s*\n\s*/g, ' ');
+}
 
 /** Split an author label into its lines. */
 function labelLines(text: string): string[] {

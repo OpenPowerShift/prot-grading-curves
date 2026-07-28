@@ -189,6 +189,7 @@ async function main(argv: string[]): Promise<number> {
       const pdf = await exportPdf(svg, {
         size: opts.size ?? (typeof page?.size === 'string' ? page.size : undefined),
         orientation: opts.orientation ?? page?.orientation ?? 'landscape',
+        margins_mm: page?.margins_mm,
       });
       await writeFile(outputPath, pdf);
     }

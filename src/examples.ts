@@ -19,6 +19,7 @@ import miscoordination from '../examples/07-upstream-miscoordination.tc?raw';
 import fuseRelay from '../examples/08-fuse-relay.tc?raw';
 import capabilityTour from '../examples/09-capability-tour.tc?raw';
 import cascade from '../examples/10-substation-cascade.tc?raw';
+import portraitDirect from '../examples/11-portrait-direct-labels.tc?raw';
 
 export interface Example {
   /** Stable key, also the value in the picker. */
@@ -38,6 +39,7 @@ export const EXAMPLES: ReadonlyArray<Example> = [
   { id: 'miscoordination', name: 'Fails upstream (SI vs EI)', source: miscoordination },
   { id: 'fuse', name: 'Fuse / relay coordination', source: fuseRelay },
   { id: 'cascade', name: 'Four-level cascade (6 curves)', source: cascade },
+  { id: 'portrait', name: 'Portrait sheet, direct labels', source: portraitDirect },
   { id: 'tour', name: 'Capability tour (every block)', source: capabilityTour },
 ];
 

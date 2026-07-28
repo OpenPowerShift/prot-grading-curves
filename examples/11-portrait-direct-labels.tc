@@ -1,0 +1,157 @@
+# Sample 11 — Portrait A4, filling the sheet
+#
+# Everything here is about getting the most plot onto a portrait page,
+# which is short of width and has an awkward amount of height.
+#
+#   margins_mm = 4;              trim the sheet margins (0 = edge to edge)
+#   stretch    = true;           give the plot the vertical band the
+#                                fault names below the axis do not need
+#   legend     = { style = ... } where the curve identification lives
+#
+# The legend is the big one: a right-hand column costs about a third
+# of a portrait sheet's width. Two placements buy it back —
+#
+#   legend { style = "inside"; }   the same panel, floated on the plot
+#   legend { style = "direct"; }   no panel; each curve labelled in place
+#
+# This study uses `direct`. Each characteristic carries its own boxed
+# name with a leader back to the curve, so the reader never has to
+# match a colour against a key — which is the harder reading when four
+# curves converge, as they do at the right-hand end of any TCC.
+#
+# Swap `style` to "inside", "column", or "none" to compare, and set
+# `stretch = false;` to see the band it recovers.
+#
+# The relays also carry `name`, which is what the labels show; `grade`
+# still refers to them by identifier (R_FDR:51), so naming something
+# for the reader never breaks a reference to it.
+
+meta {
+    project   = "Northgate 11 kV";
+    study     = "Switchboard feeder grading";
+    engineer  = "A. Cooper";
+    date      = "2026-07-29";
+    revision  = "A";
+    CTI_min_s = 0.30;
+}
+
+system {
+    voltages {
+        "MV" { kV = 11.0; description = "11 kV switchboard"; }
+    }
+    frequency_Hz = 50;
+    grounding    = "low_impedance";
+}
+
+faults {
+    "F_bus"  { I_A = 13_500 A; voltage = "MV"; description = "switchboard bus fault"; }
+    "F_fdr"  { I_A =  7_200 A; voltage = "MV"; description = "feeder fault"; }
+    "F_spur" { I_A =  2_400 A; voltage = "MV"; description = "spur fault"; }
+}
+
+# ---- Incomer: slowest, backs up everything downstream. -------------
+relay R_INC {
+    voltage  = "MV";
+    name     = "Incomer";
+    maker    = "ABB";
+    model    = "REF615";
+    ct_ratio = 1200/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 900 A;
+        tms      = 0.35;
+    }
+}
+
+# ---- Bus section. --------------------------------------------------
+relay R_BUS {
+    voltage  = "MV";
+    name     = "Bus section";
+    maker    = "ABB";
+    model    = "REF615";
+    ct_ratio = 800/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 640 A;
+        tms      = 0.22;
+    }
+}
+
+# ---- Feeder, with an instantaneous stage above the spur. -----------
+relay R_FDR {
+    voltage  = "MV";
+    name     = "Feeder 4 (Mill Road)";
+    maker    = "Schneider";
+    model    = "MiCOM_P122";
+    ct_ratio = 400/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 320 A;
+        tms      = 0.12;
+    }
+
+    element 50 {
+        name    = "Inst";
+        curve   = definite;
+        I_pu    = 9 kA;
+        t_delay = 60 ms;
+    }
+}
+
+grade {
+    primary   = R_FDR:51;
+    backup    = R_BUS:51;
+    fault     = "F_fdr";
+    CTI_min_s = 0.30;
+    comment   = "feeder graded against the bus section";
+}
+
+grade {
+    primary   = R_BUS:51;
+    backup    = R_INC:51;
+    fault     = "F_bus";
+    CTI_min_s = 0.30;
+    comment   = "bus section graded against the incomer";
+}
+
+annotate {
+    primary = R_FDR:51;
+    backup  = R_BUS:51;
+    fault   = "F_fdr";
+    label   = "CTI";
+}
+
+point "MOTOR_START" {
+    I_A     = 1_800 A;
+    t_s     = 8.0 s;
+    voltage = "MV";
+    label   = "Largest motor start\n6 x FLC for 8 s";
+    shape   = "triangle";
+    coords  = true;
+}
+
+page {
+    size        = "A4";
+    orientation = "portrait";
+    theme       = "light";
+    border      = true;
+    margins_mm  = 4;
+    stretch     = true;
+    legend      = { style = "direct"; };
+    title       = { text     = "Northgate 11 kV — feeder grading";
+                    subtitle = "Portrait sheet with direct-labelled characteristics"; };
+}
+
+view {
+    voltage     = "MV";
+    current_min = 100 A;
+    current_max = 30 kA;
+    time_min    = 20 ms;
+    time_max    = 100 s;
+}

@@ -79,12 +79,12 @@ I_base_A, I_units
 *Inside `faults.<name>`* -- I_A, min_A, max_A, earth_A, I0_A, I2_A,
 voltage, description
 
-*Inside `element` / `stage`* -- function, curve, formula,
+*Inside `element` / `stage`* -- name, function, curve, formula,
 flex_points, I_pu, I_units, current_pct, tms, t_delay, t_reset,
 char_angle, reset, directional, direction, stages, stage, comment
 
-*Inside `relay`* -- voltage, ct_ratio, direction, faults, maker,
-model, comment, description, reference
+*Inside `relay`* -- name, voltage, ct_ratio, direction, faults,
+maker, model, comment, description, reference
 
 *Inside `grade`* -- primary, backup, fault, CTI_min_s, margin_s,
 tolerance_pct, upstream, upstream_to, comment, solve
@@ -108,12 +108,15 @@ axes, curves, points, leaders, title, footer, theme, watermark,
 position, swatch, palette, frame, label_color, label_size_px,
 tick_size_px, grid_color, line_width_px, auto_color, shape, size_px,
 outline, text, subtitle, align, font_size_px, border, top, right,
-bottom, left, center, show, x_min, x_max, y_min, y_max, auto,
-tick_density
+bottom, left, center, show, style, stretch, x_min, x_max, y_min,
+y_max, auto, tick_density
 
 *Orientations* -- portrait, landscape
 
-*Page positions* -- right, left, top, bottom, center
+*Page positions* -- right, left, top, bottom, center,
+top_right, top_left, bottom_right, bottom_left
+
+*Legend styles* -- column, inside, direct, none
 
 *Palette names* -- default, pasteur, okabe_ito, monochrome,
 grayscale, ieee, high_contrast
@@ -209,7 +212,22 @@ but is *encouraged* for clarity. The linter warns on unit omissions.
 
 * Double-quoted only. Any UTF-8 character except `"` and `\`.
 * Escape sequences: `\"`, `\\`, `\n`, `\t`, `\u{XXXXX}` for arbitrary
-  code points.
+  code points. An unrecognised escape is preserved verbatim
+  (backslash included) rather than dropped.
+
+[NOTE]
+====
+`\n` is meaningful in any *author-facing label* -- `point.label`,
+`annotate.label`, `page.title.text`, `page.title.subtitle` -- where the
+renderer breaks the text into lines. A label pinned beside a marker is
+centred on it, so a second line grows the block symmetrically rather
+than pushing it off the thing it names; a title or legend entry, which
+is laid out top-down, hangs its extra lines below the first.
+
+Elsewhere -- identifiers, `data-` attributes in the SVG, and the
+single-line readout in the playground -- a newline is folded to a
+space.
+====
 
 === Block and statement syntax
 

@@ -63,7 +63,7 @@ export const KEYWORDS = new Set([
   'tolerance_pct', 'CTI_min_s', 'margin_s', 'upstream', 'upstream_to',
   'I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 't_s',
   'voltage', 'kV', 'frequency_Hz', 'base_MVA', 'grounding', 'I_base_A',
-  'ct_ratio', 'maker', 'model',
+  'ct_ratio', 'maker', 'model', 'name',
   'rating_A', 'rating_kV', 'rating_MVA',
   'min_melt', 'total_clear',
   // combine/view/page sub
@@ -80,6 +80,8 @@ export const KEYWORDS = new Set([
   'tick_density', 'label_color', 'label_size_px', 'tick_size_px', 'mirror',
   'shape', 'size_px', 'outline', 'width_px', 'label_offset_px', 'coords',
   'subtitle', 'font_size_px', 'align', 'border', 'text',
+  'style', 'column', 'inside', 'direct', 'stretch',
+  'top_right', 'top_left', 'bottom_right', 'bottom_left',
   'text', 'top', 'right', 'bottom', 'left', 'center',
   // theme / orientation / palette / etc.
   'portrait', 'landscape',
@@ -183,10 +185,45 @@ export function tokenize(source: string): { tokens: Token[]; errors: ParseError[
     if (c === '"') {
       const start = i; const sLine = line; const sCol = col;
       i++; col++;
+      /*
+       * Escapes are decoded here, not left for `unquote` to deal with.
+       *
+       * They used to be copied through raw and the whole buffer handed
+       * to `JSON.stringify`, which escaped the backslash again -- so
+       * `\n` round-tripped back to a literal backslash-n and every
+       * escape in the spec was silently dead, `\"` included. Decoding
+       * at the point of scanning is also the only way to support
+       * `\u{XXXXX}`, whose braces JSON does not accept.
+       */
       let buf = '';
       while (i < source.length && source[i] !== '"') {
         if (source[i] === '\\' && i + 1 < source.length) {
-          buf += source[i] + source[i + 1];
+          const esc = source[i + 1];
+          const simple: Record<string, string> = {
+            '"': '"', '\\': '\\', '/': '/',
+            n: '\n', t: '\t', r: '\r', b: '\b', f: '\f',
+          };
+
+          if (esc === 'u' && source[i + 2] === '{') {
+            const close = source.indexOf('}', i + 3);
+            const hex = close > 0 ? source.slice(i + 3, close) : '';
+            const code = /^[0-9a-fA-F]{1,6}$/.test(hex) ? Number.parseInt(hex, 16) : NaN;
+            if (Number.isFinite(code) && code <= 0x10ffff) {
+              buf += String.fromCodePoint(code);
+              col += close + 1 - i;
+              i = close + 1;
+              continue;
+            }
+            /* Malformed: fall through and keep the text verbatim. */
+          }
+
+          if (esc in simple) {
+            buf += simple[esc];
+          } else {
+            /* Unknown escape: preserved rather than swallowed, so no
+             * character the author typed is silently lost. */
+            buf += '\\' + esc;
+          }
           i += 2; col += 2;
           continue;
         }
@@ -881,6 +918,7 @@ if (kwName === 'flex_points') {
         case 'voltage':
         case 'maker':
         case 'model':
+        case 'name':
         case 'direction':
         case 'comment':
         case 'description':
@@ -1430,6 +1468,10 @@ if (kwName === 'flex_points') {
             p.border = this.parseBool();
             this.eat('SEMI');
             break;
+          case 'stretch':
+            p.stretch = this.parseBool();
+            this.eat('SEMI');
+            break;
           case 'orientation':
             {
               const v = this.matchKeyword('portrait','landscape');
@@ -1498,9 +1540,26 @@ if (kwName === 'flex_points') {
               if (tok) p.footer = { right: unquote(tok.image) } as any;
             }
             break;
+          case 'margins_mm':
+            {
+              /*
+               * Shorthand for the four-sided block: `margins_mm = 0;`
+               * is the same as declaring every side zero, which is how
+               * a study asks to fill the sheet edge to edge. The
+               * scalar used to fall through to the placeholder below
+               * and be silently dropped -- accepted, then ignored,
+               * which is the worst of both.
+               */
+              const all = this.parseNumber();
+              this.eat('SEMI');
+              if (Number.isFinite(all)) {
+                p.margins_mm = { loc: p.loc, top: all, right: all, bottom: all, left: all };
+              }
+            }
+            break;
           default:
-            // Other page members (margins_mm, scale, legend, axes,
-            // curves, points, leaders) are read into a placeholder.
+            // Other page members (scale, legend, axes, curves,
+            // points, leaders) are read into a placeholder.
             this.parseScalarValue();
             this.eat('SEMI');
         }
@@ -1673,7 +1732,8 @@ function applyPageSubBlock(
       page.legend = {
         loc: page.loc,
         show: bool('show'),
-        position: str('position') as 'right' | 'left' | 'top' | 'bottom' | undefined,
+        style: str('style') as import('./ast.js').LegendStyle | undefined,
+        position: str('position') as import('./ast.js').PageLegend['position'],
         color: str('color'),
         swatch: str('swatch') as 'line' | 'box' | 'circle' | undefined,
         title: str('title'),

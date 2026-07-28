@@ -38,11 +38,13 @@ faults {
 }
 
 # ---- point: a marked (I, t) the curves must respect. ---------------
+# `\n` in any label breaks the line, so a marked point can carry its
+# justification without crowding the plot.
 point "TX1_inrush" {
     I_A     = 5250 A;
     t_s     = 0.10 s;
     voltage = "HV";
-    label   = "TX1 inrush";
+    label   = "TX1 inrush\n12 x FLC, 100 ms";
     shape   = "cross";
 }
 

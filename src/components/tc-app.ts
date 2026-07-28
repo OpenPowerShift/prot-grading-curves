@@ -20,6 +20,7 @@ import { formatSource } from '../format/format.js';
 
 import './tc-editor.js';
 import './tc-viewer.js';
+import './tc-guide.js';
 
 /**
  * Default width of the Source pane, as a percentage of the window.
@@ -92,6 +93,9 @@ export class TcApp extends LitElement {
   @state() private study: Study | undefined;
   /** Whether the report drawer is open. */
   @state() private showReport = false;
+
+  /** Language-specification overlay. */
+  @state() private showGuide = false;
   /**
    * UI theme for both panes. Seeded from the OS preference and then
    * remembered, so the choice survives a reload.
@@ -604,6 +608,10 @@ export class TcApp extends LitElement {
                     @click=${() => this.viewer()?.saveSvg()}>Save SVG</button>
             <button class="side-btn" title="Download the plot as a PDF (always light, for printing)"
                     @click=${() => { void this.viewer()?.savePdf(); }}>Save PDF</button>
+            <button class="side-btn" title="Show the plot controls"
+                    @click=${() => this.viewer()?.toggleHelp()}>?</button>
+            <button class="side-btn" title="Open the language specification"
+                    @click=${() => { this.showGuide = true; }}>Guide</button>
             <button class="side-btn"
                     title=${`Switch to the ${this.theme === 'dark' ? 'light' : 'dark'} theme`}
                     @click=${() => this.toggleTheme()}>
@@ -611,12 +619,16 @@ export class TcApp extends LitElement {
             </button>
           </div>
           <tc-viewer
+              @tc-open-guide=${() => { this.showGuide = true; }}
               .document=${this.ast}
               .study=${this.study}
               .theme=${this.theme}
               .errors=${this.errors}></tc-viewer>
         </div>
       </div>
+      <tc-guide
+          .open=${this.showGuide}
+          @tc-guide-close=${() => { this.showGuide = false; }}></tc-guide>
     `;
   }
 }

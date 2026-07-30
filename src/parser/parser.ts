@@ -43,7 +43,8 @@ import type {
  */
 export const KEYWORDS = new Set([
   // top-level blocks
-  'meta', 'system', 'faults', 'relay', 'element', 'device', 'grade',
+  'meta', 'system', 'faults', 'scenario', 'level', 'sees',
+  'relay', 'element', 'device', 'grade',
   'annotate', 'combine', 'view', 'page', 'notes', 'stage', 'stages', 'point',
   // system sub-block header
   'voltages',
@@ -64,6 +65,7 @@ export const KEYWORDS = new Set([
   'I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 't_s',
   'voltage', 'kV', 'frequency_Hz', 'base_MVA', 'grounding', 'I_base_A',
   'ct_ratio', 'maker', 'model', 'name',
+  'measures', 'phase', 'I1', 'I2', '3I2', 'I0', '3I0',
   'rating_A', 'rating_kV', 'rating_MVA',
   'min_melt', 'total_clear',
   // combine/view/page sub
@@ -428,6 +430,7 @@ class Parser {
       case 'meta':    return this.parseMeta();
       case 'system':  return this.parseSystem();
       case 'faults':  return this.parseFaults();
+      case 'scenario':return this.parseScenario();
       case 'relay':   return this.parseRelay();
       case 'element': return this.parseElement(/*topLevel*/ true);
       case 'device':  return this.parseDevice();
@@ -599,6 +602,110 @@ class Parser {
       }
       return sys;
     }, '}');
+  }
+
+  /**
+   * `scenario "name" { level "HV" { ... } sees R { ... } }`
+   *
+   * One condition, its currents at each level. Shaped like `faults`
+   * -- a name then sub-blocks -- but keyed by level rather than by
+   * fault, because the point is to describe the same condition
+   * wherever it is measured.
+   */
+  private parseScenario(): import('./ast.js').ScenarioBlock | null {
+    const head = this.peek();
+    this.pos++; // 'scenario'
+
+    const nameTok = this.eat('STRING') ?? this.eat('IDENT');
+    if (!nameTok) {
+      this.errors.push({
+        message: 'expected a scenario name',
+        line: this.peek().line, column: this.peek().col,
+        offset: this.peek().start, length: 1,
+        severity: 'error', code: 'EXPECTED_IDENT',
+      });
+      this.recoverySync();
+      return null;
+    }
+
+    const block: import('./ast.js').ScenarioBlock = {
+      type: 'scenario',
+      name: unquote(nameTok.image),
+      levels: [],
+      shares: [],
+      loc: this.loc(head),
+    };
+
+    this.expect('LBRACE', '{');
+    while (!this.at('RBRACE') && !this.at('EOF')) {
+      const t = this.peek();
+      if (t.kind !== 'KW' && t.kind !== 'IDENT') { this.pos++; continue; }
+
+      if (t.image === 'level') {
+        this.pos++;
+        const levelTok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+        const level: import('./ast.js').ScenarioLevelDecl = {
+          voltage: levelTok ? unquote(levelTok.image) : '',
+          loc: this.loc(levelTok ?? t),
+        };
+        this.expect('LBRACE', '{');
+        while (!this.at('RBRACE') && !this.at('EOF')) {
+          const k = this.eat('KW') ?? this.eat('IDENT');
+          if (!k) { this.pos++; continue; }
+          this.expect('EQUALS', '=');
+          switch (k.image) {
+            case 'I_A':     level.I_A = this.parseNumberWithUnit_A(); break;
+            case 'I1_A':    level.I1_A = this.parseNumberWithUnit_A(); break;
+            case 'I2_A':    level.I2_A = this.parseNumberWithUnit_A(); break;
+            case 'I0_A':    level.I0_A = this.parseNumberWithUnit_A(); break;
+            case 'earth_A': level.earth_A = this.parseNumberWithUnit_A(); break;
+            default:        this.parseScalarValue(); break;
+          }
+          this.eat('SEMI');
+        }
+        this.expect('RBRACE', '}');
+        this.eat('SEMI');
+        block.levels.push(level);
+        continue;
+      }
+
+      if (t.image === 'sees') {
+        this.pos++;
+        const relayTok = this.eat('IDENT') ?? this.eat('STRING') ?? this.eat('KW');
+        const share: import('./ast.js').ScenarioShareDecl = {
+          relay: relayTok ? unquote(relayTok.image) : '',
+          current_pct: 100,
+          loc: this.loc(relayTok ?? t),
+        };
+        this.expect('LBRACE', '{');
+        while (!this.at('RBRACE') && !this.at('EOF')) {
+          const k = this.eat('KW') ?? this.eat('IDENT');
+          if (!k) { this.pos++; continue; }
+          this.expect('EQUALS', '=');
+          if (k.image === 'current_pct') share.current_pct = this.parseNumber();
+          else this.parseScalarValue();
+          this.eat('SEMI');
+        }
+        this.expect('RBRACE', '}');
+        this.eat('SEMI');
+        block.shares.push(share);
+        continue;
+      }
+
+      if (t.image === 'description') {
+        this.pos++;
+        this.expect('EQUALS', '=');
+        block.description = this.parseStringOrIdent();
+        this.eat('SEMI');
+        continue;
+      }
+
+      /* Unknown member: consume it so the loop cannot stick. */
+      this.pos++;
+      if (this.at('EQUALS')) { this.pos++; this.parseScalarValue(); this.eat('SEMI'); }
+    }
+    this.expect('RBRACE', '}');
+    return block;
   }
 
   private parseFaults(): FaultsBlock | null {
@@ -848,6 +955,7 @@ if (kwName === 'flex_points') {
     this.expect('EQUALS', '=');
     switch (k.image) {
       case 'function':
+      case 'measures':
       case 'I_units':
       case 'reset':
       case 'directional':
@@ -1041,6 +1149,13 @@ if (kwName === 'flex_points') {
               this.eat('SEMI');
               if (k.image === 'primary') g.primary = r;
               else g.backup = r;
+            }
+            break;
+          case 'scenario':
+            {
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) g.scenario = unquote(tok.image);
             }
             break;
           case 'fault':
@@ -1657,7 +1772,18 @@ if (kwName === 'flex_points') {
     const first = this.eat('IDENT') ?? this.eat('KW');
     if (!first) return { text: '' };
     if (this.eat('COLON')) {
-      const second = this.eat('IDENT') ?? this.eat('KW') ?? this.eat('NUMBER');
+      /*
+       * The element half is a device number, so it is read with the
+       * same rule the declaration uses: a digit-leading identifier
+       * absorbs the letters that follow it immediately.
+       *
+       * Eating a single token instead dropped the suffix, so
+       * `R_INC:51G` referred to `51` -- resolving to a different
+       * element where one existed, and to nothing where it did not.
+       * Every letter-suffixed reference was affected: 51G, 67N, 51X,
+       * 50BF.
+       */
+      const second = this.parseDeviceNumberId();
       const deviceId = first.image;
       const elementId = second ? second.image : '';
       return { deviceId, elementId, text: `${deviceId}:${elementId}` };
@@ -1694,13 +1820,81 @@ function unquote(s: string): string {
 
 /* ----------------------- public ----------------------- */
 
+/**
+ * Structural checks made over the token stream, before the grammar.
+ *
+ * Two faults that the block parsers cannot see between them:
+ *
+ *   - *a key assigned twice in one block*. The typed blocks build a
+ *     record and the second assignment simply overwrites the first,
+ *     so a `view` that sets `current_max` twice silently honours
+ *     whichever came last -- and the reader has no way to tell which
+ *     that is by looking.
+ *   - *an assignment with nothing after the `=`*. Each field parser
+ *     fails in its own way, mostly by returning `NaN` or `null` and
+ *     leaving the field unset, so a half-typed line vanished from the
+ *     study rather than being reported.
+ *
+ * Done here rather than in each parser because there is one rule for
+ * every block, and because a scan over braces is the only view that
+ * sees all of them.
+ */
+function structuralErrors(tokens: Token[]): ParseError[] {
+  const errors: ParseError[] = [];
+
+  /** One map of assigned keys per brace depth. */
+  const scopes: Array<Map<string, Token>> = [new Map()];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+
+    if (t.kind === 'LBRACE') { scopes.push(new Map()); continue; }
+    if (t.kind === 'RBRACE') { if (scopes.length > 1) scopes.pop(); continue; }
+    if (t.kind !== 'EQUALS') continue;
+
+    /* `=` with no value before the statement ends. */
+    const next = tokens[i + 1];
+    const key = tokens[i - 1];
+    if (!next || next.kind === 'SEMI' || next.kind === 'RBRACE' || next.kind === 'EOF') {
+      errors.push({
+        message: key
+          ? `${key.image} is assigned nothing; expected a value after '='`
+          : "expected a value after '='",
+        line: t.line, column: t.col, offset: t.start, length: Math.max(1, t.end - t.start),
+        severity: 'error', code: 'MISSING_VALUE',
+      });
+      continue;
+    }
+
+    /* The same key assigned twice in one block. */
+    if (!key || (key.kind !== 'IDENT' && key.kind !== 'KW')) continue;
+    const scope = scopes[scopes.length - 1];
+    const first = scope.get(key.image);
+    if (first) {
+      errors.push({
+        message:
+          `${key.image} is assigned more than once in this block ` +
+          `(first at line ${first.line}); the later value silently wins`,
+        line: key.line, column: key.col, offset: key.start,
+        length: Math.max(1, key.end - key.start),
+        severity: 'error', code: 'DUPLICATE_KEY',
+      });
+    } else {
+      scope.set(key.image, key);
+    }
+  }
+
+  return errors;
+}
+
 export function parse(source: string): ParseResult {
   const { tokens, errors: lexErrors } = tokenize(source);
   const parser = new Parser(tokens, lexErrors);
   const doc = parser.parseDocument();
   return {
     document: doc,
-    errors: [...lexErrors, ...parser.errors],
+    errors: [...lexErrors, ...parser.errors, ...structuralErrors(tokens)]
+      .sort((a, b) => a.offset - b.offset),
   };
 }
 

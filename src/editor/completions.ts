@@ -17,6 +17,10 @@ import {
   TOP_BLOCK_KEYWORDS,
   BLOCK_FIELDS,
   CURVE_HELP,
+  FIELD_VALUES,
+  FIELD_UNITS,
+  UNIT_FAMILY,
+  BOOLEAN_FIELDS,
 } from '../help/help-data.js';
 import { allCurveIds } from '../constants/curves.js';
 import { constantsFromId } from '../semantics/curves.js';
@@ -192,21 +196,105 @@ function assignmentTarget(src: string, pos: number): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * A number immediately before the cursor, with any partial unit.
+ *
+ * Units are required wherever they are not the field's default, and
+ * an engineer mid-line should not have to go and look the suffix up.
+ * Matched off the raw line rather than the token stream so it still
+ * works while the document does not parse.
+ */
+function unitContext(
+  src: string,
+  pos: number,
+): { field: string; from: number } | null {
+  const lineStart = src.lastIndexOf('\n', pos - 1) + 1;
+  const line = src.slice(lineStart, pos);
+
+  /* `<field> = ... <number><space?><partial unit>` at the end of the line. */
+  const m = line.match(/([A-Za-z_]\w*)\s*=[^=;]*?\d[\d_]*(?:\.\d+)?\s*([A-Za-z_]*)$/);
+  if (!m) return null;
+
+  const field = m[1];
+  if (!UNIT_FAMILY[field]) return null;
+  return { field, from: lineStart + line.length - m[2].length };
+}
+
+/** Unit suffixes for a field, as completions. */
+function unitCompletions(field: string): Completion[] {
+  const units = FIELD_UNITS[UNIT_FAMILY[field]] ?? [];
+  return units.map((u, i) => ({
+    label: u.value,
+    type: 'unit',
+    detail: u.detail,
+    boost: units.length - i,
+  }));
+}
+
+/** Enumerated values a field accepts, as completions. */
+function valueCompletions(field: string): Completion[] {
+  const choices = FIELD_VALUES[field];
+  if (choices) {
+    return choices.map((c, i) => ({
+      label: c.value,
+      type: 'enum',
+      detail: c.detail,
+      boost: choices.length - i,
+    }));
+  }
+  if (BOOLEAN_FIELDS.has(field)) {
+    return [
+      { label: 'true', type: 'enum', detail: 'on', boost: 2 },
+      { label: 'false', type: 'enum', detail: 'off', boost: 1 },
+    ];
+  }
+  return [];
+}
+
 export function tcCompletionSource(ctx: CompletionContext): CompletionResult | null {
   const word = ctx.matchBefore(/[A-Za-z_][\w.:]*/);
   const src = ctx.state.doc.toString();
   const pos = ctx.pos;
 
+  /*
+   * Unit position first: `I_pu = 5.0 ` wants amperes, not field names.
+   * Checked before the assignment target because the number in
+   * between defeats that pattern anyway.
+   */
+  const unit = unitContext(src, pos);
+  if (unit) {
+    const options = unitCompletions(unit.field);
+    if (options.length > 0) {
+      return { from: unit.from, options, validFor: /[A-Za-z_]*/ };
+    }
+  }
+
   /* Value position: what is being assigned decides the candidates. */
   const target = assignmentTarget(src, pos);
   if (target) {
-    const from = word ? word.from : pos;
+    /*
+     * An opening quote the user has already typed is swallowed into
+     * the replaced range: several of these values are quoted strings,
+     * and inserting one after a bare `"` would otherwise double it.
+     */
+    let from = word ? word.from : pos;
+    if (src[from - 1] === '"') from -= 1;
+
     let options: Completion[] | null = null;
     if (target === 'curve') options = curveCompletions();
     else if (target === 'primary' || target === 'backup' || target === 'on_curve' ||
              target === 'reference_ct' || target === 'sources') options = refCompletions(src);
     else if (target === 'fault') options = faultCompletions(src);
-    else if (target === 'voltage') options = voltageCompletions(src);
+    else if (target === 'voltage') {
+      /* `voltage` names a level everywhere except inside a fault or a
+       * device rating, so offer the declared levels first and fall
+       * back to the enumeration if none are declared yet. */
+      const levels = voltageCompletions(src);
+      options = levels.length > 0 ? levels : valueCompletions(target);
+    } else {
+      const values = valueCompletions(target);
+      if (values.length > 0) options = values;
+    }
 
     if (options && options.length > 0) {
       return { from, options, validFor: /[\w.:]*/ };

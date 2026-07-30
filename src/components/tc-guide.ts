@@ -1,11 +1,11 @@
 /**
- * <tc-guide> — the language specification, in the app.
+ * <tc-guide> — the user guide, in the app.
  *
- * The document is `spec/spec.adoc`, converted by Asciidoctor at build
- * time (see `scripts/guide-plugin.js`). Shipping the spec itself as
- * the help means the reference an engineer reads is the same document
- * the parser is written against; there is no second copy to fall out
- * of date.
+ * The document is `docs/guide.adoc`, converted by Asciidoctor at build
+ * time (see `scripts/guide-plugin.js`). It is the guide, not the
+ * specification: example-led, about writing studies, and a single file
+ * so it can be handed whole to a language model. The normative spec
+ * lives separately under `spec/`.
  *
  * The HTML is loaded on first open, not at start-up: it is a quarter
  * of a megabyte, and most sessions never ask for it.
@@ -337,9 +337,9 @@ export class TcGuide extends LitElement {
   render() {
     return html`
       <div class="scrim" @click=${() => this.close()}></div>
-      <div class="panel" role="dialog" aria-modal="true" aria-label="Language specification">
+      <div class="panel" role="dialog" aria-modal="true" aria-label="User guide">
         <header>
-          <h2>${this.guide?.title ?? 'Language specification'}</h2>
+          <h2>${this.guide?.title ?? 'User guide'}</h2>
           ${this.guide?.revision
             ? html`<span class="rev">${this.guide.revision} · ${this.guide.revdate}</span>`
             : null}
@@ -359,7 +359,7 @@ export class TcGuide extends LitElement {
             ? html`<p class="error">The guide could not be loaded: ${this.failed}</p>`
             : this.guide
               ? unsafeHTML(this.guide.html)
-              : html`<p class="loading">Loading the specification…</p>`}
+              : html`<p class="loading">Loading the guide…</p>`}
         </div>
       </div>
     `;

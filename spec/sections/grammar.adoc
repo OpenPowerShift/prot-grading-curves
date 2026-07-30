@@ -92,6 +92,18 @@ margins automatically.
 ----
 name-asg        ::= "name" "=" string ";" ;
 
+scenario-block  ::= "scenario" string "{" { scenario-member } "}" ;
+scenario-member ::= "description" "=" string ";"
+                  | scenario-level
+                  | scenario-share ;
+scenario-level  ::= "level" string "{" { level-member } "}" ;
+level-member    ::= "I_A"     "=" number current-unit ";"   # phase
+                  | "I1_A"    "=" number current-unit ";"
+                  | "I2_A"    "=" number current-unit ";"
+                  | "I0_A"    "=" number current-unit ";"   # component
+                  | "earth_A" "=" number current-unit ";" ; # residual 3*I0
+scenario-share  ::= "sees" identifier "{" "current_pct" "=" number ";" "}" ;
+
 relay-block     ::= "relay" identifier "{" { relay-member } "}" ;
 relay-member   ::= relay-scalar ";"
                   | element-block ;
@@ -688,6 +700,30 @@ each characteristic -- where TCC curves are flattest and furthest
 apart -- and then spread vertically so that none overlap, each keeping
 a leader to its true anchor.
 ====
+
+==== A crowded sheet
+
+A legend is laid out at the fullest detail that fits the space it
+has, and only then starts dropping entries:
+
+. *full* -- every entry with its make, model, and settings, and each
+  fault with its `description`;
+. *compact* -- the settings line only, which is the line an engineer
+  checks, with the make and model and the fault notes dropped;
+. *minimal* -- names alone;
+. finally, entries are dropped and the count is printed as
+  `+N more not shown`.
+
+The choice is made by laying the legend out and measuring it, since
+the wrapping depends on the text. A study with a couple of relays is
+unaffected; one with nine characteristics and seven described faults
+degrades rather than running off the bottom of the page and over the
+title block.
+
+`legend { style = "direct" }` is the other answer to a crowded sheet:
+it removes the panel entirely and labels each characteristic where it
+runs. On a study with many curves at similar times, though, the column
+is easier to read than a stack of boxed labels.
 
 ==== Precedence
 

@@ -1,0 +1,661 @@
+= tc-curves user guide
+:toc: macro
+:toclevels: 3
+:sectnums:
+:sectlinks:
+:sectanchors:
+:revdate: 2026-07-30
+
+A practical guide to writing `.tc` files: protection-relay time-current
+grading studies as plain text.
+
+This document is self-contained and example-led. It is the reference to
+read (or to give a language model) when *authoring* a study. The
+normative specification -- grammar productions, curve constant tables,
+conformance requirements -- is a separate document, `spec/spec.adoc`;
+where the two differ, the spec wins.
+
+toc::[]
+
+== Before anything else
+
+A `.tc` file declares four things and asks one question:
+
+. the *voltage levels* in the study,
+. the *fault currents* (or scenarios) the study is judged against,
+. the *relays* and their protection elements,
+. the *grading pairs* -- which element must clear before which other.
+
+The tool then computes each element's time-current characteristic,
+checks every pair's coordination time interval (CTI), and draws the
+log-log plot.
+
+It does not compute fault levels. Short-circuit currents are input
+data, taken from your network study.
+
+=== A complete file
+
+Every construct below is optional except `relay` and `element`. This is
+a working study:
+
+[source,tc]
+----
+meta {
+    project   = "Riverside 33/11 kV";
+    engineer  = "A. Cooper";
+    date      = "2026-07-30";
+    CTI_min_s = 0.30;              # default grading interval
+}
+
+system {
+    voltages {
+        "HV" { kV = 33.0; }
+        "LV" { kV = 11.0; }
+    }
+    frequency_Hz = 50;
+}
+
+faults {
+    "F_lv_max" { I_A = 6400 A;  voltage = "LV"; }
+    "F_hv_max" { I_A = 18400 A; voltage = "HV"; }
+}
+
+relay R_FDR {
+    name     = "Feeder 4";         # free text for the drawing
+    voltage  = "LV";
+    ct_ratio = 600/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;         # IEC standard inverse
+        I_pu     = 480 A;
+        tms      = 0.30;
+    }
+}
+
+relay R_INC {
+    voltage  = "HV";
+    ct_ratio = 600/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 720 A;
+        tms      = 0.175;
+    }
+}
+
+grade {
+    primary   = R_FDR:51;          # must clear first
+    backup    = R_INC:51;
+    fault     = "F_lv_max";
+    CTI_min_s = 0.30;
+}
+
+view { voltage = "HV"; }           # draw everything in the 33 kV frame
+----
+
+=== Running it
+
+[source,bash]
+----
+tc-curves check  study.tc              # parse + validate only
+tc-curves report study.tc              # margin report to stdout
+tc-curves render study.tc --svg -o study.svg
+tc-curves render study.tc --png -o study.png --width 1600
+tc-curves render study.tc --pdf -o study.pdf
+----
+
+== Syntax essentials
+
+* Blocks are `keyword { ... }`; statements inside end with `;`.
+* Comments: `#`, `//`, and `/* ... */`.
+* Strings are double-quoted. Escapes: `\"`, `\\`, `\n`, `\t`,
+  `\u{XXXX}`. A `\n` inside a *label* breaks the line on the drawing.
+* Numbers take a `_` group separator: `18_430` is `18430`.
+* **Units are required** wherever the field is not unit-free. A bare
+  number in a unit-bearing field is a parse error.
+
+=== Units
+
+[cols="1,3", options="header"]
+|===
+| Quantity | Suffixes
+
+| Current | `A`, `kA`, `mA`
+| Pickup, extra forms | `A_sec` (secondary amps, multiplied by `ct_ratio`), `A_pri` (primary, explicitly), `pu`, `xCT`, `xIn`
+| Time | `s`, `ms`, `min`
+| Voltage | `kV`, `V`, `MV`
+| Power | `MVA`, `kVA`, `MW`
+| Angle | `deg`
+|===
+
+`A_sec` is how a settings sheet reads. These are the same element:
+
+[source,tc]
+----
+element 51 { I_pu = 5.0 A_sec; }         # x ct_ratio -> 600 A primary
+element 51 { I_pu = 600 A; }             # same, stated as primary
+element 51 { I_pu = 5.0 A; I_units = "secondary"; }   # older spelling
+----
+
+`A_pri` exists so one primary figure can sit inside an element
+otherwise dialled in secondary amps.
+
+=== Two errors worth knowing
+
+`DUPLICATE_KEY`:: A key assigned twice in one block. The later value
+used to win silently.
+
+`MISSING_VALUE`:: An `=` with nothing after it.
+
+== Identifiers
+
+*Relay ids* are letters, digits, underscores, starting with a letter or
+underscore: `R_FDR_1`, `R_INC`.
+
+*Element ids* are IEEE C37.2 device numbers and may start with a digit
+and carry a letter suffix: `51`, `50`, `51G`, `67N`, `51X`, `87T`.
+
+*References* are `relay:element` -- `R_FDR_1:51`, `R_850:51G`.
+
+*Curve ids* are lower-case and namespaced: `iec.si`, `ansi.mi`.
+
+`name` is separate from the identifier. The id is what references
+resolve against; `name` is free text shown on the drawing, so renaming
+for a reader never breaks a reference:
+
+[source,tc]
+----
+relay R_INC {
+    name = "Incomer 11 kV, panel 3";
+    element 51 { name = "Phase OC (main)"; ... }
+}
+grade { backup = R_INC:51; }        # still the identifier
+----
+
+== Blocks
+
+=== meta
+
+Project identification. Open-ended; these keys are read by the title
+block and the `[meta.*]` footer macros:
+
+[source,tc]
+----
+meta {
+    project   = "Northgate 11 kV";
+    study     = "Feeder grading";
+    engineer  = "A. Cooper";
+    date      = "2026-07-30";
+    revision  = "B";
+    reference = "DOC-1234";
+    CTI_min_s = 0.30;          # default for grade blocks that omit it
+}
+----
+
+=== system
+
+[source,tc]
+----
+system {
+    voltages {
+        "HV" { kV = 33.0; description = "33 kV switchboard"; }
+        "LV" { kV = 11.0; }
+    }
+    frequency_Hz = 50;
+    base_MVA     = 25;
+    grounding    = "low_impedance";
+    I_units      = "primary";      # study-wide default for pickups
+}
+----
+
+Voltage levels are named, and the processor derives turns ratios from
+them. There is deliberately no transformer block.
+
+=== faults
+
+One current at one level:
+
+[source,tc]
+----
+faults {
+    "F_lv_max" {
+        I_A         = 6400 A;
+        min_A       = 4000 A;      # sweep the CTI check across a range
+        max_A       = 8000 A;
+        voltage     = "LV";
+        description = "Busbar 3ph, system normal";
+    }
+    "F_lv_earth" {
+        I_A     = 6400 A;
+        I0_A    = 800 A;           # zero-sequence component
+        I2_A    = 800 A;           # negative-sequence component
+        earth_A = 2400 A;          # residual 3*I0, if you prefer
+        voltage = "LV";
+    }
+}
+----
+
+`I_A` is the *phase* current. `I0_A` is the component `I0`; `earth_A`
+is the residual `3*I0` stated directly. Declare either -- the processor
+derives the other, and errors if you declare both inconsistently.
+
+If only `I_A` is given, `min_A` and `max_A` default to it.
+
+=== relay and element
+
+[source,tc]
+----
+relay R_FDR {
+    name      = "Feeder 4 (Mill Road)";
+    maker     = "Schneider";
+    model     = "MiCOM_P122";
+    voltage   = "LV";
+    ct_ratio  = 400/5;             # -> n_CT = 80
+    direction = "forward";
+
+    element 51 {
+        name     = "Phase OC";
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 320 A;
+        tms      = 0.12;
+        reset    = "instant";
+    }
+
+    element 50 {
+        curve   = definite;
+        I_pu    = 9 kA;
+        t_delay = 60 ms;           # not 0 -- see the warning below
+    }
+}
+----
+
+WARNING: `t_delay = 0 s` cannot be drawn. The time axis is logarithmic
+and has no position for zero, so the stage is omitted from the plot
+*and* the legend. Enter the relay's real operate time -- typically
+10-40 ms for an instantaneous stage. The diagnostic is
+`ZERO_DELAY_NOT_PLOTTABLE`.
+
+==== Multi-stage elements
+
+When one protection function has several stages, the plotted curve is
+the pointwise minimum -- what the relay actually does:
+
+[source,tc]
+----
+element 50 {
+    function = "phase_oc";
+    stages {
+        stage main  { curve = definite; I_pu = 147 A; t_delay = 40 ms; }
+        stage energ { curve = definite; I_pu = 255 A; t_delay = 20 ms; }
+    }
+}
+----
+
+Stage fields fall back to the element, so a pickup declared once on the
+element applies to every stage that does not restate it.
+
+=== Curves
+
+Standard families, by namespace:
+
+[cols="1,4", options="header"]
+|===
+| Namespace | Curve ids
+
+| `iec` | `iec.si`, `iec.vi`, `iec.ei`, `iec.lti`, `iec.sti`
+| `ansi` | `ansi.mi`, `ansi.vi`, `ansi.ei`
+| `sel` | `sel.c1`..`sel.c5`, `sel.u1`..`sel.u5`
+| `ge` | `ge.ur.si`, `ge.ur.mi`, `ge.ur.vi`, `ge.ur.ei`
+| `abb` | `abb.ri`, `abb.rd`
+| `siemens` | `siemens.inv`, `siemens.long_inv`, `siemens.long_vi`, `siemens.long_ei`
+| `schneider` | `schneider.sit`, `schneider.vit`, `schneider.eit`
+|===
+
+Plus three non-catalogue forms:
+
+[source,tc]
+----
+element 51 { curve = definite; I_pu = 3 kA; t_delay = 100 ms; }
+
+element 51 {                                    # your own constants
+    formula = { k = 4.0; c = 0.10; alpha = 0.50; };
+    I_pu = 500 A; tms = 0.2;
+}
+
+element 51 {                                    # a published point table
+    flex_points = [(240 A, 50.0 s), (600 A, 5.0 s),
+                   (1200 A, 1.0 s), (5000 A, 0.20 s)];
+    I_pu = 240 A; tms = 1.0;
+}
+----
+
+`flex_points` are absolute amps and seconds; `tms` scales the times
+linearly. Use them for anything the catalogue does not cover -- ACB
+trip units, thermal curves, manufacturer data.
+
+=== What an element measures
+
+A relay does not measure "the fault current". Which current the pickup
+refers to decides the multiple, and so the operate time:
+
+[cols="1,2,2", options="header"]
+|===
+| `function` | Measures | Default
+
+| `phase_oc` | phase current | `phase`
+| `earth_fault` | residual `3*I0` | `3I0`
+| `neg_seq` | negative sequence | *none -- you must state it*
+| `thermal` | RMS phase current | `phase`
+| `breaker_fail` | phase current | `phase`
+|===
+
+Override with `measures`, whose values are `phase`, `I1`, `I2`, `3I2`,
+`I0`, `3I0`:
+
+[source,tc]
+----
+element 51G { function = "earth_fault"; }                  # 3I0 by default
+element 51G { function = "earth_fault"; measures = "I0"; }  # this IED is in I0
+element 46  { function = "neg_seq"; measures = "I2"; }      # required
+----
+
+IMPORTANT: `neg_seq` has no default because IEDs differ over whether
+the pickup is scaled in `I2` or `3*I2`. A factor of three is the
+difference between an element that operates and one that does not, so
+guessing is not acceptable. Omitting `measures` is the error
+`MEASURES_REQUIRED`.
+
+If an element measures a component the referenced fault does not
+declare, that is the error `SEQUENCE_DATA_MISSING` and the pair is not
+graded. No other quantity is substituted -- a margin computed off the
+wrong current is a wrong number that looks right.
+
+=== scenario
+
+A `fault` is one current at one level. Referring it to another level by
+the turns ratio is correct for phase current, and for positive and
+negative sequence -- but **zero sequence does not cross a delta
+winding**. No ratio carries it.
+
+A `scenario` declares one condition at every level it is measured, so
+nothing has to be transformed:
+
+[source,tc]
+----
+scenario "LV earth fault" {
+    description = "Single phase to earth at 0.48 kV";
+
+    # star side: the components are equal for a phase-earth fault
+    level "LV" { I_A = 460 A; I1_A = 153 A; I2_A = 153 A; I0_A = 153 A; }
+
+    # delta side: no zero sequence gets through
+    level "HV" { I_A = 3.9 A; I1_A = 2.2 A; I2_A = 2.2 A;  I0_A = 0 A;  }
+
+    sees R_FDR { current_pct = 50; }   # parallel paths: half the current
+}
+
+grade {
+    primary   = R_ACB:51;
+    backup    = R_850:46;              # I2 backup
+    scenario  = "LV earth fault";
+    CTI_min_s = 0.30;
+}
+----
+
+This is the reason an HV *negative-sequence* element, not an HV
+residual element, backs up an LV earth fault: at HV the residual is
+zero, so a `51G` there is blind to the fault. Declare it and the report
+says so.
+
+`fault` and `scenario` are alternatives; declaring both is an error.
+
+=== device
+
+Fuses, cable damage curves, recloser characteristics -- anything with a
+published characteristic that is not a relay element:
+
+[source,tc]
+----
+device "spur_fuse_50T" {
+    kind        = fuse;
+    maker       = "Mersen";
+    model       = "50T";
+    rating_A    = 50 A;
+    min_melt    = [(100 A, 100 s), (1 kA, 0.05 s)];
+    total_clear = [(100 A, 200 s), (1 kA, 0.10 s)];
+}
+----
+
+`kind` is one of `fuse`, `recloser`, `cable`, `transformer_damage`,
+`motor_startup`, `breaker`. A fuse with both tables draws as a hatched
+band. In grading it uses *total clear* as the primary and *minimum
+melt* as the backup, which is the conservative reading each way.
+
+Reference a device by its id: `grade { primary = "spur_fuse_50T"; }`.
+
+=== grade
+
+[source,tc]
+----
+grade {
+    primary       = R_FDR:51;      # must clear first
+    backup        = R_INC:51;
+    fault         = "F_lv_max";    # or scenario = "..."
+    CTI_min_s     = 0.30;          # constraint: minimum acceptable
+    margin_s      = 0.35;          # target: exact design margin
+    tolerance_pct = 5;
+    upstream      = true;          # also sweep above the declared fault
+    upstream_to   = 20 kA;         # ceiling for that sweep
+    comment       = "feeder against incomer";
+}
+----
+
+`CTI_min_s` is a floor to satisfy; `margin_s` is a value to hit. Each
+side is evaluated at the current *it* sees: a fault on one side of a
+transformer is referred to the other by the turns ratio, per relay.
+
+`upstream = true` is worth using. Grading that holds at the declared
+fault can still fail further up, where two characteristics converge.
+Bound it with `upstream_to` on a deep cascade -- the default ceiling is
+the largest fault in the study, which a sub-feeder may never see.
+
+==== Letting the tool choose a setting
+
+[source,tc]
+----
+grade {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "F_lv_max";
+    margin_s = 0.35;
+    solve { strategy = "tight"; free = [tms]; }
+}
+----
+
+`tight` takes the smallest `tms` meeting the margin; `loose` rounds up
+to the next standard step. The solved value is marked `(auto)` in the
+legend.
+
+=== combine
+
+A synthetic curve from several sources:
+
+[source,tc]
+----
+combine {
+    name    = "Bus OR";
+    sources = [R_FDR_1:51, R_FDR_2:51];
+    as      = envelope_min;        # fastest at each current
+    style   = dashed;
+}
+----
+
+`as` is `envelope_min`, `envelope_max`, `sum`, or `select_first`.
+
+=== point and annotate
+
+Marked coordinates and callouts. These are how a study *argues* --
+inrush the curve must sit above, a withstand limit it must sit below,
+a margin the reader should not have to measure:
+
+[source,tc]
+----
+point "TX1_inrush" {
+    I_A     = 5250 A;
+    t_s     = 0.10 s;
+    voltage = "HV";
+    label   = "TX1 inrush\n12 x FLC, 100 ms";   # \n breaks the line
+    shape   = "cross";
+    coords  = true;                # append "(5.25 kA, 100 ms)"
+}
+
+annotate {                          # margin between two curves
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "F_lv_max";
+    label   = "CTI";
+}
+
+annotate {                          # a single curve at one current
+    on_curve = R_INC:51;
+    at_I_A   = 18.4 kA;
+    style    = leader;              # leader | pin | tag
+    label    = "HV max fault";
+}
+----
+
+=== view
+
+What is on screen, not what is true:
+
+[source,tc]
+----
+view {
+    voltage     = "HV";            # frame every curve in the 33 kV side
+    stages      = "individual";    # or "composite" (default)
+    current_min = 100 A;
+    current_max = 30 kA;
+    time_min    = 20 ms;
+    time_max    = 100 s;
+    current_pad = 0.2;             # padding when bounds are automatic
+}
+----
+
+Set the bounds explicitly if the automatic range is unhelpful --
+auto-ranging can run wide and squash the curves.
+
+=== page
+
+Paper, decoration, and where the legend goes:
+
+[source,tc]
+----
+page {
+    size        = "A4";            # A0..A5, Letter, Legal, Tabloid
+    orientation = "portrait";      # or landscape (default)
+    margins_mm  = 4;               # all four sides; 0 = edge to edge
+    stretch     = true;            # give the plot the unused band below the axis
+    theme       = "light";
+    border      = true;            # drawing frame + title block
+    legend      = { style = "direct"; };
+    axes        = { mirror = true; };       # repeat the scales top and right
+    faults      = { width_px = 1.5; };
+    title       = { text = "Northgate 11 kV"; subtitle = "Feeder grading"; };
+}
+----
+
+==== Fitting a portrait sheet
+
+Three levers, in the order they matter:
+
+. `legend { style = ... }` -- a right-hand column costs about a third
+  of a portrait sheet's width. `inside` floats the same panel over the
+  plot; `direct` drops it and labels each curve in place; `none`
+  removes identification entirely.
+. `stretch = true` -- reclaims the fixed band reserved below the axis
+  for stacked fault names.
+. `margins_mm` -- `4` is a sensible print margin, `0` fills the sheet.
+
+A legend too tall for its space sheds detail rather than running off
+the page: make and model first, then settings, then names only, and
+finally `+N more not shown`.
+
+== Reading the output
+
+A margin report row per grading pair:
+
+----
+grade R_FDR:51 / R_INC:51:
+    fault           = F_lv_max (I_f = 6400 A on LV)
+    CTI_min         = 0.300 s
+    seen by primary = 6400 A    seen by backup = 2133 A
+    t_primary       = 0.274 s        (M = 13.33)
+    t_backup        = 1.912 s        (M = 2.96)
+    achieved margin = 1.639 s        -- pass
+    overall         : PASS (worst 1.639 s at 6400 A)
+----
+
+`seen by backup` differs from `seen by primary` when a transformer sits
+between them: ampere-turns balance, so the 33 kV winding carries
+`6400 x 11/33 = 2133 A`. Each multiple is computed from the current in
+that relay's own winding.
+
+== Diagnostics you are most likely to meet
+
+[cols="1,1,3", options="header"]
+|===
+| Code | Severity | Meaning
+
+| `MEASURES_REQUIRED` | error | A `neg_seq` element does not say whether its pickup is `I2` or `3I2`.
+| `SEQUENCE_DATA_MISSING` | error | An element measures a component the fault or scenario does not declare.
+| `SEQUENCE_ACROSS_LEVELS` | error | A zero-sequence figure would have to cross a transformer. Declare it at the relay's own level.
+| `CT_RATIO_MISSING` | error | A secondary-side pickup with no `ct_ratio` to convert it.
+| `DUPLICATE_KEY` | error | A key assigned twice in one block.
+| `MISSING_VALUE` | error | An `=` with no value after it.
+| `MARGIN_BELOW_CTI` | error | A declared `margin_s` is below the `CTI_min_s` floor.
+| `ZERO_DELAY_NOT_PLOTTABLE` | warning | `t_delay = 0 s`; the stage cannot be drawn on a log axis.
+| `GRADE_MIXED_QUANTITY` | warning | The two sides of a grade measure different currents. Legitimate, but stated.
+| `RELAY_VOLTAGE_UNSPECIFIED` | warning | A relay has no `voltage` in a study with several levels.
+| `FAULT_SINGLE_POINT` | info | Only `I_A` given, so `min_A` and `max_A` default to it.
+|===
+
+== Writing a study from scratch
+
+A checklist, in the order that avoids rework:
+
+. **Levels first.** `system { voltages { ... } }`. Every relay and
+  fault refers to a level by name.
+. **Fault data next**, from the network study. Use `faults` for phase
+  currents; use `scenario` if any element measures a sequence
+  component, and declare each level explicitly.
+. **One relay per protected item**, with `ct_ratio` if any pickup is in
+  secondary amps.
+. **Elements in device-number order**, each with `function`. Add
+  `measures` to every `neg_seq` element. Give instantaneous stages a
+  real operate time, not zero.
+. **Grade downstream against upstream**: `primary` is the element that
+  must clear first. Add `upstream = true` unless you have a reason not
+  to.
+. **`view` and `page` last** -- they change presentation only. Bound
+  the current axis explicitly.
+. Run `check`, then `report`, then render and *look at the plot*.
+  Curves that vanish, labels that collide, and margins in the wrong
+  direction are all obvious in the picture and invisible in the source.
+
+=== Common mistakes
+
+* Omitting units. `I_pu = 480` is an error; write `480 A`.
+* Using `t_delay = 0 s` for an instantaneous element. It will not
+  appear on the plot.
+* Grading with `primary` and `backup` the wrong way round. The primary
+  is downstream and must be *faster*. A negative margin usually means
+  they are swapped.
+* Referring a residual current across a transformer. Declare it at each
+  level with a `scenario`.
+* Assuming the study's largest fault is visible to a sub-feeder deep in
+  a cascade. Bound the upstream sweep with `upstream_to`.
+* Expecting the tool to compute fault levels. It does not; they are
+  input.

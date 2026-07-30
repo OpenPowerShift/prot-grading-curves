@@ -19,6 +19,12 @@ import {
   levenshtein,
 } from '../constants/curves.js';
 import { allElements, resolveRef, type Element, type Stage, type Study } from './model.js';
+import {
+  MEASURED_QUANTITIES,
+  elementQuantity,
+  isMeasuredQuantity,
+  measuredQuantityOf,
+} from './quantity.js';
 
 export type Severity = 'error' | 'warning' | 'info';
 
@@ -81,6 +87,7 @@ export function validate(study: Study): Diagnostic[] {
 
   validateVoltages(ctx);
   validateFaults(ctx);
+  validateScenarios(ctx);
   validateElements(ctx);
   validateDevices(ctx);
   validateCombines(ctx);
@@ -127,6 +134,75 @@ function validateVoltages(ctx: Ctx): void {
 /* ------------------------------------------------------------------ */
 /* Faults                                                              */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Scenario blocks.
+ *
+ * A scenario exists so that no sequence component has to be referred
+ * across a transformer, so the checks are about the data being
+ * complete and self-consistent at each level it declares.
+ */
+function validateScenarios(ctx: Ctx): void {
+  const { study } = ctx;
+  const names = [...study.voltages.keys()];
+
+  for (const scenario of study.scenarios.values()) {
+    if (scenario.levels.size === 0) {
+      add(ctx, 'SCENARIO_NO_LEVELS', 'error',
+        `scenario "${scenario.name}" declares no level { ... } block, so no relay can be ` +
+        'evaluated against it', scenario.loc);
+      continue;
+    }
+
+    for (const level of scenario.levels.values()) {
+      if (!level.voltage || !study.voltages.has(level.voltage)) {
+        add(ctx, 'VOLTAGE_UNKNOWN', 'error',
+          `scenario "${scenario.name}" declares a level "${level.voltage}" that is not in ` +
+          `system.voltages (known: ${names.join(', ') || 'none'})`, level.loc);
+      }
+
+      /*
+       * `earth_A` is the residual and `I0_A` its component, so one
+       * implies the other. Declaring both differently means one of the
+       * two figures is wrong and there is no way to tell which.
+       */
+      if (level.earth_A != null && level.I0_A != null) {
+        const implied = level.I0_A * 3;
+        const tolerance = Math.max(1e-6, Math.abs(implied) * 0.01);
+        if (Math.abs(level.earth_A - implied) > tolerance) {
+          add(ctx, 'SEQUENCE_RESIDUAL_CONFLICT', 'error',
+            `scenario "${scenario.name}" level ${level.voltage} declares earth_A = ` +
+            `${level.earth_A} A and I0_A = ${level.I0_A} A, but the residual is 3 x I0 ` +
+            `(${implied} A); declare one or make them agree`, level.loc);
+        }
+      }
+
+      for (const [field, value] of [
+        ['I_A', level.I_A], ['I1_A', level.I1_A], ['I2_A', level.I2_A],
+        ['I0_A', level.I0_A], ['earth_A', level.earth_A],
+      ] as Array<[string, number | undefined]>) {
+        if (value != null && (!Number.isFinite(value) || value < 0)) {
+          add(ctx, 'FAULT_CURRENT_INVALID', 'error',
+            `scenario "${scenario.name}" level ${level.voltage} declares ${field} = ${value}; ` +
+            'a current must be finite and not negative', level.loc);
+        }
+      }
+    }
+
+    for (const [relayId, pct] of scenario.shares) {
+      if (!study.relays.has(relayId)) {
+        add(ctx, 'UNRESOLVED_REFERENCE', 'error',
+          `scenario "${scenario.name}" gives a current share for relay ${relayId}, which is ` +
+          'not declared', scenario.loc);
+      }
+      if (!(pct > 0) || pct > 100) {
+        add(ctx, 'CURRENT_PCT_OUT_OF_RANGE', 'error',
+          `scenario "${scenario.name}" gives relay ${relayId} a share of ${pct}%; it must be ` +
+          'greater than 0 and at most 100', scenario.loc);
+      }
+    }
+  }
+}
 
 function validateFaults(ctx: Ctx): void {
   const { study } = ctx;
@@ -180,13 +256,21 @@ function validateElements(ctx: Ctx): void {
           producer?.kind === 'standard' ? producer.id
           : producer?.kind === 'formula' ? `formula:${producer.k}/${producer.c}/${producer.alpha}`
           : producer?.kind ?? 'none';
-        const key = `${curveKey}|${stage.I_pu_A}|${stage.tms}`;
+        /*
+         * The measured current is part of what makes two elements
+         * distinct. Without it a `51` and a `51G` with the same
+         * settings were reported as a double trip, when they respond
+         * to entirely different currents and routinely do share
+         * settings.
+         */
+        const quantity = measuredQuantityOf(stage) ?? 'undeclared';
+        const key = `${curveKey}|${stage.I_pu_A}|${stage.tms}|${quantity}`;
         if (curveKey === 'none' || stage.I_pu_A == null) continue;
         const prior = seen.get(key);
         if (prior && prior !== element.id) {
           add(ctx, 'DUPLICATE_ELEMENT', 'error',
             `relay ${relay.id} declares elements ${prior} and ${element.id} with the same ` +
-            `(I_pu, tms, curve) -- they would double-trip identically`,
+            `(I_pu, tms, curve, measured current) -- they would double-trip identically`,
             element.node.loc, element.id.length);
         } else if (!prior) {
           seen.set(key, element.id);
@@ -233,6 +317,18 @@ function validateElementShape(
       element.node.loc, element.id.length);
   }
 
+  /*
+   * Stages of one element are stages of one protection function, so
+   * they measure one current. Disagreeing means the element cannot be
+   * graded or plotted as a single characteristic.
+   */
+  if (element.stages.length > 1 && elementQuantity(element.stages) === 'mixed') {
+    add(ctx, 'MEASURES_MIXED', 'error',
+      `element ${element.ref} has stages measuring different currents; split them into ` +
+      'separate elements, one per measured quantity',
+      element.node.loc, element.id.length);
+  }
+
   for (const stage of element.stages) {
     validateStage(ctx, element, stage, ctRatio, relayId, relayKv);
   }
@@ -249,6 +345,24 @@ function validateStage(
   const where = element.staged ? `${element.ref} stage ${stage.id}` : element.ref;
   const loc = stage.node.loc;
   const keys = memberKeys(stage.node);
+
+  /* ---- measured current ------------------------------------------ */
+  /*
+   * Which current a pickup is in decides the multiple, so it decides
+   * the operate time. Left to a guess it is a silent numerical error,
+   * which is what happened while `function` was parsed and never read.
+   */
+  if (stage.measures != null && !isMeasuredQuantity(stage.measures)) {
+    add(ctx, 'MEASURES_UNKNOWN', 'error',
+      `${where} declares measures = "${stage.measures}"; expected one of ` +
+      MEASURED_QUANTITIES.join(', '),
+      loc);
+  } else if (measuredQuantityOf(stage) == null) {
+    add(ctx, 'MEASURES_REQUIRED', 'error',
+      `${where} has function "${stage.function}" but does not say which current its pickup ` +
+      'is in; IEDs differ over the factor of three, so declare measures = "I2" or "3I2"',
+      loc);
+  }
 
   /* ---- curve identifier ------------------------------------------ */
   const rawCurve = rawCurveId(stage);
@@ -282,10 +396,31 @@ function validateStage(
       `${where} declares I_pu = ${stage.I_pu_declared}; it must be strictly positive`,
       loc);
   }
-  if (stage.I_units === 'secondary' && ctRatio == null) {
+  /*
+   * Any route to a secondary-side pickup needs the ratio: `I_units`,
+   * an `A_sec` suffix, or a per-unit multiple. Without it the pickup
+   * cannot be converted and resolves to nothing at all, so this is an
+   * error rather than a warning.
+   */
+  /*
+   * A definite stage set to zero seconds cannot be drawn: the time
+   * axis is logarithmic, and log(0) has no position on it. The curve
+   * disappeared from the plot *and* the legend with nothing said,
+   * which reads as the tool losing an element. A real relay has an
+   * operate time -- typically 10 to 40 ms for an instantaneous stage
+   * -- and entering it puts the curve back.
+   */
+  if (stage.t_delay_s === 0) {
+    add(ctx, 'ZERO_DELAY_NOT_PLOTTABLE', 'warning',
+      `${where} declares t_delay = 0 s, which cannot be placed on a logarithmic ` +
+      'time axis, so the stage is not drawn; enter the relay\'s actual operate time',
+      loc);
+  }
+
+  if (stage.I_pu_in_secondary && ctRatio == null) {
     add(ctx, 'CT_RATIO_MISSING', 'error',
-      `${where} declares I_units = "secondary" but relay ${relayId ?? '?'} has no ct_ratio ` +
-      'to convert the pickup to primary amps',
+      `${where} gives its pickup on the secondary side, but relay ${relayId ?? '?'} has no ` +
+      'ct_ratio to convert it to primary amps',
       loc);
   }
 
@@ -519,9 +654,20 @@ function validateGrades(ctx: Ctx): void {
       pairs.add(key);
     }
 
-    if (!grade.fault) {
+    if (grade.fault && grade.scenario) {
+      add(ctx, 'GRADE_FAULT_AND_SCENARIO', 'error',
+        'grade declares both `fault` and `scenario`; they are alternatives -- a fault is one ' +
+        'current at one level, a scenario the same condition at every level', loc);
+    } else if (grade.scenario) {
+      /* A scenario is the condition, so nothing is missing here. */
+      if (!study.scenarios.has(grade.scenario)) {
+        add(ctx, 'UNRESOLVED_REFERENCE', 'error',
+          `grade references scenario "${grade.scenario}", which is not declared`, loc);
+      }
+    } else if (!grade.fault) {
       add(ctx, 'FAULT_OPTIONAL_NO_GRADE_CHECK', 'warning',
-        'grade block declares no fault; the curves render but no margin is computed', loc);
+        'grade block declares no fault or scenario; the curves render but no margin is computed',
+        loc);
     } else if (!study.faults.has(grade.fault)) {
       add(ctx, 'UNRESOLVED_REFERENCE', 'error',
         `grade references fault "${grade.fault}", which is not declared in faults { ... }` +

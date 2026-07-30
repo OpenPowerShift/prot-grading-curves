@@ -122,12 +122,16 @@ describe('titles', () => {
         }
       }
     `);
-    expect(svg).toContain('>Main intake</tspan>');
-    expect(svg).toContain('>protection study</tspan>');
+    /*
+     * Titles are laid out top-down and are also wrapped to the sheet,
+     * so each line is its own <text> rather than a tspan of one.
+     */
+    expect(svg).toContain('>Main intake</text>');
+    expect(svg).toContain('>protection study</text>');
 
     /* The subtitle's baseline must clear the title's second line. */
     const subY = Number(svg.match(/y="([\d.]+)"[^>]*>Sheet 1</)![1]);
-    const titleY = Number(svg.match(/y="([\d.]+)"[^>]*><tspan[^>]*>Main intake</)![1]);
-    expect(subY).toBeGreaterThan(titleY + 18);
+    const secondLineY = Number(svg.match(/y="([\d.]+)"[^>]*>protection study</)![1]);
+    expect(subY).toBeGreaterThan(secondLineY);
   });
 });

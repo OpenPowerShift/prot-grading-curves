@@ -86,6 +86,12 @@ export class TcViewer extends LitElement {
   /** zoom-resolved current domain (overrides view block clamps); null = use parsed view block */
   @state() private currentMin: number | null = null;
   @state() private currentMax: number | null = null;
+  /**
+   * The declared view bounds last seen, so an edit to them can be
+   * told apart from a re-render.
+   */
+  private declaredBounds: string | null = null;
+
   /** True once a ResizeObserver has measured the host element so we
    * know what (W, H) to render at. Until then the view uses the
    * initial fallback dims (1500x1000). */
@@ -199,6 +205,7 @@ export class TcViewer extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.ro?.disconnect();
+    this.endPan();
   }
 
   private handleMouseMove(ev: MouseEvent): void {
@@ -357,7 +364,11 @@ export class TcViewer extends LitElement {
     this.hover = null;
     (this as any)._cursorPx = null;
     this.setOverPlot(false);
-    this.endPan();
+    /*
+     * A pan in progress is deliberately *not* ended here. The drag is
+     * tracked on the window while it lasts, so leaving the pane keeps
+     * panning instead of dropping the gesture halfway.
+     */
   }
 
   /**
@@ -390,6 +401,22 @@ export class TcViewer extends LitElement {
     pxPerDecade: number;
   } | null = null;
 
+  /**
+   * Window-level handlers held for the duration of a pan.
+   *
+   * The drag has to be tracked on the window, not on the plot pane.
+   * Bound to the pane, a middle-drag that wandered left over the
+   * splitter delivered its *mouseup to the editor* -- and on X11 a
+   * middle click over a contenteditable pastes the primary selection.
+   * Panning the graph therefore injected whatever text was last
+   * selected into the study, which read as a duplicated block and a
+   * row of syntax errors.
+   */
+  private panListeners: {
+    move: (ev: MouseEvent) => void;
+    up: (ev: MouseEvent) => void;
+  } | null = null;
+
   private handleMouseDown(ev: MouseEvent): void {
     /* Button 1 is the middle button. Left stays free for future
      * curve dragging (spec v0.2), right for the context menu. */
@@ -414,6 +441,19 @@ export class TcViewer extends LitElement {
       logHi,
       pxPerDecade: spanPx / (logHi - logLo),
     };
+
+    /* Own the gesture until the button comes up, wherever that is. */
+    const move = (e: MouseEvent): void => this.handlePanMove(e);
+    const up = (e: MouseEvent): void => {
+      /* Swallow the release so it cannot act on whatever it landed
+       * over -- the editor included. */
+      e.preventDefault();
+      this.endPan();
+    };
+    window.addEventListener('mousemove', move, true);
+    window.addEventListener('mouseup', up, true);
+    this.panListeners = { move, up };
+
     (this.querySelector('div.pane-host') as HTMLElement | null)?.classList.add('panning');
   }
 
@@ -436,6 +476,11 @@ export class TcViewer extends LitElement {
   }
 
   private endPan(): void {
+    if (this.panListeners) {
+      window.removeEventListener('mousemove', this.panListeners.move, true);
+      window.removeEventListener('mouseup', this.panListeners.up, true);
+      this.panListeners = null;
+    }
     if (!this.pan) return;
     this.pan = null;
     (this.querySelector('div.pane-host') as HTMLElement | null)?.classList.remove('panning');
@@ -490,6 +535,127 @@ export class TcViewer extends LitElement {
 
     this.currentMin = Math.pow(10, newLo);
     this.currentMax = Math.pow(10, newHi);
+  }
+
+  /* ------------------- touch: drag and pinch ------------------- */
+
+  /**
+   * Live touch gesture.
+   *
+   * One finger pans, two pinch. Both work on the same log-space
+   * domain the wheel and middle-drag use, so a phone and a mouse
+   * arrive at the same view -- there is one notion of what is on
+   * screen, not a separate touch one.
+   */
+  private touch: {
+    /** Log10 bounds when the gesture began. */
+    logLo: number;
+    logHi: number;
+    pxPerDecade: number;
+    /** Plot edges in SVG pixel space, for anchoring a pinch. */
+    xMin: number;
+    xMax: number;
+    /** Midpoint of the touches at the start, in SVG pixel space. */
+    startCentre: number;
+    /** Distance between two touches at the start; 0 for one finger. */
+    startSpread: number;
+  } | null = null;
+
+  /** Touch positions in the SVG's own pixel space. */
+  private touchGeometry(ev: TouchEvent): { centre: number; spread: number } | null {
+    const svg = this.querySelector('svg') as SVGSVGElement | null;
+    if (!svg || ev.touches.length === 0) return null;
+
+    const rect = svg.getBoundingClientRect();
+    const viewBoxW = svg.viewBox.baseVal.width || rect.width;
+    const toSvg = (clientX: number): number => ((clientX - rect.left) / rect.width) * viewBoxW;
+
+    if (ev.touches.length === 1) {
+      return { centre: toSvg(ev.touches[0].clientX), spread: 0 };
+    }
+    const a = toSvg(ev.touches[0].clientX);
+    const b = toSvg(ev.touches[1].clientX);
+    return { centre: (a + b) / 2, spread: Math.abs(a - b) };
+  }
+
+  private handleTouchStart(ev: TouchEvent): void {
+    const svg = this.querySelector('svg') as SVGSVGElement | null;
+    const proj = svg ? projectDomain(svg.querySelector('path.tc-curve')) : null;
+    const geo = this.touchGeometry(ev);
+    if (!proj || !geo) return;
+
+    const logLo = Math.log10(proj.domain.I_min);
+    const logHi = Math.log10(proj.domain.I_max);
+    const spanPx = proj.scale.xMax - proj.scale.xMin;
+    if (!(spanPx > 0) || !(logHi > logLo)) return;
+
+    this.touch = {
+      logLo,
+      logHi,
+      pxPerDecade: spanPx / (logHi - logLo),
+      xMin: proj.scale.xMin,
+      xMax: proj.scale.xMax,
+      startCentre: geo.centre,
+      startSpread: geo.spread,
+    };
+  }
+
+  private handleTouchMove(ev: TouchEvent): void {
+    const start = this.touch;
+    const geo = this.touchGeometry(ev);
+    if (!start || !geo) return;
+
+    /* Own the gesture: without this the page scrolls instead. */
+    ev.preventDefault();
+
+    const { logLo, logHi, pxPerDecade } = start;
+
+    /*
+     * Pinch first, so the scale is settled before the pan is applied
+     * about it. A second finger arriving mid-drag has no starting
+     * spread to compare against, so that case stays a pan until the
+     * gesture is lifted and begun again.
+     */
+    let lo = logLo;
+    let hi = logHi;
+    if (start.startSpread > 10 && geo.spread > 10) {
+      /*
+       * Anchored where the fingers went down, exactly as the wheel
+       * anchors on the pointer: the current under the pinch stays put
+       * while the decades around it spread or close.
+       */
+      const frac = Math.min(1, Math.max(0,
+        (start.startCentre - start.xMin) / Math.max(1, start.xMax - start.xMin)));
+      const anchor = logLo + frac * (logHi - logLo);
+
+      const k = start.startSpread / geo.spread;
+      lo = anchor - (anchor - logLo) * k;
+      hi = anchor + (logHi - anchor) * k;
+    }
+
+    /* Then the pan, from how far the centre of the gesture moved. */
+    const shift = -(geo.centre - start.startCentre) / pxPerDecade;
+    lo += shift;
+    hi += shift;
+
+    /* Same limits as the wheel: a third of a decade to six decades. */
+    const span = hi - lo;
+    if (span < 0.33) {
+      const mid = (lo + hi) / 2;
+      lo = mid - 0.165;
+      hi = mid + 0.165;
+    } else if (span > 6) {
+      const mid = (lo + hi) / 2;
+      lo = mid - 3;
+      hi = mid + 3;
+    }
+
+    this.currentMin = Math.pow(10, lo);
+    this.currentMax = Math.pow(10, hi);
+  }
+
+  private handleTouchEnd(): void {
+    this.touch = null;
   }
 
   /** Show or hide the controls crib. Driven by the toolbar's `?`. */
@@ -564,7 +730,7 @@ export class TcViewer extends LitElement {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tcc-${Date.now()}.svg`;
+    a.download = `${this.exportStem()}.svg`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -754,7 +920,11 @@ render() {
            @mouseup=${() => this.endPan()}
            @mouseleave=${() => this.handleMouseLeave()}
            @auxclick=${(e: MouseEvent) => { if (e.button === 1) e.preventDefault(); }}
-           @wheel=${(e: WheelEvent) => this.handleWheel(e)}>
+           @wheel=${(e: WheelEvent) => this.handleWheel(e)}
+           @touchstart=${(e: TouchEvent) => this.handleTouchStart(e)}
+           @touchmove=${(e: TouchEvent) => this.handleTouchMove(e)}
+           @touchend=${() => this.handleTouchEnd()}
+           @touchcancel=${() => this.handleTouchEnd()}>
         ${unsafeHTML(this.renderWithOverlay(svg))}
       </div>
     `;
@@ -870,7 +1040,34 @@ render() {
       this.lastDoc = this.document;
       this.lastStudy = this.study;
       this.docRevision++;
+      this.dropZoomIfBoundsEdited();
     }
+  }
+
+  /**
+   * Let an edit to the source override an interactive zoom.
+   *
+   * A wheel zoom or a pan is held here as `currentMin` / `currentMax`
+   * and takes precedence over the study's `view` block -- which is
+   * right while the reader is driving, and wrong the moment they go
+   * back to the source and change `current_min` themselves. Editing
+   * the declared bounds looked as though it did nothing at all,
+   * because a stale zoom was still winning. Changing them now drops
+   * the zoom; re-rendering for any other reason leaves it alone.
+   */
+  private dropZoomIfBoundsEdited(): void {
+    const view = this.document?.items.find((i) => i.type === 'view') as
+      import('../parser/index.js').ViewBlock | undefined;
+    const bounds = view
+      ? `${view.current_min ?? ''}|${view.current_max ?? ''}|` +
+        `${view.time_min ?? ''}|${view.time_max ?? ''}`
+      : '';
+
+    if (this.declaredBounds !== null && bounds !== this.declaredBounds) {
+      this.currentMin = null;
+      this.currentMax = null;
+    }
+    this.declaredBounds = bounds;
   }
 
   /** Readout box fill, matching the active theme. */

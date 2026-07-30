@@ -11,9 +11,14 @@ import { LitElement, css, html, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, hoverTooltip } from '@codemirror/view';
 import { EditorState, type Extension } from '@codemirror/state';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentMore, indentLess } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
-import { autocompletion } from '@codemirror/autocomplete';
+import {
+  autocompletion,
+  acceptCompletion,
+  completionStatus,
+  startCompletion,
+} from '@codemirror/autocomplete';
 
 import { tcCompletionSource } from '../editor/completions.js';
 import { tcHoverSource } from '../editor/hover.js';
@@ -72,10 +77,7 @@ export class TcEditor extends LitElement {
     }
     .cm-content { caret-color: var(--tc-accent); }
     .cm-line { padding-left: 6px; }
-    .cm-cursor { border-left-color: var(--tc-accent); }
-    .cm-selectionBackground, ::selection {
-      background: var(--tc-bg-elevated) !important;
-    }
+
     /* autocomplete dropdown + tooltip styling tuned for the dark
        toolbar/background palette */
     .cm-tooltip-autocomplete {
@@ -165,6 +167,32 @@ export class TcEditor extends LitElement {
       tcLanguage,
       tcEditorAppearance,
       keymap.of([
+        /*
+         * Tab takes the highlighted completion, and indents when no
+         * list is open. Bound ahead of the default keymap so it wins
+         * either way -- unbound, Tab moves focus out of the editor,
+         * which is what made it look as though completion was doing
+         * nothing.
+         */
+        { key: 'Tab', run: acceptCompletion },
+        { key: 'Tab', run: indentMore, shift: indentLess },
+        {
+          /*
+           * `?` asks "what can go here?". It opens the completion
+           * list, which carries the field names and their one-line
+           * descriptions -- except inside a string or a comment,
+           * where a question mark is just a character the author is
+           * typing.
+           */
+          key: '?',
+          run: (view) => {
+            if (inStringOrComment(view.state.doc.toString(), view.state.selection.main.head)) {
+              return false;
+            }
+            if (completionStatus(view.state) === null) startCompletion(view);
+            return true;
+          },
+        },
         {
           key: 'Mod-s',
           preventDefault: true,
@@ -184,6 +212,25 @@ export class TcEditor extends LitElement {
         maxRenderedOptions: 50,
       }),
       hoverTooltip((view, pos) => tcHoverSource({ view, pos }), { hoverTime: 250 }),
+      /*
+       * Middle-click paste is refused.
+       *
+       * On X11 a middle click over a contenteditable inserts the
+       * primary selection, so a stray middle button -- the same one
+       * that pans the plot -- silently duplicated whatever text was
+       * selected into the study. Nothing in this editor wants that
+       * gesture, and the paste is unattributable when it happens.
+       */
+      EditorView.domEventHandlers({
+        mousedown: (event) => {
+          if (event.button === 1) { event.preventDefault(); return true; }
+          return false;
+        },
+        auxclick: (event) => {
+          if (event.button === 1) { event.preventDefault(); return true; }
+          return false;
+        },
+      }),
       EditorView.lineWrapping,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) {
@@ -224,4 +271,44 @@ export class TcEditor extends LitElement {
     // element's light DOM.
     return html``;
   }
+}
+
+/**
+ * Is the offset inside a string literal or a comment?
+ *
+ * Used to decide whether `?` means "show me what can go here" or is
+ * simply a character being typed into prose. Scans from the start of
+ * the document, which is cheap enough at the size a study runs to and
+ * avoids depending on the parse succeeding mid-edit.
+ */
+function inStringOrComment(src: string, pos: number): boolean {
+  let inString = false;
+  let inLine = false;
+  let inBlock = false;
+
+  for (let i = 0; i < pos && i < src.length; i++) {
+    const c = src[i];
+    const next = src[i + 1];
+
+    if (inLine) {
+      if (c === '\n') inLine = false;
+      continue;
+    }
+    if (inBlock) {
+      if (c === '*' && next === '/') { inBlock = false; i++; }
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') i++;
+      else if (c === '"') inString = false;
+      continue;
+    }
+
+    if (c === '"') inString = true;
+    else if (c === '#') inLine = true;
+    else if (c === '/' && next === '/') { inLine = true; i++; }
+    else if (c === '/' && next === '*') { inBlock = true; i++; }
+  }
+
+  return inString || inLine || inBlock;
 }

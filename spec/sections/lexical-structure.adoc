@@ -62,8 +62,17 @@ a suffix, while `67N` is one identifier.
 The following are reserved and cannot be used as identifiers:
 
 ====
-*Top-level blocks* -- meta, system, faults, relay, element, device,
-grade, annotate, combine, view, page, point, notes
+*Top-level blocks* -- meta, system, faults, scenario, relay, element,
+device, grade, annotate, combine, view, page, point, notes
+
+*Inside `scenario`* -- description, level, sees
+
+*Inside `scenario.level`* -- I_A, I1_A, I2_A, I0_A, earth_A
+
+*Inside `scenario.sees`* -- current_pct
+
+*Measured currents* (element / stage `measures`) -- phase, I1, I2,
+3I2, I0, 3I0
 
 *Inside `meta`* -- open-ended. The conventional keys, which the
 renderer's title block and the `[meta.*]` footer macros read, are
@@ -79,15 +88,15 @@ I_base_A, I_units
 *Inside `faults.<name>`* -- I_A, min_A, max_A, earth_A, I0_A, I2_A,
 voltage, description
 
-*Inside `element` / `stage`* -- name, function, curve, formula,
+*Inside `element` / `stage`* -- name, function, measures, curve, formula,
 flex_points, I_pu, I_units, current_pct, tms, t_delay, t_reset,
 char_angle, reset, directional, direction, stages, stage, comment
 
 *Inside `relay`* -- name, voltage, ct_ratio, direction, faults,
 maker, model, comment, description, reference
 
-*Inside `grade`* -- primary, backup, fault, CTI_min_s, margin_s,
-tolerance_pct, upstream, upstream_to, comment, solve
+*Inside `grade`* -- primary, backup, fault, scenario, CTI_min_s,
+margin_s, tolerance_pct, upstream, upstream_to, comment, solve
 
 *Inside `annotate`* -- on_curve, at_I_A, primary, backup, fault,
 label, style, color

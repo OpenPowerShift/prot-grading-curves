@@ -154,3 +154,174 @@ describe('suppressing the legend', () => {
     expect(svg).toContain('>R_INC:51</text>');
   });
 });
+
+describe('fault descriptions', () => {
+  const src = `
+meta { project = "Desc"; }
+system { voltages { hv { kV = 11; } } }
+faults {
+  "F_bus" { I_A = 9 kA; voltage = hv; description = "switchboard bus fault, three phase"; }
+  "F_spur" { I_A = 2 kA; voltage = hv; }
+}
+relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
+view { voltage = hv; }
+`;
+
+  it('shows the description under its fault, rather than dropping it', () => {
+    const svg = parseAndRender(src, { theme: 'light' }).svg;
+    expect(svg).toContain('switchboard bus fault');
+  });
+
+  it('says nothing extra for a fault that has no description', () => {
+    const svg = parseAndRender(src, { theme: 'light' }).svg;
+    /* F_spur still appears, but brings no note with it. */
+    expect(svg).toContain('F_spur');
+  });
+
+  it('wraps a long description inside the legend column', () => {
+    const long = src.replace(
+      'switchboard bus fault, three phase',
+      'switchboard bus fault, three phase, measured at the incomer with the bus section closed',
+    );
+    const svg = parseAndRender(long, { theme: 'light' }).svg;
+    /* Present, but not as one run that would overflow the column. */
+    expect(svg).toContain('switchboard bus fault');
+    expect(svg).not.toContain(
+      '>switchboard bus fault, three phase, measured at the incomer with the bus section closed</text>',
+    );
+  });
+});
+
+describe('a crowded sheet', () => {
+  /** Nine characteristics and seven described faults, as a real study has. */
+  const CROWDED = `
+meta { project = "Crowded"; }
+system { voltages { "HV" { kV = 33.0; } "LV" { kV = 0.48; } } }
+faults {
+  "RMU 33 kV 3ph max" { I_A = 31.37 kA; voltage = "HV"; description = "Max 3ph at 33 kV RMU-BESS"; }
+  "RMU 33 kV 3ph min" { I_A = 16.33 kA; voltage = "HV"; description = "Min 3ph at 33 kV RMU-BESS"; }
+  "RMU 33 kV 1ph max" { I_A = 2.95 kA; voltage = "HV"; description = "Max 1ph-earth at 33 kV RMU-BESS"; }
+  "F_2ph_min_HV" { I_A = 390 A; voltage = "HV"; description = "Min 2ph fault seen by the relay"; }
+  "F_ACB_inst_HV" { I_A = 65.5 A; voltage = "HV"; description = "ACB inst threshold referred to 33 kV"; }
+  "F_INV_max" { I_A = 0.46 kA; voltage = "LV"; description = "Max 3ph at 0.48 kV inverter"; }
+  "F_INV_min" { I_A = 0.45 kA; voltage = "LV"; description = "Min 3ph at 0.48 kV inverter"; }
+}
+relay R_RMU_850 {
+  name = "BESS HV Relay (GE Multilin 850)"; maker = "GE Multilin"; model = "850";
+  voltage = "HV"; ct_ratio = 250/1;
+  element 51  { name = "Phase TOC (51)"; curve = iec.si; I_pu = 105 A; tms = 0.10; }
+  element 51G { name = "Ground TOC (51G)"; curve = iec.si; I_pu = 20 A; tms = 0.15; }
+  element 50G { name = "Ground IOC (50G)"; curve = definite; I_pu = 100 A; t_delay = 0 s; }
+  element 50 {
+    name = "Phase IOC (50)";
+    stages {
+      stage main  { curve = definite; I_pu = 147 A; t_delay = 0 s; }
+      stage energ { curve = definite; I_pu = 255 A; t_delay = 0 s; }
+    }
+  }
+  element 46 {
+    name = "Negative Sequence IOC (46)";
+    stages {
+      stage main  { curve = definite; I_pu = 75 A; t_delay = 0.10 s; }
+      stage energ { curve = definite; I_pu = 75 A; t_delay = 0.35 s; }
+    }
+  }
+}
+relay R_FDR {
+  name = "33 kV BESS Feeder (SEL-751)"; voltage = "HV"; ct_ratio = 250/1;
+  element 46 { name = "Neg Seq backup (46)"; curve = definite; I_pu = 75 A; t_delay = 0.45 s; }
+}
+point "TX_inrush" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "BESS Tx inrush"; }
+view { voltage = "HV"; stages = "individual"; }
+`;
+
+  /** Baseline of every text element's y, and the sheet height. */
+  function textExtent(svg: string): { lowest: number; height: number } {
+    const height = Number(svg.match(/viewBox="0 0 [\d.]+ ([\d.]+)"/)![1]);
+    let lowest = 0;
+    for (const m of svg.matchAll(/<text[^>]*\sy="([\d.]+)"/g)) {
+      lowest = Math.max(lowest, Number(m[1]));
+    }
+    return { lowest, height };
+  }
+
+  it('keeps every legend entry on the sheet', () => {
+    const svg = parseAndRender(CROWDED, { theme: 'light' }).svg;
+    const { lowest, height } = textExtent(svg);
+    expect(lowest).toBeLessThan(height);
+  });
+
+  it('sheds detail rather than entries, so nothing goes unnamed', () => {
+    const svg = parseAndRender(CROWDED, { theme: 'light' }).svg;
+
+    /* Every curve is still listed... */
+    expect(svg).toContain('Phase TOC (51)');
+    expect(svg).toContain('Neg Seq backup (46)');
+    /* ...and the settings line, which is what gets checked, survives. */
+    expect(svg).toMatch(/delay 350\s*ms/);
+    /* The make and model is what gave way. */
+    expect(svg).not.toContain('>GE Multilin 850</text>');
+  });
+
+  it('leaves a small study at full detail', () => {
+    const svg = render();
+    /* The uncrowded case still prints everything it has. */
+    expect(svg).toContain('IEC SI · 720 A · TMS 0.3');
+  });
+});
+
+describe('cross-voltage fault entries', () => {
+  const CROSS = `
+system { voltages { "HV" { kV = 33.0; } "LV" { kV = 0.48; } } }
+faults {
+  "F_INV_max" { I_A = 0.46 kA; voltage = "LV"; }
+  "F_HV_max"  { I_A = 31.4 kA; voltage = "HV"; }
+}
+relay R { voltage = "HV"; element 51 { curve = iec.si; I_pu = 105 A; tms = 0.1; } }
+view { voltage = "HV"; }
+`;
+
+  it('quotes the declared current against the level it was declared on', () => {
+    const svg = parseAndRender(CROSS, { theme: 'light' }).svg;
+    /*
+     * The legend used to print the *projected* current beside the
+     * fault's own voltage: a 460 A fault at 0.48 kV was listed as
+     * "6.69 A · LV · 0.48 kV", which is its 33 kV equivalent and so
+     * simply false at the level named.
+     */
+    expect(svg).toContain('F_INV_max · 460 A · LV · 0.48 kV');
+    expect(svg).not.toContain('6.69 A · LV');
+  });
+
+  it('shows where a projected fault lands on the axis as well', () => {
+    const svg = parseAndRender(CROSS, { theme: 'light' }).svg;
+    /*
+     * The entry wraps, so the arrow and the value may land on
+     * different lines; both must be present. The arrow is ASCII --
+     * U+2192 is outside the PDF core fonts' encoding, so it prints as
+     * mojibake on an exported sheet.
+     */
+    expect(svg).toContain('-&gt;');
+    expect(svg).toMatch(/6\.69/);
+  });
+
+  it('says nothing extra when the fault is already in the view frame', () => {
+    const svg = parseAndRender(CROSS, { theme: 'light' }).svg;
+    /* An HV fault on an HV axis needs no projection note. */
+    const entries = [...svg.matchAll(/>([^<]*F_HV_max[^<]*)</g)].map((m) => m[1]).join(' ');
+    expect(entries).not.toContain('-&gt;');
+  });
+});
+
+describe('zero definite delay', () => {
+  it('warns rather than silently dropping the stage', () => {
+    const { result } = parseAndRender(`
+system { voltages { hv { kV = 11; } } }
+relay R { voltage = hv; element 50 { curve = definite; I_pu = 3 kA; t_delay = 0 s; } }
+`, { theme: 'light' });
+
+    const warning = result.diagnostics.find((d) => d.code === 'ZERO_DELAY_NOT_PLOTTABLE');
+    expect(warning).toBeDefined();
+    expect(warning!.severity).toBe('warning');
+  });
+});

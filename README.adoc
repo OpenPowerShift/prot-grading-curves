@@ -119,13 +119,28 @@ npm run typecheck  # tsc --noEmit
 npm run lint       # eslint
 ----
 
-The playground ships the language specification as its own help: the
-*Guide* button opens `spec/spec.adoc`, converted by Asciidoctor at
-build time (`scripts/guide-plugin.js`), with a contents list and a
-filter. Editing any `.adoc` under `spec/` reloads it in `npm run dev`,
-so the reference and the parser can never drift apart. The conversion
-runs in the build, not the browser -- Asciidoctor itself is never
-shipped, only the HTML it produced, in a chunk fetched on first open.
+=== Documentation
+
+Two documents, deliberately separate:
+
+`docs/guide.adoc`:: The *user guide*. Example-led, about writing
+studies, and a single self-contained file -- so it can be read
+straight through, or handed whole to a language model asked to produce
+a `.tc` study. This is what the playground's *Guide* button opens,
+converted by Asciidoctor at build time
+(`scripts/guide-plugin.js`), with a contents list and a filter.
+
+`spec/spec.adoc`:: The *normative specification*, assembled from
+`spec/sections/`. Grammar productions, curve constant tables,
+conformance requirements. It answers what the language *is*, which is
+the wrong thing to put in front of someone trying to author a file.
+Where the two differ, the spec wins.
+
+The guide's own code blocks are checked against the real parser by
+`tests/unit/guide.spec.ts`, so an example cannot teach a mistake.
+Conversion runs in the build, not the browser -- Asciidoctor itself is
+never shipped, only the HTML it produced, in a chunk fetched on first
+open.
 
 == A taste of the language
 

@@ -17,6 +17,19 @@ import { validate, type Diagnostic } from '../semantics/validate.js';
 import { reportGrades, formatGradeReports, type GradeReport } from '../semantics/grades.js';
 import { EXAMPLES, DEFAULT_EXAMPLE } from '../examples.js';
 import { formatSource } from '../format/format.js';
+import {
+  SAVED_PREFIX,
+  clearDraft,
+  deleteStudy,
+  listStudies,
+  loadDraft,
+  saveDraft,
+  saveStudy,
+  shareLink,
+  sourceFromLink,
+  studySource,
+  type SavedStudy,
+} from '../editor/share.js';
 
 import './tc-editor.js';
 import './tc-viewer.js';
@@ -33,7 +46,18 @@ const STARTER = DEFAULT_EXAMPLE.source;
 @customElement('tc-app')
 export class TcApp extends LitElement {
   @state() private src: string = STARTER;
-  @state() private tab: 'source' | 'plot' = 'plot';
+  /**
+   * Which panes are on screen.
+   *
+   * `split` is the two-pane desktop layout. The single-pane modes are
+   * both a narrow-screen necessity and a desktop convenience -- a
+   * plot being read wants the whole window, and so does a study being
+   * written.
+   */
+  @state() private pane: 'split' | 'source' | 'plot' = 'split';
+
+  /** True while the window is too narrow to show both panes at once. */
+  @state() private narrow = false;
   @state() private exampleId: string | null = DEFAULT_EXAMPLE.id;
   /** Drag-to-resize state for the Source/Plot splitter. */
   private splitter: {
@@ -96,6 +120,15 @@ export class TcApp extends LitElement {
 
   /** Language-specification overlay. */
   @state() private showGuide = false;
+
+  /** Transient confirmation shown after copying the share link. */
+  @state() private copiedLink = false;
+
+  /** Studies the user has saved in this browser, newest first. */
+  @state() private saved: SavedStudy[] = [];
+
+  /** Name of the saved study currently open, if any. */
+  @state() private savedName: string | null = null;
   /**
    * UI theme for both panes. Seeded from the OS preference and then
    * remembered, so the choice survives a reload.
@@ -113,7 +146,18 @@ export class TcApp extends LitElement {
   private readonly boundOnOpen   = () => { void this.openSourceViaPicker(); };
   private readonly boundOnSelectionMove = (offset: number) => {
     try { localStorage.setItem(this.cursorKey(this.exampleId), String(offset)); } catch { /* */ }
+    this.caretLine = lineAtOffset(this.src, offset);
   };
+
+  /**
+   * Line the caret is on, 1-based.
+   *
+   * Used to hold back the "assigned nothing" error while that line is
+   * still being written: `I_pu = ` is not a mistake at the moment the
+   * `=` is typed, and reporting it there makes the panel flicker an
+   * error on every assignment the engineer starts.
+   */
+  @state() private caretLine = 1;
 
   /** localStorage key per example id for the cursor we should
    *  restore when that example is loaded. */
@@ -164,6 +208,44 @@ export class TcApp extends LitElement {
         }
       }
     } catch { /* */ }
+    /*
+     * What to open with, in order of how deliberate it is: a study
+     * carried in the link the user followed, then whatever they were
+     * last working on, then the starter example.
+     */
+    this.saved = listStudies();
+
+    this.measureNarrow(this.getBoundingClientRect().width || window.innerWidth);
+    if (typeof ResizeObserver !== 'undefined') {
+      this.narrowObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width;
+        if (width != null) this.measureNarrow(width);
+      });
+      this.narrowObserver.observe(this);
+    }
+
+    try {
+      const stored = localStorage.getItem(PANE_KEY);
+      if (stored === 'split' || stored === 'source' || stored === 'plot') this.pane = stored;
+    } catch { /* default layout is fine */ }
+
+    const shared = sourceFromLink();
+    if (shared) {
+      this.src = shared;
+      this.exampleId = null;
+    } else {
+      const draft = loadDraft();
+      if (draft) {
+        this.src = draft.source;
+        if (draft.exampleId?.startsWith(SAVED_PREFIX)) {
+          this.savedName = draft.exampleId.slice(SAVED_PREFIX.length);
+          this.exampleId = draft.exampleId;
+        } else {
+          this.exampleId = draft.exampleId;
+        }
+      }
+    }
+
     // Parse the initial source on mount so the Plot tab has data even
     // when the editor is not visible.
     this.parseSource(this.src, 0);
@@ -173,6 +255,7 @@ export class TcApp extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.narrowObserver?.disconnect();
   }
 
   /**
@@ -352,10 +435,47 @@ export class TcApp extends LitElement {
   private handleSourceChange(src: string): void {
     this.src = src;
     this.parseSource(src);
+    saveDraft(src, this.exampleId);
   }
 
-  private switchTab(t: 'source' | 'plot'): void {
-    this.tab = t;
+  private showPane(which: 'split' | 'source' | 'plot'): void {
+    this.pane = which;
+    try { localStorage.setItem(PANE_KEY, which); } catch { /* not essential */ }
+    /* The plot sizes itself to its host, so tell it to re-measure
+     * once the new layout has been applied. */
+    requestAnimationFrame(() => this.viewer()?.requestUpdate());
+  }
+
+  /**
+   * Widths below which the split view stops being worth having.
+   *
+   * A split gives each pane half of what is already a small screen --
+   * too little for a legend, and too little for source. Touch devices
+   * get a higher threshold: a tablet or a landscape phone has the
+   * pixels for two panes but not the pointer for a 6px splitter, and
+   * a landscape phone reports 844-932 CSS px, comfortably past any
+   * threshold set for portrait.
+   */
+  private static readonly NARROW_PX = 860;
+  private static readonly NARROW_TOUCH_PX = 1180;
+
+  /**
+   * Measured from the app element rather than from `matchMedia`.
+   *
+   * A media query answers for the viewport; this answers for the
+   * space the layout actually has, which is what the decision is
+   * about. It also survives zoom, split-screen, and a window resized
+   * without the viewport changing -- cases where a query bound at
+   * start-up quietly stops being true.
+   */
+  private narrowObserver?: ResizeObserver;
+
+  private measureNarrow(width: number): void {
+    const coarse = typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+    const limit = coarse ? TcApp.NARROW_TOUCH_PX : TcApp.NARROW_PX;
+    this.narrow = width > 0 && width <= limit;
   }
 
   private loadExample(id: string): void {
@@ -365,15 +485,124 @@ export class TcApp extends LitElement {
     this.exampleId = id;
     this.src = ex.source;
     this.parseSource(ex.source, 0);
+    saveDraft(ex.source, id);
     // Schedule a cursor restore once tc-editor is re-mounted for the
     // new doc.
     requestAnimationFrame(() => this.restoreCursorForExample(id));
   }
 
+  /**
+   * Handle a pick from the study list.
+   *
+   * One control lists both the saved studies and the worked examples,
+   * so the value carries which kind it is.
+   */
+  private pick(value: string): void {
+    if (value.startsWith(SAVED_PREFIX)) {
+      const name = value.slice(SAVED_PREFIX.length);
+      const source = studySource(name);
+      if (source == null) return;
+      this.savedName = name;
+      this.exampleId = value;
+      this.src = source;
+      this.parseSource(source, 0);
+      saveDraft(source, value);
+      return;
+    }
+    this.savedName = null;
+    this.loadExample(value);
+  }
+
+  /**
+   * Save the buffer in the browser under a name, and list it.
+   *
+   * Named rather than anonymous because the list is the point: a
+   * study the engineer can come back to has to be identifiable among
+   * the others.
+   */
+  private saveToBrowser(): void {
+    const suggestion = this.savedName ?? this.suggestedName();
+    const name = window.prompt('Save this study as:', suggestion);
+    if (name == null) return;
+
+    const entry = saveStudy(name, this.src);
+    if (!entry) return;
+
+    this.savedName = entry.name;
+    this.exampleId = SAVED_PREFIX + entry.name;
+    this.saved = listStudies();
+    saveDraft(this.src, this.exampleId);
+  }
+
+  /**
+   * A name to offer when saving: the study's own `meta.project`, which
+   * is what an engineer would have called it anyway.
+   */
+  private suggestedName(): string {
+    const project = this.study?.meta?.project;
+    if (typeof project === 'string' && project.trim()) return project.trim();
+    return 'Untitled study';
+  }
+
+  private deleteSaved(): void {
+    if (!this.savedName) return;
+    if (!window.confirm(`Delete the saved study "${this.savedName}"?`)) return;
+
+    deleteStudy(this.savedName);
+    this.savedName = null;
+    this.saved = listStudies();
+    this.exampleId = null;
+  }
+
+  /**
+   * Copy a link carrying the whole study.
+   *
+   * The source rides in the URL fragment, so it never reaches a
+   * server, and the link works from wherever the playground is
+   * served. Falls back to a prompt when the clipboard is refused,
+   * which is what an insecure origin does.
+   */
+  private async copyShareLink(): Promise<void> {
+    const link = shareLink(this.src);
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copiedLink = true;
+      window.setTimeout(() => { this.copiedLink = false; }, 1600);
+    } catch {
+      window.prompt('Copy this link to share the study:', link);
+    }
+  }
+
+  /** Discard the working draft and return to the starter example. */
+  private resetDraft(): void {
+    clearDraft();
+    this.savedName = null;
+    this.exampleId = null;
+    this.loadExample(DEFAULT_EXAMPLE.id);
+  }
+
+  /**
+   * A filename stem for downloads.
+   *
+   * The same rule the plot exports use, so a study's `.tc`, `.svg`,
+   * and `.pdf` land in a folder next to each other under one name
+   * rather than under three unrelated ones. The saved-study name wins
+   * where there is one, since that is what the engineer called it.
+   */
+  private exportStem(): string {
+    const project = this.study?.meta?.project;
+    const base = this.savedName
+      ?? (typeof project === 'string' && project.trim() ? project : null)
+      ?? EXAMPLES.find((e) => e.id === this.exampleId)?.id
+      ?? 'grading';
+    return base.trim().replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
+      || 'grading';
+  }
+
   /** Download the current source text as a .tc file. */
   private saveSource(): void {
     const ext = '.tc';
-    const stem = EXAMPLES.find((e) => e.id === this.exampleId)?.id ?? 'grading';
+    const stem = this.exportStem();
     const blob = new Blob([this.src], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -403,6 +632,8 @@ export class TcApp extends LitElement {
       reader.onload = () => {
         const text = String(reader.result ?? '');
         this.src = text;
+        this.exampleId = null;
+        saveDraft(text, null);
         this.parseSource(text, 0); // immediate
         // Mark it as a "loose" file: untied from any built-in example.
         this.exampleId = null;
@@ -431,10 +662,23 @@ export class TcApp extends LitElement {
    * are merged and ordered by position so the list reads like the
    * file.
    */
+  /**
+   * Findings worth showing right now.
+   *
+   * Everything is reported except an incomplete assignment on the
+   * line being edited -- see {@link caretLine}. Moving off the line
+   * brings it back, so the error is deferred rather than dropped.
+   */
+  private visibleErrors(): ParseError[] {
+    return this.errors.filter(
+      (e) => !(e.code === 'MISSING_VALUE' && e.line === this.caretLine),
+    );
+  }
+
   private renderDiagnostics() {
     type Row = { severity: string; line: number; column: number; code: string; message: string };
     const rows: Row[] = [
-      ...this.errors.map((e) => ({
+      ...this.visibleErrors().map((e) => ({
         severity: e.severity, line: e.line, column: e.column, code: e.code, message: e.message,
       })),
       ...this.diagnostics.map((d) => ({
@@ -482,6 +726,7 @@ export class TcApp extends LitElement {
     const formatted = formatSource(this.latestSrc || this.src);
     if (formatted === this.src) return;
     this.src = formatted;
+    saveDraft(formatted, this.exampleId);
     this.parseSource(formatted, 0);
   }
 
@@ -511,7 +756,7 @@ export class TcApp extends LitElement {
    * summed into one opaque number.
    */
   private issueSummary() {
-    const parseErrors = this.errors.filter((e) => e.severity === 'error').length;
+    const parseErrors = this.visibleErrors().filter((e) => e.severity === 'error').length;
     const semanticErrors = this.diagnostics.filter((d) => d.severity === 'error').length;
     const warnings = this.diagnostics.filter((d) => d.severity === 'warning').length;
     const errors = parseErrors + semanticErrors;
@@ -546,24 +791,57 @@ export class TcApp extends LitElement {
      * (they act on the drawing). One bar per pane also gives the
      * diagram back the vertical space a second bar was taking.
      */
+    /*
+     * Narrow windows have room for one pane only, so a stored `split`
+     * is read as whichever single pane was last asked for -- the plot
+     * by default, that being what the tool is for.
+     */
+    const mode: 'split' | 'source' | 'plot' = this.narrow
+      ? (this.pane === 'source' ? 'source' : 'plot')
+      : this.pane;
+
     return html`
       ${this.showReport && this.reports.length > 0
         ? html`<pre class="report">${formatGradeReports(this.reports)}</pre>`
         : null}
-      <div class="pane"
+      ${this.narrow ? html`
+        <div class="pane-switch" role="tablist" aria-label="Pane">
+          <button role="tab"
+                  class=${mode === 'source' ? 'on' : ''}
+                  aria-selected=${mode === 'source'}
+                  @click=${() => this.showPane('source')}>Source</button>
+          <button role="tab"
+                  class=${mode === 'plot' ? 'on' : ''}
+                  aria-selected=${mode === 'plot'}
+                  @click=${() => this.showPane('plot')}>Plot</button>
+        </div>` : null}
+      <div class="pane ${mode}"
            @mousemove=${this.handleSplitterMove}
            @mouseup=${this.handleSplitterEnd}
            @mouseleave=${this.handleSplitterEnd}>
         <div class="side source"
-             style=${`flex-basis: var(--tc-split-left); width: var(--tc-split-left);`}>
+             ?hidden=${mode === 'plot'}
+             style=${mode === 'split'
+               ? `flex-basis: var(--tc-split-left); width: var(--tc-split-left);`
+               : 'flex-basis: 100%; width: 100%;'}>
           <div class="side-title">
             <span class="side-title-label">Source</span>
             <select class="picker"
-                    title="Load an example .tc study"
-                    @change=${(e: Event) => { this.loadExample((e.target as HTMLSelectElement).value); }}>
-              ${EXAMPLES.map((ex) => html`
-                <option value=${ex.id} ?selected=${ex.id === this.exampleId}>${ex.name}</option>
-              `)}
+                    title="Load a saved study or a worked example"
+                    @change=${(e: Event) => { this.pick((e.target as HTMLSelectElement).value); }}>
+              ${this.saved.length > 0 ? html`
+                <optgroup label="Saved in this browser">
+                  ${this.saved.map((st) => html`
+                    <option value=${SAVED_PREFIX + st.name}
+                            ?selected=${st.name === this.savedName}>${st.name}</option>
+                  `)}
+                </optgroup>` : null}
+              <optgroup label="Examples">
+                ${EXAMPLES.map((ex) => html`
+                  <option value=${ex.id}
+                          ?selected=${ex.id === this.exampleId && !this.savedName}>${ex.name}</option>
+                `)}
+              </optgroup>
             </select>
             <span class="side-title-spacer"></span>
             <span class="counts">${this.issueSummary()}</span>
@@ -571,8 +849,27 @@ export class TcApp extends LitElement {
                     @click=${() => this.formatSource()}>Format</button>
             <button class="side-btn" title="Open a .tc file from disk"
                     @click=${() => { void this.openSourceViaPicker(); }}>Open…</button>
+            <button class="side-btn" title="Save this study in the browser, under a name"
+                    @click=${() => this.saveToBrowser()}>Save</button>
+            ${this.savedName ? html`
+              <button class="side-btn" title=${`Delete "${this.savedName}" from this browser`}
+                      @click=${() => this.deleteSaved()}>Delete</button>` : null}
             <button class="side-btn" title="Download the current source as a .tc file"
-                    @click=${() => this.saveSource()}>Save…</button>
+                    @click=${() => this.saveSource()}>Download…</button>
+            <button class="side-btn"
+                    title="Copy a link containing this whole study (kept in the URL fragment, never sent to a server)"
+                    @click=${() => { void this.copyShareLink(); }}>
+              ${this.copiedLink ? 'Copied ✓' : 'Copy link'}
+            </button>
+            <button class="side-btn"
+                    title="Discard the working draft and reload the starter example"
+                    @click=${() => this.resetDraft()}>Reset</button>
+            ${!this.narrow ? html`
+              <button class="side-btn pane-btn"
+                      title=${mode === 'source' ? 'Show the plot beside the source' : 'Hide the source and show the plot alone'}
+                      @click=${() => this.showPane(mode === 'source' ? 'split' : 'plot')}>
+                ${mode === 'source' ? '⇱ Split' : '⇤ Hide'}
+              </button>` : null}
           </div>
           <tc-editor
               .source=${this.src}
@@ -581,16 +878,20 @@ export class TcApp extends LitElement {
               .shortcuts=${this.boundShortcuts}></tc-editor>
           ${this.renderDiagnostics()}
         </div>
-        <div class="splitter"
-             role="separator"
-             aria-orientation="vertical"
-             title="Drag to resize"
-             @mousedown=${this.handleSplitterStart}
-             @dblclick=${this.handleSplitterReset}>
-          <div class="splitter-grip"></div>
-        </div>
+        ${mode === 'split' ? html`
+          <div class="splitter"
+               role="separator"
+               aria-orientation="vertical"
+               title="Drag to resize"
+               @mousedown=${this.handleSplitterStart}
+               @dblclick=${this.handleSplitterReset}>
+            <div class="splitter-grip"></div>
+          </div>` : null}
         <div class="side plot"
-             style=${`flex-basis: calc(100% - var(--tc-split-left)); width: calc(100% - var(--tc-split-left));`}>
+             ?hidden=${mode === 'source'}
+             style=${mode === 'split'
+               ? `flex-basis: calc(100% - var(--tc-split-left)); width: calc(100% - var(--tc-split-left));`
+               : 'flex-basis: 100%; width: 100%;'}>
           <div class="side-title">
             <span class="side-title-label">Plot</span>
             <span class="side-title-spacer"></span>
@@ -612,6 +913,12 @@ export class TcApp extends LitElement {
                     @click=${() => this.viewer()?.toggleHelp()}>?</button>
             <button class="side-btn" title="Open the language specification"
                     @click=${() => { this.showGuide = true; }}>Guide</button>
+            ${!this.narrow ? html`
+              <button class="side-btn pane-btn"
+                      title=${mode === 'plot' ? 'Show the source beside the plot' : 'Hide the plot and show the source alone'}
+                      @click=${() => this.showPane(mode === 'plot' ? 'split' : 'source')}>
+                ${mode === 'plot' ? '⇲ Split' : '⇥ Hide'}
+              </button>` : null}
             <button class="side-btn"
                     title=${`Switch to the ${this.theme === 'dark' ? 'light' : 'dark'} theme`}
                     @click=${() => this.toggleTheme()}>
@@ -633,6 +940,9 @@ export class TcApp extends LitElement {
   }
 }
 
+/** localStorage key holding the Source/Plot layout choice. */
+const PANE_KEY = 'tc.pane';
+
 /** localStorage key holding the user's theme choice. */
 const THEME_KEY = 'tc-curves.theme';
 
@@ -650,4 +960,18 @@ function readStoredTheme(): 'light' | 'dark' {
   return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches
     ? 'light'
     : 'dark';
+}
+
+/**
+ * 1-based line number containing a character offset.
+ *
+ * Counted rather than tracked, because the offset arrives from the
+ * editor and the text may have changed under it; clamping keeps a
+ * stale offset from reporting a line that no longer exists.
+ */
+function lineAtOffset(src: string, offset: number): number {
+  const at = Math.max(0, Math.min(offset, src.length));
+  let line = 1;
+  for (let i = 0; i < at; i++) if (src[i] === '\n') line++;
+  return line;
 }

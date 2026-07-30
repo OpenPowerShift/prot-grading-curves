@@ -19,7 +19,18 @@ import { tTripFlex } from './curves.js';
 import { solveGrade, type SolveResult } from './solver.js';
 import { controllingStage, tTripElement } from './stages.js';
 import { faultCurrentAt } from './xvoltage.js';
-import { resolveRef, type Device, type Element, type Fault, type Grade, type Study } from './model.js';
+import {
+  currentFor,
+  elementQuantity,
+  quantityField,
+  quantityLabel,
+  survivesVoltageReferral,
+  type MeasuredQuantity,
+} from './quantity.js';
+import {
+  resolveRef,
+  type Device, type Element, type Fault, type Grade, type Scenario, type Study,
+} from './model.js';
 
 export interface MarginRow {
   /**
@@ -75,6 +86,14 @@ interface Side {
   device?: Device;
   voltage?: string;
   tAt: (I_A: number) => number;
+  /**
+   * Current this side's pickup is expressed in.
+   *
+   * `null` for an element whose function requires the quantity to be
+   * declared and does not; `'mixed'` when its stages disagree. A
+   * device (a fuse, a cable damage curve) is a phase-current device.
+   */
+  measures: MeasuredQuantity | null | 'mixed';
 }
 
 function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'): Side | undefined {
@@ -85,6 +104,7 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
       element,
       voltage: element.voltage,
       tAt: (I: number) => tTripElement(element, I),
+      measures: elementQuantity(element.stages),
     };
   }
   if (device) {
@@ -103,9 +123,246 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
       device,
       tAt: (I: number) =>
         points ? tTripFlex(I, points) : device.t_delay_s ?? Infinity,
+      measures: 'phase',
     };
   }
   return undefined;
+}
+
+interface SideCurrent {
+  I_A?: number;
+  error?: { code: string; message: string };
+}
+
+/**
+ * The current one side of a grade actually measures at a fault.
+ *
+ * Phase quantities are referred to the side's own level by the voltage
+ * ratio, as before. A sequence quantity is taken from the fault's
+ * declared components and is *not* invented: if the figure is absent,
+ * or if reaching the side's level would mean referring zero sequence
+ * across a transformer, the pair is reported rather than computed.
+ * Substituting the phase current -- which is what happened before
+ * `function` was read at all -- yields a well-formed margin for a
+ * comparison that was never made.
+ */
+function sideCurrentAt(
+  study: Study,
+  fault: Fault,
+  side: Side,
+  at: 'I' | 'min' | 'max',
+): SideCurrent {
+  if (side.measures === null) {
+    return {
+      error: {
+        code: 'MEASURES_REQUIRED',
+        message:
+          `${side.ref} has function "neg_seq" but does not declare which current its ` +
+          'pickup is in; add measures = "I2" or measures = "3I2"',
+      },
+    };
+  }
+  if (side.measures === 'mixed') {
+    return {
+      error: {
+        code: 'MEASURES_MIXED',
+        message: `${side.ref} has stages measuring different currents, so it cannot be graded as one element`,
+      },
+    };
+  }
+
+  const quantity: MeasuredQuantity = side.measures;
+
+  /* Phase current keeps the established path, ratio and all. */
+  if (quantity === 'phase') {
+    const projection = faultCurrentAt(study, fault, side.voltage, at);
+    return { I_A: projection.I_A, error: projection.warning
+      ? { code: 'VOLTAGE_RATIO_UNRESOLVED', message: projection.warning }
+      : undefined };
+  }
+
+  const declared = currentFor(quantity, {
+    phase: at === 'min' ? fault.min_A : at === 'max' ? fault.max_A : fault.I_A,
+    I2: fault.I2_A,
+    I0: fault.I0_A,
+    residual: fault.earth_A,
+  });
+
+  if (declared == null) {
+    return {
+      error: {
+        code: 'SEQUENCE_DATA_MISSING',
+        message:
+          `${side.ref} measures ${quantityLabel(quantity)}, but fault "${fault.name}" ` +
+          `declares no ${quantityField(quantity)}; this pair cannot be graded until it does`,
+      },
+    };
+  }
+
+  /*
+   * The declared components belong to the fault's own level. Referring
+   * them elsewhere is only sound for the quantities that cross a
+   * transformer.
+   */
+  const faultKv = fault.voltage_kV;
+  const sideKv = side.voltage ? study.voltages.get(side.voltage)?.kV : undefined;
+  const sameLevel = faultKv == null || sideKv == null || faultKv === sideKv;
+
+  if (sameLevel) return { I_A: declared };
+
+  if (!survivesVoltageReferral(quantity)) {
+    return {
+      error: {
+        code: 'SEQUENCE_ACROSS_LEVELS',
+        message:
+          `${side.ref} measures ${quantityLabel(quantity)} at ${sideKv} kV, but fault ` +
+          `"${fault.name}" declares its components at ${faultKv} kV; zero sequence does not ` +
+          'cross a transformer, so declare the figure at the relay\'s own level',
+      },
+    };
+  }
+
+  return { I_A: declared * (faultKv / sideKv) };
+}
+
+/**
+ * Margin report for a grade pinned to a scenario.
+ *
+ * A scenario is one point per level, not a range, so there is a single
+ * row and no upstream sweep -- the sweep walks a fault's declared
+ * range, which a scenario does not have. Everything else reads the
+ * same as a fault-based report.
+ */
+function reportScenarioGrade(
+  study: Study,
+  grade: Grade,
+  report: GradeReport,
+  primary: Side,
+  backup: Side,
+  diagnostics: GradeReport['diagnostics'],
+): GradeReport {
+  const scenario = study.scenarios.get(grade.scenario!);
+  if (!scenario) {
+    diagnostics.push({
+      code: 'UNRESOLVED_REFERENCE',
+      severity: 'error',
+      message: `grade references scenario "${grade.scenario}", which is not declared`,
+    });
+    return report;
+  }
+
+  if (typeof primary.measures === 'string' && typeof backup.measures === 'string'
+      && primary.measures !== backup.measures
+      && primary.measures !== 'mixed' && backup.measures !== 'mixed') {
+    diagnostics.push({
+      code: 'GRADE_MIXED_QUANTITY',
+      severity: 'warning',
+      message:
+        `${primary.ref} measures ${quantityLabel(primary.measures as MeasuredQuantity)} and ` +
+        `${backup.ref} measures ${quantityLabel(backup.measures as MeasuredQuantity)}; the ` +
+        'margin compares operate times for two different currents at the same condition',
+    });
+  }
+
+  const atPrimary = sideCurrentInScenario(scenario, primary);
+  const atBackup = sideCurrentInScenario(scenario, backup);
+
+  let blocked = false;
+  for (const side of [atPrimary, atBackup]) {
+    if (!side.error) continue;
+    diagnostics.push({ ...side.error, severity: 'error' });
+    if (side.I_A == null) blocked = true;
+  }
+  if (blocked) return report;
+
+  const I_p = atPrimary.I_A!;
+  const I_b = atBackup.I_A!;
+  const t_p = primary.tAt(I_p);
+  const t_b = backup.tAt(I_b);
+
+  const row: MarginRow = {
+    at: 'I',
+    I_f_A: I_p,
+    I_backup_A: I_b,
+    t_primary_s: t_p,
+    t_backup_s: t_b,
+    margin_s: t_b - t_p,
+    M_primary: multipleOf(primary, I_p),
+    M_backup: multipleOf(backup, I_b),
+  };
+  if (grade.CTI_min_s != null) row.pass = row.margin_s >= grade.CTI_min_s;
+  report.rows.push(row);
+
+  report.achieved_margin_s = row.margin_s;
+  if (Number.isFinite(row.margin_s)) {
+    report.min_margin_s = row.margin_s;
+    report.min_margin_at_A = row.I_f_A;
+    if (grade.CTI_min_s != null) report.pass = row.margin_s >= grade.CTI_min_s;
+  } else if (grade.CTI_min_s != null) {
+    report.pass = false;
+    diagnostics.push({
+      code: 'NO_OPERATION',
+      severity: 'warning',
+      message: 'neither side operates under this scenario; no margin could be computed',
+    });
+  }
+
+  return report;
+}
+
+/**
+ * The current one side measures under a scenario.
+ *
+ * Nothing is referred between levels: a scenario declares the
+ * condition at every level it is measured, which is the whole reason
+ * it exists. The relay's declared share of that level's current is
+ * applied here, so parallel paths are handled at the point the current
+ * is read rather than inside the curve maths.
+ */
+function sideCurrentInScenario(
+  scenario: Scenario,
+  side: Side,
+): SideCurrent {
+  if (side.measures === null) {
+    return { error: { code: 'MEASURES_REQUIRED',
+      message: `${side.ref} has function "neg_seq" but does not declare which current its ` +
+        'pickup is in; add measures = "I2" or measures = "3I2"' } };
+  }
+  if (side.measures === 'mixed') {
+    return { error: { code: 'MEASURES_MIXED',
+      message: `${side.ref} has stages measuring different currents, so it cannot be graded as one element` } };
+  }
+
+  const quantity: MeasuredQuantity = side.measures;
+  const levelName = side.voltage;
+  const level = levelName ? scenario.levels.get(levelName) : undefined;
+
+  if (!level) {
+    return { error: { code: 'SCENARIO_LEVEL_MISSING',
+      message: `scenario "${scenario.name}" declares no currents at ${levelName ?? 'the level'} ` +
+        `where ${side.ref} sits; add a level "${levelName ?? '?'}" { ... } block` } };
+  }
+
+  const declared = currentFor(quantity, {
+    phase: level.I_A,
+    I1: level.I1_A,
+    I2: level.I2_A,
+    I0: level.I0_A,
+    residual: level.earth_A,
+  });
+
+  if (declared == null) {
+    return { error: { code: 'SEQUENCE_DATA_MISSING',
+      message: `${side.ref} measures ${quantityLabel(quantity)}, but scenario ` +
+        `"${scenario.name}" declares no ${quantityField(quantity)} at ${level.voltage}` } };
+  }
+
+  /* The relay's share of that level's current, where one is declared. */
+  const relayId = side.element?.relayId;
+  const pct = relayId != null ? scenario.shares.get(relayId) : undefined;
+  const share = pct != null && Number.isFinite(pct) ? pct / 100 : 1;
+
+  return { I_A: declared * share };
 }
 
 /**
@@ -170,7 +427,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   const report: GradeReport = {
     primaryRef: primary?.ref ?? grade.primary?.text ?? '?',
     backupRef: backup?.ref ?? grade.backup?.text ?? '?',
-    fault: grade.fault,
+    fault: grade.fault ?? grade.scenario,
     CTI_min_s: grade.CTI_min_s,
     margin_s: grade.margin_s,
     tolerance_pct: grade.tolerance_pct ?? grade.solve?.tolerance_pct,
@@ -193,6 +450,20 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
     });
   }
   if (!primary || !backup) return report;
+
+  if (grade.fault && grade.scenario) {
+    diagnostics.push({
+      code: 'GRADE_FAULT_AND_SCENARIO',
+      severity: 'error',
+      message: 'grade declares both `fault` and `scenario`; they are alternatives -- a fault is ' +
+        'one current at one level, a scenario the same condition at every level',
+    });
+    return report;
+  }
+
+  if (grade.scenario) {
+    return reportScenarioGrade(study, grade, report, primary, backup, diagnostics);
+  }
 
   if (!grade.fault) {
     diagnostics.push({
@@ -241,16 +512,40 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   const endpoints: Array<'I' | 'min' | 'max'> =
     fault.min_A === fault.I_A && fault.max_A === fault.I_A ? ['I'] : ['I', 'min', 'max'];
 
+  /*
+   * A margin between two different measured quantities is not a
+   * like-for-like comparison -- an I2 backup against a phase primary
+   * is a judgement about two different currents at one fault. It is
+   * legitimate practice, and worth saying out loud on the report.
+   */
+  if (typeof primary.measures === 'string' && typeof backup.measures === 'string'
+      && primary.measures !== backup.measures
+      && primary.measures !== 'mixed' && backup.measures !== 'mixed') {
+    diagnostics.push({
+      code: 'GRADE_MIXED_QUANTITY',
+      severity: 'warning',
+      message:
+        `${primary.ref} measures ${quantityLabel(primary.measures as MeasuredQuantity)} and ` +
+        `${backup.ref} measures ${quantityLabel(backup.measures as MeasuredQuantity)}; the ` +
+        'margin compares operate times for two different currents at the same fault',
+    });
+  }
+
   for (const at of endpoints) {
-    const atPrimary = faultCurrentAt(study, fault, primary.voltage, at);
-    const atBackup = faultCurrentAt(study, fault, backup.voltage, at);
-    for (const projection of [atPrimary, atBackup]) {
-      if (projection.warning) {
-        diagnostics.push({ code: 'VOLTAGE_RATIO_UNRESOLVED', severity: 'error', message: projection.warning });
-      }
+    const atPrimary = sideCurrentAt(study, fault, primary, at);
+    const atBackup = sideCurrentAt(study, fault, backup, at);
+
+    let blocked = false;
+    for (const side of [atPrimary, atBackup]) {
+      if (!side.error) continue;
+      diagnostics.push({ ...side.error, severity: 'error' });
+      if (side.I_A == null) blocked = true;
     }
-    const I_p = atPrimary.I_A;
-    const I_b = atBackup.I_A;
+    /* Without a current for both sides there is no margin to report. */
+    if (blocked) continue;
+
+    const I_p = atPrimary.I_A!;
+    const I_b = atBackup.I_A!;
     const t_p = primary.tAt(I_p);
     const t_b = backup.tAt(I_b);
     const row: MarginRow = {

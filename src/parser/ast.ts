@@ -58,6 +58,51 @@ export interface FaultDecl extends BaseNode {
   description?: string;
 }
 
+/**
+ * Symmetrical components of one condition at one voltage level.
+ *
+ * Declared, never derived. Sequence components do not all transform
+ * the same way across a transformer -- zero sequence does not cross a
+ * delta at all -- so the engineer supplies the figures their fault
+ * study produced at each level, and the processor selects rather than
+ * transforms.
+ */
+export interface ScenarioLevelDecl extends BaseNode {
+  /** Named level from `system.voltages`. */
+  voltage: string;
+  /** Phase current, primary amps at this level. */
+  I_A?: number;
+  I1_A?: number;
+  I2_A?: number;
+  /** Zero-sequence component. */
+  I0_A?: number;
+  /** Residual `3*I0` declared directly, as an alternative to `I0_A`. */
+  earth_A?: number;
+}
+
+/** Share of a level's current one relay carries. */
+export interface ScenarioShareDecl extends BaseNode {
+  relay: string;
+  current_pct: number;
+}
+
+/**
+ * One named system condition, with its currents at every level.
+ *
+ * A `fault` is one current at one level; a `scenario` is the same
+ * condition described wherever it is measured, which is what lets an
+ * earth-fault element on one side of a transformer and a
+ * negative-sequence element on the other both be evaluated against
+ * what they actually see.
+ */
+export interface ScenarioBlock extends BaseNode {
+  type: 'scenario';
+  name: string;
+  description?: string;
+  levels: ScenarioLevelDecl[];
+  shares: ScenarioShareDecl[];
+}
+
 export interface FaultsBlock extends BaseNode {
   type: 'faults';
   faults: FaultDecl[];
@@ -95,6 +140,16 @@ export type FunctionKeyword =
   | 'phase_oc' | 'earth_fault' | 'neg_seq' | 'thermal' | 'breaker_fail';
 
 export type ResetKeyword = 'instant' | 'dependent' | 'disk_emulation';
+
+/**
+ * Current an element's pickup is expressed in.
+ *
+ * Defaulted from `function` where the standards make it unambiguous;
+ * stated explicitly for negative sequence, where IEDs differ over the
+ * factor of three. See `src/semantics/quantity.ts`.
+ */
+export type MeasuredQuantityKeyword =
+  | 'phase' | 'I1' | 'I2' | '3I2' | 'I0' | '3I0';
 
 export interface ElementMember {
   kind: 'scalar';
@@ -141,6 +196,8 @@ export interface GradeBlock extends BaseNode {
   primary?: Ref;
   backup?: Ref;
   fault?: string;
+  /** Named `scenario`, as an alternative to `fault`. */
+  scenario?: string;
   CTI_min_s?: number;
   margin_s?: number;
   tolerance_pct?: number;
@@ -454,6 +511,7 @@ export type TopLevel =
   | MetaBlock
   | SystemBlock
   | FaultsBlock
+  | ScenarioBlock
   | RelayBlock
   | ElementBlock        // standalone element block (also inside relay.member)
   | DeviceBlock

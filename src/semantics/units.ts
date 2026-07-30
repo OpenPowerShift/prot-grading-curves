@@ -27,6 +27,19 @@ export type Quantity = 'current' | 'time' | 'voltage' | 'scalar';
  */
 export const PER_UNIT_SUFFIXES = new Set(['pu', 'xCT', 'xIn', 'xct', 'xin']);
 
+/**
+ * Suffixes that say which side of the CT a current is measured on.
+ *
+ * A relay is *set* in secondary amps -- the number on the settings
+ * sheet -- while the study is drawn in primary amps. `I_units` says
+ * so for a whole element or study; these suffixes say it for one
+ * value, which is what a sheet mixing the two needs. `A_pri` exists
+ * so a single primary figure can opt out of a block-level
+ * `I_units = "secondary"`.
+ */
+export const SECONDARY_SUFFIXES = new Set(['A_sec', 'Asec', 'A_secondary']);
+export const PRIMARY_SUFFIXES = new Set(['A_pri', 'Apri', 'A_primary']);
+
 export interface NumberReading {
   /** Value converted to the category's base unit (A, s, kV). */
   value: number;
@@ -34,6 +47,10 @@ export interface NumberReading {
   unit?: string;
   /** True when the suffix marks a per-unit multiple rather than an absolute. */
   perUnit: boolean;
+  /** Written in secondary amps (`A_sec`); scale by the CT ratio. */
+  secondary?: boolean;
+  /** Written in primary amps (`A_pri`); never scale, whatever `I_units` says. */
+  primary?: boolean;
 }
 
 /** Coerce an AST scalar (or a bare number) to a plain JS number. */
@@ -59,6 +76,8 @@ export function readNumber(v: unknown, quantity: Quantity = 'scalar'): NumberRea
   const value = rawNumber(v);
   const unit = (v && typeof v === 'object' ? (v as { unit?: string }).unit : undefined) || undefined;
   if (unit && PER_UNIT_SUFFIXES.has(unit)) return { value, unit, perUnit: true };
+  if (unit && SECONDARY_SUFFIXES.has(unit)) return { value, unit, perUnit: false, secondary: true };
+  if (unit && PRIMARY_SUFFIXES.has(unit)) return { value, unit, perUnit: false, primary: true };
   const table =
     quantity === 'current' ? CURRENT_A
     : quantity === 'time' ? TIME_S

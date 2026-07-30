@@ -31,6 +31,7 @@ import type {
   FlexPoint,
   GradeBlock,
   Ref,
+  SourceLocation,
   StageBlock,
   TopLevel,
 } from '../parser/ast.js';
@@ -77,6 +78,13 @@ export interface Stage {
   I_pu_A?: number;
   /** Pickup exactly as written, for diagnostics and legends. */
   I_pu_declared?: number;
+  /**
+   * The declared pickup needs the CT ratio to reach primary amps --
+   * because of `I_units`, an `A_sec` suffix, or a per-unit multiple.
+   * The validator uses it to catch a missing `ct_ratio`, which would
+   * otherwise leave the pickup silently undefined.
+   */
+  I_pu_in_secondary?: boolean;
   I_units?: 'primary' | 'secondary';
   tms?: number;
   /** `true` when the solver, not the source, set `tms`. */
@@ -87,6 +95,12 @@ export interface Stage {
   /** Share of the total fault current this stage sees, in percent. */
   current_pct: number;
   function?: string;
+  /**
+   * Current this stage's pickup is expressed in, as written. Resolved
+   * against `function` by `measuredQuantityOf` -- see
+   * `src/semantics/quantity.ts`.
+   */
+  measures?: string;
   directional?: boolean;
   char_angle_deg?: number;
   /** Source AST node, for error locations. */
@@ -140,6 +154,35 @@ export interface Relay {
   elements: Element[];
 }
 
+/** One level's symmetrical components under a scenario. */
+export interface ScenarioLevel {
+  voltage: string;
+  /** Source position, so a diagnostic can point at the declaration. */
+  loc?: SourceLocation;
+  voltage_kV?: number;
+  I_A?: number;
+  I1_A?: number;
+  I2_A?: number;
+  I0_A?: number;
+  /** Residual `3*I0`, when declared directly. */
+  earth_A?: number;
+}
+
+/**
+ * A named system condition, described at every level it is measured.
+ *
+ * The alternative to referring one figure across a transformer, which
+ * cannot be done for zero sequence. Declared, never derived.
+ */
+export interface Scenario {
+  name: string;
+  description?: string;
+  loc?: SourceLocation;
+  levels: Map<string, ScenarioLevel>;
+  /** Share of a level's current a given relay carries, in percent. */
+  shares: Map<string, number>;
+}
+
 export interface Device {
   id: string;
   kind?: string;
@@ -168,6 +211,8 @@ export interface Grade {
   primary?: Ref;
   backup?: Ref;
   fault?: string;
+  /** Named `scenario`, as an alternative to `fault`. */
+  scenario?: string;
   CTI_min_s?: number;
   margin_s?: number;
   tolerance_pct?: number;
@@ -221,6 +266,8 @@ export interface Study {
   I_base_A?: number;
   I_units: 'primary' | 'secondary';
   faults: Map<string, Fault>;
+  /** Named conditions with their currents at every level. */
+  scenarios: Map<string, Scenario>;
   relays: Map<string, Relay>;
   /** Elements declared at the top level, outside any relay. */
   looseElements: Element[];
@@ -262,6 +309,7 @@ export function buildStudy(doc: Document): Study {
     voltages: new Map(),
     I_units: 'primary',
     faults: new Map(),
+    scenarios: new Map(),
     relays: new Map(),
     looseElements: [],
     devices: new Map(),
@@ -309,6 +357,31 @@ export function buildStudy(doc: Document): Study {
       default:
         break;
     }
+  }
+
+  /* Pass 2 -- scenarios, which resolve their levels the same way. */
+  for (const item of doc.items) {
+    if (item.type !== 'scenario') continue;
+    const levels = new Map<string, ScenarioLevel>();
+    for (const level of item.levels) {
+      levels.set(level.voltage, {
+        voltage: level.voltage,
+        loc: level.loc,
+        voltage_kV: study.voltages.get(level.voltage)?.kV,
+        I_A: level.I_A,
+        I1_A: level.I1_A,
+        I2_A: level.I2_A,
+        I0_A: level.I0_A,
+        earth_A: level.earth_A,
+      });
+    }
+    study.scenarios.set(item.name, {
+      name: item.name,
+      description: item.description,
+      loc: item.loc,
+      levels,
+      shares: new Map(item.shares.map((sh) => [sh.relay, sh.current_pct])),
+    });
   }
 
   /* Pass 2 -- faults, now that voltage levels resolve. */
@@ -404,6 +477,7 @@ export function buildStudy(doc: Document): Study {
           primary: item.primary,
           backup: item.backup,
           fault: item.fault,
+          scenario: item.scenario,
           CTI_min_s: item.CTI_min_s,
           margin_s: item.margin_s,
           tolerance_pct: item.tolerance_pct,
@@ -541,9 +615,17 @@ function resolveStage(
    * Spec _Input units_: `I_pu_primary = I_pu_declared * n_CT` when the
    * element is dialled in secondary amps. A `pu` / `xCT` / `xIn`
    * suffix means the same multiplication regardless of `I_units`.
+   *
+   * An `A_sec` / `A_pri` suffix decides it for this value alone and
+   * outranks `I_units`, so one primary figure can sit in an element
+   * otherwise dialled in secondary amps without restating the block.
    */
+  const inSecondary = pickup.secondary
+    || pickup.perUnit
+    || (I_units === 'secondary' && !pickup.primary);
+
   let I_pu_A = I_pu_declared;
-  if (I_pu_declared != null && (I_units === 'secondary' || pickup.perUnit)) {
+  if (I_pu_declared != null && inSecondary) {
     I_pu_A = ctRatio != null ? I_pu_declared * ctRatio : undefined;
   }
 
@@ -558,6 +640,7 @@ function resolveStage(
     producer: resolveProducer(node, fallback, declared),
     I_pu_A,
     I_pu_declared,
+    I_pu_in_secondary: I_pu_declared != null ? inSecondary : undefined,
     I_units,
     tms: Number.isFinite(tmsRaw) ? tmsRaw : undefined,
     t_delay_s: Number.isFinite(tDelay.value) ? tDelay.value : undefined,
@@ -565,6 +648,7 @@ function resolveStage(
     reset: readString(pick('reset')) as Stage['reset'],
     current_pct: Number.isFinite(currentPct) ? currentPct : 100,
     function: readString(pick('function')),
+    measures: readString(pick('measures')),
     directional: readBoolean(pick('directional')),
     char_angle_deg: Number.isFinite(charAngle) ? charAngle : undefined,
     node,

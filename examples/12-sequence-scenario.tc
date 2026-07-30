@@ -1,0 +1,168 @@
+# Sample 12 — Sequence currents: what each relay actually measures
+#
+# A relay does not measure "the fault current". A 51 measures phase
+# current, a 51G measures the residual 3*I0 its CT connection presents,
+# a 46 measures negative sequence. Those are three different numbers at
+# one fault, so each element has to be evaluated against its own.
+#
+#   element 51  { function = "phase_oc";    }             # -> phase
+#   element 51G { function = "earth_fault"; }             # -> 3*I0
+#   element 46  { function = "neg_seq"; measures = "I2"; } # -> I2
+#
+# `neg_seq` has no default: IEDs differ over whether the pickup is
+# scaled in I2 or 3*I2, and the factor of three decides whether the
+# element operates at all. It must be stated.
+#
+# ---- Why a `scenario` and not a `fault` ---------------------------------
+#
+# A `fault` is one current at one level. Referring it to another level
+# by the turns ratio is right for phase current, and for positive and
+# negative sequence — but ZERO SEQUENCE DOES NOT CROSS A DELTA WINDING.
+# There is no ratio that carries it.
+#
+# A `scenario` declares the same condition wherever it is measured, so
+# nothing has to be transformed. The figures come from the fault study;
+# the processor selects rather than derives.
+#
+# The study below is a delta-star transformer with an earth fault on the
+# star side. Note `I0_A = 0` at HV: that is the delta blocking zero
+# sequence, and it is why
+#
+#   * the HV *residual* element (51G) is blind to this fault, and
+#   * the HV *negative-sequence* element (46) is what backs it up.
+#
+# Grade both pairs and the report shows exactly that.
+
+meta {
+    project   = "Sequence currents";
+    study     = "LV earth fault behind a delta-star transformer";
+    engineer  = "A. Cooper";
+    date      = "2026-07-30";
+    revision  = "A";
+    CTI_min_s = 0.30;
+}
+
+system {
+    voltages {
+        "HV" { kV = 33.0;  description = "33 kV, delta winding"; }
+        "LV" { kV = 0.48;  description = "480 V, star, earthed"; }
+    }
+    frequency_Hz = 50;
+    grounding    = "low_impedance";
+}
+
+# ---- The condition, at every level it is measured. ---------------------
+#      For a single-phase-to-earth fault on the star side the LV
+#      components are equal (I1 = I2 = I0 = If/3). On the delta side the
+#      zero sequence is absent, and what remains reads as an unbalance
+#      carrying negative sequence.
+scenario "LV earth fault" {
+    description = "Single phase to earth at 0.48 kV, system normal";
+
+    level "LV" { I_A = 460 A; I1_A = 153 A; I2_A = 153 A; I0_A = 153 A; }
+    level "HV" { I_A = 3.9 A; I1_A = 2.2 A; I2_A = 2.2 A;  I0_A = 0 A;  }
+}
+
+# A second condition for the phase elements: a solid three-phase fault
+# on the LV side, which is balanced and so carries no I2 or I0 at all.
+scenario "LV three-phase fault" {
+    description = "Balanced 3ph at 0.48 kV";
+
+    level "LV" { I_A = 520 A; I1_A = 520 A; I2_A = 0 A; I0_A = 0 A; }
+    level "HV" { I_A = 7.6 A; I1_A = 7.6 A; I2_A = 0 A; I0_A = 0 A; }
+}
+
+# ---- Downstream: the LV air circuit breaker. ---------------------------
+relay R_ACB {
+    name     = "LV ACB";
+    voltage  = "LV";
+    ct_ratio = 1/1;
+
+    element 51 {
+        name     = "Phase OC";
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pu     = 300 A;
+        tms      = 0.10;
+    }
+}
+
+# ---- Upstream: the HV relay, three elements measuring three currents. --
+relay R_850 {
+    name     = "HV relay (GE Multilin 850)";
+    maker    = "GE Multilin";
+    model    = "850";
+    voltage  = "HV";
+    ct_ratio = 250/1;
+
+    element 51 {
+        name     = "Phase TOC (51)";
+        function = "phase_oc";              # measures phase current
+        curve    = iec.si;
+        I_pu     = 4.2 A;
+        tms      = 0.20;
+    }
+
+    element 51G {
+        name     = "Ground TOC (51G)";
+        function = "earth_fault";           # measures residual 3*I0
+        curve    = iec.si;
+        I_pu     = 0.8 A;
+        tms      = 0.15;
+    }
+
+    element 46 {
+        name     = "Negative Sequence (46)";
+        function = "neg_seq";
+        measures = "I2";                    # this IED is scaled in I2
+        curve    = definite;
+        I_pu     = 1.5 A;
+        t_delay  = 2.00 s;      # slower than the ACB's 1.63 s at this fault
+    }
+}
+
+# ---- The negative-sequence element does the backing up. ---------------
+grade {
+    primary   = R_ACB:51;
+    backup    = R_850:46;
+    scenario  = "LV earth fault";
+    CTI_min_s = 0.30;
+    comment   = "I2 backup for an LV earth fault the HV residual cannot see";
+}
+
+# ---- The residual element cannot: 3 x 0 = 0 at HV. --------------------
+#      The report says NO_OPERATION, which is the correct physical
+#      answer rather than a margin computed off the wrong current.
+grade {
+    primary   = R_ACB:51;
+    backup    = R_850:51G;
+    scenario  = "LV earth fault";
+    CTI_min_s = 0.30;
+    comment   = "blind to this fault -- zero sequence stays in the delta";
+}
+
+# ---- Phase grading, on the balanced condition. ------------------------
+grade {
+    primary   = R_ACB:51;
+    backup    = R_850:51;
+    scenario  = "LV three-phase fault";
+    CTI_min_s = 0.30;
+}
+
+page {
+    size        = "A4";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+    legend      = { title = "Elements"; };
+    title       = { text     = "Sequence currents — what each relay measures";
+                    subtitle = "LV earth fault behind a delta-star transformer"; };
+}
+
+view {
+    voltage     = "HV";
+    current_min = 0.1 A;
+    current_max = 100 A;
+    time_min    = 20 ms;
+    time_max    = 100 s;
+}

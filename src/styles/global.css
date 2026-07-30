@@ -161,8 +161,15 @@ tc-editor {
  */
 tc-app .picker {
   margin-left: 10px;
+  /*
+   * Wide enough for a saved study's own name, which is an engineer's
+   * filing title ("Northgate 11 kV feeder grading") rather than one
+   * of our short example labels, and allowed to grow further before
+   * it starts competing with the buttons beside it.
+   */
   flex: 0 1 auto;
-  min-width: 22ch;
+  min-width: 34ch;
+  max-width: 46ch;
   font-family: inherit;
   font-size: 11px;
   text-transform: none;
@@ -323,12 +330,18 @@ tc-viewer .pane-host svg .tc-curve {
   transition: stroke-width 100ms ease-out;
 }
 
-/* CodeMirror 6's default sheet sets min-height: 100% on cm-scroller,
- * cm-gutters, and cm-content. Inside a flex chain that breaks parent
- * sizing: the .cm-editor grows to fit the natural content height so
- * the editor scrolls off the bottom. Override to min-height: 0 so
- * flex 1 1 0 on the cm-editor resolves correctly. */
-.cm-editor, .cm-scroller, .cm-gutters, .cm-content {
+/*
+ * Only the editor shell needs its min-height relaxed for the flex
+ * chain to resolve.
+ *
+ * The override used to cover .cm-scroller, .cm-gutters, and
+ * .cm-content as well, but CodeMirror's own sheet puts
+ * `min-height: 100%` on those deliberately: it is what makes the
+ * gutter span the whole scrollable height rather than stopping at the
+ * first screenful, which is what leaves the line numbers running out
+ * partway down a long file.
+ */
+.cm-editor {
   min-height: 0 !important;
 }
 
@@ -340,6 +353,57 @@ tc-viewer .pane-host svg .tc-curve {
  */
 tc-editor .cm-editor { height: 100%; }
 tc-editor .cm-scroller { overflow: auto; }
+
+/*
+ * Caret and selection, deliberately loud.
+ *
+ * The selection was painted in the elevated surface colour, which
+ * differs from the editor background by a couple of percent of
+ * lightness: legible as a panel edge, invisible as a highlight over
+ * text. The accent at a fixed alpha reads on both themes.
+ */
+tc-editor .cm-cursor,
+tc-editor .cm-dropCursor {
+  border-left-color: var(--tc-accent);
+  border-left-width: 2px;
+}
+tc-editor .cm-selectionBackground,
+tc-editor .cm-content ::selection,
+tc-editor .cm-line ::selection {
+  background: color-mix(in srgb, var(--tc-accent) 38%, transparent) !important;
+}
+tc-editor .cm-focused .cm-selectionBackground {
+  background: color-mix(in srgb, var(--tc-accent) 50%, transparent) !important;
+}
+tc-editor .cm-selectionMatch {
+  background: color-mix(in srgb, var(--tc-accent) 22%, transparent);
+  border-radius: 2px;
+}
+tc-editor .cm-activeLine {
+  background: color-mix(in srgb, var(--tc-accent) 7%, transparent);
+}
+
+/* The one-line description beside each completion, and the panel of
+ * detail beside the highlighted one. */
+tc-editor .cm-completionDetail {
+  color: var(--tc-fg-muted);
+  font-style: normal;
+  margin-left: 12px;
+}
+tc-editor li[aria-selected] .cm-completionDetail {
+  color: var(--tc-accent-fg);
+  opacity: 0.85;
+}
+tc-editor .cm-completionInfo {
+  background: var(--tc-bg-elevated);
+  color: var(--tc-fg);
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  max-width: 360px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
 
 tc-viewer .toolbar {
   display: flex;
@@ -434,3 +498,109 @@ h4 { font-size: 0.9rem; color: var(--tc-fg-muted); }
 
 a { color: var(--tc-accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* ==================================================================
+ * Single-pane and narrow layouts
+ * ================================================================== */
+
+/*
+ * A hidden pane is out of the layout entirely, not merely
+ * zero-width: a flex item with `width: 0` still claims its borders
+ * and its minimum content size, which left a sliver of the source
+ * down the side of a "plot only" view.
+ */
+tc-app .side[hidden] { display: none !important; }
+
+/* With one pane there is no edge between them to draw. */
+tc-app .pane.source .side.source,
+tc-app .pane.plot .side.source { border-right: none; }
+
+/* The switch shown when the window is too narrow for two panes. */
+tc-app .pane-switch {
+  display: flex;
+  /* Never shrunk away by the pane below it, which grows to fill. */
+  flex: 0 0 auto;
+  gap: 0;
+  padding: 6px 8px;
+  background: var(--tc-bg-elevated);
+  border-bottom: 1px solid var(--tc-border);
+}
+tc-app .pane-switch button {
+  flex: 1 1 0;
+  font-family: inherit;
+  font-size: 13px;
+  /* Comfortably tappable: 44px is the usual floor for a touch target. */
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--tc-fg-muted);
+  background: var(--tc-bg-sunken);
+  border: 1px solid var(--tc-border);
+}
+tc-app .pane-switch button:first-child { border-radius: 5px 0 0 5px; }
+tc-app .pane-switch button:last-child { border-radius: 0 5px 5px 0; border-left: none; }
+tc-app .pane-switch button.on {
+  background: var(--tc-accent);
+  color: var(--tc-accent-fg);
+  border-color: var(--tc-accent);
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  /*
+   * One pane, stacked under the switch. The toolbars wrap rather
+   * than scrolling sideways, so every control stays reachable
+   * without a horizontal swipe.
+   */
+  tc-app .pane { flex-direction: column; }
+
+  tc-app .side-title {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 4px;
+    padding: 6px 8px;
+  }
+  tc-app .side-title-spacer { display: none; }
+
+  tc-app .picker {
+    /* First on its own row, and free to use the width it needs. */
+    order: -1;
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+    margin-left: 0;
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  tc-app .side-btn {
+    min-height: 36px;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* The editor is the taller of the two on a phone; give it room. */
+  tc-editor { font-size: 14px; }
+  tc-app .diagnostics { max-height: 40vh; }
+}
+
+@media (max-width: 520px) {
+  /* Room is scarce enough that the counts and the label go. */
+  tc-app .side-title-label { display: none; }
+  tc-app .counts { flex: 1 1 100%; }
+}
+
+/* Touch devices: the plot's hover readout never fires, so the
+ * crosshair cursor would be a promise the device cannot keep. */
+@media (hover: none) {
+  tc-viewer .pane-host svg { cursor: default; }
+  tc-viewer .help-popover { max-width: 88vw; }
+}
+
+/*
+ * The plot claims touch gestures for itself.
+ *
+ * Without this the browser takes a drag as a page scroll and a pinch
+ * as a page zoom before the handlers ever see them; `preventDefault`
+ * inside a listener is too late to win that race reliably.
+ */
+tc-viewer .pane-host { touch-action: none; }

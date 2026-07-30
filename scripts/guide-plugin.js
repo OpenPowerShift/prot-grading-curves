@@ -1,14 +1,20 @@
 /**
- * Vite plugin: render the language spec to HTML with Asciidoctor.js.
+ * Vite plugin: render the user guide to HTML with Asciidoctor.js.
  *
- * The playground ships the specification as its own help, so the two
- * can never drift: there is one source of truth (`spec/spec.adoc`) and
- * the guide in the app is that document, converted.
+ * The playground's help is `docs/guide.adoc` -- a single, self-contained,
+ * example-led document about *writing* studies. The normative
+ * specification (`spec/spec.adoc`, assembled from `spec/sections/`) is
+ * deliberately separate: it answers what the language *is*, in grammar
+ * productions and constant tables, which is the wrong thing to put in
+ * front of someone trying to author a file.
+ *
+ * One file, no includes, so the guide can also be handed whole to a
+ * language model asked to produce a `.tc` study.
  *
  * Conversion happens at *build* time rather than in the browser, so
  * Asciidoctor itself (about 2 MB) never reaches the bundle -- only the
- * HTML it produced. Editing any `.adoc` invalidates the module, so the
- * dev server hot-reloads the guide as the spec is written.
+ * HTML it produced. Editing the guide invalidates the module, so the
+ * dev server hot-reloads it as it is written.
  */
 
 import { readdirSync, statSync } from 'node:fs';
@@ -16,18 +22,18 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SPEC_DIR = resolve(HERE, '..', 'spec');
-const SPEC_FILE = join(SPEC_DIR, 'spec.adoc');
+const DOCS_DIR = resolve(HERE, '..', 'docs');
+const GUIDE_FILE = join(DOCS_DIR, 'guide.adoc');
 
 const VIRTUAL_ID = 'virtual:tc-guide';
 const RESOLVED_ID = '\0' + VIRTUAL_ID;
 
 /**
- * Convert the spec.
+ * Convert the guide.
  *
- * `safe: 'safe'` still permits `include::`, which the spec relies on
- * to assemble its sections; `unsafe` is not needed and would let a
- * document read arbitrary files.
+ * `safe: 'safe'` permits `include::` without letting a document read
+ * arbitrary files. The guide uses no includes, but the setting costs
+ * nothing and keeps the plugin usable for the spec too.
  */
 async function renderGuide() {
   /*
@@ -42,9 +48,9 @@ async function renderGuide() {
 
   /* v3's API is asynchronous; v2's returns the document directly, and
    * awaiting a non-promise is harmless. */
-  const doc = await asciidoctor.loadFile(SPEC_FILE, {
+  const doc = await asciidoctor.loadFile(GUIDE_FILE, {
     safe: 'safe',
-    base_dir: SPEC_DIR,
+    base_dir: DOCS_DIR,
     attributes: {
       /* Section anchors so the in-app table of contents can link.
        * `toc` is left off: the app renders its own navigation. */
@@ -59,7 +65,7 @@ async function renderGuide() {
   const html = await doc.convert();
 
   return {
-    title: doc.getDocumentTitle() ?? 'tc-curves language specification',
+    title: doc.getDocumentTitle() ?? 'tc-curves user guide',
     revision: String(doc.getAttribute('version') ?? ''),
     revdate: String(doc.getAttribute('revdate') ?? ''),
     html,
@@ -102,8 +108,8 @@ function decodeEntities(text) {
     .replace(/&([a-zA-Z]+);/g, (whole, name) => named[name] ?? whole);
 }
 
-/** Every `.adoc` under `spec/`, so any edit invalidates the module. */
-function specFiles(dir = SPEC_DIR, found = []) {
+/** Every `.adoc` under `docs/`, so any edit invalidates the module. */
+function specFiles(dir = DOCS_DIR, found = []) {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) specFiles(path, found);
@@ -137,10 +143,10 @@ export function guidePlugin() {
          */
         this.warn(`tc-guide: ${error.message}`);
         return `export default ${JSON.stringify({
-          title: 'Language specification',
+          title: 'User guide',
           revision: '',
           revdate: '',
-          html: `<p>The specification could not be rendered: ${String(error.message)}</p>`,
+          html: `<p>The guide could not be rendered: ${String(error.message)}</p>`,
         })};`;
       }
     },

@@ -36,6 +36,7 @@ import type {
 import { LogScale } from './scale.js';
 import { ticks, formatSi } from './ticks.js';
 import { paletteFor, paletteFromList, strokeDashFor, type Palette } from './palette.js';
+import { measuredQuantityOf, quantityLabel } from '../semantics/quantity.js';
 import { theme as loadTheme, type ThemeName } from './theme.js';
 import { buildStudy, allElements, resolveRef, type Annotation, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
 import { tTripStage } from '../semantics/curves.js';
@@ -89,17 +90,41 @@ function wrapText(text: string, maxWidthPx: number, fontSize: number): string[] 
   const words = text.split(' ');
   const lines: string[] = [];
   let line = '';
+
+  /* A single token longer than the column -- a relay id, a fault
+   * name, a model number -- has no space to break at, so it is cut
+   * hard. Leaving it whole is what pushed text past the frame. */
+  const emit = (word: string): void => {
+    let rest = word;
+    while (rest.length > maxChars) {
+      lines.push(rest.slice(0, maxChars));
+      rest = rest.slice(maxChars);
+    }
+    line = rest;
+  };
+
   for (const word of words) {
     const candidate = line ? `${line} ${word}` : word;
     if (candidate.length <= maxChars) {
       line = candidate;
-    } else {
-      if (line) lines.push(line);
-      line = word;
+      continue;
     }
+    if (line) lines.push(line);
+    emit(word);
   }
   if (line) lines.push(line);
   return lines;
+}
+
+/**
+ * Wrap author text that may also carry explicit line breaks.
+ *
+ * `\n` is honoured first, then each of those lines is wrapped to the
+ * column -- so a declared name both breaks where the author asked and
+ * still cannot run past the frame.
+ */
+function wrapLabel(text: string, maxWidthPx: number, fontSize: number): string[] {
+  return labelLines(text).flatMap((line) => wrapText(line, maxWidthPx, fontSize));
 }
 
 export interface RenderOptions {
@@ -153,6 +178,8 @@ interface CurveEntry {
 
 interface FaultEntry {
   name: string;
+  /** Author's note on what the fault is; shown under the legend entry. */
+  description?: string;
   I_A: number;            // original fault current, declared voltage
   voltage?: string;
   voltage_kV?: number;
@@ -328,6 +355,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
         faults.push({
           name: f.name,
+          description: f.description,
           I_A: f.I_A,
           voltage: f.voltage,
           voltage_kV: V_fault,
@@ -481,7 +509,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * Stretching measures the band instead of reserving for it.
    */
   const stretch = opts.page?.stretch === true;
-  const faultLayout = packFaultLabels(faults, xScale, I_min, I_max, opts.page?.faults?.labels !== false);
+  const faultLayout = packFaultLabels(
+    faults, xScale, I_min, I_max, opts.page?.faults?.labels !== false, leftMargin + plotW,
+  );
   const faultRows = faultLayout.reduce((n, f) => Math.max(n, f.row + 1), 0);
 
   const faultBandH = faultRows > 0 ? 44 + (faultRows - 1) * (LINE_DETAIL - 1) + 6 : 26;
@@ -710,6 +740,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       /* Spec _On-graph annotation_: a solver-set value is labelled. */
       bits.push(`TMS ${trimZeros(stage.tms)}${stage.tms_auto ? ' (auto)' : ''}`);
     }
+    /*
+     * What the curve is plotted against.
+     *
+     * A sheet carrying phase, earth-fault and negative-sequence
+     * elements draws them all on one current axis, which is standard
+     * practice but only readable if each curve says which current its
+     * abscissa is. Phase is the unmarked default, so only the others
+     * are called out.
+     */
+    const quantity = measuredQuantityOf(stage);
+    if (quantity != null && quantity !== 'phase') bits.push(`vs ${quantityLabel(quantity)}`);
+
     return bits.join(' \u00b7 ');
   };
 
@@ -933,18 +975,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     const padX = 14;
     const tbTitle = titleText ?? 'Time-current grading study';
-    out.push(
-      `<text x="${fx + padX}" y="${tbY + 22}" font-size="${FONT_LABEL}" font-weight="600" ` +
-      `fill="${th.foreground}">${labelBody(tbTitle, fx + padX, FONT_LABEL, 'first')}</text>`,
-    );
-    if (subtitleText) {
-      /* Pushed clear of however many lines the title took. */
-      const subY = tbY + 40 + labelExtraHeightPx(tbTitle, FONT_LABEL);
+
+    /*
+     * The title block shares its strip with the meta fields on the
+     * right, so the heading gets the left half and wraps inside it
+     * rather than running under them.
+     */
+    const tbTextWidth = fw * 0.5 - padX * 2;
+    let tbY2 = tbY + 22;
+    for (const wrapped of wrapLabel(tbTitle, tbTextWidth, FONT_LABEL)) {
       out.push(
-        `<text x="${fx + padX}" y="${subY}" font-size="${FONT_SUBTITLE}" ` +
-        `fill="${th.label}" opacity="0.85">` +
-        `${labelBody(subtitleText, fx + padX, FONT_SUBTITLE, 'first')}</text>`,
+        `<text x="${fx + padX}" y="${tbY2}" font-size="${FONT_LABEL}" font-weight="600" ` +
+        `fill="${th.foreground}">${escapeXml(wrapped)}</text>`,
       );
+      tbY2 += FONT_LABEL + 4;
+    }
+    if (subtitleText) {
+      tbY2 += 2;
+      for (const wrapped of wrapLabel(subtitleText, tbTextWidth, FONT_SUBTITLE)) {
+        out.push(
+          `<text x="${fx + padX}" y="${tbY2}" font-size="${FONT_SUBTITLE}" ` +
+          `fill="${th.label}" opacity="0.85">${escapeXml(wrapped)}</text>`,
+        );
+        tbY2 += FONT_SUBTITLE + 3;
+      }
     }
 
     /*
@@ -975,17 +1029,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
     }
   } else if (titleText) {
-    out.push(
-      `<text x="${leftMargin}" y="26" font-size="${FONT_TITLE}" font-weight="600" ` +
-      `fill="${th.foreground}">${labelBody(titleText, leftMargin, FONT_TITLE, 'first')}</text>`,
-    );
-    if (subtitleText) {
-      const subY = 44 + labelExtraHeightPx(titleText, FONT_TITLE);
+    /* Bounded by the sheet, so a long heading wraps instead of
+     * running off the right-hand edge. */
+    const headWidth = W - leftMargin - 16;
+    let headY = 26;
+    for (const wrapped of wrapLabel(titleText, headWidth, FONT_TITLE)) {
       out.push(
-        `<text x="${leftMargin}" y="${subY}" font-size="${FONT_SUBTITLE}" ` +
-        `fill="${th.label}" opacity="0.85">` +
-        `${labelBody(subtitleText, leftMargin, FONT_SUBTITLE, 'first')}</text>`,
+        `<text x="${leftMargin}" y="${headY}" font-size="${FONT_TITLE}" font-weight="600" ` +
+        `fill="${th.foreground}">${escapeXml(wrapped)}</text>`,
       );
+      headY += FONT_TITLE + 4;
+    }
+    if (subtitleText) {
+      for (const wrapped of wrapLabel(subtitleText, headWidth, FONT_SUBTITLE)) {
+        out.push(
+          `<text x="${leftMargin}" y="${headY}" font-size="${FONT_SUBTITLE}" ` +
+          `fill="${th.label}" opacity="0.85">${escapeXml(wrapped)}</text>`,
+        );
+        headY += FONT_SUBTITLE + 3;
+      }
     }
   }
 
@@ -1364,7 +1426,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   /* Rows were packed before the vertical margins were settled, so the
    * band below the axis could be sized to them. */
-  for (const { f, i, px, row } of faultLayout) {
+  for (const { f, i, px, row, flipped } of faultLayout) {
     const labelY = faultBandY + row * (LINE_DETAIL - 1);
     const dash = faultDash(i);
     out.push(
@@ -1373,7 +1435,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
     out.push(
-      `<text x="${(px + 4).toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="start" ` +
+      `<text x="${(px + (flipped ? -4 : 4)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
+      `text-anchor="${flipped ? 'end' : 'start'}" ` +
       `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
       `${escapeXml(f.name)}</text>`,
     );
@@ -1397,13 +1460,33 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const legendInk = opts.page?.legend?.color ?? th.foreground;
   const swatchW = 26;
 
+  /**
+   * How much of each entry to print.
+   *
+   * A study with a couple of relays wants everything: make, model,
+   * settings, the note on each fault. A real coordination sheet with
+   * nine characteristics and seven described faults does not fit, and
+   * silently running off the bottom of the page -- over the title
+   * block -- is the worst of the options. The legend is built at the
+   * fullest density that fits the space it has, and only then starts
+   * dropping entries.
+   */
+  type LegendDensity = 'full' | 'compact' | 'minimal';
+
   const buildLegend = (
     originX: number,
     originY: number,
     width: number,
     /** Column mode drops the faults to the foot of the plot. */
     anchorFaultsToPlotBottom: boolean,
-  ): { lines: string[]; height: number } => {
+    density: LegendDensity = 'full',
+    /** Vertical space available; entries past it are summarised. */
+    budget: number = Infinity,
+  ): { lines: string[]; height: number; dropped: number } => {
+    const showDetail = density === 'full';
+    const showSomeDetail = density !== 'minimal';
+    const entryGap = density === 'full' ? LEGEND_ENTRY_GAP : 2;
+    let dropped = 0;
     const lines: string[] = [];
     const textX = originX + swatchW + 10;
     const textWidth = width - swatchW - 10;
@@ -1415,6 +1498,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     cursorY += LINE_HEADING;
 
     for (const c of curves) {
+      /* Out of room: count what is left and say so at the end. */
+      if (cursorY - originY > budget) { dropped++; continue; }
+
       const swatchY = cursorY - FONT_LABEL / 3;
       if (c.band) {
         /* A band's swatch is a hatched block, matching the plot. */
@@ -1448,7 +1534,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         cursorY += LINE_LABEL;
       }
 
-      for (const line of c.detailLines) {
+      /* `compact` keeps the settings line -- which is the one an
+       * engineer checks -- and drops the make and model above it. */
+      const detail = showDetail ? c.detailLines
+        : showSomeDetail ? c.detailLines.slice(-1)
+          : [];
+      for (const line of detail) {
         for (const wrapped of wrapText(line, textWidth, FONT_DETAIL)) {
           lines.push(
             `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" font-size="${FONT_DETAIL}">` +
@@ -1457,7 +1548,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           cursorY += LINE_DETAIL;
         }
       }
-      cursorY += LEGEND_ENTRY_GAP;
+      cursorY += entryGap;
     }
 
     /*
@@ -1475,28 +1566,67 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         const colour = point.color ?? th.fault;
         const swatchY = cursorY - FONT_LABEL / 3;
         lines.push(pointMarker(point.shape ?? 'cross', originX + swatchW / 2, swatchY, colour));
-        const name = point.label ?? point.id;
-        lines.push(
-          `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${legendInk}" ` +
-          `font-size="${FONT_LABEL}">${labelBody(name, textX, FONT_LABEL, 'first')}</text>`,
-        );
-        /* The legend is laid out top-down, so a wrapped name has to move
-         * the cursor by its full height or the coordinate under it lands
-         * on top of the second line. */
-        cursorY += LINE_LABEL + labelExtraHeightPx(name, FONT_LABEL);
-        lines.push(
-          `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
-          `font-size="${FONT_DETAIL}">${escapeXml(coordText(project(point.I_A, point.voltage_kV), point.t_s))}</text>`,
-        );
-        cursorY += LINE_DETAIL + LEGEND_ENTRY_GAP;
+
+        /* Laid out top-down, so each wrapped line moves the cursor --
+         * otherwise the coordinate beneath lands on the second line. */
+        for (const wrapped of wrapLabel(point.label ?? point.id, textWidth, FONT_LABEL)) {
+          lines.push(
+            `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${legendInk}" ` +
+            `font-size="${FONT_LABEL}">${escapeXml(wrapped)}</text>`,
+          );
+          cursorY += LINE_LABEL;
+        }
+        const coords = coordText(project(point.I_A, point.voltage_kV), point.t_s);
+        for (const wrapped of showSomeDetail ? wrapText(coords, textWidth, FONT_DETAIL) : []) {
+          lines.push(
+            `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+            `font-size="${FONT_DETAIL}">${escapeXml(wrapped)}</text>`,
+          );
+          cursorY += LINE_DETAIL;
+        }
+        cursorY += LEGEND_ENTRY_GAP;
       }
     }
 
     /* Faults. */
     if (faults.length > 0) {
+      /* Wrapped up front: a long fault name plus its current and
+       * voltage runs past the column, and the block has to be
+       * anchored by the height it will actually take. */
+      const faultText = faults.map((f) => {
+        /*
+         * The *declared* current against the level it was declared on.
+         *
+         * This used to print the projected current -- the value the
+         * rule is drawn at, in the view's frame -- beside the fault's
+         * own voltage label, which states something false: a 460 A
+         * fault at 0.48 kV was listed as "6.69 A · LV · 0.48 kV",
+         * that being its equivalent at 33 kV. Where the two frames
+         * differ the projection is now shown as well, and marked as
+         * such.
+         */
+        const where = f.voltageLabel ? ` · ${f.voltageLabel}` : '';
+        const projected = f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6
+          ? ` -> ${formatSi(f.I_view, 'A')}`
+          : '';
+        return wrapText(
+          `${f.name} · ${formatSi(f.I_A, 'A')}${where}${projected}`,
+          textWidth,
+          FONT_DETAIL,
+        );
+      });
+      /* `description` is the author's note on what the fault *is*;
+       * it belongs with the entry rather than being parsed and
+       * dropped, which is what used to happen to it. */
+      const faultNotes = faults.map((f) =>
+        showDetail && f.description ? wrapLabel(f.description, textWidth, FONT_DETAIL - 1) : []);
+
+      const faultLineCount = faultText.reduce((n, l) => n + l.length, 0)
+        + faultNotes.reduce((n, l) => n + l.length, 0);
+
       let faultsY = cursorY + FONT_HEADING;
       if (anchorFaultsToPlotBottom) {
-        const wanted = topMargin + plotH - (faults.length * LINE_LABEL) - LINE_HEADING + FONT_HEADING;
+        const wanted = topMargin + plotH - (faultLineCount * LINE_LABEL) - LINE_HEADING + FONT_HEADING;
         faultsY = Math.max(wanted, cursorY + 12);
       }
 
@@ -1505,7 +1635,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       faultsY += LINE_HEADING;
 
-      for (const [i, f] of faults.entries()) {
+      for (const i of faults.keys()) {
         const swatchY = faultsY - FONT_LABEL / 3;
         const dash = faultDash(i);
         lines.push(
@@ -1513,23 +1643,80 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           `stroke="${faultColour}" stroke-width="${Math.max(faultWidth, 1.5)}"` +
           `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
         );
-        const where = f.voltageLabel ? ` · ${f.voltageLabel}` : '';
-        lines.push(
-          `<text x="${textX}" y="${faultsY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_DETAIL}">` +
-          `${escapeXml(`${f.name} · ${formatSi(f.I_view ?? f.I_A, 'A')}${where}`)}</text>`,
-        );
-        faultsY += LINE_LABEL;
+        for (const wrapped of faultText[i]) {
+          lines.push(
+            `<text x="${textX}" y="${faultsY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_DETAIL}">` +
+            `${escapeXml(wrapped)}</text>`,
+          );
+          faultsY += LINE_LABEL;
+        }
+        for (const wrapped of faultNotes[i]) {
+          lines.push(
+            `<text x="${textX}" y="${faultsY}" class="tc-legend-muted" fill="${th.label}" ` +
+            `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
+          );
+          faultsY += LINE_DETAIL - 2;
+        }
       }
       cursorY = faultsY;
     }
 
-    return { lines, height: cursorY - originY };
+    if (dropped > 0) {
+      lines.push(
+        `<text x="${originX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+        `font-size="${FONT_DETAIL}" font-style="italic">` +
+        `${escapeXml(`+${dropped} more not shown`)}</text>`,
+      );
+      cursorY += LINE_DETAIL;
+    }
+    return { lines, height: cursorY - originY, dropped };
+  };
+
+  /**
+   * Build the legend at the fullest density that fits `budget`.
+   *
+   * Measured rather than estimated: the wrapping depends on the text,
+   * so the only reliable way to know whether a legend fits is to lay
+   * it out and look at the height it came to.
+   */
+  const fitLegend = (
+    originX: number,
+    originY: number,
+    width: number,
+    anchorFaults: boolean,
+    budget: number,
+  ): { lines: string[]; height: number } => {
+    for (const density of ['full', 'compact', 'minimal'] as LegendDensity[]) {
+      /*
+       * Measured unanchored, always. In column mode the faults block
+       * is dropped to the foot of the plot, so its laid-out height
+       * runs from the top of the column to below the plot -- larger
+       * than the budget by construction, which would have condemned
+       * even a two-curve study to the least detail.
+       */
+      const natural = buildLegend(originX, originY, width, false, density);
+      if (natural.height <= budget) {
+        return anchorFaults
+          ? buildLegend(originX, originY, width, true, density)
+          : natural;
+      }
+    }
+    /* Still over at the least detail: drop entries and say how many. */
+    return buildLegend(originX, originY, width, anchorFaults, 'minimal', budget);
   };
 
   if (legendMode === 'column') {
     const legX = leftMargin + plotW + LEGEND_GUTTER + (mirrorAxes ? 46 : 0);
     const legendWidth = rightMargin - LEGEND_GUTTER - 12 - (mirrorAxes ? 46 : 0);
-    out.push(...buildLegend(legX, topMargin, legendWidth, true).lines);
+    /*
+     * The column runs to the title block, not merely to the foot of
+     * the plot: the fault-name band and the axis title below the plot
+     * sit under the *plot*, and leave the gutter beside them empty.
+     * Budgeting only `plotH` threw away that band and pushed studies
+     * to names-only detail that had room for their settings.
+     */
+    const columnBudget = H - sheetInset - titleBlockH - 10 - topMargin;
+    out.push(...fitLegend(legX, topMargin, legendWidth, true, columnBudget).lines);
   } else if (legendMode === 'inside') {
     /*
      * Floated over the plot. Measured first, because a panel pinned to
@@ -1539,8 +1726,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     const pad = 12;
     const panelW = Math.min(300, Math.max(180, plotW * 0.42));
-    const measured = buildLegend(0, 0, panelW, false).height;
-    const panelH = measured + pad;
+    /* A floating panel may cover at most three-quarters of the plot;
+     * past that it is hiding the curves it is meant to explain. */
+    const panelBudget = plotH * 0.75;
+    const measured = fitLegend(0, 0, panelW, false, panelBudget).height;
+    const panelH = Math.min(measured + pad, panelBudget + pad);
 
     const corner = legendCorner(opts.page?.legend?.position);
     const onLeft = corner === 'top_left' || corner === 'bottom_left';
@@ -1553,7 +1743,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `width="${(panelW + 2 * pad).toFixed(1)}" height="${panelH.toFixed(1)}" rx="4" ` +
       `fill="${th.background}" fill-opacity="0.92" stroke="${th.axis}" stroke-width="0.8"/>`,
     );
-    out.push(...buildLegend(panelX + pad, panelY + pad / 2, panelW, false).lines);
+    out.push(...fitLegend(panelX + pad, panelY + pad / 2, panelW, false, panelBudget).lines);
   }
 
   /*
@@ -1662,6 +1852,9 @@ interface PlacedFault {
   i: number;
   px: number;
   row: number;
+  /** Drawn to the left of its rule, because a right-hand label would
+   * have run past the frame. */
+  flipped: boolean;
 }
 
 /**
@@ -1677,11 +1870,13 @@ function packFaultLabels(
   I_min: number,
   I_max: number,
   showLabels: boolean,
+  /** Right-hand edge of the plot; labels may not cross it. */
+  plotRight: number,
 ): PlacedFault[] {
   if (!showLabels) return [];
 
   const placed: PlacedFault[] = [];
-  const taken: Array<{ right: number; row: number }> = [];
+  const taken: Array<{ left: number; right: number; row: number }> = [];
 
   const visible = faults
     .map((f, i) => ({ f, i, I: f.I_view ?? f.I_A }))
@@ -1692,12 +1887,22 @@ function packFaultLabels(
     const px = xScale.toPx(I);
     if (!Number.isFinite(px)) continue;
 
-    /* First row whose last label ends before this one starts. */
+    /*
+     * A name is normally drawn to the right of its rule. Near the
+     * right-hand edge that runs off the sheet -- a long fault name at
+     * the maximum fault current does it every time -- so the label
+     * flips and hangs to the left of the rule instead.
+     */
     const width = f.name.length * FONT_DETAIL * CHAR_ADVANCE + 10;
+    const flipped = px + width > plotRight;
+    const left = flipped ? px - width : px;
+    const right = left + width;
+
+    /* First row this label's span does not collide with. */
     let row = 0;
-    while (taken.some((p) => p.row === row && p.right > px)) row++;
-    taken.push({ right: px + width, row });
-    placed.push({ f, i, px, row });
+    while (taken.some((p) => p.row === row && p.right > left && p.left < right)) row++;
+    taken.push({ left, right, row });
+    placed.push({ f, i, px, row, flipped });
   }
   return placed;
 }

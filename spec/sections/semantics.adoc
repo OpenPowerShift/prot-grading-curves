@@ -24,10 +24,36 @@ derived for the multiple computation:
 | `breaker_fail` | Sustained phase current after breaker-fail initiation (same as `phase_oc`).
 |===
 
-For `earth_fault` and `neg_seq`, the fault data must include the
-relevant sequence component (`I0_A` or `I2_A` in the `faults` block);
-otherwise the multiple is computed from `I_A` directly (with a
-*Warning* `MISSING_SEQUENCE_DATA`).
+The default may be overridden per element or per stage with
+`measures`, whose values are `phase`, `I1`, `I2`, `3I2`, `I0`, `3I0`.
+
+`neg_seq` has *no default*: IEDs differ over whether a
+negative-sequence pickup is scaled in `I2` or in `3*I2`, and the factor
+of three is the difference between an element that operates and one
+that does not. A `neg_seq` element that does not declare `measures` is
+an *Error* (`MEASURES_REQUIRED`).
+
+For any element measuring other than phase current, the fault data
+must declare the relevant component (`I0_A`, `earth_A`, or `I2_A` in
+the `faults` block). If it does not, the pair is *not graded* and an
+*Error* `SEQUENCE_DATA_MISSING` is raised.
+
+[IMPORTANT]
+====
+The multiple is *never* computed from another quantity as a fallback.
+Substituting phase current for a missing `I2` yields a well-formed
+margin for a comparison that was never made -- a wrong number that
+looks right, which is the failure mode this rule exists to prevent.
+
+Earlier drafts of this section specified a *Warning*
+`MISSING_SEQUENCE_DATA` and a fallback to `I_A`. That rule is
+withdrawn.
+====
+
+`I0_A` is the zero-sequence component `I0`. `earth_A` is the residual
+`3*I0` declared directly, for studies that report the residual rather
+than the component; the two are interchangeable, and the processor
+derives whichever is not given.
 
 For `thermal`, the operate time is best modelled with `flex_points`
 (a heating curve table) rather than an IDMT formula, because thermal
@@ -755,6 +781,24 @@ asked for.
 
 [IMPORTANT]
 ====
+*Not every current crosses the transformer.* The referral rule
+`I_at(L) = I_fault * V_fault / V_L` above is stated for *phase*
+current, and holds for positive and negative sequence too: both pass
+through a two-winding transformer with their magnitudes scaling by the
+turns ratio.
+
+*Zero sequence does not.* It cannot cross a delta winding, so
+referring a residual figure from one level to another by the voltage
+ratio states something physically false. An element measuring `I0` or
+`3I0` must have its component declared at its *own* level; asking for
+it across a ratio is an *Error* `SEQUENCE_ACROSS_LEVELS`.
+
+This is not a corner case. It is why a star-side earth fault appears
+on the delta side as an unbalance carrying negative sequence, and so
+why an HV *negative-sequence* element -- not an HV residual element --
+is the sensitive backup for an LV earth fault behind a delta-star
+transformer.
+
 *One fault, but not one current.* Ampere-turns balance across a
 transformer, so its two windings carry currents in inverse
 proportion to their voltages. A 6.4 kA fault on an 11 kV bus drives

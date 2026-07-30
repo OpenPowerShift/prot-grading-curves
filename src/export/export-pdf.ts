@@ -66,6 +66,63 @@ export function resolveMarginsMm(options: PdfOptions = {}): [number, number, num
  */
 const PDF_FONT = 'helvetica, Helvetica, Arial, sans-serif';
 
+/**
+ * Characters outside the PDF core fonts' encoding, and what to print
+ * instead.
+ *
+ * `jspdf`'s standard-14 fonts are WinAnsi-encoded, which covers
+ * Latin-1 plus the typographic characters at 0x80-0x9F (em dash,
+ * curly quotes, ellipsis, bullet). Anything else -- an arrow, a
+ * comparison sign, a Greek letter in a project name -- is not
+ * representable and comes out as mojibake on the printed sheet.
+ *
+ * Transliterating is better than dropping: `<=` still reads as a
+ * comparison, where a missing glyph reads as a mistake.
+ */
+const PDF_SUBSTITUTIONS: Record<string, string> = {
+  '\u2192': '->', '\u2190': '<-', '\u2194': '<->',
+  '\u21d2': '=>', '\u21d0': '<=',
+  '\u2264': '<=', '\u2265': '>=', '\u2260': '!=', '\u2248': '~',
+  '\u2212': '-',
+  '\u03a9': 'ohm', '\u2126': 'ohm', '\u0394': 'delta',
+  '\u221e': 'inf', '\u221a': 'sqrt', '\u2211': 'sum',
+  '\u2032': "'", '\u2033': '"',
+  '\u2713': 'y', '\u2717': 'n',
+};
+
+/**
+ * True for characters the PDF core fonts can actually encode.
+ *
+ * Latin-1 proper, plus the WinAnsi additions in 0x80-0x9F which
+ * `jspdf` maps for us -- em and en dashes, curly quotes, the
+ * ellipsis and the bullet all survive, so ordinary prose is
+ * untouched.
+ */
+const WIN_ANSI_EXTRAS = new Set([
+  '\u20ac', '\u201a', '\u0192', '\u201e', '\u2026', '\u2020', '\u2021',
+  '\u02c6', '\u2030', '\u0160', '\u2039', '\u0152', '\u017d',
+  '\u2018', '\u2019', '\u201c', '\u201d', '\u2022', '\u2013', '\u2014',
+  '\u02dc', '\u2122', '\u0161', '\u203a', '\u0153', '\u017e', '\u0178',
+]);
+
+/**
+ * Replace anything the PDF cannot encode.
+ *
+ * Applied to the whole document rather than to parsed text nodes:
+ * the only non-ASCII content an exported sheet carries is text and
+ * the `data-` attributes echoing it, and a string pass cannot get the
+ * traversal wrong.
+ */
+export function toPdfSafeText(svg: string): string {
+  let out = '';
+  for (const ch of svg) {
+    const code = ch.codePointAt(0)!;
+    if (code <= 0xff || WIN_ANSI_EXTRAS.has(ch)) { out += ch; continue; }
+    out += PDF_SUBSTITUTIONS[ch] ?? '?';
+  }
+  return out;
+}
+
 /** Resolve a size declaration to `[width_mm, height_mm]`, oriented. */
 export function resolvePageMm(options: PdfOptions = {}): [number, number] {
   const orientation = options.orientation ?? 'landscape';
@@ -130,9 +187,9 @@ export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<
    * white -- invisible on white paper. Rendering the right thing beats
    * recolouring the wrong thing.
    */
-  const standalone = normaliseFontWeights(
+  const standalone = toPdfSafeText(normaliseFontWeights(
     toExportableSvg(svg, { background: '#ffffff', fontFamily: PDF_FONT }),
-  );
+  ));
   const { width: srcW, height: srcH } = svgDimensions(standalone);
 
   const availW = Math.max(1, pageW - mLeft - mRight);

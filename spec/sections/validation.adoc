@@ -137,3 +137,55 @@ semantic error.
 
 These rules are referenced from the conformance test suite; see
 <<conformance,Conformance>>.
+
+=== Measured-current errors
+
+`MEASURES_REQUIRED`:: A `neg_seq` element does not declare `measures`.
+There is no safe default -- see <<semantics,Semantics>>
+_Function-specific multiple derivation_.
+
+`MEASURES_UNKNOWN`:: `measures` is not one of `phase`, `I1`, `I2`,
+`3I2`, `I0`, `3I0`.
+
+`MEASURES_MIXED`:: Stages of one element measure different currents.
+Stages of one element are stages of one protection function, so the
+element cannot be graded or plotted as a single characteristic.
+
+`SEQUENCE_DATA_MISSING`:: An element measures a component the
+referenced fault does not declare. The pair is not graded; no other
+quantity is substituted.
+
+`SEQUENCE_ACROSS_LEVELS`:: A zero-sequence quantity would have to be
+referred across a voltage ratio, which is not physical. Declare the
+component at the relay's own level.
+
+`GRADE_MIXED_QUANTITY`:: (*Warning*) The two sides of a grade measure
+different currents, so the margin compares operate times for two
+different currents at one fault. Legitimate practice -- an I2 backup
+for an earth fault is exactly this -- but worth stating on the report.
+
+=== Structural errors
+
+Checked over the token stream, before the grammar, so they apply to
+every block alike.
+
+`DUPLICATE_KEY`:: A key assigned more than once inside one set of
+braces. The later assignment used to win silently, which a reader
+cannot detect by looking -- a `view` setting `current_max` twice
+honoured whichever came last. Sibling and nested blocks are separate
+scopes, so the same key in two `stage` blocks, two relays, or two
+faults is not a repeat.
+
+`MISSING_VALUE`:: An assignment whose `=` is followed by nothing
+before the statement ends. Field parsers otherwise fail quietly --
+returning `NaN` or leaving the field unset -- so a half-written line
+disappeared from the study rather than being reported.
+
+[NOTE]
+====
+An editor may hold `MISSING_VALUE` back on the line the caret is
+sitting on: `I_pu = ` is not a mistake at the moment the `=` is
+typed. The finding is deferred, not dropped, and appears as soon as
+the caret moves off the line. The playground does this; the CLI
+reports every occurrence.
+====

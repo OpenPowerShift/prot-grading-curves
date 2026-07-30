@@ -216,3 +216,183 @@ export const SCOPE_OF_TOP_BLOCK: Record<string, keyof typeof BLOCK_FIELDS> = {
   annotate: 'annotate',
   notes: 'notes',
 };
+
+/* ------------------------------------------------------------------ */
+/* Value catalogues                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A value a field accepts, with a line explaining what it does.
+ *
+ * These drive "what are my options here?" in the editor: at a value
+ * position the completion list becomes the enumeration itself rather
+ * than a list of field names, so the answer is in the same place as
+ * the question.
+ */
+export interface ValueChoice {
+  value: string;
+  detail: string;
+}
+
+const V = (value: string, detail: string): ValueChoice => ({ value, detail });
+
+/**
+ * Keyword-valued fields, keyed by the field name as written.
+ *
+ * Where one name means different things in different blocks the
+ * union is offered; the parser rejects a wrong one, and offering both
+ * beats offering neither.
+ */
+export const FIELD_VALUES: Record<string, ValueChoice[]> = {
+  I_units: [
+    V('"primary"', 'Pickups are primary amps (the default)'),
+    V('"secondary"', 'Pickups are settings-sheet amps; multiplied by ct_ratio'),
+  ],
+  function: [
+    V('"phase_oc"', 'Phase overcurrent (50/51)'),
+    V('"earth_fault"', 'Earth fault (50N/51N), driven by residual current'),
+    V('"neg_seq"', 'Negative sequence (46), driven by I2'),
+    V('"thermal"', 'Thermal overload (49)'),
+    V('"breaker_fail"', 'Breaker failure (50BF)'),
+  ],
+  reset: [
+    V('instant', 'Reset the instant current falls below pickup'),
+    V('dependent', 'Reset time depends on how far the disc travelled'),
+    V('disk_emulation', 'Emulate an induction disc running back'),
+  ],
+  direction: [
+    V('forward', 'Operates for current away from the busbar'),
+    V('reverse', 'Operates for current towards the busbar'),
+    V('none', 'Non-directional'),
+  ],
+  directional: [V('true', 'Directional element'), V('false', 'Non-directional')],
+  kind: [
+    V('fuse', 'Fuse: draws a min-melt / total-clear band'),
+    V('recloser', 'Recloser characteristic'),
+    V('cable', 'Cable damage curve'),
+    V('transformer_damage', 'Transformer through-fault withstand'),
+    V('motor_startup', 'Motor starting characteristic'),
+    V('breaker', 'Breaker operating time'),
+  ],
+  as: [
+    V('envelope_min', 'Fastest of the sources at each current'),
+    V('envelope_max', 'Slowest of the sources at each current'),
+    V('sum', 'Sum of the source times'),
+    V('select_first', 'First source that operates'),
+  ],
+  strategy: [
+    V('tight', 'Smallest tms that still meets the margin'),
+    V('loose', 'Round the solved tms up to the next standard step'),
+    V('safety_factor', 'Multiply the solved tms by a factor'),
+  ],
+  axis: [
+    V('"primary"', 'Current axis in primary amps'),
+    V('"secondary"', 'Current axis in secondary amps'),
+    V('"multiples"', 'Current axis in multiples of pickup'),
+  ],
+  orientation: [V('"portrait"', 'Tall sheet'), V('"landscape"', 'Wide sheet (default)')],
+  theme: [
+    V('"light"', 'Light background, for print and filing'),
+    V('"dark"', 'Dark background, for screen'),
+    V('"monochrome"', 'Black on white'),
+    V('"print"', 'ICC-aware print'),
+  ],
+  size: [
+    V('"A4"', '210 x 297 mm'), V('"A3"', '297 x 420 mm'), V('"A5"', '148 x 210 mm'),
+    V('"Letter"', '215.9 x 279.4 mm'), V('"Legal"', '215.9 x 355.6 mm'),
+    V('"Tabloid"', '279.4 x 431.8 mm'),
+  ],
+  style: [
+    /* legend.style */
+    V('"column"', 'legend: a gutter down the right-hand side (default)'),
+    V('"inside"', 'legend: the same panel floated over the plot'),
+    V('"direct"', 'legend: no panel; each curve labelled in place'),
+    V('"none"', 'legend: no identification at all'),
+    /* annotate.style */
+    V('leader', 'annotate: elbowed leader line to the label'),
+    V('pin', 'annotate: a dot on the curve'),
+    V('tag', 'annotate: bare text beside the point'),
+  ],
+  position: [
+    V('"top_right"', 'Inside legend pinned to the top right (default)'),
+    V('"top_left"', 'Inside legend pinned to the top left'),
+    V('"bottom_right"', 'Inside legend pinned to the bottom right'),
+    V('"bottom_left"', 'Inside legend pinned to the bottom left'),
+    V('"right"', 'Column legend on the right'),
+    V('"left"', 'Column legend on the left'),
+  ],
+  swatch: [V('line', 'A line segment'), V('box', 'A filled box'), V('circle', 'A dot')],
+  shape: [
+    V('"circle"', 'Round marker'), V('"square"', 'Square marker'),
+    V('"diamond"', 'Diamond marker'), V('"triangle"', 'Triangle marker'),
+    V('"cross"', 'Plus-shaped marker'), V('"x"', 'X-shaped marker'),
+  ],
+  palette: [
+    V('"default"', 'Validated categorical palette'),
+    V('"okabe_ito"', 'Okabe-Ito colourblind-safe set'),
+    V('"high_contrast"', 'Maximum separation'),
+    V('"grayscale"', 'Greys only'),
+    V('"ieee"', 'IEEE house colours'),
+    V('"monochrome"', 'Single ink'),
+  ],
+  tick_density: [V('sparse', 'Fewer gridlines'), V('normal', 'Default'), V('dense', 'More gridlines')],
+  stages: [
+    V('composite', 'Draw the stages as one effective curve'),
+    V('individual', 'Draw each stage separately'),
+  ],
+  grounding: [
+    V('"solid"', 'Solidly earthed'),
+    V('"low_impedance"', 'Earthed through a low impedance'),
+    V('"high_impedance"', 'Earthed through a high impedance'),
+    V('"isolated"', 'Unearthed'),
+  ],
+};
+
+/** Fields that take `true` / `false`. */
+export const BOOLEAN_FIELDS = new Set([
+  'border', 'stretch', 'mirror', 'coords', 'show', 'labels', 'frame',
+  'auto', 'auto_color', 'outline', 'two_axes', 'solve', 'directional',
+]);
+
+/**
+ * Unit suffixes offered after a number, by the field being assigned.
+ *
+ * The spec requires the suffix wherever it is not the field's
+ * default, so this is the list an engineer would otherwise have to
+ * look up mid-line.
+ */
+export const FIELD_UNITS: Record<string, ValueChoice[]> = {
+  /* Currents measured on the primary side. */
+  __current: [
+    V('A', 'amperes'), V('kA', 'kiloamperes'), V('mA', 'milliamperes'),
+  ],
+  /* Pickups, which may also be given on the secondary side or as a multiple. */
+  __pickup: [
+    V('A', 'primary amperes'),
+    V('A_sec', 'secondary amperes — multiplied by ct_ratio'),
+    V('A_pri', 'primary amperes, explicitly — ignores I_units = "secondary"'),
+    V('kA', 'kiloamperes'), V('mA', 'milliamperes'),
+    V('pu', 'multiple of the base current'),
+    V('xCT', 'multiple of the CT secondary rating'),
+    V('xIn', 'multiple of the relay nominal current'),
+  ],
+  __time: [V('s', 'seconds'), V('ms', 'milliseconds'), V('min', 'minutes')],
+  __voltage: [V('kV', 'kilovolts'), V('V', 'volts'), V('MV', 'megavolts')],
+  __power: [V('MVA', 'megavolt-amperes'), V('kVA', 'kilovolt-amperes'), V('MW', 'megawatts')],
+  __angle: [V('deg', 'degrees')],
+};
+
+/** Which unit family a field belongs to. */
+export const UNIT_FAMILY: Record<string, keyof typeof FIELD_UNITS> = {
+  I_pu: '__pickup',
+  I_A: '__current', min_A: '__current', max_A: '__current',
+  earth_A: '__current', I0_A: '__current', I2_A: '__current',
+  I_base_A: '__current', at_I_A: '__current', rating_A: '__current',
+  current_min: '__current', current_max: '__current', upstream_to: '__current',
+  t_delay: '__time', t_reset: '__time', t_s: '__time',
+  time_min: '__time', time_max: '__time',
+  CTI_min_s: '__time', margin_s: '__time', quantisation_s: '__time',
+  kV: '__voltage', rating_kV: '__voltage', voltage: '__voltage',
+  rating_MVA: '__power', base_MVA: '__power',
+  char_angle: '__angle',
+};

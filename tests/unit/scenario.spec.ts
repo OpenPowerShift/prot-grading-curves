@@ -190,3 +190,66 @@ describe('what a scenario refuses', () => {
     expect(codes).toContain('UNRESOLVED_REFERENCE');
   });
 });
+
+describe('several scenarios in one file', () => {
+  const TWO = `
+scenario "system normal" { level "LV" { I_A = 6400 A; } level "HV" { I_A = 2133 A; } }
+scenario "one tx out"    { level "LV" { I_A = 4100 A; } level "HV" { I_A = 1367 A; } }
+relay R_INC { voltage = "HV"; element 51 { curve = iec.si; I_pu = 720 A; tms = 0.175; } }
+`;
+
+  it('keeps them all, selected per grade by name', () => {
+    const { study, errors } = run(TWO + `
+      grade { primary = R_ACB:51; backup = R_INC:51; scenario = "system normal"; CTI_min_s = 0.3; }
+      grade { primary = R_ACB:51; backup = R_INC:51; scenario = "one tx out";    CTI_min_s = 0.3; }
+    `);
+    expect(errors).toHaveLength(0);
+    expect([...study!.scenarios.keys()]).toEqual(['LV earth fault', 'system normal', 'one tx out']);
+  });
+
+  it('grades one pair under each, without calling it a duplicate', () => {
+    /*
+     * Judging a pair under several conditions is the point of having
+     * several. DUPLICATE_GRADE keyed on the fault name, which is empty
+     * for a scenario grade, so both keyed alike and the second was
+     * reported as a repeat of the first.
+     */
+    const { reports, codes } = run(TWO + `
+      grade { primary = R_ACB:51; backup = R_INC:51; scenario = "system normal"; CTI_min_s = 0.3; }
+      grade { primary = R_ACB:51; backup = R_INC:51; scenario = "one tx out";    CTI_min_s = 0.3; }
+    `);
+    expect(codes).not.toContain('DUPLICATE_GRADE');
+    expect(reports).toHaveLength(2);
+    expect(reports.map((r) => r.fault)).toEqual(['system normal', 'one tx out']);
+    /* Different conditions, so different margins. */
+    expect(reports[0].rows[0].margin_s).not.toBeCloseTo(reports[1].rows[0].margin_s, 3);
+  });
+
+  it('still catches a genuinely repeated check', () => {
+    const { codes } = run(TWO + `
+      grade { primary = R_ACB:51; backup = R_INC:51; scenario = "system normal"; }
+      grade { primary = R_ACB:51; backup = R_INC:51; scenario = "system normal"; }
+    `);
+    expect(codes).toContain('DUPLICATE_GRADE');
+  });
+
+  it('rejects two scenarios sharing a name', () => {
+    /* Keyed by name, so the later silently replaced the earlier and
+     * which currents a grade used became a matter of file order. */
+    const { codes } = run(`
+      scenario "same" { level "LV" { I_A = 6400 A; } }
+      scenario "same" { level "LV" { I_A = 100 A; } }
+    `);
+    expect(codes).toContain('DUPLICATE_SCENARIO');
+  });
+
+  it('rejects two faults sharing a name, for the same reason', () => {
+    const { codes } = run(`
+      faults {
+        "F" { I_A = 6400 A; voltage = "LV"; }
+        "F" { I_A = 100 A;  voltage = "LV"; }
+      }
+    `);
+    expect(codes).toContain('DUPLICATE_FAULT');
+  });
+});

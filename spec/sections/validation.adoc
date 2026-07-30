@@ -164,6 +164,23 @@ different currents, so the margin compares operate times for two
 different currents at one fault. Legitimate practice -- an I2 backup
 for an earth fault is exactly this -- but worth stating on the report.
 
+=== Repeated declarations
+
+Faults and scenarios are keyed by name, so a repeat replaces the
+earlier declaration. Both are errors, because the replacement is
+invisible in the output and changes results.
+
+`DUPLICATE_FAULT`:: Two faults share a name. Grading is pinned to a
+fault by name, so every margin referencing it changes with declaration
+order.
+
+`DUPLICATE_SCENARIO`:: Two scenarios share a name.
+
+`DUPLICATE_GRADE`:: The same pair checked twice under the same
+condition. Checking one pair at several faults, or under several
+scenarios, is normal practice and is not a duplicate -- the condition
+is part of the key.
+
 === Structural errors
 
 Checked over the token stream, before the grammar, so they apply to

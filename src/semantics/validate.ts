@@ -41,6 +41,14 @@ export interface Diagnostic {
 interface Ctx {
   study: Study;
   out: Diagnostic[];
+  /**
+   * The source document, where one is available.
+   *
+   * The resolved study keys its faults and scenarios by name, so a
+   * repeated declaration is already gone by the time it is inspected.
+   * Only the document still holds both.
+   */
+  doc?: Document;
 }
 
 const NOWHERE: SourceLocation = { line: 1, column: 1, offset: 0 };
@@ -82,8 +90,8 @@ const didYouMean = (s: string | undefined): string => (s ? ` -- did you mean "${
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
-export function validate(study: Study): Diagnostic[] {
-  const ctx: Ctx = { study, out: [] };
+export function validate(study: Study, doc?: Document): Diagnostic[] {
+  const ctx: Ctx = { study, out: [], doc };
 
   validateVoltages(ctx);
   validateFaults(ctx);
@@ -101,8 +109,7 @@ export function validate(study: Study): Diagnostic[] {
 
 /** Convenience: parse-tree to diagnostics in one call. */
 export function validateDocument(doc: Document, study: Study): Diagnostic[] {
-  void doc;
-  return validate(study);
+  return validate(study, doc);
 }
 
 /* ------------------------------------------------------------------ */
@@ -145,6 +152,25 @@ function validateVoltages(ctx: Ctx): void {
 function validateScenarios(ctx: Ctx): void {
   const { study } = ctx;
   const names = [...study.voltages.keys()];
+
+  /*
+   * Scenarios are keyed by name, so a repeat replaced the first with
+   * nothing said -- and which set of currents a grade was judged
+   * against became a question of declaration order.
+   */
+  const declared = new Map<string, number>();
+  for (const item of ctx.doc?.items ?? []) {
+    if (item.type !== 'scenario') continue;
+    const seen = declared.get(item.name);
+    if (seen != null) {
+      add(ctx, 'DUPLICATE_SCENARIO', 'error',
+        `scenario "${item.name}" is declared more than once (first at line ${seen}); ` +
+        'the later declaration silently replaces the earlier',
+        item.loc, item.name.length);
+    } else {
+      declared.set(item.name, item.loc?.line ?? 0);
+    }
+  }
 
   for (const scenario of study.scenarios.values()) {
     if (scenario.levels.size === 0) {
@@ -207,6 +233,29 @@ function validateScenarios(ctx: Ctx): void {
 function validateFaults(ctx: Ctx): void {
   const { study } = ctx;
   const names = [...study.voltages.keys()];
+
+  /*
+   * Faults are keyed by name, so a repeat replaced the first with
+   * nothing said -- and since grading is pinned to a fault by name,
+   * every margin referencing it silently changed with declaration
+   * order.
+   */
+  const seen = new Map<string, number>();
+  for (const item of ctx.doc?.items ?? []) {
+    if (item.type !== 'faults') continue;
+    for (const f of item.faults) {
+      const first = seen.get(f.name);
+      if (first != null) {
+        add(ctx, 'DUPLICATE_FAULT', 'error',
+          `fault "${f.name}" is declared more than once (first at line ${first}); ` +
+          'the later declaration silently replaces the earlier, changing every margin ' +
+          'that references it',
+          f.loc, f.name.length);
+      } else {
+        seen.set(f.name, f.loc?.line ?? 0);
+      }
+    }
+  }
 
   for (const fault of study.faults.values()) {
     if (fault.voltage && !study.voltages.has(fault.voltage)) {
@@ -639,12 +688,19 @@ function validateGrades(ctx: Ctx): void {
 
     if (grade.primary && grade.backup) {
       /*
-       * Keyed on the *fault* as well as the pair. Grading one pair at
-       * several fault levels -- maximum and minimum, or a bus fault
-       * and a remote one -- is normal practice and produces a row per
-       * check. Only a genuinely repeated check is a duplicate.
+       * Keyed on the *condition* as well as the pair. Grading one pair
+       * at several fault levels -- maximum and minimum, a bus fault and
+       * a remote one -- or under several scenarios -- system normal and
+       * an outage -- is normal practice and produces a row per check.
+       * Only a genuinely repeated check is a duplicate.
+       *
+       * The scenario has to be part of the key for the same reason the
+       * fault does: without it, two grades for one pair under different
+       * scenarios both keyed on an empty string and the second was
+       * reported as a duplicate of the first.
        */
-      const key = `${grade.primary.text}|${grade.backup.text}|${grade.fault ?? ''}`;
+      const condition = grade.scenario ? `scenario:${grade.scenario}` : `fault:${grade.fault ?? ''}`;
+      const key = `${grade.primary.text}|${grade.backup.text}|${condition}`;
       if (pairs.has(key)) {
         add(ctx, 'DUPLICATE_GRADE', 'error',
           `a grade block for ${grade.primary.text} / ${grade.backup.text}` +

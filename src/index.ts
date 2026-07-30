@@ -53,7 +53,7 @@ export function process(source: string): ProcessResult {
     document: parsed.document,
     study,
     parseErrors: parsed.errors,
-    diagnostics: validate(study),
+    diagnostics: validate(study, parsed.document),
     reports,
   };
 }

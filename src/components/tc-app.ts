@@ -293,7 +293,7 @@ export class TcApp extends LitElement {
       if (result.document) {
         const study = buildStudy(result.document);
         this.reports = reportGrades(study);
-        this.diagnostics = validate(study);
+        this.diagnostics = validate(study, result.document);
         this.study = study;
       } else {
         this.reports = [];

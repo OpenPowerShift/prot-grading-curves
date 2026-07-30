@@ -54,8 +54,24 @@ describe('column legend (the default)', () => {
 
   it('draws the headed panel', () => {
     expect(svg).toContain('>Curves</text>');
-    expect(svg).toContain('>Points</text>');
     expect(svg).toContain('>Faults</text>');
+  });
+
+  it('omits a point that is already drawn on the plot', () => {
+    /*
+     * The marker carries its own label, so a legend entry repeats it
+     * and costs the panel room the curves need.
+     */
+    expect(svg).toContain('>inrush</text>');      // on the plot
+    expect(svg).not.toContain('>Points</text>');  // not in the panel
+  });
+
+  it('lists a point that fell outside the view, since it is nowhere else', () => {
+    const offPlot = parseAndRender(
+      BASE.replace('view { voltage = hv; }', 'view { voltage = hv; current_min = 100 A; current_max = 1 kA; }'),
+      { theme: 'light' },
+    ).svg;
+    expect(offPlot).toContain('>Points</text>');
   });
 
   it('names every curve', () => {
@@ -68,7 +84,6 @@ describe('style = "inside"', () => {
 
   it('keeps the whole panel, sections and all', () => {
     expect(svg).toContain('>Curves</text>');
-    expect(svg).toContain('>Points</text>');
     expect(svg).toContain('>Faults</text>');
     for (const label of CURVE_LABELS) expect(svg).toContain(`>${label}</text>`);
   });

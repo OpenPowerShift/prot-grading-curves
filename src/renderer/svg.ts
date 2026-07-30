@@ -70,7 +70,15 @@ const LINE_HEADING = 20;
 const LINE_LABEL = 16;
 const LINE_DETAIL = 15;
 const LEGEND_ENTRY_GAP = 10;
-const LEGEND_GUTTER = 20;
+/*
+ * Clearance between the plot frame and the legend column.
+ *
+ * 20 px read as crowding: the section headings -- the Faults one
+ * especially, being coloured and so drawing the eye -- looked stuck to
+ * the frame. The plot gives up 14 px of width, which on a log axis is
+ * nothing.
+ */
+const LEGEND_GUTTER = 34;
 
 /** Mean glyph advance as a fraction of font size, for the mono stack. */
 const CHAR_ADVANCE = 0.60;
@@ -1235,12 +1243,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * else. The label sits to the right so it does not obscure the
    * curve the point is being compared against.
    */
+  /*
+   * Points drawn on the plot need no legend entry: the marker carries
+   * its own label, so listing it again says the same thing twice and
+   * costs the legend room it needs for the curves. Only a point that
+   * fell outside the view -- and so is not on the drawing at all --
+   * earns a line in the panel.
+   */
+  const pointsOnPlot = new Set<string>();
+
   for (const point of study.points) {
     if (!(point.I_A > 0) || !(point.t_s > 0)) continue;
     const I_view = project(point.I_A, point.voltage_kV);
     const px = xScale.toPx(I_view);
     const py = yScale.toPx(point.t_s);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+
+    const onPlot =
+      I_view >= I_min && I_view <= I_max && point.t_s >= t_min && point.t_s <= t_max;
+    if (onPlot) pointsOnPlot.add(point.id);
 
     const colour = point.color ?? th.fault;
     out.push(
@@ -1526,7 +1547,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
       /* Wrapped like the detail lines beneath it: a declared `name`
        * is free text and routinely outruns the column. */
-      for (const wrapped of wrapText(c.label, textWidth, FONT_LABEL)) {
+      for (const wrapped of wrapText(oneLine(c.label), textWidth, FONT_LABEL)) {
         lines.push(
           `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_LABEL}" font-weight="600">` +
           `${escapeXml(wrapped)}</text>`,
@@ -1556,20 +1577,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * argument, so they belong in the legend with their values rather
      * than only as a glyph on the plot.
      */
-    if (study.points.length > 0) {
+    const legendPoints = study.points.filter((p) => !pointsOnPlot.has(p.id));
+    if (legendPoints.length > 0) {
       lines.push(
         `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" font-weight="600" fill="${legendInk}">Points</text>`,
       );
       cursorY += LINE_HEADING;
 
-      for (const point of study.points) {
+      for (const point of legendPoints) {
         const colour = point.color ?? th.fault;
         const swatchY = cursorY - FONT_LABEL / 3;
         lines.push(pointMarker(point.shape ?? 'cross', originX + swatchW / 2, swatchY, colour));
 
-        /* Laid out top-down, so each wrapped line moves the cursor --
-         * otherwise the coordinate beneath lands on the second line. */
-        for (const wrapped of wrapLabel(point.label ?? point.id, textWidth, FONT_LABEL)) {
+        /*
+         * Author line breaks are ignored here. A `\n` positions text
+         * beside a marker on the plot, where the author chose the
+         * shape of the label; in a list it just makes a ragged entry,
+         * and the column does its own wrapping anyway.
+         */
+        for (const wrapped of wrapText(oneLine(point.label ?? point.id), textWidth, FONT_LABEL)) {
           lines.push(
             `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${legendInk}" ` +
             `font-size="${FONT_LABEL}">${escapeXml(wrapped)}</text>`,
@@ -1606,22 +1632,33 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * such.
          */
         const where = f.voltageLabel ? ` · ${f.voltageLabel}` : '';
-        const projected = f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6
-          ? ` -> ${formatSi(f.I_view, 'A')}`
-          : '';
         return wrapText(
-          `${f.name} · ${formatSi(f.I_A, 'A')}${where}${projected}`,
+          `${f.name} · ${formatSi(f.I_A, 'A')}${where}`,
           textWidth,
           FONT_DETAIL,
         );
       });
+
+      /*
+       * The projection onto the plotted axis goes on its own muted
+       * line. Appended inline it pushed the entry over the column
+       * width and broke it mid-figure -- "... 11 kV ->" then a bare
+       * "2.13 kA" on the next line, which reads as a separate value.
+       */
+      const faultProjection = faults.map((f) =>
+        f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6
+          ? wrapText(`-> ${formatSi(f.I_view, 'A')} on axis`, textWidth, FONT_DETAIL - 1)
+          : []);
       /* `description` is the author's note on what the fault *is*;
        * it belongs with the entry rather than being parsed and
        * dropped, which is what used to happen to it. */
       const faultNotes = faults.map((f) =>
-        showDetail && f.description ? wrapLabel(f.description, textWidth, FONT_DETAIL - 1) : []);
+        showDetail && f.description
+          ? wrapText(oneLine(f.description), textWidth, FONT_DETAIL - 1)
+          : []);
 
       const faultLineCount = faultText.reduce((n, l) => n + l.length, 0)
+        + faultProjection.reduce((n, l) => n + l.length, 0)
         + faultNotes.reduce((n, l) => n + l.length, 0);
 
       let faultsY = cursorY + FONT_HEADING;
@@ -1649,6 +1686,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
             `${escapeXml(wrapped)}</text>`,
           );
           faultsY += LINE_LABEL;
+        }
+        for (const wrapped of faultProjection[i]) {
+          lines.push(
+            `<text x="${textX}" y="${faultsY}" class="tc-legend-muted" fill="${th.label}" ` +
+            `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
+          );
+          faultsY += LINE_DETAIL - 2;
         }
         for (const wrapped of faultNotes[i]) {
           lines.push(
@@ -2090,7 +2134,13 @@ function oneLine(text: string): string {
 
 /** Split an author label into its lines. */
 function labelLines(text: string): string[] {
-  return String(text).split('\n');
+  /*
+   * Each line is trimmed, so a break written for readability in the
+   * source does not carry the author's indentation onto the drawing:
+   * `"TX1 inrush\n    12 x FLC"` sets its second line flush, not four
+   * spaces in.
+   */
+  return String(text).split('\n').map((line) => line.trim());
 }
 
 /**

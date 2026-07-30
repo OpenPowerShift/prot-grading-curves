@@ -101,9 +101,16 @@ margin_s, tolerance_pct, upstream, upstream_to, comment, solve
 *Inside `annotate`* -- on_curve, at_I_A, primary, backup, fault,
 label, style, color
 
-*Inside `device`* -- kind, maker, model, rating_A, rating_kV,
+*Inside `device`* -- kind, voltage, maker, model, rating_A, rating_kV,
 rating_MVA, flex_points, min_melt, total_clear, t_delay, comment,
 description, reference
+
+*Inside `faults.<name>` / `scenario`* (type) -- three_phase, two_phase,
+two_phase_earth, single_phase_earth
+
+*Inside `system.zero_sequence`* -- to, blocked, continuous
+
+*Axis quantities* (`view.quantity`) -- any, phase, I1, I2, 3I2, I0, 3I0
 
 *Inside `combine`* -- name, sources, as, color, style, label
 
@@ -189,6 +196,7 @@ magenta, cyan, gray, grey
 | Category | Units
 
 | Current  | `A`, `kA`, `mA`
+| Current, pickup only | `A_sec` (secondary amps; multiplied by `ct_ratio`), `A_pri` (primary, explicitly)
 | Time     | `s`, `ms`, `min`
 | Voltage  | `V`, `kV`, `MV`
 | Power    | `W`, `kW`, `MW`, `VA`, `kVA`, `MVA`

@@ -121,6 +121,9 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
     return {
       ref: device.id,
       device,
+      /* A device sits on a level like a relay does, so a fuse graded
+       * across a transformer is evaluated in its own winding's amps. */
+      voltage: device.voltage,
       tAt: (I: number) =>
         points ? tTripFlex(I, points) : device.t_delay_s ?? Infinity,
       measures: 'phase',
@@ -210,14 +213,16 @@ function sideCurrentAt(
 
   if (sameLevel) return { I_A: declared };
 
-  if (!survivesVoltageReferral(quantity)) {
+  if (!survivesVoltageReferral(quantity, study, fault.voltage, side.voltage)) {
     return {
       error: {
         code: 'SEQUENCE_ACROSS_LEVELS',
         message:
           `${side.ref} measures ${quantityLabel(quantity)} at ${sideKv} kV, but fault ` +
-          `"${fault.name}" declares its components at ${faultKv} kV; zero sequence does not ` +
-          'cross a transformer, so declare the figure at the relay\'s own level',
+          `"${fault.name}" declares its components at ${faultKv} kV. Whether zero sequence ` +
+          'reaches the other level depends on the windings between them, so either declare ' +
+          `the figure at ${side.voltage ?? 'the relay\'s own level'}, or state the link with ` +
+          'system { zero_sequence { ... = continuous; } }',
       },
     };
   }

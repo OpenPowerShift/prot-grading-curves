@@ -37,6 +37,12 @@ import type {
 } from '../parser/ast.js';
 import { lookupCurve, type CurveConstants } from '../constants/curves.js';
 import { amps, rawNumber, readBoolean, readRatio, readString, seconds } from './units.js';
+import { isFaultType, type FaultType } from '../constants/sequence.js';
+
+/** Key for a level pair, order-independent. */
+export function levelPairKey(a: string, b: string): string {
+  return [a, b].sort().join('\u0000');
+}
 
 /* ------------------------------------------------------------------ */
 /* Model types                                                         */
@@ -50,6 +56,8 @@ export interface VoltageLevel {
 
 export interface Fault {
   name: string;
+  /** Fault type, supplying the ratios between quantities. */
+  type?: FaultType;
   /** Declared current, in primary amps *at its own voltage level*. */
   I_A: number;
   /** Range endpoints; both default to `I_A` (spec: _CTI computation_). */
@@ -176,6 +184,8 @@ export interface ScenarioLevel {
  */
 export interface Scenario {
   name: string;
+  /** Fault type, as on a `Fault`. */
+  type?: FaultType;
   description?: string;
   loc?: SourceLocation;
   levels: Map<string, ScenarioLevel>;
@@ -186,6 +196,10 @@ export interface Scenario {
 export interface Device {
   id: string;
   kind?: string;
+  /** Level this device sits on, as named in `system.voltages`. */
+  voltage?: string;
+  /** That level's kV, resolved. */
+  voltage_kV?: number;
   maker?: string;
   model?: string;
   rating_A?: number;
@@ -263,6 +277,12 @@ export interface Study {
   frequency_Hz?: number;
   base_MVA?: number;
   grounding?: string;
+  /**
+   * Whether zero sequence crosses a pair of levels, keyed on the
+   * unordered pair. Declared, because a delta blocks it and a
+   * star-star with both neutrals earthed does not.
+   */
+  zeroSequence: Map<string, 'blocked' | 'continuous'>;
   I_base_A?: number;
   I_units: 'primary' | 'secondary';
   faults: Map<string, Fault>;
@@ -310,6 +330,7 @@ export function buildStudy(doc: Document): Study {
     I_units: 'primary',
     faults: new Map(),
     scenarios: new Map(),
+    zeroSequence: new Map(),
     relays: new Map(),
     looseElements: [],
     devices: new Map(),
@@ -333,6 +354,9 @@ export function buildStudy(doc: Document): Study {
         study.frequency_Hz = item.frequency_Hz;
         study.base_MVA = item.base_MVA;
         study.grounding = item.grounding;
+    for (const link of item.zero_sequence ?? []) {
+      study.zeroSequence.set(levelPairKey(link.from, link.to), link.link);
+    }
         study.I_base_A = item.I_base_A;
         if (item.I_units) study.I_units = item.I_units;
         for (const lvl of item.voltages) {
@@ -377,6 +401,7 @@ export function buildStudy(doc: Document): Study {
     }
     study.scenarios.set(item.name, {
       name: item.name,
+      type: isFaultType(item.faultType) ? item.faultType : undefined,
       description: item.description,
       loc: item.loc,
       levels,
@@ -391,6 +416,7 @@ export function buildStudy(doc: Document): Study {
       const kV = f.voltage ? study.voltages.get(f.voltage)?.kV : undefined;
       study.faults.set(f.name, {
         name: f.name,
+        type: isFaultType(f.type) ? f.type : undefined,
         I_A: f.I_A,
         min_A: f.min_A ?? f.I_A,
         max_A: f.max_A ?? f.I_A,
@@ -421,6 +447,8 @@ export function buildStudy(doc: Document): Study {
         study.devices.set(item.id, {
           id: item.id,
           kind: item.kind,
+          voltage: item.voltage,
+          voltage_kV: item.voltage ? study.voltages.get(item.voltage)?.kV : undefined,
           maker: item.maker,
           model: item.model,
           rating_A: item.rating_A,

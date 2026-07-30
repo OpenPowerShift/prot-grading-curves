@@ -434,7 +434,24 @@ device "spur_fuse_50T" {
 band. In grading it uses *total clear* as the primary and *minimum
 melt* as the backup, which is the conservative reading each way.
 
-Reference a device by its id: `grade { primary = "spur_fuse_50T"; }`.
+Reference a device by its id, quoted or bare:
+`grade { primary = "spur_fuse_50T"; }`.
+
+Give it a `voltage` if the study spans more than one level. A published
+fuse curve is in the amps of the winding it sits on, so without a level
+its points are taken as already being in the view frame -- and on a
+cross-voltage sheet the band is drawn out by the turns ratio. This is
+not `rating_kV`, which is the fuse's own insulation rating:
+
+[source,tc]
+----
+device "spur_fuse_50T" {
+    kind      = fuse;
+    voltage   = "LV";        # the level it sits on
+    rating_kV = 12 kV;       # its insulation rating -- a different thing
+    rating_A  = 50 A;
+}
+----
 
 === grade
 
@@ -526,6 +543,145 @@ annotate {                          # a single curve at one current
     label    = "HV max fault";
 }
 ----
+
+==== Which current the sheet is drawn against
+
+By default the axis is simply *current*, and every curve is drawn
+against it whatever that curve measures:
+
+[source,tc]
+----
+view { voltage = "HV"; }                 # quantity = any, the default
+----
+
+That is the case where you want several characteristics on one sheet
+without arguing about components. The legend states each curve's
+measured quantity, which is what keeps a mixed sheet readable.
+
+Naming a quantity opts into a stricter sheet:
+
+[source,tc]
+----
+view { voltage = "HV"; quantity = I2; }  # or 3I0, I0, I1, 3I2, phase, any
+----
+
+Then only elements measuring that quantity are drawn, the rest are
+counted in the legend, and each fault rule stands at the fault's value
+of that component. The axis title names it, so the units are never a
+guess: `Current (A primary · I2 · HV · 33 kV)`.
+
+===== Fault types, and mixing quantities on one sheet
+
+At a single fault the phase current and the sequence components are not
+independent -- they are fixed multiples of one another, decided by what
+kind of fault it is. Declare the type and the tool knows the ratios:
+
+[source,tc]
+----
+faults {
+    "F_2ph" { I_A = 390 A; type = two_phase; voltage = "HV"; }
+}
+----
+
+Types are `three_phase`, `two_phase`, `two_phase_earth`,
+`single_phase_earth`. Against the condition's *own* declared phase
+current, and with `Z1 = Z2`:
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Type | `I1` | `I2` | `I0` | residual `3I0`
+
+| `three_phase` | `I_A` | 0 | 0 | 0
+| `two_phase` | `I_A/√3` | `I_A/√3` | 0 | 0
+| `single_phase_earth` | `I_A/3` | `I_A/3` | `I_A/3` | `I_A`
+| `two_phase_earth` | -- | -- | -- | --
+|===
+
+`two_phase_earth` derives nothing: its split between the sequence
+networks depends on `Z0`, which the language does not carry, so declare
+its components.
+
+A declared component always wins over a derived one -- writing
+`I2_A = 225 A` is how you override the table, and it sets the display
+ratio as well as the graded value.
+
+Naming the condition a sheet depicts unlocks two things:
+
+[source,tc]
+----
+view { voltage = "HV"; quantity = I2; condition = "F_2ph"; }
+----
+
+* **Curves convert onto the axis.** A phase element is drawn at
+  `I_phase = √3 × I2` for a phase-phase fault, so phase and
+  negative-sequence characteristics can be read together. On a log axis
+  a conversion is a constant shift, so operate times are untouched --
+  only the abscissa moves. Converted curves are counted in the legend,
+  because their position rests on the assumed fault type.
+* **Elements the condition cannot operate are suppressed.** On a
+  `three_phase` condition there is no `I2` and no `I0`, so earth-fault
+  and negative-sequence elements are left off rather than drawn where
+  they could never operate.
+
+===== Zero sequence across a transformer
+
+Whether zero sequence reaches another voltage level depends on the
+windings: a delta blocks it, a star-star with both neutrals earthed
+passes it. The tool cannot know, so the study says:
+
+[source,tc]
+----
+system {
+    voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } }
+
+    zero_sequence {
+        "HV" to "LV" = blocked;      # delta winding
+        # "HV" to "LV" = continuous; # YNyn, both neutrals earthed
+    }
+}
+----
+
+Undeclared, a residual figure will not be referred between levels and
+the pair is reported rather than graded on a guess. Positive and
+negative sequence always refer, scaling with the turns ratio.
+
+NOTE: Fault *rules* come from the `faults` block. A `scenario` drives
+grading but draws nothing yet, so a study using scenarios alone has no
+rules on its plot; declare a `faults` entry for the condition you want
+marked.
+
+==== The legend follows the view
+
+The legend describes what is on the sheet, not what the file declares.
+
+* A fault outside the current `view` has no rule on the plot, so it has
+  no legend entry either -- an entry maps a dash pattern to a name, and
+  says nothing when that dash is nowhere to be seen. Zoom out and it
+  comes back.
+* A marked `point` that *is* on the plot is left out of the panel: its
+  marker already carries its label, so an entry would repeat it.
+  A point that falls outside the view is listed, because that is then
+  the only place it appears.
+
+Both rules exist to keep the panel for what needs explaining. A legend
+too tall for its space sheds detail before it sheds entries.
+
+==== Labels place themselves
+
+You do not position labels. Each one is anchored to its point, curve or
+arrow, and the renderer puts it beside that anchor -- right by
+preference, then left, then above or below. When two anchors are close
+enough that the labels would overprint, the later ones are moved clear,
+and any label moved far enough that the connection is no longer obvious
+gains a thin leader back to its anchor.
+
+Labels never leave the plot, and placement is deterministic: the same
+study always produces the same sheet, so a reissued drawing diffs
+cleanly.
+
+If a cluster still looks crowded, the fix is in the study rather than
+the label: narrow the `view` so the anchors spread out, or move some of
+the marked points to a second sheet.
 
 === view
 

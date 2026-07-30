@@ -49,8 +49,15 @@ point "TX1_inrush" {
 }
 
 # ---- device: a published characteristic. A fuse carries a band. ----
+#      `voltage` puts it on a level, exactly as a relay is. A published
+#      fuse curve is in the amps of the winding it sits on, so without
+#      this its points are taken as already being in the view frame --
+#      on a cross-voltage sheet that draws the band out by the turns
+#      ratio. `rating_kV` is a different thing: the fuse's own
+#      insulation rating, not a system level.
 device "spur_fuse_50T" {
     kind        = "fuse";
+    voltage     = "LV";
     maker       = "Mersen";
     model       = "50T";
     rating_A    = 50 A;

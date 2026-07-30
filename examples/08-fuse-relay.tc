@@ -28,6 +28,7 @@ faults {
 }
 
 device "fuse_100T" {
+    voltage     = "MV";            # the level it sits on
     kind        = "fuse";
     maker       = "Mersen";
     model       = "100T";

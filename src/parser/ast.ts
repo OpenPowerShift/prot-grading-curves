@@ -41,6 +41,13 @@ export interface SystemBlock extends BaseNode {
   frequency_Hz?: number;
   base_MVA?: number;
   grounding?: string;
+  /**
+   * Whether zero sequence crosses between two levels.
+   *
+   * A delta winding blocks it; a star-star with both neutrals earthed
+   * passes it. The tool cannot know which, so the study says.
+   */
+  zero_sequence?: ZeroSequenceDecl[];
   I_base_A?: number;
   I_units?: 'primary' | 'secondary';
   voltages: VoltageLevelDecl[];
@@ -48,6 +55,13 @@ export interface SystemBlock extends BaseNode {
 
 export interface FaultDecl extends BaseNode {
   name: string;
+  /**
+   * What kind of fault this is. Supplies the ratios between phase
+   * current and the sequence components, so a component the study does
+   * not declare can be derived and a curve can be placed on an axis
+   * drawn in another quantity. A declared component always wins.
+   */
+  type?: FaultTypeKeyword;
   I_A: number;
   min_A?: number;
   max_A?: number;
@@ -98,6 +112,8 @@ export interface ScenarioShareDecl extends BaseNode {
 export interface ScenarioBlock extends BaseNode {
   type: 'scenario';
   name: string;
+  /** Fault type, as on a `fault`. */
+  faultType?: FaultTypeKeyword;
   description?: string;
   levels: ScenarioLevelDecl[];
   shares: ScenarioShareDecl[];
@@ -150,6 +166,30 @@ export type ResetKeyword = 'instant' | 'dependent' | 'disk_emulation';
  */
 export type MeasuredQuantityKeyword =
   | 'phase' | 'I1' | 'I2' | '3I2' | 'I0' | '3I0';
+
+/**
+ * What the x axis of a sheet is.
+ *
+ * `any` -- the default -- draws every curve against the current axis
+ * whatever it measures: no filtering, no conversion, no suppression.
+ * That is the case where you simply want several curves on one sheet,
+ * and the legend stating each curve's quantity is what keeps it honest.
+ * Naming a specific quantity opts into strictness.
+ */
+export type AxisQuantityKeyword = 'any' | MeasuredQuantityKeyword;
+
+/** What kind of fault a condition is; see `src/constants/sequence.ts`. */
+export type FaultTypeKeyword =
+  | 'three_phase' | 'two_phase' | 'two_phase_earth' | 'single_phase_earth';
+
+/** Whether zero sequence is continuous between two voltage levels. */
+export type ZeroSequenceLink = 'blocked' | 'continuous';
+
+export interface ZeroSequenceDecl extends BaseNode {
+  from: string;
+  to: string;
+  link: ZeroSequenceLink;
+}
 
 export interface ElementMember {
   kind: 'scalar';
@@ -260,6 +300,16 @@ export type DeviceKind =
 export interface DeviceBlock extends BaseNode {
   type: 'device';
   id: string;
+  /**
+   * Voltage level this device sits on, named in `system.voltages`.
+   *
+   * Distinct from `rating_kV`, which is the equipment's own insulation
+   * rating. Without it a device's currents are taken as already being
+   * in the view frame, so a fuse on the low side of a transformer is
+   * drawn at its own amps on a sheet in the high-side frame -- out by
+   * the turns ratio.
+   */
+  voltage?: string;
   kind?: DeviceKind;
   maker?: string;
   model?: string;
@@ -298,6 +348,24 @@ export interface ViewBlock extends BaseNode {
   voltage?: string;            // 'pickup', 'HV', '33 kV', '0.48 kV'...
   stages?: 'composite' | 'individual';
   axis?: 'primary' | 'secondary' | 'multiples';
+  /**
+   * Which current the abscissa represents.
+   *
+   * A TCC's x axis is one quantity. Phase current is the default, and
+   * an element measuring something else -- residual `3I0`, negative
+   * sequence -- has no meaningful position on it. Setting this makes
+   * the sheet an earth-fault or negative-sequence sheet: the curves
+   * that measure it are drawn, the fault rules stand at that
+   * component's value, and the axis says so.
+   */
+  quantity?: AxisQuantityKeyword;
+  /**
+   * The condition -- a `fault` or `scenario` name -- this sheet
+   * depicts. Naming it gives the renderer the fault type, and so the
+   * ratios needed to convert curves onto the axis and to suppress
+   * elements whose quantity that condition does not carry.
+   */
+  condition?: string;
   two_axes?: boolean;
   reference_ct?: Ref;
   /** Optional explicit axis bounds in seconds / amps. */

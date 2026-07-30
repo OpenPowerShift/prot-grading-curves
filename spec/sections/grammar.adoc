@@ -69,7 +69,8 @@ primary-ampere value at that level.
 ----
 faults-block    ::= "faults" "{" { fault-asg } "}" ;
 fault-asg       ::= string "{" { fault-member } "}" ;
-fault-member    ::= "I_A"        "=" number current-unit ";"
+fault-member    ::= "type"    "=" fault-type-keyword ";"
+                  | "I_A"        "=" number current-unit ";"
                   | "min_A"      "=" number current-unit ";"
                   | "max_A"      "=" number current-unit ";"
                   | "earth_A"    "=" number current-unit ";"
@@ -97,6 +98,17 @@ scenario-member ::= "description" "=" string ";"
                   | scenario-level
                   | scenario-share ;
 scenario-level  ::= "level" string "{" { level-member } "}" ;
+zero-sequence-block ::= "{" { zero-sequence-link } "}" ;
+zero-sequence-link  ::= string "to" string "=" ( "blocked" | "continuous" ) ";" ;
+
+scenario-type   ::= "type" "=" fault-type-keyword ";" ;
+fault-type-keyword ::= "three_phase" | "two_phase"
+                  | "two_phase_earth" | "single_phase_earth" ;
+
+axis-quantity   ::= "any"        # every curve on one current axis (default)
+                  | measured-quantity ;
+measured-quantity ::= "phase" | "I1" | "I2" | "3I2" | "I0" | "3I0" ;
+
 level-member    ::= "I_A"     "=" number current-unit ";"   # phase
                   | "I1_A"    "=" number current-unit ";"
                   | "I2_A"    "=" number current-unit ";"
@@ -324,6 +336,7 @@ curves and not used for devices.
 device-block    ::= "device" device-id "{" { device-member } "}" ;
 device-id       ::= string | identifier ;
 device-member   ::= "kind"      "=" device-kind-keyword ";"
+                  | "voltage"   "=" voltage-ref ";"
                   | "maker"     "=" string ";"
                   | "model"     "=" string ";"
                   | "rating_A"  "=" number current-unit ";"

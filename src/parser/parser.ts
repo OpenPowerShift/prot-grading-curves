@@ -65,7 +65,9 @@ export const KEYWORDS = new Set([
   'I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 't_s',
   'voltage', 'kV', 'frequency_Hz', 'base_MVA', 'grounding', 'I_base_A',
   'ct_ratio', 'maker', 'model', 'name',
-  'measures', 'phase', 'I1', 'I2', '3I2', 'I0', '3I0',
+  'measures', 'quantity', 'phase', 'I1', 'I2', '3I2', 'I0', '3I0', 'any',
+  'type', 'condition', 'three_phase', 'two_phase', 'two_phase_earth',
+  'single_phase_earth', 'zero_sequence', 'blocked', 'continuous', 'to',
   'rating_A', 'rating_kV', 'rating_MVA',
   'min_melt', 'total_clear',
   // combine/view/page sub
@@ -577,6 +579,33 @@ class Parser {
             sys.voltages = levels;
             continue;
           }
+          case 'zero_sequence': {
+            this.pos++;
+            this.expect('LBRACE', '{');
+            const links: import('./ast.js').ZeroSequenceDecl[] = [];
+            while (!this.at('RBRACE') && !this.at('EOF')) {
+              const fromTok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              if (!fromTok) { this.pos++; continue; }
+              /* `to` reads as a word between the two level names. */
+              if (this.peek().kind === 'KW' && this.peek().image === 'to') this.pos++;
+              else this.eat('IDENT');
+              const toTok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.expect('EQUALS', '=');
+              const link = this.matchKeyword('blocked', 'continuous');
+              this.eat('SEMI');
+              if (toTok && link) {
+                links.push({
+                  from: unquote(fromTok.image),
+                  to: unquote(toTok.image),
+                  link: link as import('./ast.js').ZeroSequenceLink,
+                  loc: this.loc(fromTok),
+                });
+              }
+            }
+            this.expect('RBRACE', '}');
+            sys.zero_sequence = links;
+            continue;
+          }
           case 'frequency_Hz':
             this.pos++; this.expect('EQUALS', '='); sys.frequency_Hz = this.parseNumber(); this.eat('SEMI'); continue;
           case 'base_MVA':
@@ -700,6 +729,15 @@ class Parser {
         continue;
       }
 
+      if (t.image === 'type') {
+        this.pos++;
+        this.expect('EQUALS', '=');
+        block.faultType = this.parseQuantityValue() as
+          import('./ast.js').FaultTypeKeyword | undefined;
+        this.eat('SEMI');
+        continue;
+      }
+
       /* Unknown member: consume it so the loop cannot stick. */
       this.pos++;
       if (this.at('EQUALS')) { this.pos++; this.parseScalarValue(); this.eat('SEMI'); }
@@ -723,6 +761,8 @@ class Parser {
           this.expect('EQUALS', '=');
           switch (k.image) {
             /* Fault currents carry an `A` / `kA` suffix; fold it in. */
+            case 'type':     f.type = this.parseQuantityValue() as
+                               import('./ast.js').FaultTypeKeyword | undefined; break;
             case 'I_A':      f.I_A = this.parseNumberWithUnit_A(); break;
             case 'min_A':    f.min_A = this.parseNumberWithUnit_A(); break;
             case 'max_A':    f.max_A = this.parseNumberWithUnit_A(); break;
@@ -883,6 +923,26 @@ if (kwName === 'flex_points') {
    * test is what keeps `I_pu = 480 A` from being read as an id: the
    * space between them means they are separate tokens.
    */
+  /**
+   * A measured-quantity value: `phase`, `I2`, `3I0`, quoted or not.
+   *
+   * `3I0` and `3I2` start with a digit, so the lexer hands back a
+   * NUMBER followed by an identifier -- the same shape as a device
+   * number like `67N`, and read the same way. Without this, the
+   * natural unquoted spelling parsed as nothing and the field was
+   * silently unset.
+   */
+  private parseQuantityValue(): string | null {
+    const t = this.peek();
+    if (t.kind === 'STRING') { this.pos++; return unquote(t.image); }
+    if (t.kind === 'NUMBER') {
+      const merged = this.parseDeviceNumberId();
+      return merged ? merged.image : null;
+    }
+    const tok = this.eat('KW') ?? this.eat('IDENT');
+    return tok ? tok.image : null;
+  }
+
   private parseDeviceNumberId(): Token | null {
     const first = this.eat('IDENT') ?? this.eat('NUMBER') ?? this.eat('KW');
     if (!first) return null;
@@ -954,8 +1014,13 @@ if (kwName === 'flex_points') {
     if (!k) return null;
     this.expect('EQUALS', '=');
     switch (k.image) {
+      case 'measures': {
+        const v = this.parseQuantityValue();
+        this.eat('SEMI');
+        el.members.push({ kind: 'scalar', key: k.image, value: v ?? '' });
+        return k.image;
+      }
       case 'function':
-      case 'measures':
       case 'I_units':
       case 'reset':
       case 'directional':
@@ -1095,6 +1160,7 @@ if (kwName === 'flex_points') {
         case 'total_clear':
           d.total_clear = this.parseFlexList();
           break;
+        case 'voltage':
         case 'maker': case 'model': case 'description': case 'comment': case 'reference':
           {
             /*
@@ -1104,6 +1170,7 @@ if (kwName === 'flex_points') {
              */
             const v = this.parseStringOrIdent();
             this.eat('SEMI');
+            if (k.image === 'voltage') d.voltage = v;
             if (k.image === 'maker') d.maker = v;
             if (k.image === 'model') d.model = v;
             if (k.image === 'description') d.description = v;
@@ -1402,6 +1469,20 @@ if (kwName === 'flex_points') {
               const v2 = this.matchKeyword('primary','secondary','multiples');
               this.eat('SEMI');
               if (v2) v.axis = v2 as any;
+            }
+            break;
+          case 'quantity':
+            {
+              const q = this.parseQuantityValue();
+              this.eat('SEMI');
+              if (q) v.quantity = q as import('./ast.js').AxisQuantityKeyword;
+            }
+            break;
+          case 'condition':
+            {
+              const c = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (c) v.condition = unquote(c.image);
             }
             break;
           case 'voltage':
@@ -1769,6 +1850,18 @@ if (kwName === 'flex_points') {
   }
 
   private parseRef(): Ref {
+    /*
+     * A quoted id is accepted as well as a bare one. A device is
+     * *declared* with quotes -- `device "fuse_100T" { ... }` -- so
+     * writing `primary = "fuse_100T"` is the natural reference, and it
+     * used to parse as nothing and report an unresolved reference.
+     */
+    const quoted = this.eat('STRING');
+    if (quoted) {
+      const id = unquote(quoted.image);
+      return { deviceId: id, text: id };
+    }
+
     const first = this.eat('IDENT') ?? this.eat('KW');
     if (!first) return { text: '' };
     if (this.eat('COLON')) {

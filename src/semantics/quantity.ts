@@ -22,7 +22,9 @@
  * faults and scenarios.
  */
 
-import type { Stage } from './model.js';
+import type { Stage, Study } from './model.js';
+import { levelPairKey } from './model.js';
+import { ratioFor, type FaultType } from '../constants/sequence.js';
 
 /**
  * A current a pickup can be expressed in.
@@ -153,18 +155,86 @@ export function quantityField(quantity: MeasuredQuantity): string {
 }
 
 /**
- * True when a quantity survives being referred across a transformer.
+ * Whether a quantity may be referred between two voltage levels.
  *
  * Positive and negative sequence pass through a two-winding
- * transformer, their magnitudes scaling with the turns ratio. Zero
- * sequence does not cross a delta winding at all, so referring a
- * residual figure from one level to another by the voltage ratio
- * states something physically false -- and it is the reason an HV
- * negative-sequence element, not an HV residual element, backs up an
- * LV earth fault.
+ * transformer, their magnitudes scaling with the turns ratio, so they
+ * always may. Zero sequence depends on the windings: a delta blocks
+ * it, a star-star with both neutrals earthed passes it. The tool
+ * cannot know which, so the study declares it with
+ * `system { zero_sequence { "A" to "B" = blocked | continuous; } }`.
+ *
+ * An earlier version asserted that zero sequence never crosses. That
+ * is true of the delta-star case it was written for and false in
+ * general, so it is a lookup now rather than a claim. Undeclared stays
+ * refused -- but as a request for the declaration, not as physics.
  */
-export function survivesVoltageReferral(quantity: MeasuredQuantity): boolean {
-  return quantity === 'phase' || quantity === 'I1' || quantity === 'I2' || quantity === '3I2';
+export function survivesVoltageReferral(
+  quantity: MeasuredQuantity,
+  study?: Study,
+  fromLevel?: string,
+  toLevel?: string,
+): boolean {
+  if (quantity === 'phase' || quantity === 'I1' || quantity === 'I2' || quantity === '3I2') {
+    return true;
+  }
+  if (!study || !fromLevel || !toLevel) return false;
+  return study.zeroSequence.get(levelPairKey(fromLevel, toLevel)) === 'continuous';
+}
+
+/** A resolved current, and whether the study stated it. */
+export interface ResolvedCurrent {
+  value: number;
+  /** True when computed from the fault type rather than declared. */
+  derived: boolean;
+}
+
+/**
+ * A quantity's value for one condition, declared or derived.
+ *
+ * Declared always wins -- that is how an engineer overrides the ratio
+ * table when their study says otherwise. Failing a declaration, the
+ * fault type supplies a ratio against the phase current. Failing both,
+ * `null`: the caller reports it rather than substituting another
+ * quantity.
+ */
+export function resolveCurrent(
+  quantity: MeasuredQuantity,
+  currents: SequenceCurrents,
+  type?: FaultType,
+): ResolvedCurrent | null {
+  const declared = currentFor(quantity, currents);
+  if (declared != null) return { value: declared, derived: false };
+
+  const ratio = ratioFor(type, quantity);
+  if (ratio == null || currents.phase == null || !Number.isFinite(currents.phase)) return null;
+  return { value: currents.phase * ratio, derived: true };
+}
+
+/**
+ * Factor converting a value of `from` into a value of `to` for one
+ * condition.
+ *
+ * Taken from the condition's own resolved numbers where both are
+ * known, so declaring a component overrides the table for display as
+ * well as for grading. `null` when either side cannot be established,
+ * or when the divisor is zero -- a balanced fault carries no negative
+ * sequence, and there is no factor onto an axis of nothing.
+ */
+export function conversionFactor(
+  from: MeasuredQuantity,
+  to: MeasuredQuantity,
+  currents: SequenceCurrents,
+  type?: FaultType,
+): number | null {
+  if (from === to) return 1;
+
+  const a = resolveCurrent(from, currents, type);
+  const b = resolveCurrent(to, currents, type);
+  if (a == null || b == null) return null;
+  if (!(Math.abs(b.value) > 0)) return null;
+
+  return a.value / b.value;
 }
 
 /**

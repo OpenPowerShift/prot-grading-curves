@@ -124,3 +124,71 @@ describe('other device kinds', () => {
     expect(svg).toContain('Breaker');
   });
 });
+
+describe('a device sits on a voltage level', () => {
+  const study = (deviceVoltage: string): string => `
+system { voltages { "HV" { kV = 33; } "LV" { kV = 11; } } }
+faults { "F_hv" { I_A = 6 kA; voltage = "HV"; } }
+device "spur_fuse" {
+  kind = fuse; ${deviceVoltage} rating_A = 100 A;
+  min_melt    = [(200 A, 10 s), (2 kA, 0.05 s)];
+  total_clear = [(200 A, 20 s), (2 kA, 0.10 s)];
+}
+relay R_HV { voltage = "HV"; element 51 { function = "phase_oc"; curve = iec.si; I_pu = 200 A; tms = 0.3; } }
+grade { primary = "spur_fuse"; backup = R_HV:51; fault = "F_hv"; CTI_min_s = 0.3; }
+view { voltage = "HV"; current_min = 10 A; current_max = 30 kA; }
+`;
+
+  /** Where the band's first point lands, read back off the axis. */
+  function bandStartAmps(svg: string): number {
+    const [x0, , w] = svg.match(/data-plot="([^"]+)"/)![1].split(',').map(Number);
+    const px = Number(svg.match(/<path d="M([\d.]+) /)![1]);
+    return 10 * Math.pow(10, ((px - x0) / w) * Math.log10(30_000 / 10));
+  }
+
+  it('refers its characteristic to the view frame', () => {
+    /*
+     * A published fuse curve is in the amps of the winding it sits on.
+     * Without a level its points were taken as already being in the
+     * view frame, so a fuse on the low side was drawn at its own amps
+     * on a high-side sheet -- out by the turns ratio.
+     */
+    const onLv = parseAndRender(study('voltage = "LV";'), { theme: 'light' }).svg;
+    expect(bandStartAmps(onLv)).toBeCloseTo(200 * (11 / 33), 0);
+  });
+
+  it('leaves a device with no level exactly as it was', () => {
+    const noLevel = parseAndRender(study(''), { theme: 'light' }).svg;
+    expect(bandStartAmps(noLevel)).toBeCloseTo(200, 0);
+  });
+
+  it('grades in its own winding\'s amps', () => {
+    /* The fault is on HV; a fuse on LV carries the referred current. */
+    const onLv = process(study('voltage = "LV";'));
+    expect(onLv.reports[0].rows[0].I_f_A).toBeCloseTo(6000 * (33 / 11), 6);
+
+    const noLevel = process(study(''));
+    expect(noLevel.reports[0].rows[0].I_f_A).toBe(6000);
+  });
+
+  it('rejects a level that is not declared', () => {
+    const r = process(study('voltage = "MV";'));
+    expect(r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code))
+      .toContain('VOLTAGE_UNKNOWN');
+  });
+
+  it('is referenced by a quoted id as well as a bare one', () => {
+    /*
+     * A device is declared with quotes, so quoting the reference is the
+     * natural thing to write -- and it used to parse as nothing and
+     * report an unresolved reference.
+     */
+    const quoted = process(study('voltage = "LV";'));
+    expect(quoted.reports[0].diagnostics.map((d) => d.code))
+      .not.toContain('UNRESOLVED_REFERENCE');
+
+    const bare = process(study('voltage = "LV";').replace('primary = "spur_fuse"', 'primary = spur_fuse'));
+    expect(bare.reports[0].diagnostics.map((d) => d.code))
+      .not.toContain('UNRESOLVED_REFERENCE');
+  });
+});

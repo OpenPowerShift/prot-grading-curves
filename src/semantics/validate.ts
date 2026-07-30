@@ -585,6 +585,17 @@ function rawCurveId(stage: Stage): string | undefined {
 /* ------------------------------------------------------------------ */
 
 function validateDevices(ctx: Ctx): void {
+  /* A device names a level like a relay does; an unknown one would be
+   * silently ignored and the characteristic drawn unreferred. */
+  for (const device of ctx.study.devices.values()) {
+    if (device.voltage && !ctx.study.voltages.has(device.voltage)) {
+      add(ctx, 'VOLTAGE_UNKNOWN', 'error',
+        `device "${device.id}" declares voltage "${device.voltage}", which is not in ` +
+        `system.voltages (known: ${[...ctx.study.voltages.keys()].join(', ') || 'none'})`,
+        undefined);
+    }
+  }
+
   for (const device of ctx.study.devices.values()) {
     const isFuse = device.kind === 'fuse';
     const isBreaker = device.kind === 'breaker';

@@ -340,3 +340,439 @@ relay R { voltage = hv; element 50 { curve = definite; I_pu = 3 kA; t_delay = 0 
     expect(warning!.severity).toBe('warning');
   });
 });
+
+describe('faults follow the view', () => {
+  const THREE = `
+meta { project = "Zoom"; }
+system { voltages { hv { kV = 11; } } }
+faults {
+  "F_low"  { I_A = 200 A; voltage = hv; }
+  "F_mid"  { I_A = 3 kA;  voltage = hv; }
+  "F_high" { I_A = 20 kA; voltage = hv; }
+}
+relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
+`;
+
+  const at = (bounds: string): string =>
+    parseAndRender(THREE + `view { voltage = hv; ${bounds} }`, { theme: 'light' }).svg;
+
+  /** Fault names that have a legend entry. */
+  const listed = (svg: string): string[] =>
+    ['F_low', 'F_mid', 'F_high'].filter((n) => new RegExp(`>${n} ·`).test(svg));
+
+  /** Fault names that have a rule drawn on the plot. */
+  const ruled = (svg: string): string[] =>
+    [...svg.matchAll(/data-fault="([^"]+)"/g)].map((m) => m[1]);
+
+  it('lists every fault when the view spans them all', () => {
+    const svg = at('current_min = 1 A; current_max = 500 kA;');
+    expect(listed(svg).sort()).toEqual(['F_high', 'F_low', 'F_mid']);
+  });
+
+  it('drops the ones the view excludes', () => {
+    /*
+     * A legend entry maps a dash pattern to a name, which says nothing
+     * when that dash is nowhere on the plot -- and a fault outside the
+     * zoom has no rule and no name below the axis.
+     */
+    const svg = at('current_min = 1 kA; current_max = 50 kA;');
+    expect(listed(svg).sort()).toEqual(['F_high', 'F_mid']);
+    expect(listed(svg)).not.toContain('F_low');
+  });
+
+  it('always lists exactly what is drawn', () => {
+    for (const bounds of [
+      'current_min = 1 A; current_max = 500 kA;',
+      'current_min = 1 kA; current_max = 50 kA;',
+      'current_min = 100 A; current_max = 5 kA;',
+    ]) {
+      const svg = at(bounds);
+      expect(listed(svg).sort(), bounds).toEqual(ruled(svg).sort());
+    }
+  });
+
+  it('keeps each swatch on the dash of the rule it names', () => {
+    /*
+     * The dash is assigned from the declared order, so filtering with
+     * fresh indices would show a swatch a different dash from its rule.
+     */
+    const svg = at('current_min = 1 kA; current_max = 50 kA;');
+
+    const ruleDash: Record<string, string> = {};
+    for (const m of svg.matchAll(/data-fault="([^"]+)"[^>]*?stroke-dasharray="([^"]*)"/g)) {
+      ruleDash[m[1]] = m[2];
+    }
+    const swatches = [...svg.matchAll(
+      /<line x1="[\d.]+" y1="[\d.]+" x2="[\d.]+" y2="[\d.]+" stroke="#c0392b" stroke-width="1\.5"(?: stroke-dasharray="([^"]*)")?\/>/g,
+    )].map((m) => m[1] ?? 'solid');
+
+    expect(swatches[0]).toBe(ruleDash.F_mid);
+    expect(swatches[1]).toBe(ruleDash.F_high);
+  });
+
+  it('drops the whole section when the view contains no fault', () => {
+    const svg = at('current_min = 5 kA; current_max = 8 kA;');
+    expect(svg).not.toContain('>Faults</text>');
+  });
+});
+
+describe('a compact legend keeps the settings', () => {
+  /**
+   * Ten single-stage relays, enough to force the legend below full
+   * detail. A single-stage element has three detail lines -- make and
+   * model, settings, voltage -- and the settings is the *middle* one.
+   */
+  function crowdedSingleStage(): string {
+    let src = 'system { voltages { hv { kV = 11; } } }\n'
+      + 'faults { "F" { I_A = 9 kA; voltage = hv; } }\n';
+    for (let i = 1; i <= 10; i++) {
+      src += `relay R${i} { voltage = hv; maker = "Maker${i}"; model = "Model${i}"; `
+        + `element 51 { curve = iec.si; I_pu = ${100 * i} A; tms = 0.${i}; } }\n`;
+    }
+    return src + 'view { voltage = hv; }\n';
+  }
+
+  const muted = (svg: string): string[] =>
+    [...svg.matchAll(/class="tc-legend-muted"[^>]*>([^<]*)</g)].map((m) => m[1]);
+
+  it('shows the settings, not the voltage', () => {
+    /*
+     * Compact used to take the *last* detail line, so for a
+     * single-stage element it kept the voltage and threw the settings
+     * away. Every crowded sheet -- and every PDF of one, the PDF
+     * canvas being shorter than the screen pane -- lost its settings.
+     * The earlier crowded test only exercised staged elements, whose
+     * two detail lines made the positional pick accidentally correct.
+     */
+    const lines = muted(parseAndRender(crowdedSingleStage(), { theme: 'light' }).svg);
+
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.some((l) => /TMS/.test(l)), JSON.stringify(lines.slice(0, 4))).toBe(true);
+    /* And the make and model is what gave way. */
+    expect(lines.some((l) => /Maker\d/.test(l))).toBe(false);
+  });
+
+  it('survives the round trip into an exported sheet', async () => {
+    /* The PDF is built from the same SVG, so the settings must be in
+     * the text the exporter is handed. */
+    const { toPdfSafeText } = await import('@tc/export/export-pdf');
+    const svg = parseAndRender(crowdedSingleStage(), { theme: 'light' }).svg;
+    expect(toPdfSafeText(svg)).toMatch(/IEC SI · \d+ A · TMS/);
+  });
+});
+
+describe('view { quantity } chooses the abscissa', () => {
+  const STUDY = `
+system { voltages { hv { kV = 33; } } }
+faults {
+  "F_3ph"   { I_A = 9 kA; I2_A = 0 A;     I0_A = 0 A;     voltage = hv; }
+  "F_earth" { I_A = 3 kA; I2_A = 1000 A;  I0_A = 1000 A;  voltage = hv; }
+}
+relay R {
+  voltage = hv; ct_ratio = 250/1;
+  element 51  { function = "phase_oc";    curve = iec.si; I_pu = 400 A; tms = 0.2; }
+  element 51G { function = "earth_fault"; curve = iec.si; I_pu = 100 A; tms = 0.15; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 200 A; t_delay = 0.4 s; }
+}
+`;
+
+  const at = (quantity: string): string =>
+    parseAndRender(STUDY + `view { voltage = hv; quantity = ${quantity}; }`, { theme: 'light' }).svg;
+
+  const curves = (svg: string): string[] =>
+    [...svg.matchAll(/data-curve="([^"]+)"/g)].map((m) => m[1]);
+  const rules = (svg: string): Array<[string, number]> =>
+    [...svg.matchAll(/data-fault="([^"]+)" data-current="([\d.]+)"/g)]
+      .map((m) => [m[1], Number(m[2])] as [string, number]);
+
+  it('draws only the elements that measure it', () => {
+    expect(curves(at('phase'))).toEqual(['R:51']);
+    expect(curves(at('3I0'))).toEqual(['R:51G']);
+    expect(curves(at('I2'))).toEqual(['R:46']);
+  });
+
+  it('stands each fault rule at that component, not the phase current', () => {
+    /* This is the question the option exists to answer: a negative
+     * sequence element operates on I2, so on its sheet the rule has to
+     * be at the fault's I2 -- 1 kA -- and not at its 3 kA of phase. */
+    expect(rules(at('I2'))).toEqual([['F_earth', 1000]]);
+    /* Residual is three times the component. */
+    expect(rules(at('3I0'))).toEqual([['F_earth', 3000]]);
+    /* And on a phase sheet, the declared phase currents. */
+    expect(rules(at('phase')).map(([, i]) => i)).toEqual([9000, 3000]);
+  });
+
+  it('leaves out a fault with no value for that component', () => {
+    /* A balanced three-phase fault has no negative sequence, so there
+     * is nothing to mark on an I2 sheet. */
+    expect(rules(at('I2')).map(([n]) => n)).not.toContain('F_3ph');
+  });
+
+  it('names the quantity on the axis, so the units are not a guess', () => {
+    expect(at('phase')).toMatch(/>Current \(A primary · hv · 33 kV\)</);
+    expect(at('I2')).toMatch(/>Current \(A primary · I2 · hv · 33 kV\)</);
+    expect(at('3I0')).toMatch(/>Current \(A primary · residual 3I0 · hv · 33 kV\)</);
+  });
+
+  it('says how many elements the axis left off', () => {
+    expect(at('I2')).toMatch(/2 elements not on this axis \(I2\)/);
+  });
+
+  it('defaults to an unconstrained axis, drawing everything', () => {
+    /*
+     * `any` is the default: several characteristics on one sheet
+     * without arguing about components, which is what an engineer
+     * wants most of the time. The legend states each curve's measured
+     * quantity, and that is what keeps a mixed sheet readable.
+     */
+    const noQuantity = parseAndRender(STUDY + 'view { voltage = hv; }', { theme: 'light' }).svg;
+    expect(curves(noQuantity).sort()).toEqual(['R:46', 'R:51', 'R:51G']);
+    expect(noQuantity).not.toMatch(/not on this axis/);
+  });
+
+  it('is explicit about it when asked for `any`', () => {
+    const any = parseAndRender(STUDY + 'view { voltage = hv; quantity = any; }', { theme: 'light' }).svg;
+    expect(curves(any).sort()).toEqual(['R:46', 'R:51', 'R:51G']);
+  });
+});
+
+describe('a sheet drawn for a condition', () => {
+  const STUDY = `
+system { voltages { hv { kV = 33; } } }
+faults {
+  "F_3ph" { I_A = 9 kA;  type = three_phase;       voltage = hv; }
+  "F_2ph" { I_A = 390 A; type = two_phase;         voltage = hv; }
+  "F_1ph" { I_A = 2 kA;  type = single_phase_earth; voltage = hv; }
+}
+relay R {
+  voltage = hv;
+  element 51  { function = "phase_oc";    curve = definite; I_pu = 100 A; t_delay = 1 s; }
+  element 51G { function = "earth_fault"; curve = definite; I_pu = 50 A;  t_delay = 2 s; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 60 A; t_delay = 3 s; }
+}
+`;
+
+  const sheet = (view: string): string =>
+    parseAndRender(
+      STUDY + `view { voltage = hv; current_min = 10 A; current_max = 30 kA; ${view} }`,
+      { theme: 'light' },
+    ).svg;
+
+  const drawn = (svg: string): string[] =>
+    [...svg.matchAll(/data-curve="([^"]+)"/g)].map((m) => m[1]).sort();
+  const notes = (svg: string): string =>
+    [...svg.matchAll(/font-style="italic">([^<]*)</g)].map((m) => m[1]).join(' | ');
+
+  it('converts a phase curve onto a negative-sequence axis', () => {
+    const svg = sheet('quantity = I2; condition = "F_2ph";');
+    expect(drawn(svg)).toEqual(['R:46', 'R:51']);
+    expect(notes(svg)).toContain('converted onto I2');
+  });
+
+  it('places the converted curve at the right current', () => {
+    /*
+     * The 51 picks up at 100 A of phase current. On an I2 axis, for a
+     * phase-phase fault, that is 100/root3 = 57.7 A. A conversion is a
+     * constant shift on a log axis, so the shape and the operate times
+     * are untouched -- only the abscissa moves.
+     */
+    const ampsAtRiser = (svg: string): number => {
+      const [x0, , w] = svg.match(/data-plot="([^"]+)"/)![1].split(',').map(Number);
+      const px = Number(svg.match(/d="M([\d.]+) /)![1]);
+      const decades = Math.log10(30_000 / 10);
+      return 10 * Math.pow(10, ((px - x0) / w) * decades);
+    };
+
+    expect(ampsAtRiser(sheet('quantity = phase; condition = "F_2ph";'))).toBeCloseTo(100, 0);
+    expect(ampsAtRiser(sheet('quantity = I2; condition = "F_2ph";')))
+      .toBeCloseTo(100 / Math.sqrt(3), 0);
+  });
+
+  it('suppresses earth and negative sequence on a balanced condition', () => {
+    /*
+     * A three-phase fault carries no I2 and no I0, so those elements
+     * cannot operate under it. Drawing them would imply an operation
+     * that cannot happen.
+     */
+    const svg = sheet('quantity = phase; condition = "F_3ph";');
+    expect(drawn(svg)).toEqual(['R:51']);
+    expect(notes(svg)).toContain('not on this axis');
+  });
+
+  it('suppresses only the earth element on a phase-phase condition', () => {
+    /* No earth path, so no zero sequence -- but there is negative
+     * sequence, so the 46 converts on. */
+    expect(drawn(sheet('quantity = phase; condition = "F_2ph";'))).toEqual(['R:46', 'R:51']);
+  });
+
+  it('draws all three on a phase-earth condition', () => {
+    const svg = sheet('quantity = phase; condition = "F_1ph";');
+    expect(drawn(svg)).toEqual(['R:46', 'R:51', 'R:51G']);
+    /* The residual equals the phase current for this type, so the 51G
+     * needs no conversion -- only the 46 does. */
+    expect(notes(svg)).toContain('1 converted');
+  });
+
+  it('names the condition and its type', () => {
+    expect(notes(sheet('quantity = phase; condition = "F_2ph";')))
+      .toContain('drawn for F_2ph (phase-phase)');
+  });
+
+  it('converts nothing without a condition, as before', () => {
+    expect(drawn(sheet('quantity = I2;'))).toEqual(['R:46']);
+  });
+
+  it('derives a fault rule from the type when the component is not declared', () => {
+    /* F_2ph declares only its phase current; its I2 rule is derived. */
+    const svg = sheet('quantity = I2; condition = "F_2ph";');
+    const rule = svg.match(/data-fault="F_2ph" data-current="([\d.]+)"/);
+    expect(rule).not.toBeNull();
+    expect(Number(rule![1])).toBeCloseTo(390 / Math.sqrt(3), 3);
+  });
+});
+
+describe('zero sequence across levels is declared, not assumed', () => {
+  const study = (zeroSequence: string): ReturnType<typeof parseAndRender> => parseAndRender(`
+system {
+  voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } }
+  ${zeroSequence}
+}
+faults { "F" { I_A = 6 kA; I0_A = 800 A; voltage = "LV"; } }
+relay R_LV { voltage = "LV"; element 51 { function = "phase_oc"; curve = iec.si; I_pu = 300 A; tms = 0.1; } }
+relay R_HV { voltage = "HV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 20 A; tms = 0.15; } }
+grade { primary = R_LV:51; backup = R_HV:51G; fault = "F"; CTI_min_s = 0.3; }
+`, { theme: 'light' });
+
+  const codes = (r: ReturnType<typeof parseAndRender>): string[] =>
+    r.result.reports[0].diagnostics.map((d) => d.code);
+
+  it('refuses while undeclared, asking for the declaration', () => {
+    const r = study('');
+    expect(codes(r)).toContain('SEQUENCE_ACROSS_LEVELS');
+    const message = r.result.reports[0].diagnostics
+      .find((d) => d.code === 'SEQUENCE_ACROSS_LEVELS')!.message;
+    /* The message asks rather than asserting physics. */
+    expect(message).toContain('depends on the windings');
+    expect(message).toContain('zero_sequence');
+  });
+
+  it('refuses when the link is declared blocked', () => {
+    expect(codes(study('zero_sequence { "LV" to "HV" = blocked; }')))
+      .toContain('SEQUENCE_ACROSS_LEVELS');
+  });
+
+  it('refers the residual when the link is declared continuous', () => {
+    /* A star-star transformer with both neutrals earthed does pass it:
+     * 3 x 800 A at 0.48 kV is 34.9 A at 33 kV. */
+    const r = study('zero_sequence { "LV" to "HV" = continuous; }');
+    expect(codes(r)).not.toContain('SEQUENCE_ACROSS_LEVELS');
+    expect(r.result.reports[0].rows[0].I_backup_A).toBeCloseTo(2400 * (0.48 / 33), 6);
+  });
+
+  it('reads the pair in either order', () => {
+    const r = study('zero_sequence { "HV" to "LV" = continuous; }');
+    expect(codes(r)).not.toContain('SEQUENCE_ACROSS_LEVELS');
+  });
+});
+
+describe('annotations use the quantity their element measures', () => {
+  const STUDY = `
+system { voltages { hv { kV = 33; } } }
+faults { "F_1ph" { I_A = 3 kA; type = single_phase_earth; voltage = hv; } }
+relay R {
+  voltage = hv;
+  element 51G { function = "earth_fault"; curve = definite; I_pu = 100 A; t_delay = 1.5 s; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 100 A; t_delay = 2.5 s; }
+}
+annotate { on_curve = R:51G; fault = "F_1ph"; style = tag; label = "earth";  coords = true; }
+annotate { on_curve = R:46;  fault = "F_1ph"; style = tag; label = "negseq"; coords = true; }
+`;
+
+  const marks = (view: string): string[] =>
+    [...parseAndRender(
+      STUDY + `view { voltage = hv; current_min = 10 A; current_max = 30 kA; ${view} }`,
+      { theme: 'light' },
+    ).svg.matchAll(/>((?:earth|negseq)[^<]*)</g)].map((m) => m[1]);
+
+  it('marks each element at the current it responds to', () => {
+    /*
+     * A 3 kA phase-earth fault presents 3 kA of residual and 1 kA of
+     * negative sequence. `annotationCurrent` took `fault.I_A`
+     * unconditionally, so both marks landed at the phase current --
+     * the wrong time for the earth element and the wrong place for
+     * both.
+     */
+    expect(marks('quantity = any;')).toEqual([
+      'earth (3 kA, 1.5 s)',
+      'negseq (1 kA, 2.5 s)',
+    ]);
+  });
+
+  it('converts the mark onto a sheet drawn in another quantity', () => {
+    /*
+     * On an I2 axis the earth mark moves to the I2 reading for the same
+     * physical condition, while its operate time -- evaluated at the
+     * residual it actually measures -- is unchanged at 1.5 s.
+     */
+    expect(marks('quantity = I2; condition = "F_1ph";')).toEqual([
+      'earth (1 kA, 1.5 s)',
+      'negseq (1 kA, 2.5 s)',
+    ]);
+  });
+
+  it('derives the annotated current from the fault type', () => {
+    /* F_1ph declares only its phase current; the residual and I2 come
+     * from the type. */
+    const declaredOnly = STUDY.replace('type = single_phase_earth; ', '');
+    const svg = parseAndRender(
+      declaredOnly + 'view { voltage = hv; current_min = 10 A; current_max = 30 kA; }',
+      { theme: 'light' },
+    ).svg;
+    /* Without a type there is nothing to derive, so neither mark places. */
+    expect([...svg.matchAll(/>((?:earth|negseq)[^<]*)</g)]).toHaveLength(0);
+  });
+});
+
+describe('a declared zero suppresses rather than converts', () => {
+  /**
+   * The condition is a phase-earth fault, whose *type* says the
+   * residual equals the phase current -- but this side of a delta
+   * transformer receives none of it, so the study declares `I0_A = 0`.
+   */
+  const STUDY = `
+system {
+  voltages { "HV" { kV = 33; } }
+  zero_sequence { "HV" to "HV" = blocked; }
+}
+faults {
+  "F" { type = single_phase_earth; I_A = 3.9 A; I2_A = 2.2 A; I0_A = 0 A; voltage = "HV"; }
+}
+relay R {
+  voltage = "HV";
+  element 51  { function = "phase_oc";    curve = definite; I_pu = 1 A; t_delay = 1 s; }
+  element 51G { function = "earth_fault"; curve = definite; I_pu = 1 A; t_delay = 2 s; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 1 A; t_delay = 3 s; }
+}
+view { voltage = "HV"; quantity = I2; condition = "F"; current_min = 0.1 A; current_max = 100 A; }
+`;
+
+  const svg = parseAndRender(STUDY, { theme: 'light' }).svg;
+
+  it('leaves the residual element off, since it has nothing to measure', () => {
+    /*
+     * A zero factor is the same answer as an absent quantity. Left as a
+     * number it was a divisor of zero: the curve was counted as
+     * converted and then quietly not drawn, so the legend claimed one
+     * more curve than the sheet had.
+     */
+    const drawn = [...svg.matchAll(/data-curve="([^"]+)"/g)].map((m) => m[1]);
+    expect(drawn).toHaveLength(2);
+    expect(drawn.join(' ')).not.toContain('51G');
+  });
+
+  it('counts what it actually drew', () => {
+    const notes = [...svg.matchAll(/font-style="italic">([^<]*)</g)].map((m) => m[1]).join(' | ');
+    expect(notes).toContain('1 converted onto I2');
+    expect(notes).toContain('1 element not on this axis');
+  });
+});

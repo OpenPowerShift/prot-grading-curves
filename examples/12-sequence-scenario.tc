@@ -49,6 +49,17 @@ system {
     }
     frequency_Hz = 50;
     grounding    = "low_impedance";
+
+    # Whether zero sequence reaches the other level depends on the
+    # windings, so the study says. This transformer is delta on the HV
+    # side, which blocks it -- and that is the whole reason the HV
+    # residual element below is blind to an LV earth fault.
+    #
+    # A star-star transformer with both neutrals earthed would be
+    # `continuous`, and the residual would refer by the turns ratio.
+    zero_sequence {
+        "HV" to "LV" = blocked;
+    }
 }
 
 # ---- The condition, at every level it is measured. ---------------------
@@ -57,6 +68,7 @@ system {
 #      zero sequence is absent, and what remains reads as an unbalance
 #      carrying negative sequence.
 scenario "LV earth fault" {
+    type        = single_phase_earth;
     description = "Single phase to earth at 0.48 kV, system normal";
 
     level "LV" { I_A = 460 A; I1_A = 153 A; I2_A = 153 A; I0_A = 153 A; }
@@ -66,10 +78,35 @@ scenario "LV earth fault" {
 # A second condition for the phase elements: a solid three-phase fault
 # on the LV side, which is balanced and so carries no I2 or I0 at all.
 scenario "LV three-phase fault" {
+    type        = three_phase;
     description = "Balanced 3ph at 0.48 kV";
 
     level "LV" { I_A = 520 A; I1_A = 520 A; I2_A = 0 A; I0_A = 0 A; }
     level "HV" { I_A = 7.6 A; I1_A = 7.6 A; I2_A = 0 A; I0_A = 0 A; }
+}
+
+# ---- A fault rule for the sheet to mark. ------------------------------
+#      Scenarios drive the grading; a `faults` entry is what draws a
+#      vertical rule. The rule stands at the value of whichever quantity
+#      the view is drawn against, so declare the components you want
+#      marked: on the I2 sheet below this stands at 2.2 A, on a phase
+#      sheet at 3.9 A, and on a 3I0 sheet not at all -- there is no zero
+#      sequence on the delta side.
+faults {
+    "LV earth fault at HV" {
+        # `type` gives the ratios between phase current and the
+        # components, so a component the study does not declare is
+        # derived -- and a curve measured in one quantity can be placed
+        # on an axis drawn in another. A declared component always wins,
+        # which is how you override the table: I2_A below is stated
+        # because the delta changes what reaches this side.
+        type        = single_phase_earth;
+        I_A         = 3.9 A;
+        I2_A        = 2.2 A;
+        I0_A        = 0 A;
+        voltage     = "HV";
+        description = "LV phase-earth fault, referred to the 33 kV side";
+    }
 }
 
 # ---- Downstream: the LV air circuit breaker. ---------------------------
@@ -121,6 +158,35 @@ relay R_850 {
     }
 }
 
+# ---- Upstream: the feeder relay's own I2 backup. ----------------------
+#      Two negative-sequence elements grade against each other, which is
+#      what the sheet below actually plots.
+relay R_FDR {
+    name     = "33 kV feeder (SEL-751)";
+    maker    = "SEL";
+    model    = "751";
+    voltage  = "HV";
+    ct_ratio = 250/1;
+
+    element 46 {
+        name     = "Neg Seq backup (46)";
+        function = "neg_seq";
+        measures = I2;                      # unquoted spelling works too
+        curve    = definite;
+        I_pu     = 1.5 A;
+        t_delay  = 2.60 s;                  # 0.6 s above the 850
+    }
+}
+
+# ---- I2 grading: the 850 against the feeder relay. --------------------
+grade {
+    primary   = R_850:46;
+    backup    = R_FDR:46;
+    scenario  = "LV earth fault";
+    CTI_min_s = 0.30;
+    comment   = "both measure I2, so this is a like-for-like margin";
+}
+
 # ---- The negative-sequence element does the backing up. ---------------
 grade {
     primary   = R_ACB:51;
@@ -159,10 +225,32 @@ page {
                     subtitle = "LV earth fault behind a delta-star transformer"; };
 }
 
+# ---- Which current the sheet is drawn against. ------------------------
+#      A TCC has one x axis, so it has one quantity. This sheet is a
+#      NEGATIVE-SEQUENCE sheet: the two 46 elements are plotted against
+#      I2, the fault rules stand at each condition's I2, and the axis
+#      title says so.
+#
+#      Change `quantity` to see the other sheets of the same study:
+#
+#        quantity = any;     everything on one current axis (the default)
+#        quantity = phase;   ordinary phase grading
+#        quantity = 3I0;     residual current
+#        quantity = I2;      negative sequence (this sheet)
+#
+#      `condition` names what the sheet depicts. With it, curves
+#      measuring something else are CONVERTED onto the axis using that
+#      condition's fault type -- the HV 51 appears here at
+#      I_phase = 3 x I2, a phase-earth fault's ratio -- and elements the
+#      condition cannot operate are suppressed instead of being drawn
+#      where they never could. Drop `condition` and the sheet falls back
+#      to showing only what measures I2.
 view {
     voltage     = "HV";
-    current_min = 0.1 A;
-    current_max = 100 A;
+    quantity    = I2;
+    condition   = "LV earth fault at HV";
+    current_min = 0.5 A;
+    current_max = 50 A;
     time_min    = 20 ms;
     time_max    = 100 s;
 }

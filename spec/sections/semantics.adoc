@@ -8,6 +8,47 @@ or equivalently `M = I_primary / I_pu_primary`. The unit-free
 multiple is the only input to the curve formula; the processor
 performs the conversion once at parse time.
 
+==== Devices sit on a voltage level
+
+A `device` names a level with `voltage`, exactly as a relay does, and
+its characteristic is referred to the view frame by the turns ratio. A
+published fuse curve is in the amps of the winding it sits on, so
+without a level its points are taken as already being in the view
+frame: on a cross-voltage sheet the band is drawn out by the ratio, and
+the device is graded in the wrong winding's amps.
+
+`voltage` is not `rating_kV`. The latter is the equipment's own
+insulation rating and has no bearing on where the curve is drawn.
+
+A device with no `voltage` behaves as before -- unreferred -- so a
+single-voltage study needs no change.
+
+==== Sequence ratios by fault type
+
+At one fault the phase current and the sequence components are fixed
+multiples of one another, decided by the kind of fault. Ratios are
+against the condition's *own* declared phase current `I_A` -- a
+phase-phase fault's phase current is its own value, not a fraction of a
+three-phase figure -- with `Z1 = Z2` and fault impedance neglected.
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| `type` | `I1` | `I2` | `I0` | residual `3*I0`
+
+| `three_phase`        | `I_A`    | 0        | 0        | 0
+| `two_phase`          | `I_A/√3` | `I_A/√3` | 0        | 0
+| `single_phase_earth` | `I_A/3`  | `I_A/3`  | `I_A/3`  | `I_A`
+| `two_phase_earth`    | --       | --       | --       | --
+|===
+
+`two_phase_earth` derives nothing: its division between the sequence
+networks depends on `Z0`, which the language does not carry.
+
+A *declared* component always wins over a derived one, and that is how
+an engineer overrides this table. `0` and `--` differ: `0` is an answer
+-- a balanced fault carries no negative sequence -- and is what lets an
+element that cannot operate be suppressed rather than drawn.
+
 ==== Function-specific multiple derivation
 
 The `function` keyword determines how the *measured current* is
@@ -781,22 +822,34 @@ asked for.
 
 [IMPORTANT]
 ====
-*Not every current crosses the transformer.* The referral rule
+*Whether a current crosses the transformer depends on the windings.* The referral rule
 `I_at(L) = I_fault * V_fault / V_L` above is stated for *phase*
 current, and holds for positive and negative sequence too: both pass
 through a two-winding transformer with their magnitudes scaling by the
 turns ratio.
 
-*Zero sequence does not.* It cannot cross a delta winding, so
-referring a residual figure from one level to another by the voltage
-ratio states something physically false. An element measuring `I0` or
-`3I0` must have its component declared at its *own* level; asking for
-it across a ratio is an *Error* `SEQUENCE_ACROSS_LEVELS`.
+*Zero sequence may or may not.* A delta winding blocks it; a star-star
+with both neutrals earthed passes it. The processor cannot know which,
+so the study declares it:
 
-This is not a corner case. It is why a star-side earth fault appears
-on the delta side as an unbalance carrying negative sequence, and so
-why an HV *negative-sequence* element -- not an HV residual element --
-is the sensitive backup for an LV earth fault behind a delta-star
+[source,tc]
+----
+system {
+    zero_sequence {
+        "HV" to "LV" = blocked;      # delta winding
+        # "HV" to "LV" = continuous; # YNyn, both neutrals earthed
+    }
+}
+----
+
+Undeclared, a residual figure is not referred and the pair is reported
+rather than graded on a guess -- *Error* `SEQUENCE_ACROSS_LEVELS`. The
+pair is read in either order.
+
+The blocked case is why a star-side earth fault appears on the delta
+side as an unbalance carrying negative sequence, and so why an HV
+*negative-sequence* element -- not an HV residual element -- is the
+sensitive backup for an LV earth fault behind a delta-star
 transformer.
 
 *One fault, but not one current.* Ampere-turns balance across a

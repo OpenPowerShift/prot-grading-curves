@@ -36,14 +36,27 @@ import type {
 import { LogScale } from './scale.js';
 import { ticks, formatSi } from './ticks.js';
 import { paletteFor, paletteFromList, strokeDashFor, type Palette } from './palette.js';
-import { measuredQuantityOf, quantityLabel } from '../semantics/quantity.js';
+import { measuredQuantityOf } from '../semantics/quantity.js';
+import {
+  faultTypeLabel, isFaultType, quantityIsAbsent, type FaultType,
+} from '../constants/sequence.js';
+import { LabelPlacer, type Placement, type Rect } from './labels.js';
+import {
+  conversionFactor,
+  elementQuantity,
+  isMeasuredQuantity,
+  resolveCurrent,
+  type SequenceCurrents,
+  quantityLabel,
+  survivesVoltageReferral,
+  type MeasuredQuantity,
+} from '../semantics/quantity.js';
 import { theme as loadTheme, type ThemeName } from './theme.js';
 import { buildStudy, allElements, resolveRef, type Annotation, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
 import { tTripStage } from '../semantics/curves.js';
 import { tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
 import { tTripFlex } from '../semantics/curves.js';
-import { faultCurrentAt } from '../semantics/xvoltage.js';
 
 /* ------------------------------------------------------------------ */
 /* Type scale                                                          */
@@ -166,13 +179,37 @@ export interface RenderOptions {
   theme?: ThemeName | null;
 }
 
+/** What a legend detail line describes. */
+type DetailRole =
+  /** Make and model. */
+  | 'identity'
+  /** Curve, pickup, TMS or delay -- the line an engineer checks. */
+  | 'settings'
+  /** Voltage level, band note: useful, but not the setting. */
+  | 'context';
+
+interface DetailLine {
+  text: string;
+  role: DetailRole;
+}
+
 interface CurveEntry {
   label: string;
   color: string;
   pathD: string;
   pickupPx: number;       // in the view frame
   /** Legend body, one entry per rendered line. */
-  detailLines: string[];
+  /**
+   * Legend body, one entry per rendered line.
+   *
+   * Each carries what it *is*, not just where it sits. A compact
+   * legend has to keep the settings and drop the rest, and picking by
+   * position got that backwards: the settings line is the middle one,
+   * so taking the last kept the voltage and threw the settings away --
+   * which is what made a crowded sheet, and every PDF of one, show no
+   * settings at all.
+   */
+  detailLines: DetailLine[];
   voltage?: string;
   voltage_kV?: number;    // <<< the relay's own nominal voltage -- useful for the hover overlay
   opAt?: { I_A: number; t_s: number };
@@ -325,10 +362,78 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       ? formatSi(I_primary / referenceCt, 'A')
       : formatSi(I_primary, 'A');
 
+  /*
+   * Which current the abscissa is.
+   *
+   * `any` -- the default -- means the axis is simply current, and every
+   * curve is drawn against it whatever it measures. That is the case
+   * where an engineer wants several characteristics on one sheet
+   * without arguing about components; the legend states each curve's
+   * quantity, which is what keeps it readable.
+   *
+   * Naming a quantity opts into strictness: the sheet becomes an
+   * earth-fault or negative-sequence sheet, curves measuring something
+   * else are converted onto it where the condition allows and
+   * suppressed where it does not.
+   */
+  const axisQuantity: MeasuredQuantity | 'any' =
+    isMeasuredQuantity(opts.view?.quantity) ? opts.view.quantity : 'any';
+
+  /* Only meaningful for the strict modes; `phase` where the axis is
+   * unconstrained, so faults keep standing at their phase current. */
+  const viewQuantity: MeasuredQuantity = axisQuantity === 'any' ? 'phase' : axisQuantity;
+
+  const quantityNote = axisQuantity === 'any' || axisQuantity === 'phase'
+    ? ''
+    : `${quantityLabel(axisQuantity)} · `;
   const currentAxisTitle =
     axisMode === 'secondary' && referenceCt
-      ? `Current (A secondary, CT ${trimZeros(referenceCt)}:1 · ${viewLabel})`
-      : `Current (A primary · ${viewLabel})`;
+      ? `Current (A secondary, ${quantityNote}CT ${trimZeros(referenceCt)}:1 · ${viewLabel})`
+      : `Current (A primary · ${quantityNote}${viewLabel})`;
+
+  /*
+   * The condition this sheet depicts, if it names one.
+   *
+   * A fault type fixes the ratios between phase current and the
+   * sequence components, which is what lets a curve measured in one
+   * quantity be placed on an axis drawn in another -- and what says
+   * which components a condition carries none of, so an element that
+   * cannot operate is suppressed rather than drawn somewhere
+   * meaningless.
+   */
+  /** Named level the sheet is drawn in, for the zero-sequence lookup. */
+  const viewLevelName = view?.voltage?.trim().replace(/^"|"$/g, '');
+
+  const conditionName = opts.view?.condition;
+  const condition: { type?: FaultType; currents: SequenceCurrents } | null = (() => {
+    if (!conditionName) return null;
+
+    const fault = study.faults.get(conditionName);
+    if (fault) {
+      return {
+        type: fault.type,
+        currents: {
+          phase: fault.I_A, I2: fault.I2_A, I0: fault.I0_A, residual: fault.earth_A,
+        },
+      };
+    }
+
+    const scenario = study.scenarios.get(conditionName);
+    if (scenario) {
+      /* A scenario holds one set per level; the sheet is drawn in one
+       * frame, so it is that frame's set the ratios come from. */
+      const levelName = view?.voltage?.trim().replace(/^"|"$/g, '');
+      const level = levelName ? scenario.levels.get(levelName) : undefined;
+      const any = level ?? [...scenario.levels.values()][0];
+      return {
+        type: scenario.type,
+        currents: any
+          ? { phase: any.I_A, I1: any.I1_A, I2: any.I2_A, I0: any.I0_A, residual: any.earth_A }
+          : {},
+      };
+    }
+    return null;
+  })();
 
   /* Per-relay metadata cache (relay id -> voltage kV) */
   const relayVoltages = new Map<string, number>();
@@ -358,13 +463,38 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       for (const f of fb.faults) {
         if (!Number.isFinite(f.I_A)) continue;
         const V_fault = f.voltage ? voltageKvs.get(f.voltage) : undefined;
-        const I_view = V_fault && V_view_kV ? f.I_A * (V_fault / V_view_kV) : f.I_A;
+
+        /*
+         * The fault's value of *the axis quantity* -- declared where the
+         * study gives it, otherwise derived from the fault's type, which
+         * fixes the ratios between phase current and the components.
+         * Declared always wins, so writing `I2_A` overrides the table.
+         */
+        const resolved = resolveCurrent(
+          viewQuantity,
+          { phase: f.I_A, I2: f.I2_A, I0: f.I0_A, residual: f.earth_A },
+          isFaultType(f.type) ? f.type : undefined,
+        );
+        if (resolved == null) continue;
+        const declared = resolved.value;
+
+        /*
+         * Whether zero sequence reaches this level is a property of the
+         * windings between them, which the study declares.
+         */
+        const differentLevel = V_fault != null && V_view_kV != null && V_fault !== V_view_kV;
+        if (differentLevel
+            && !survivesVoltageReferral(viewQuantity, study, f.voltage, viewLevelName)) {
+          continue;
+        }
+
+        const I_view = V_fault && V_view_kV ? declared * (V_fault / V_view_kV) : declared;
         if (I_view * 0.8 < I_lo) I_lo = I_view * 0.8;
         if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
         faults.push({
           name: f.name,
           description: f.description,
-          I_A: f.I_A,
+          I_A: declared,
           voltage: f.voltage,
           voltage_kV: V_fault,
           voltageLabel: f.voltage ? `${f.voltage} · ${voltageKvs.get(f.voltage) ?? '?'} kV` : undefined,
@@ -554,6 +684,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * while the path is drawn against the view frame -- so a study
    * spanning a transformer compares curves on one axis without any
    * caller having to pre-convert.
+   *
+   * `axisFactor` is element units per unit of the axis quantity, for a
+   * sheet drawn in a quantity the element does not itself measure. On a
+   * log axis it is a constant pixel shift, so a curve keeps its shape
+   * and its operate times exactly -- only its abscissa moves.
    */
   const trace = (
     V_source: number | undefined,
@@ -566,11 +701,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * sampled twice: just below it and exactly on it.
      */
     breakpoints: number[] = [],
+    axisFactor = 1,
   ): string => {
     const xs = [...samples];
     for (const bp of breakpoints) {
-      if (!(bp > 0) || bp < I_min || bp > I_max) continue;
-      xs.push(bp * (1 - 1e-9), bp);
+      /* Breakpoints arrive in the element's own quantity, so they need
+       * the same factor as the samples or a vertical riser lands at the
+       * wrong x. */
+      const onAxis = bp / axisFactor;
+      if (!(onAxis > 0) || onAxis < I_min || onAxis > I_max) continue;
+      xs.push(onAxis * (1 - 1e-9), onAxis);
     }
     xs.sort((a, b) => a - b);
 
@@ -579,11 +719,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     let previousOperated = false;
 
     for (const I_view of xs) {
-      /* Invert the projection to ask the curve about its own frame. */
+      /*
+       * From the axis reading to the current the characteristic is
+       * defined in: first the quantity, then the voltage frame.
+       */
+      const I_measured = I_view * axisFactor;
       const I_source =
         V_view_kV != null && V_source != null && V_source > 0 && V_view_kV > 0
-          ? I_view * (V_view_kV / V_source)
-          : I_view;
+          ? I_measured * (V_view_kV / V_source)
+          : I_measured;
       const t = tAt(I_source);
 
       if (!Number.isFinite(t) || t <= 0) {
@@ -630,10 +774,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const flexPath = (
     points: Array<{ I_A: number; t_s: number }>,
+    /**
+     * The device's own level. A published characteristic is in the amps
+     * of the winding it sits on, so it needs referring to the view
+     * frame exactly as a relay curve does -- without this a fuse on the
+     * low side of a transformer was drawn at its own amps on a
+     * high-side sheet, out by the turns ratio.
+     */
+    V_source?: number,
   ): { d: string; reversed: string[] } | null => {
     const pts: string[] = [];
     for (const point of points) {
-      const px = xScale.toPx(point.I_A);
+      const px = xScale.toPx(project(point.I_A, V_source));
       const py = yScale.toPx(point.t_s);
       if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
       pts.push(`${px.toFixed(1)} ${py.toFixed(1)}`);
@@ -643,16 +795,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   /** Legend body for a device. */
-  const deviceDetailLines = (device: Device): string[] => {
-    const lines: string[] = [];
+  const deviceDetailLines = (device: Device): DetailLine[] => {
+    const lines: DetailLine[] = [];
     const identity = [device.maker, device.model].filter(Boolean).join(' ');
-    if (identity) lines.push(identity);
+    if (identity) lines.push({ text: identity, role: 'identity' });
 
     const bits: string[] = [];
     if (device.kind) bits.push(DEVICE_KIND_LABEL[device.kind] ?? device.kind);
     if (device.rating_A != null) bits.push(formatSi(device.rating_A, 'A'));
     if (device.t_delay_s != null) bits.push(`clearing ${formatSi(device.t_delay_s, 's')}`);
-    if (bits.length) lines.push(bits.join(' \u00b7 '));
+    if (bits.length) lines.push({ text: bits.join(' \u00b7 '), role: 'settings' });
 
     if (device.min_melt && device.total_clear) {
       /*
@@ -660,9 +812,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * fonts' WinAnsi encoding and comes out as mojibake on the
        * printed sheet.
        */
-      lines.push('min melt -> total clear');
+      lines.push({ text: 'min melt -> total clear', role: 'context' });
     }
-    return lines.filter(Boolean);
+    return lines.filter((l) => l.text);
   };
 
   /**
@@ -674,11 +826,35 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     _study: Study,
     annotation: Annotation,
     voltage: string | undefined,
+    /**
+     * What the annotated element measures. A named fault is resolved to
+     * *that* quantity, so an earth-fault element is annotated at the
+     * residual and a negative-sequence element at `I2`.
+     *
+     * This used to take `fault.I_A` unconditionally, which put every
+     * annotation at the fault's phase current whatever the element it
+     * pointed at -- the wrong time on the report and the wrong x on a
+     * sheet drawn in a component.
+     */
+    quantity: MeasuredQuantity = 'phase',
   ): number | null => {
     if (annotation.fault) {
       const fault = study.faults.get(annotation.fault);
       if (!fault) return null;
-      return faultCurrentAt(study, fault, voltage, 'I').I_A;
+
+      const resolved = resolveCurrent(
+        quantity,
+        { phase: fault.I_A, I2: fault.I2_A, I0: fault.I0_A, residual: fault.earth_A },
+        isFaultType(fault.type) ? fault.type : undefined,
+      );
+      if (resolved == null) return null;
+
+      /* Refer it to the element's own level, as grading does. */
+      const faultKv = fault.voltage_kV;
+      const levelKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
+      if (faultKv == null || levelKv == null || faultKv === levelKv) return resolved.value;
+      if (!survivesVoltageReferral(quantity, study, fault.voltage, voltage)) return null;
+      return resolved.value * (faultKv / levelKv);
     }
     return Number.isFinite(annotation.at_I_A) ? annotation.at_I_A! : null;
   };
@@ -770,29 +946,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * pipes, which ran together and overflowed the legend column. One
    * line per stage is both readable and naturally width-bounded.
    */
-  const elementDetailLines = (element: Element): string[] => {
-    const lines: string[] = [];
+  const elementDetailLines = (element: Element): DetailLine[] => {
+    const lines: DetailLine[] = [];
 
     const identity = [element.maker, element.model].filter(Boolean).join(' ');
-    if (identity) lines.push(identity);
+    if (identity) lines.push({ text: identity, role: 'identity' });
 
     if (element.stages.length === 1) {
-      lines.push(stageDetail(element.stages[0], element));
+      lines.push({ text: stageDetail(element.stages[0], element), role: 'settings' });
     } else {
       for (const stage of element.stages) {
-        lines.push(`${stage.id}: ${stageDetail(stage, element)}`);
+        lines.push({ text: `${stage.id}: ${stageDetail(stage, element)}`, role: 'settings' });
       }
     }
 
     if (element.voltage) {
-      lines.push(element.voltage_kV != null
-        ? `${element.voltage} \u00b7 ${trimZeros(element.voltage_kV)} kV`
-        : element.voltage);
+      lines.push({
+        text: element.voltage_kV != null
+          ? `${element.voltage} \u00b7 ${trimZeros(element.voltage_kV)} kV`
+          : element.voltage,
+        role: 'context',
+      });
     }
-    return lines.filter(Boolean);
+    return lines.filter((l) => l.text);
   };
 
-  const pickupPxOf = (element: Element): number => {
+  const pickupPxOf = (element: Element, axisFactor = 1): number => {
     /* The lowest pickup is where the composite curve starts. */
     let lowest = Infinity;
     for (const stage of element.stages) {
@@ -801,7 +980,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
     }
     if (!Number.isFinite(lowest)) return NaN;
-    return xScale.toPx(project(lowest, element.voltage_kV));
+    /* The pickup is in the element's own quantity, so it comes back onto
+     * the axis by the same factor the curve did. */
+    return xScale.toPx(project(lowest, element.voltage_kV) / axisFactor);
   };
 
   /*
@@ -810,7 +991,60 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const individual = view?.stages === 'individual';
 
+  /** Elements the axis leaves off the sheet, and why. */
+  const offAxisElements: string[] = [];
+  /** Elements drawn against a quantity other than the one they measure. */
+  const convertedElements: string[] = [];
+
+  /**
+   * Element units per unit of the axis quantity.
+   *
+   * `1` when the element measures the axis quantity, or when the axis
+   * is unconstrained. Otherwise the ratio for the depicted condition,
+   * which is what lets a phase curve sit on a negative-sequence sheet.
+   * `null` means it cannot be placed at all.
+   */
+  const axisFactorFor = (element: Element): number | null => {
+    if (axisQuantity === 'any') return 1;
+
+    const measures = elementQuantity(element.stages);
+    if (measures == null || measures === 'mixed') return null;
+    if (measures === axisQuantity) return 1;
+
+    /* Without a condition there are no ratios, so nothing converts. */
+    if (!condition) return null;
+
+    /*
+     * A condition carrying none of what the element measures means the
+     * element cannot operate under it -- a residual element on a
+     * balanced three-phase fault. Drawing it would imply an operation
+     * that cannot happen.
+     */
+    if (quantityIsAbsent(condition.type, measures)) return null;
+
+    const factor = conversionFactor(measures, axisQuantity, condition.currents, condition.type);
+
+    /*
+     * A zero or negative factor is the same answer as an absent one:
+     * the element has nothing to measure here. It arrives when the
+     * *declared* figure is zero where the type says otherwise -- an HV
+     * residual element behind a delta, whose condition states
+     * `I0_A = 0`. Left as a number it became a divisor of zero, and the
+     * curve was counted as converted and then quietly not drawn.
+     */
+    if (factor == null || !(factor > 0) || !Number.isFinite(factor)) return null;
+
+    return factor;
+  };
+
   for (const element of allElements(study)) {
+    const factor = axisFactorFor(element);
+    if (factor == null) {
+      offAxisElements.push(element.label);
+      continue;
+    }
+    if (factor !== 1) convertedElements.push(element.label);
+
     const { color, dash } = pickStyle();
     const V_source = element.voltage_kV;
 
@@ -820,17 +1054,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           V_source,
           (I) => tTripStage(stage, I),
           stage.I_pu_A != null ? [project(stage.I_pu_A, V_source)] : [],
+          factor,
         );
         if (!pathD) continue;
         curves.push({
           label: `${element.label}/${stage.id}`,
           color,
           pathD,
-          pickupPx: stage.I_pu_A != null ? xScale.toPx(project(stage.I_pu_A, V_source)) : NaN,
-          detailLines: [
-            [element.maker, element.model].filter(Boolean).join(' '),
-            stageDetail(stage, element),
-          ].filter(Boolean),
+          pickupPx: stage.I_pu_A != null
+            ? xScale.toPx(project(stage.I_pu_A, V_source) / factor)
+            : NaN,
+          detailLines: ([
+            { text: [element.maker, element.model].filter(Boolean).join(' '), role: 'identity' },
+            { text: stageDetail(stage, element), role: 'settings' },
+          ] as DetailLine[]).filter((l) => l.text),
           dashArray: dash,
           voltage: element.voltage,
           voltage_kV: V_source,
@@ -839,13 +1076,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       continue;
     }
 
-    const pathD = trace(V_source, (I) => tTripElement(element, I), breakpointsOf(element));
+    const pathD = trace(
+      V_source, (I) => tTripElement(element, I), breakpointsOf(element), factor,
+    );
     if (!pathD) continue;
     curves.push({
       label: element.label,
       color,
       pathD,
-      pickupPx: pickupPxOf(element),
+      pickupPx: pickupPxOf(element, factor),
       detailLines: elementDetailLines(element),
       voltage: element.voltage,
       voltage_kV: V_source,
@@ -869,8 +1108,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     /* Fuse band: min-melt and total-clear bound a hatched region. */
     if (device.min_melt && device.total_clear) {
-      const lower = flexPath(device.min_melt);
-      const upper = flexPath(device.total_clear);
+      const lower = flexPath(device.min_melt, device.voltage_kV);
+      const upper = flexPath(device.total_clear, device.voltage_kV);
       if (lower && upper) {
         deviceBands.push({
           id: device.id,
@@ -896,7 +1135,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const points = device.flex_points ?? device.min_melt ?? device.total_clear;
     let pathD = '';
     if (points) {
-      pathD = flexPath(points)?.d ?? '';
+      pathD = flexPath(points, device.voltage_kV)?.d ?? '';
     } else if (device.t_delay_s != null) {
       /* A breaker is a flat clearing time across the whole domain. */
       const py = yScale.toPx(device.t_delay_s);
@@ -931,7 +1170,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       color,
       pathD,
       pickupPx: NaN,
-      detailLines: [`Combine · ${combine.as}`],
+      detailLines: [{ text: `Combine · ${combine.as}`, role: 'settings' }],
       dashed: combine.style === 'dashed' || combine.style === 'dotted',
     });
   }
@@ -1230,10 +1469,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * conclusion; the reverse costs only part of a name that is still
    * traceable by colour.
    */
+  /*
+   * Every label on the plot goes through one placer, so a point's
+   * caption, an annotation and a margin figure all avoid each other
+   * rather than each avoiding only the frame.
+   */
+  const placer = new LabelPlacer({ x: leftMargin, y: topMargin, w: plotW, h: plotH });
+
   if (legendMode === 'direct') {
-    out.push(...directLabels(curves, {
+    const direct = directLabels(curves, {
       leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground,
-    }));
+    });
+    out.push(...direct.markup);
+    /* The direct-label column is drawn first and must not be written
+     * over by a point caption or a margin figure. */
+    for (const box of direct.boxes) placer.reserve(box);
   }
 
   /*
@@ -1251,6 +1501,50 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * earns a line in the panel.
    */
   const pointsOnPlot = new Set<string>();
+
+
+  /** Emit a label, moved clear of the ones already placed. */
+  const placeLabel = (
+    text: string,
+    anchor: { x: number; y: number },
+    colour: string,
+    options: { prefer?: Parameters<typeof placer.place>[0]['prefer']; gap?: number; weight?: number } = {},
+  ): string[] => {
+    const lines = labelLines(text);
+    const placement: Placement = placer.place({
+      anchor,
+      size: {
+        w: labelWidthPx(text, FONT_DETAIL),
+        h: Math.max(FONT_DETAIL + 2, lines.length * FONT_DETAIL * LINE_SPACING),
+      },
+      prefer: options.prefer,
+      gap: options.gap,
+    });
+
+    const emitted: string[] = [];
+    /*
+     * A label that had to be moved is no longer obviously attached to
+     * its anchor, so it gets a leader. One that landed where it was
+     * asked to does not need the extra ink.
+     */
+    if (placement.displaced) {
+      const from = placement.anchorText === 'end'
+        ? placement.rect.x + placement.rect.w
+        : placement.rect.x;
+      emitted.push(
+        `<path d="M${anchor.x.toFixed(1)} ${anchor.y.toFixed(1)} ` +
+        `L${from.toFixed(1)} ${(placement.rect.y + placement.rect.h / 2).toFixed(1)}" ` +
+        `fill="none" stroke="${colour}" stroke-width="0.8" stroke-opacity="0.6"/>`,
+      );
+    }
+    emitted.push(
+      `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
+      `text-anchor="${placement.anchorText}" font-size="${FONT_DETAIL}"` +
+      `${options.weight ? ` font-weight="${options.weight}"` : ''} fill="${colour}">` +
+      `${labelBody(text, placement.x, FONT_DETAIL)}</text>`,
+    );
+    return emitted;
+  };
 
   for (const point of study.points) {
     if (!(point.I_A > 0) || !(point.t_s > 0)) continue;
@@ -1274,18 +1568,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const base = point.label ?? point.id;
     const text = point.coords ? `${base} (${coordText(I_view, point.t_s)})` : base;
     if (text) {
-      /* Flip the label to the left of the marker when a right-hand
-       * one would run past the plot and under the legend -- which a
-       * portrait sheet, with less width to spare, does readily. */
-      const labelWidth = labelWidthPx(text, FONT_DETAIL);
-      const fitsRight = px + 10 + labelWidth < leftMargin + plotW;
-      const lx = px + (fitsRight ? 10 : -10);
-      out.push(
-        `<text x="${lx.toFixed(1)}" y="${(py + 4).toFixed(1)}" ` +
-        `text-anchor="${fitsRight ? 'start' : 'end'}" ` +
-        `font-size="${FONT_DETAIL}" fill="${colour}">` +
-        `${labelBody(text, lx, FONT_DETAIL)}</text>`,
-      );
+      /* Right of the marker by preference, then left -- a portrait
+       * sheet has little width to spare -- then above or below. */
+      out.push(...placeLabel(text, { x: px, y: py }, colour, { gap: 10 }));
     }
     out.push('</g>');
   }
@@ -1315,15 +1600,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * annotation would then contradict the margin report for the
        * same pair and fault.
        */
-      const I = annotationCurrent(study, annotation, primary.element?.voltage);
-      const I_backup = annotationCurrent(study, annotation, backup.element?.voltage);
+      const primaryQ = primary.element ? elementQuantity(primary.element.stages) : 'phase';
+      const backupQ = backup.element ? elementQuantity(backup.element.stages) : 'phase';
+      const qOf = (q: ReturnType<typeof elementQuantity>): MeasuredQuantity =>
+        q == null || q === 'mixed' ? 'phase' : q;
+
+      const I = annotationCurrent(
+        study, annotation, primary.element?.voltage, qOf(primaryQ),
+      );
+      const I_backup = annotationCurrent(
+        study, annotation, backup.element?.voltage, qOf(backupQ),
+      );
       if (I == null || I_backup == null) continue;
 
       const tP = sideTime(primary, I, 'primary');
       const tB = sideTime(backup, I_backup, 'backup');
       if (!Number.isFinite(tP) || !Number.isFinite(tB)) continue;
 
-      const I_view = project(I, primary.element?.voltage_kV);
+      /* The arrow stands where the primary's current falls on *this*
+       * axis, so it lines up with the curves it spans. */
+      const marginFactor = primary.element ? axisFactorFor(primary.element) : 1;
+      if (marginFactor == null) continue;
+      const I_view = project(I, primary.element?.voltage_kV) / marginFactor;
       const px = xScale.toPx(I_view);
       const pyP = yScale.toPx(tP);
       const pyB = yScale.toPx(tB);
@@ -1350,27 +1648,23 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         );
       }
 
-      const midY = (pyP + pyB) / 2;
       /*
-       * Flipped on the same rule as the point labels: a margin drawn at
-       * the right-hand fault of a study has little room left before the
-       * legend, and the number is the whole point of the annotation.
+       * The figure sits beside the middle of the arrow. It is the whole
+       * point of the annotation, so it is placed like any other label
+       * and moved clear if something is already there.
        */
-      const marginWidth = labelWidthPx(text, FONT_DETAIL);
-      const marginRight = px + 10 + marginWidth < leftMargin + plotW;
-      const mx = px + (marginRight ? 10 : -10);
-      out.push(
-        `<text x="${mx.toFixed(1)}" y="${(midY + 4).toFixed(1)}" ` +
-        `text-anchor="${marginRight ? 'start' : 'end'}" ` +
-        `font-size="${FONT_DETAIL}" font-weight="600" fill="${colour}">` +
-        `${labelBody(text, mx, FONT_DETAIL)}</text>`,
-      );
+      const midY = (pyP + pyB) / 2;
+      out.push(...placeLabel(text, { x: px, y: midY }, colour, { gap: 10, weight: 600 }));
       continue;
     }
 
     /* Point form: mark one curve at one current. */
     const { element, device } = resolveRef(study, annotation.on_curve);
-    const I = annotationCurrent(study, annotation, element?.voltage);
+    const annotatedQ = element ? elementQuantity(element.stages) : 'phase';
+    const I = annotationCurrent(
+      study, annotation, element?.voltage ?? device?.voltage,
+      annotatedQ == null || annotatedQ === 'mixed' ? 'phase' : annotatedQ,
+    );
     if (I == null) continue;
     const t = element
       ? tTripElement(element, I)
@@ -1379,7 +1673,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         : Infinity;
     if (!Number.isFinite(t)) continue;
 
-    const I_view = project(I, element?.voltage_kV);
+    /* Placed on the axis the sheet is drawn in, as the curve it marks
+     * is -- otherwise the mark sits off its own curve. */
+    const annotationFactor = element ? axisFactorFor(element) : 1;
+    if (annotationFactor == null) continue;
+    const I_view = project(I, element?.voltage_kV ?? device?.voltage_kV) / annotationFactor;
     const px = xScale.toPx(I_view);
     const py = yScale.toPx(t);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
@@ -1418,18 +1716,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `font-size="${FONT_DETAIL}" fill="${colour}">` +
         `${labelBody(text, tx, FONT_DETAIL, 'first')}</text>`,
       );
+      /*
+       * A leader's elbow is a deliberate shape, so it is not handed to
+       * the placer -- but the text it ends at is reserved, so nothing
+       * placed afterwards lands on top of it.
+       */
+      const leaderW = labelWidthPx(text, FONT_DETAIL);
+      const leaderH = Math.max(FONT_DETAIL + 2, labelLines(text).length * FONT_DETAIL * LINE_SPACING);
+      placer.reserve({
+        x: wantRight ? tx : tx - leaderW,
+        y: ly - leaderH / 2,
+        w: leaderW,
+        h: leaderH,
+      });
     } else if (annotation.style === 'tag') {
-      const labelWidth = labelWidthPx(text, FONT_DETAIL);
-      const fitsRight = px + 6 + labelWidth < leftMargin + plotW;
-      const tx = px + (fitsRight ? 6 : -6);
-      /* Tags sit above their point, so they too grow upwards. */
-      const ty = py - 6 - labelExtraHeightPx(text, FONT_DETAIL);
-      out.push(
-        `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" ` +
-        `text-anchor="${fitsRight ? 'start' : 'end'}" ` +
-        `font-size="${FONT_DETAIL}" fill="${colour}">` +
-        `${labelBody(text, tx, FONT_DETAIL, 'first')}</text>`,
-      );
+      /* A tag reads as a caption above its point, then beside it. */
+      out.push(...placeLabel(text, { x: px, y: py }, colour, {
+        prefer: ['above', 'right', 'left', 'below'],
+        gap: 8,
+      }));
     }
   }
 
@@ -1518,6 +1823,43 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     );
     cursorY += LINE_HEADING;
 
+    /*
+     * Notes about the axis itself.
+     *
+     * A strict sheet leaves elements off and moves others onto an
+     * abscissa they do not measure. Both are stated: a missing curve
+     * should read as a choice, and a converted one rests on the
+     * depicted condition's fault type rather than on its own setting,
+     * which the reader is entitled to know.
+     */
+    const axisNotes: string[] = [];
+    if (condition) {
+      const kind = condition.type ? faultTypeLabel(condition.type) : 'declared';
+      axisNotes.push(`drawn for ${conditionName} (${kind})`);
+    }
+    if (convertedElements.length > 0 && condition) {
+      axisNotes.push(
+        `${convertedElements.length} converted onto ${quantityLabel(viewQuantity)}`,
+      );
+    }
+    if (offAxisElements.length > 0) {
+      axisNotes.push(
+        `${offAxisElements.length} element${offAxisElements.length === 1 ? '' : 's'} `
+        + `not on this axis (${quantityLabel(viewQuantity)})`,
+      );
+    }
+
+    for (const note of axisNotes) {
+      for (const wrapped of wrapText(note, width, FONT_DETAIL - 1)) {
+        lines.push(
+          `<text x="${originX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+          `font-size="${FONT_DETAIL - 1}" font-style="italic">${escapeXml(wrapped)}</text>`,
+        );
+        cursorY += LINE_DETAIL - 2;
+      }
+    }
+    if (axisNotes.length > 0) cursorY += 4;
+
     for (const c of curves) {
       /* Out of room: count what is left and say so at the end. */
       if (cursorY - originY > budget) { dropped++; continue; }
@@ -1555,13 +1897,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         cursorY += LINE_LABEL;
       }
 
-      /* `compact` keeps the settings line -- which is the one an
-       * engineer checks -- and drops the make and model above it. */
-      const detail = showDetail ? c.detailLines
-        : showSomeDetail ? c.detailLines.slice(-1)
+      /*
+       * `compact` keeps the settings -- curve, pickup, TMS or delay,
+       * the line an engineer checks -- and drops the make, model and
+       * voltage around it. Selected by role, not by position.
+       */
+      const detail = showDetail
+        ? c.detailLines
+        : showSomeDetail
+          ? c.detailLines.filter((l) => l.role === 'settings')
           : [];
       for (const line of detail) {
-        for (const wrapped of wrapText(line, textWidth, FONT_DETAIL)) {
+        for (const wrapped of wrapText(oneLine(line.text), textWidth, FONT_DETAIL)) {
           lines.push(
             `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" font-size="${FONT_DETAIL}">` +
             `${escapeXml(wrapped)}</text>`,
@@ -1614,12 +1961,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
     }
 
-    /* Faults. */
-    if (faults.length > 0) {
+    /*
+     * Faults.
+     *
+     * Only those the view actually shows. A legend entry maps a dash
+     * pattern to a name, which says nothing when that dash is nowhere
+     * on the plot -- and a fault outside the zoom has no rule drawn and
+     * no name below the axis, so the entry pointed at nothing. It also
+     * cost the panel a line it needs for the faults that are there.
+     *
+     * Indices are kept from the declared order, because the dash
+     * pattern is assigned from it: filtering with fresh indices would
+     * have the swatch show a different dash from the rule it names.
+     */
+    const shownFaults = [...faults.keys()].filter((i) => {
+      const I = faults[i].I_view ?? faults[i].I_A;
+      return inDomain(I);
+    });
+
+    if (shownFaults.length > 0) {
       /* Wrapped up front: a long fault name plus its current and
        * voltage runs past the column, and the block has to be
        * anchored by the height it will actually take. */
-      const faultText = faults.map((f) => {
+      const faultText = new Map(shownFaults.map((i) => {
+        const f = faults[i];
         /*
          * The *declared* current against the level it was declared on.
          *
@@ -1632,12 +1997,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * such.
          */
         const where = f.voltageLabel ? ` · ${f.voltageLabel}` : '';
-        return wrapText(
+        return [i, wrapText(
           `${f.name} · ${formatSi(f.I_A, 'A')}${where}`,
           textWidth,
           FONT_DETAIL,
-        );
-      });
+        )] as const;
+      }));
 
       /*
        * The projection onto the plotted axis goes on its own muted
@@ -1645,21 +2010,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * width and broke it mid-figure -- "... 11 kV ->" then a bare
        * "2.13 kA" on the next line, which reads as a separate value.
        */
-      const faultProjection = faults.map((f) =>
-        f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6
+      const faultProjection = new Map(shownFaults.map((i) => {
+        const f = faults[i];
+        return [i, f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6
           ? wrapText(`-> ${formatSi(f.I_view, 'A')} on axis`, textWidth, FONT_DETAIL - 1)
-          : []);
+          : []] as const;
+      }));
       /* `description` is the author's note on what the fault *is*;
        * it belongs with the entry rather than being parsed and
        * dropped, which is what used to happen to it. */
-      const faultNotes = faults.map((f) =>
-        showDetail && f.description
+      const faultNotes = new Map(shownFaults.map((i) => {
+        const f = faults[i];
+        return [i, showDetail && f.description
           ? wrapText(oneLine(f.description), textWidth, FONT_DETAIL - 1)
-          : []);
+          : []] as const;
+      }));
 
-      const faultLineCount = faultText.reduce((n, l) => n + l.length, 0)
-        + faultProjection.reduce((n, l) => n + l.length, 0)
-        + faultNotes.reduce((n, l) => n + l.length, 0);
+      const countLines = (m: Map<number, string[]>): number =>
+        [...m.values()].reduce((n, l) => n + l.length, 0);
+      const faultLineCount =
+        countLines(faultText) + countLines(faultProjection) + countLines(faultNotes);
 
       let faultsY = cursorY + FONT_HEADING;
       if (anchorFaultsToPlotBottom) {
@@ -1672,7 +2042,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       faultsY += LINE_HEADING;
 
-      for (const i of faults.keys()) {
+      for (const i of shownFaults) {
         const swatchY = faultsY - FONT_LABEL / 3;
         const dash = faultDash(i);
         lines.push(
@@ -1680,21 +2050,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           `stroke="${faultColour}" stroke-width="${Math.max(faultWidth, 1.5)}"` +
           `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
         );
-        for (const wrapped of faultText[i]) {
+        for (const wrapped of faultText.get(i) ?? []) {
           lines.push(
             `<text x="${textX}" y="${faultsY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_DETAIL}">` +
             `${escapeXml(wrapped)}</text>`,
           );
           faultsY += LINE_LABEL;
         }
-        for (const wrapped of faultProjection[i]) {
+        for (const wrapped of faultProjection.get(i) ?? []) {
           lines.push(
             `<text x="${textX}" y="${faultsY}" class="tc-legend-muted" fill="${th.label}" ` +
             `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
           );
           faultsY += LINE_DETAIL - 2;
         }
-        for (const wrapped of faultNotes[i]) {
+        for (const wrapped of faultNotes.get(i) ?? []) {
           lines.push(
             `<text x="${textX}" y="${faultsY}" class="tc-legend-muted" fill="${th.label}" ` +
             `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
@@ -2005,7 +2375,10 @@ interface DirectLabelGeometry {
  * to the true anchor. Curves that leave the top of the plot are
  * anchored wherever they last crossed it.
  */
-function directLabels(curves: CurveEntry[], geo: DirectLabelGeometry): string[] {
+function directLabels(
+  curves: CurveEntry[],
+  geo: DirectLabelGeometry,
+): { markup: string[]; boxes: Rect[] } {
   const { leftMargin, topMargin, plotW, plotH } = geo;
   const boxH = FONT_LABEL + 8;
   const gap = 3;
@@ -2035,6 +2408,7 @@ function directLabels(curves: CurveEntry[], geo: DirectLabelGeometry): string[] 
    */
   const boxRight = leftMargin + plotW - 22;
   const placed: Placed[] = [];
+  const boxes: Rect[] = [];
   for (const c of curves) {
     const anchor = lastPointInside(c.pathD, topMargin, topMargin + plotH);
     if (!anchor) continue;
@@ -2047,7 +2421,7 @@ function directLabels(curves: CurveEntry[], geo: DirectLabelGeometry): string[] 
       width: labelWidthPx(c.label, FONT_LABEL) + 14,
     });
   }
-  if (placed.length === 0) return [];
+  if (placed.length === 0) return { markup: [], boxes };
 
   /*
    * Spread the labels apart, top-down then bottom-up, so the column
@@ -2087,8 +2461,9 @@ function directLabels(curves: CurveEntry[], geo: DirectLabelGeometry): string[] 
       `class="tc-legend" font-size="${FONT_LABEL}" font-weight="600" fill="${geo.ink}">` +
       `${escapeXml(p.label)}</text>`,
     );
+    boxes.push({ x: boxX, y: p.y - boxH / 2, w: p.width, h: boxH });
   }
-  return out;
+  return { markup: out, boxes };
 }
 
 /**

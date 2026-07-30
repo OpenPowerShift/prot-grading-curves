@@ -16,6 +16,7 @@ import {
   saveDraft,
   shareLink,
   sourceFromLink,
+  urlWithoutStudy,
 } from '@tc/editor/share';
 
 const STUDY = `
@@ -66,6 +67,41 @@ describe('links', () => {
   it('keeps the path it was given, so it works wherever it is served', () => {
     const link = shareLink('x', 'https://example.test/deep/path/index.html');
     expect(link.startsWith('https://example.test/deep/path/index.html#s=')).toBe(true);
+  });
+});
+
+describe('taking the study back out of the address bar', () => {
+  /*
+   * Once the study is in the buffer the link has done its job, and
+   * leaving it there is harmful rather than merely untidy: the
+   * fragment wins over the saved draft on every load, so a refresh
+   * after an afternoon's editing silently restores the study as it was
+   * sent -- and what comes back looks right, which is what makes it
+   * dangerous.
+   */
+  it('drops the study, and the fragment with it', () => {
+    const link = shareLink(STUDY, 'https://example.test/tcc/');
+    expect(urlWithoutStudy(link)).toBe('https://example.test/tcc/');
+  });
+
+  it('leaves no bare hash behind', () => {
+    expect(urlWithoutStudy(shareLink('x', 'https://example.test/tcc/'))).not.toContain('#');
+  });
+
+  it('keeps anything else the fragment carried', () => {
+    const url = urlWithoutStudy(`https://example.test/tcc/#view=plot&s=${encodeSource(STUDY)}`);
+    expect(url).toBe('https://example.test/tcc/#view=plot');
+  });
+
+  it('leaves a URL that never carried a study alone', () => {
+    for (const url of ['https://example.test/tcc/', 'https://example.test/tcc/#section-2']) {
+      expect(urlWithoutStudy(url)).toBe(url);
+    }
+  });
+
+  it('keeps the query string, which is not ours to touch', () => {
+    const url = urlWithoutStudy(`https://example.test/tcc/?theme=dark#s=${encodeSource('x')}`);
+    expect(url).toBe('https://example.test/tcc/?theme=dark');
   });
 });
 

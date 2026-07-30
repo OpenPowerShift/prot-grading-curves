@@ -9,6 +9,11 @@
 #
 # Manufacturer data is entered as (current, time) tables; fuse curves
 # are published, not computed, so no IDMT formula applies.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Spur fuse coordination";
@@ -23,8 +28,8 @@ system {
 }
 
 faults {
-    "F_spur" { I_A = 900 A; }
-    "F_bus"  { I_A = 4200 A; }
+    "Spur fault" { I_A = 900 A; }
+    "Bus fault"  { I_A = 4200 A; }
 }
 
 device "fuse_100T" {
@@ -57,7 +62,7 @@ relay R_FEEDER {
 grade {
     primary   = fuse_100T;         # fuse clears first
     backup    = R_FEEDER:51;
-    fault     = "F_spur";
+    fault     = "Spur fault";
     CTI_min_s = 0.15;
 }
 

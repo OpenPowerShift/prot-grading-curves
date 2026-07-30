@@ -3,6 +3,11 @@
 # Industrial 480 V feeder with one OC element plus an instantaneous
 # stage. Useful as a minimum working example when introducing the
 # language.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project  = "Plant 480 V feeder";
@@ -17,7 +22,7 @@ system {
 }
 
 faults {
-    "F1" { I_A = 4500 A; }   # bolted fault at end of feeder
+    "Bus fault" { I_A = 4500 A; }   # bolted fault at end of feeder
 }
 
 relay R_FDR_480 {

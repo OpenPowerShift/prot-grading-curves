@@ -4,6 +4,11 @@
 # what each one is for. Not a realistic design — it is a reference you
 # can copy from. For a study that reads like real work, see samples
 # 05 (transformer), 08 (fuse) or 10 (cascade).
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 # ---- meta: who, what, when. Open-ended; the title block and the
 #      [meta.*] footer macros read these. ------------------------------
@@ -32,9 +37,9 @@ system {
 # ---- faults: a single point, or a range with min_A / max_A that the
 #      CTI constraint sweeps across. ---------------------------------
 faults {
-    "F_lv_max" { I_A = 6.40 kA; min_A = 4.0 kA; max_A = 8.0 kA; voltage = "LV"; }
-    "F_lv_min" { I_A = 1.50 kA; voltage = "LV"; }
-    "F_hv_max" { I_A = 18.4 kA; voltage = "HV"; }
+    "LV max" { I_A = 6.40 kA; min_A = 4.0 kA; max_A = 8.0 kA; voltage = "LV"; }
+    "LV min" { I_A = 1.50 kA; voltage = "LV"; }
+    "HV max" { I_A = 18.4 kA; voltage = "HV"; }
 }
 
 # ---- point: a marked (I, t) the curves must respect. ---------------
@@ -110,7 +115,7 @@ relay R_FDR {
 grade {
     primary   = R_FDR:51;
     backup    = R_INC:51;
-    fault     = "F_lv_max";
+    fault     = "LV max";
     CTI_min_s = 0.30;
     upstream  = true;
 }
@@ -119,7 +124,7 @@ grade {
 annotate {
     primary = R_FDR:51;
     backup  = R_INC:51;
-    fault   = "F_lv_max";
+    fault   = "LV max";
     label   = "CTI";
 }
 

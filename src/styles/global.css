@@ -167,8 +167,14 @@ tc-app .picker {
    * of our short example labels, and allowed to grow further before
    * it starts competing with the buttons beside it.
    */
-  flex: 0 1 auto;
-  min-width: 34ch;
+  /*
+   * Prefers the full 34ch and keeps it whenever the pane allows, but
+   * can give ground before the buttons are pushed onto a second row --
+   * and, more importantly, before it overflows a narrow pane, which a
+   * hard 34ch floor did.
+   */
+  flex: 0 1 34ch;
+  min-width: 16ch;
   max-width: 46ch;
   font-family: inherit;
   font-size: 11px;
@@ -290,8 +296,23 @@ tc-app .diag-where:hover { opacity: 1; }
 tc-app .diag-code { opacity: 0.75; }
 tc-app .diag-msg { color: var(--tc-fg); }
 
+/*
+ * The toolbar row grows rather than clipping what will not fit.
+ *
+ * It was a fixed 32 px that never wrapped, so once the controls
+ * outgrew the pane -- a narrow split, a long study name in the picker,
+ * one more button -- the ones on the end were simply cut off and
+ * unreachable. A media query wrapped it on small *windows*, which does
+ * not help at all here: the splitter can make the pane narrow while
+ * the window is wide.
+ *
+ * `flex: 0 0 auto` with a minimum takes its height from its content,
+ * so a second row of buttons pushes the editor down instead of
+ * disappearing off the side.
+ */
 tc-app .side-title {
-  flex: 0 0 32px;
+  flex: 0 0 auto;
+  min-height: 32px;
   background: var(--tc-bg-elevated);
   color: var(--tc-fg-muted);
   border-bottom: 1px solid var(--tc-border);
@@ -301,11 +322,18 @@ tc-app .side-title {
   text-transform: uppercase;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
+  row-gap: 4px;
   white-space: nowrap;
 }
 tc-app .side-title-label { flex: 0 0 auto; }
-tc-app .side-title-spacer { flex: 1 1 auto; }
+/*
+ * Collapses to nothing before anything wraps, so the buttons stay
+ * right-aligned while they fit on one row and the row only grows once
+ * there is genuinely no space left.
+ */
+tc-app .side-title-spacer { flex: 1 1 0; min-width: 0; }
 tc-app .side-btn {
   flex: 0 0 auto;
   margin-left: 6px;

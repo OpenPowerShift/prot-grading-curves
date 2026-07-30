@@ -246,8 +246,20 @@ export interface Grade {
 /** A marked (I, t) coordinate -- inrush, motor start, damage point. */
 export interface StudyPoint {
   id: string;
+  /**
+   * Current in primary amps at `voltage`, or `NaN` when `condition`
+   * supplies it instead.
+   */
   I_A: number;
   t_s: number;
+  /**
+   * Named condition -- a fault or a scenario -- this marker stands at.
+   *
+   * One per point after resolution: a `point` naming several conditions
+   * becomes one `StudyPoint` each, so everything downstream handles a
+   * single current without knowing about the plural spelling.
+   */
+  condition?: string;
   label?: string;
   voltage?: string;
   voltage_kV?: number;
@@ -263,7 +275,13 @@ export interface Annotation {
   on_curve?: Ref;
   primary?: Ref;
   backup?: Ref;
-  fault?: string;
+  /**
+   * Named condition supplying the current, a fault or a scenario.
+   *
+   * One per annotation after resolution, as for {@link StudyPoint}: an
+   * `annotate` block naming several becomes one annotation each.
+   */
+  condition?: string;
   at_I_A?: number;
   label?: string;
   style: 'leader' | 'pin' | 'tag';
@@ -317,6 +335,20 @@ function member(host: AnyMembered, key: string): unknown {
 
 function has(host: AnyMembered, key: string): boolean {
   return host.members.some((m) => m.kind === 'scalar' && m.key === key);
+}
+
+/**
+ * The conditions one `annotate` or `point` block stands for.
+ *
+ * Always at least one entry, so the caller is a plain loop: a block
+ * naming no condition yields a single `undefined`, which is the
+ * unconditional form the language began with. Repeats are dropped --
+ * naming a fault twice should draw one annotation, not two on top of
+ * each other.
+ */
+function expandConditions(names: string[] | undefined): Array<string | undefined> {
+  if (!names || names.length === 0) return [undefined];
+  return [...new Set(names)];
 }
 
 /* ------------------------------------------------------------------ */
@@ -462,33 +494,50 @@ export function buildStudy(doc: Document): Study {
         });
         break;
       case 'point':
-        study.points.push({
-          id: item.id,
-          I_A: item.I_A,
-          t_s: item.t_s,
-          label: item.label,
-          voltage: item.voltage,
-          voltage_kV: item.voltage ? study.voltages.get(item.voltage)?.kV : undefined,
-          color: item.color,
-          shape: item.shape,
-          coords: item.coords,
-          description: item.description,
-        });
+        /*
+         * One `StudyPoint` per condition named, so that nothing
+         * downstream has to know a point could stand for several. With
+         * more than one the id is qualified, because it is the key
+         * duplicate detection and the hover readout work from.
+         */
+        {
+          /* Counted after de-duplication, so a name written twice still
+           * produces one unqualified marker. */
+          const conditions = expandConditions(item.conditions);
+          for (const condition of conditions) {
+            const suffix = conditions.length > 1 && condition ? ` · ${condition}` : '';
+            study.points.push({
+              id: `${item.id}${suffix}`,
+              I_A: item.I_A,
+              t_s: item.t_s,
+              condition,
+              label: item.label ? `${item.label}${suffix}` : undefined,
+              voltage: item.voltage,
+              voltage_kV: item.voltage ? study.voltages.get(item.voltage)?.kV : undefined,
+              color: item.color,
+              shape: item.shape,
+              coords: item.coords,
+              description: item.description,
+            });
+          }
+        }
         break;
       case 'annotate':
-        study.annotations.push({
-          /* Two references means a margin; one means a point. */
-          kind: item.primary && item.backup ? 'margin' : 'point',
-          on_curve: item.on_curve,
-          primary: item.primary,
-          backup: item.backup,
-          fault: item.fault,
-          at_I_A: item.at_I_A,
-          label: item.label,
-          style: item.style ?? 'leader',
-          color: item.color,
-          coords: item.coords,
-        });
+        for (const condition of expandConditions(item.conditions)) {
+          study.annotations.push({
+            /* Two references means a margin; one means a point. */
+            kind: item.primary && item.backup ? 'margin' : 'point',
+            on_curve: item.on_curve,
+            primary: item.primary,
+            backup: item.backup,
+            condition,
+            at_I_A: item.at_I_A,
+            label: item.label,
+            style: item.style ?? 'leader',
+            color: item.color,
+            coords: item.coords,
+          });
+        }
         break;
       case 'combine':
         study.combines.push({

@@ -9,6 +9,11 @@
 # Checking only the declared fault current cannot see this. The
 # `upstream = true` sweep is what surfaces it — try deleting that line
 # and watch the study go green while remaining wrong.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Mis-coordination demo";
@@ -23,8 +28,8 @@ system {
 }
 
 faults {
-    "F_bus" { I_A = 3.0 kA; }
-    "F_max" { I_A = 20.0 kA; }
+    "Bus fault" { I_A = 3.0 kA; }
+    "Max fault" { I_A = 20.0 kA; }
 }
 
 relay R_FEEDER {
@@ -58,7 +63,7 @@ relay R_INCOMER {
 grade {
     primary   = R_FEEDER:51;
     backup    = R_INCOMER:51;
-    fault     = "F_bus";
+    fault     = "Bus fault";
     CTI_min_s = 0.30;
     upstream  = true;
 }

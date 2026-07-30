@@ -9,6 +9,11 @@
 #      it is energised,
 #   3. sit BELOW the through-fault damage curve, or the transformer is
 #      not protected against the damage the curve describes.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Transformer inrush and damage";
@@ -28,9 +33,9 @@ system {
 }
 
 faults {
-    "F_lv_max" { I_A = 6.40 kA; voltage = "LV"; }
-    "F_lv_min" { I_A = 2.50 kA; voltage = "LV"; }
-    "F_hv_max" { I_A = 18.4 kA; voltage = "HV"; }
+    "LV max" { I_A = 6.40 kA; voltage = "LV"; }
+    "LV min" { I_A = 2.50 kA; voltage = "LV"; }
+    "HV max" { I_A = 18.4 kA; voltage = "HV"; }
 }
 
 # ---- transformer characteristic points -------------------------------
@@ -92,7 +97,7 @@ relay R_FDR_LV {
 grade {
     primary   = R_FDR_LV:51;
     backup    = R_TRF_HV:51;
-    fault     = "F_lv_max";
+    fault     = "LV max";
     CTI_min_s = 0.30;
     upstream  = true;          # verify the margin holds above the fault too
 }
@@ -104,14 +109,14 @@ grade {
 annotate {
     primary = R_FDR_LV:51;
     backup  = R_TRF_HV:51;
-    fault   = "F_lv_max";
+    fault   = "LV max";
     label   = "CTI";
 }
 
 annotate {
     primary = R_FDR_LV:51;
     backup  = R_TRF_HV:51;
-    fault   = "F_lv_min";
+    fault   = "LV min";
     label   = "CTI";
 }
 

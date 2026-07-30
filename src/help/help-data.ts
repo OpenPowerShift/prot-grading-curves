@@ -16,8 +16,9 @@ import { CURVES } from '../constants/curves.js';
 
 export interface HelpEntry {
   /** Where in the .tc source this construct lives. */
-  scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'relay'
-       | 'element' | 'stage' | 'device' | 'grade' | 'solve' | 'view' | 'page';
+  scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'scenario' | 'relay'
+       | 'element' | 'stage' | 'device' | 'grade' | 'solve' | 'annotate' | 'point'
+       | 'view' | 'page';
   /** One-line summary for the hover tooltip. */
   summary: string;
   /** Example value or fragment. */
@@ -40,7 +41,9 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   device:      M('top', 'Auxiliary TCC asset: fuse, cable, transformer damage, recloser, motor.', 'device "ferraz_abc_100a" { kind = fuse; ... }'),
   grade:       M('top', 'A grading pair: primary / backup / fault / margin, optionally solved.', 'grade { primary = R_FDR:51; backup = R_INC:51; ... }'),
   combine:     M('top', 'Synthetic curve -- pointwise min/max/sum of source curves.', 'combine { name = "OR"; sources = [R_FDR:51, R_INC:51]; as = envelope_min; }'),
-  annotate:    M('top', 'A leader-line annotation on a curve at a specific current.', 'annotate { on_curve = R_FDR:51; at_I_A = 8 kA; label = "Trip"; }'),
+  scenario:    M('top', 'One condition with its currents at every level, so nothing is referred across a transformer. As a field on grade, annotate or point, it names one.', 'scenario "LV earth fault" { type = single_phase_earth; level "LV" { I_A = 460 A; I0_A = 153 A; } }'),
+  annotate:    M('top', 'A leader-line annotation on a curve at a specific current, or the margin between two.', 'annotate { on_curve = R_FDR:51; at_I_A = 8 kA; label = "Trip"; }'),
+  point:       M('top', 'A marked (current, time) coordinate; the current may come from a named condition.', 'point "inrush" { I_A = 2.4 kA; t_s = 0.1; label = "Inrush"; }'),
   view:        M('top', 'Display-only directives: voltage frame, axis mode, stages mode.', 'view { voltage = "HV"; current_min = 100 A; }'),
   page:        M('top', 'Page geometry + theme + title. Output page layout.', 'page { size = "A4"; orientation = "landscape"; title = "..."; }'),
   notes:       M('top', 'Free-form notes attached to the document.', 'notes { revision = "draft"; }'),
@@ -103,7 +106,10 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   // grade
   primary:     M('grade', 'Primary side of the grading pair (relay-ref or device-ref).', 'primary = R_FDR:51;'),
   backup:      M('grade', 'Backup side of the grading pair.', 'backup = R_INC:51;'),
-  fault:       M('grade', 'Named fault input for margin computation.', 'fault = "F1";'),
+  fault:       M('grade', 'Named condition supplying the current. On annotate and point it takes one name or a list, and `faults` / `scenario` / `scenarios` are the same key.', 'fault = "F1";'),
+  /* `scenario` as a *field* shares the word with the block it names,
+   * and hover is keyed on the bare word, so one entry covers both. */
+  scenarios:   M('annotate', 'Several conditions at once: drawn once per condition, each at its own current.', 'scenarios = ["system normal", "one tx out"];'),
   CTI_min_s:   M('grade', 'Minimum Coordination Time Interval (default project CTI).', 'CTI_min_s = 0.30;'),
   margin_s:    M('grade', 'Target margin for the grade block.', 'margin_s = 0.30;'),
   tolerance_pct: M('grade', 'Allowed slippage on margin_s for solve (default 0).', 'tolerance_pct = 5;'),
@@ -162,8 +168,8 @@ export const CURVE_HELP: Record<string, string> = (() => {
  * left margin of a .tc file).
  */
 export const TOP_BLOCK_KEYWORDS = [
-  'meta', 'system', 'faults', 'relay', 'element', 'device',
-  'grade', 'combine', 'annotate', 'view', 'page', 'notes',
+  'meta', 'system', 'faults', 'scenario', 'relay', 'element', 'device',
+  'grade', 'combine', 'annotate', 'point', 'view', 'page', 'notes',
 ] as const;
 
 /**
@@ -176,29 +182,49 @@ export const TOP_BLOCK_KEYWORDS = [
  */
 export const BLOCK_FIELDS: Record<string, string[]> = {
   meta:        ['project', 'study', 'engineer', 'date', 'standard', 'CTI_min_s'],
-  system:      ['voltages', 'frequency_Hz', 'base_MVA', 'grounding', 'I_base_A', 'I_units'],
+  system:      ['voltages', 'zero_sequence', 'frequency_Hz', 'base_MVA', 'grounding',
+               'I_base_A', 'I_units'],
   'system.voltages': ['kV', 'description'],
-  faults:      ['I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 'voltage', 'description'],
-  relay:       ['voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults',
+  faults:      ['I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 'type', 'voltage',
+               'description'],
+  scenario:    ['type', 'description', 'level'],
+  'scenario.level': ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'current_pct'],
+  relay:       ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults',
                'comment', 'description', 'reference'],
-  element:     ['function', 'curve', 'formula', 'flex_points', 'I_pu', 'I_units',
-               'current_pct', 'tms', 't_delay', 't_reset', 'char_angle', 'reset',
-               'directional', 'stages', 'comment'],
-  stage:       ['function', 'curve', 'formula', 'flex_points', 'I_pu', 'I_units',
-               'current_pct', 'tms', 't_delay', 'char_angle', 'reset',
+  element:     ['name', 'function', 'measures', 'curve', 'formula', 'flex_points',
+               'I_pu', 'I_units', 'current_pct', 'tms', 't_delay', 't_reset',
+               'char_angle', 'reset', 'directional', 'stages', 'comment'],
+  stage:       ['function', 'measures', 'curve', 'formula', 'flex_points', 'I_pu',
+               'I_units', 'current_pct', 'tms', 't_delay', 'char_angle', 'reset',
                'directional', 'comment'],
-  device:      ['kind', 'maker', 'model', 'rating_A', 'rating_kV', 'rating_MVA',
+  device:      ['kind', 'voltage', 'maker', 'model', 'rating_A', 'rating_kV', 'rating_MVA',
                'flex_points', 'min_melt', 'total_clear', 't_delay',
                'comment', 'description', 'reference'],
-  grade:       ['primary', 'backup', 'fault', 'CTI_min_s', 'margin_s',
-               'tolerance_pct', 'solve', 'comment'],
+  grade:       ['primary', 'backup', 'fault', 'scenario', 'CTI_min_s', 'margin_s',
+               'tolerance_pct', 'upstream', 'upstream_to_A', 'solve', 'comment'],
   solve:       ['strategy', 'tolerance_pct', 'free'],
-  view:        ['voltage', 'axis', 'two_axes', 'reference_ct', 'stages',
-               'current_min', 'current_max', 'time_min', 'time_max'],
-  page:        ['size', 'orientation', 'theme', 'watermark', 'title', 'footer',
-               'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders'],
+  view:        ['voltage', 'axis', 'quantity', 'condition', 'two_axes', 'reference_ct',
+               'stages', 'current_min', 'current_max', 'time_min', 'time_max'],
+  page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
+               'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders',
+               'faults'],
+  /* `page` sub-blocks, so asking inside one lists what it accepts
+   * rather than repeating the page's own fields. */
+  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents'],
+  axes:        ['color', 'grid_color', 'label_color', 'label_size_px', 'tick_size_px',
+               'frame', 'mirror'],
+  curves:      ['palette', 'line_width_px', 'auto_color'],
+  points:      ['color', 'shape', 'size_px', 'outline'],
+  leaders:     ['show', 'style', 'width_px', 'color', 'label_offset_px'],
+  title:       ['text', 'subtitle', 'font_size_px', 'color', 'align'],
+  footer:      ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
   combined:    ['name', 'sources', 'as', 'color', 'style', 'label'],
-  annotate:    ['on_curve', 'at_I_A', 'label', 'style'],
+  /* `fault`/`scenario` (and their plurals) all name conditions: the
+   * current comes from the study rather than being typed in. */
+  annotate:    ['on_curve', 'at_I_A', 'primary', 'backup', 'fault', 'faults',
+               'scenario', 'scenarios', 'label', 'style', 'color', 'coords'],
+  point:       ['I_A', 't_s', 'fault', 'faults', 'scenario', 'scenarios', 'voltage',
+               'label', 'shape', 'color', 'coords', 'description'],
   notes:       ['engineer', 'date', 'revision'],
 };
 
@@ -214,6 +240,8 @@ export const SCOPE_OF_TOP_BLOCK: Record<string, keyof typeof BLOCK_FIELDS> = {
   view: 'view',
   combine: 'combined',
   annotate: 'annotate',
+  point: 'point',
+  scenario: 'scenario',
   notes: 'notes',
 };
 
@@ -290,6 +318,32 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
     V('"secondary"', 'Current axis in secondary amps'),
     V('"multiples"', 'Current axis in multiples of pickup'),
   ],
+  /* view.quantity -- which current the abscissa is. */
+  quantity: [
+    V('any', 'Every curve on one current axis, whatever it measures (default)'),
+    V('phase', 'Phase current'),
+    V('I2', 'Negative-sequence component'),
+    V('3I2', 'Three times the negative-sequence component'),
+    V('I0', 'Zero-sequence component'),
+    V('3I0', 'Residual current, as a residual CT connection presents it'),
+    V('I1', 'Positive-sequence component'),
+  ],
+  /* element.measures -- which current a pickup is expressed in. */
+  measures: [
+    V('phase', 'Phase current'),
+    V('I2', 'Negative sequence, as the IED is scaled'),
+    V('3I2', 'Three times negative sequence'),
+    V('I0', 'Zero-sequence component'),
+    V('3I0', 'Residual 3*I0 (the earth-fault default)'),
+    V('I1', 'Positive-sequence component'),
+  ],
+  /* fault / scenario type -- fixes the ratios between the quantities. */
+  type: [
+    V('three_phase', 'Balanced: positive sequence only'),
+    V('two_phase', 'Phase to phase: I1 = I2 = I_A/sqrt(3), no earth path'),
+    V('single_phase_earth', 'Phase to earth: I1 = I2 = I0 = I_A/3'),
+    V('two_phase_earth', 'Two phases to earth: depends on Z0, so declare the components'),
+  ],
   orientation: [V('"portrait"', 'Tall sheet'), V('"landscape"', 'Wide sheet (default)')],
   theme: [
     V('"light"', 'Light background, for print and filing'),
@@ -326,6 +380,12 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
     V('"circle"', 'Round marker'), V('"square"', 'Square marker'),
     V('"diamond"', 'Diamond marker'), V('"triangle"', 'Triangle marker'),
     V('"cross"', 'Plus-shaped marker'), V('"x"', 'X-shaped marker'),
+  ],
+  /* page.legend.currents -- which amps the legend quotes a pickup in. */
+  currents: [
+    V('"primary"', 'Primary amps, as declared (default)'),
+    V('"secondary"', 'Secondary amps: the figure set in the relay. Needs ct_ratio'),
+    V('"both"', 'Primary with the secondary in brackets'),
   ],
   palette: [
     V('"default"', 'Validated categorical palette'),

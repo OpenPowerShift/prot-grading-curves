@@ -212,4 +212,57 @@
                               a study would read as graded when it is
                               not. Implementations must adopt the
                               corrected values.
+
+| 2026-07-30 | 0.1.0-draft | *Conditions on the drawing.* A `scenario`
+                              drove grading but drew nothing, so a
+                              margin report could cite a condition that
+                              appeared nowhere on the sheet.
+
+                              * _Conditions on the drawing_ added: a
+                                scenario is marked at its own declared
+                                figure for the level being drawn,
+                                unreferred. A single-level scenario is
+                                referred like a fault; one silent about
+                                the level drawn is not marked, and the
+                                omission is stated.
+                              * `annotate` and `point` accept condition
+                                references -- `fault`, `faults`,
+                                `scenario`, `scenarios`, each taking one
+                                name or a list -- and are drawn once per
+                                condition named.
+                              * `point-block` and the full
+                                `annotate-member` list added to the
+                                grammar; `scenario-block` and
+                                `point-block` added to `top-level`,
+                                where both were missing.
+                              * Diagnostics added:
+                                `POINT_CURRENT_AND_CONDITION`, and
+                                `UNRESOLVED_REFERENCE` /
+                                `SCENARIO_LEVEL_MISSING` extended to
+                                marks.
+                              * Noted that a curve still crosses voltage
+                                levels by the turns ratio while a
+                                scenario's figures need not, so the two
+                                can disagree on a cross-voltage sheet.
+
+| 2026-07-30 | 0.1.0-draft | *Correction -- curves and the referral
+                              rule.* Condition rules and marked points
+                              were held to the zero-sequence referral
+                              rule; element curves were not. An element's
+                              conversion factor was taken from the level
+                              the *sheet* was drawn in rather than the
+                              element's own, so an HV residual element
+                              behind a delta was placed on an LV phase
+                              sheet from LV's residual-to-phase ratio and
+                              appeared as a working backup, while the
+                              margin report for the same condition said
+                              `NO_OPERATION`. Two sheets of one study
+                              contradicted each other.
+
+                              An element is now drawn only where the
+                              current it measures can reach the level
+                              being drawn, and only where it carries any
+                              of that current at its own level under the
+                              depicted condition. Suppressed elements are
+                              named with the reason rather than counted.
 |===

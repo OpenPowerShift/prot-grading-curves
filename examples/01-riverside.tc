@@ -5,6 +5,11 @@
 # HV-side transformer-incomer OC element (51). One instantaneous stage
 # (50) on the feeder trips on the local bus fault without coordinating
 # with the upstream relay.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project  = "Riverside 33/11";
@@ -24,9 +29,9 @@ system {
 }
 
 faults {
-    "F1_lv_max"  { I_A =  6400 A; voltage = "LV"; }
-    "F2_hv_max"  { I_A = 18400 A; voltage = "HV"; }
-    "F1_lv_min"  { I_A =  1500 A; voltage = "LV"; }
+    "LV max"  { I_A =  6400 A; voltage = "LV"; }
+    "HV max"  { I_A = 18400 A; voltage = "HV"; }
+    "LV min"  { I_A =  1500 A; voltage = "LV"; }
 }
 
 relay R_FDR_110 {
@@ -66,7 +71,7 @@ relay R_TRF_INC {
 grade {
     primary  = R_FDR_110:51;
     backup   = R_TRF_INC:51;
-    fault    = "F1_lv_max";
+    fault    = "LV max";
     margin_s = 0.30;
     solve {
         strategy      = "tight";

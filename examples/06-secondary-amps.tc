@@ -8,6 +8,11 @@
 #
 # `view { axis = "secondary" }` labels the current axis to match, so the
 # plot can be checked against the same sheet.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Plant 11 kV — settings in secondary amps";
@@ -23,8 +28,8 @@ system {
 }
 
 faults {
-    "F_bus"  { I_A = 7.5 kA; min_A = 4.0 kA; max_A = 9.0 kA; }
-    "F_far"  { I_A = 1.8 kA; }
+    "Bus fault"  { I_A = 7.5 kA; min_A = 4.0 kA; max_A = 9.0 kA; }
+    "Remote fault"  { I_A = 1.8 kA; }
 }
 
 relay R_INCOMER {
@@ -67,7 +72,7 @@ relay R_FEEDER {
 grade {
     primary   = R_FEEDER:51;
     backup    = R_INCOMER:51;
-    fault     = "F_bus";
+    fault     = "Bus fault";
     CTI_min_s = 0.30;
     upstream  = true;
 }

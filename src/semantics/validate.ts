@@ -25,6 +25,7 @@ import {
   isMeasuredQuantity,
   measuredQuantityOf,
 } from './quantity.js';
+import { conditionNames, resolveCondition } from './condition.js';
 
 export type Severity = 'error' | 'warning' | 'info';
 
@@ -100,6 +101,7 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateDevices(ctx);
   validateCombines(ctx);
   validateGrades(ctx);
+  validateAnnotations(ctx);
   validatePoints(ctx);
   validateView(ctx);
   validatePage(ctx);
@@ -822,9 +824,63 @@ function validateGrades(ctx: Ctx): void {
 /* View and page                                                       */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A named condition exists, and has something to say where it is used.
+ *
+ * Shared by `point` and `annotate`, which refer to conditions the same
+ * way. The second check is the one worth having: a scenario declares
+ * its currents per level, so naming one from a marker on a level it is
+ * silent about is not a rendering nicety to skip quietly -- it means
+ * the study asked for a position that was never measured.
+ */
+function checkConditionReference(
+  ctx: Ctx,
+  name: string,
+  where: string,
+  level: string | undefined,
+  loc: SourceLocation | undefined,
+): void {
+  const resolved = resolveCondition(ctx.study, name, level);
+  if (!resolved) {
+    add(ctx, 'UNRESOLVED_REFERENCE', 'error',
+      `${where} references "${name}", which is declared as neither a fault nor a scenario` +
+      didYouMean(suggest(name, conditionNames(ctx.study))),
+      loc, name.length);
+    return;
+  }
+
+  if (resolved.kind === 'scenario' && resolved.voltage == null) {
+    add(ctx, 'SCENARIO_LEVEL_MISSING', 'error',
+      `${where} references scenario "${name}", which declares no currents at ` +
+      `${level ?? 'the level it is drawn on'}` +
+      (resolved.levels.length > 0 ? ` (it declares ${resolved.levels.join(', ')})` : ''),
+      loc, name.length);
+  }
+}
+
+function validateAnnotations(ctx: Ctx): void {
+  if (!ctx.doc) return;
+
+  for (const item of ctx.doc.items) {
+    if (item.type !== 'annotate') continue;
+    for (const name of item.conditions ?? []) {
+      /*
+       * Judged at the level of whatever the annotation points at: each
+       * side of a margin is evaluated in its own frame, exactly as
+       * grading does, so that is the level a scenario has to cover.
+       */
+      const ref = item.on_curve ?? item.primary ?? item.backup;
+      const target = ref ? resolveRef(ctx.study, ref) : undefined;
+      const level = target?.element?.voltage ?? target?.device?.voltage;
+      checkConditionReference(ctx, name, 'annotate', level, item.loc);
+    }
+  }
+}
+
 function validatePoints(ctx: Ctx): void {
   const names = [...ctx.study.voltages.keys()];
   const seen = new Set<string>();
+  const viewLevel = ctx.study.view?.voltage?.trim().replace(/^"|"$/g, '');
 
   for (const point of ctx.study.points) {
     if (seen.has(point.id)) {
@@ -833,9 +889,24 @@ function validatePoints(ctx: Ctx): void {
     }
     seen.add(point.id);
 
-    if (!(point.I_A > 0)) {
+    /*
+     * The current comes from one place or the other. Two sources for one
+     * number is a precedence rule a reader would have to remember, and
+     * whichever way it fell the other figure would sit in the source
+     * looking as though it did something.
+     */
+    if (point.condition && Number.isFinite(point.I_A)) {
+      add(ctx, 'POINT_CURRENT_AND_CONDITION', 'error',
+        `point "${point.id}" declares I_A and names the condition ` +
+        `"${point.condition}"; they are alternatives -- drop one`,
+        undefined);
+    } else if (point.condition) {
+      checkConditionReference(ctx, point.condition, `point "${point.id}"`,
+        point.voltage ?? viewLevel, undefined);
+    } else if (!(point.I_A > 0)) {
       add(ctx, 'POINT_CURRENT_INVALID', 'error',
-        `point "${point.id}" declares I_A = ${point.I_A}; it must be strictly positive`,
+        `point "${point.id}" declares I_A = ${point.I_A}; it must be strictly positive, ` +
+        'or name a fault or scenario to take it from',
         undefined);
     }
     if (!(point.t_s > 0)) {

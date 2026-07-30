@@ -30,6 +30,7 @@ import type {
   LegendStyle,
   PageBlock,
   PageLegend,
+  LegendCurrents,
   SystemBlock,
   ViewBlock,
 } from '../parser/ast.js';
@@ -38,7 +39,7 @@ import { ticks, formatSi } from './ticks.js';
 import { paletteFor, paletteFromList, strokeDashFor, type Palette } from './palette.js';
 import { measuredQuantityOf } from '../semantics/quantity.js';
 import {
-  faultTypeLabel, isFaultType, quantityIsAbsent, type FaultType,
+  faultTypeLabel, isFaultType, quantityIsAbsent,
 } from '../constants/sequence.js';
 import { LabelPlacer, type Placement, type Rect } from './labels.js';
 import {
@@ -46,11 +47,11 @@ import {
   elementQuantity,
   isMeasuredQuantity,
   resolveCurrent,
-  type SequenceCurrents,
   quantityLabel,
   survivesVoltageReferral,
   type MeasuredQuantity,
 } from '../semantics/quantity.js';
+import { resolveCondition, type ResolvedCondition } from '../semantics/condition.js';
 import { theme as loadTheme, type ThemeName } from './theme.js';
 import { buildStudy, allElements, resolveRef, type Annotation, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
 import { tTripStage } from '../semantics/curves.js';
@@ -221,11 +222,22 @@ interface CurveEntry {
   band?: boolean;
 }
 
+/**
+ * One condition marked on the plot: a `fault` or a `scenario`.
+ *
+ * Both draw the same furniture -- a vertical rule, a name below the
+ * axis, a legend entry -- because to a reader they are the same thing:
+ * a current the study says something happens at. They differ in where
+ * the figure came from, which the entry records so the legend can be
+ * honest about it.
+ */
 interface FaultEntry {
   name: string;
+  /** Which form declared it. */
+  kind: 'fault' | 'scenario';
   /** Author's note on what the fault is; shown under the legend entry. */
   description?: string;
-  I_A: number;            // original fault current, declared voltage
+  I_A: number;            // original current, at the level it was declared on
   voltage?: string;
   voltage_kV?: number;
   voltageLabel?: string;
@@ -404,36 +416,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /** Named level the sheet is drawn in, for the zero-sequence lookup. */
   const viewLevelName = view?.voltage?.trim().replace(/^"|"$/g, '');
 
+  /*
+   * A scenario holds one set of figures per level and the sheet is drawn
+   * in one frame, so the ratios come from that frame's set -- never from
+   * another level's, which would mix two turns ratios into one number.
+   */
   const conditionName = opts.view?.condition;
-  const condition: { type?: FaultType; currents: SequenceCurrents } | null = (() => {
-    if (!conditionName) return null;
-
-    const fault = study.faults.get(conditionName);
-    if (fault) {
-      return {
-        type: fault.type,
-        currents: {
-          phase: fault.I_A, I2: fault.I2_A, I0: fault.I0_A, residual: fault.earth_A,
-        },
-      };
-    }
-
-    const scenario = study.scenarios.get(conditionName);
-    if (scenario) {
-      /* A scenario holds one set per level; the sheet is drawn in one
-       * frame, so it is that frame's set the ratios come from. */
-      const levelName = view?.voltage?.trim().replace(/^"|"$/g, '');
-      const level = levelName ? scenario.levels.get(levelName) : undefined;
-      const any = level ?? [...scenario.levels.values()][0];
-      return {
-        type: scenario.type,
-        currents: any
-          ? { phase: any.I_A, I1: any.I1_A, I2: any.I2_A, I0: any.I0_A, residual: any.earth_A }
-          : {},
-      };
-    }
-    return null;
-  })();
+  const condition: ResolvedCondition | null =
+    conditionName ? resolveCondition(study, conditionName, viewLevelName) : null;
 
   /* Per-relay metadata cache (relay id -> voltage kV) */
   const relayVoltages = new Map<string, number>();
@@ -493,6 +483,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
         faults.push({
           name: f.name,
+          kind: 'fault',
           description: f.description,
           I_A: declared,
           voltage: f.voltage,
@@ -502,6 +493,101 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         });
       }
     }
+  }
+
+  /**
+   * Scenarios the sheet cannot mark, and why.
+   *
+   * Stated in the legend rather than dropped. A scenario used only for
+   * grading and never drawn was the state before this: the margin
+   * report cited a condition that appeared nowhere on the sheet, so a
+   * reader had no way to see where it stood.
+   */
+  const unmarkedScenarios: string[] = [];
+
+  /**
+   * Marked points the sheet's own quantity cannot carry to this level.
+   *
+   * A point is a current on a level, and reaching the level the sheet is
+   * drawn in means crossing whatever is between them. Phase current
+   * crosses by ampere-turns; residual current may not cross at all. Left
+   * unchecked, a residual point declared on the star side appeared on a
+   * delta-side residual sheet at the turns ratio -- a marker standing at
+   * a current that cannot exist there.
+   */
+  const unreferrablePoints: string[] = [];
+
+  /*
+   * Scenario rules.
+   *
+   * A scenario declares its own figure for each level, so the rule
+   * stands at *this level's* declared current with nothing referred
+   * across a transformer -- which is the reason to write one instead of
+   * a fault. A scenario silent about this level therefore has no
+   * position here at all, and saying so is the only honest answer;
+   * borrowing another level's number would put the rule out by the
+   * turns ratio.
+   */
+  for (const scenario of study.scenarios.values()) {
+    const c = resolveCondition(study, scenario.name, viewLevelName);
+    if (!c) continue;
+
+    if (c.voltage == null) {
+      unmarkedScenarios.push(
+        `${scenario.name} declares no currents at ${viewLevelName ?? 'this level'}`
+        + (c.levels.length > 0 ? ` (has ${c.levels.join(', ')})` : ''),
+      );
+      continue;
+    }
+
+    const resolved = resolveCurrent(viewQuantity, c.currents, c.type);
+    if (resolved == null) {
+      unmarkedScenarios.push(
+        `${scenario.name} declares no ${quantityLabel(viewQuantity)} at ${c.voltage}`,
+      );
+      continue;
+    }
+
+    const declared = resolved.value;
+    if (!(declared > 0) || !Number.isFinite(declared)) {
+      /* Zero is a real answer -- a residual blocked by a delta -- and it
+       * has no place on a log axis, so it is reported, not plotted. */
+      unmarkedScenarios.push(
+        `${scenario.name} carries no ${quantityLabel(viewQuantity)} at ${c.voltage}`,
+      );
+      continue;
+    }
+
+    const V_level = c.voltage_kV ?? voltageKvs.get(c.voltage);
+    /*
+     * Referred only when the sheet is drawn in a frame the scenario did
+     * not declare -- which `resolveCondition` allows for a single-level
+     * scenario, where there is nothing to be ambiguous about.
+     */
+    const I_view = V_level && V_view_kV && V_level !== V_view_kV
+      ? declared * (V_level / V_view_kV)
+      : declared;
+    if (V_level && V_view_kV && V_level !== V_view_kV
+        && !survivesVoltageReferral(viewQuantity, study, c.voltage, viewLevelName)) {
+      unmarkedScenarios.push(
+        `${scenario.name} is declared at ${c.voltage}, and ${quantityLabel(viewQuantity)} `
+        + 'does not cross to this level',
+      );
+      continue;
+    }
+
+    if (I_view * 0.8 < I_lo) I_lo = I_view * 0.8;
+    if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
+    faults.push({
+      name: scenario.name,
+      kind: 'scenario',
+      description: scenario.description,
+      I_A: declared,
+      voltage: c.voltage,
+      voltage_kV: V_level,
+      voltageLabel: `${c.voltage} · ${V_level ?? '?'} kV`,
+      I_view,
+    });
   }
 
   /*
@@ -602,6 +688,23 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const mirrorAxes = pageAxes?.mirror === true;
   const legendMode = resolveLegendMode(opts.page?.legend);
+
+  /** Which amps the legend quotes pickups in; see `pickupLabel`. */
+  const declaredCurrents = opts.page?.legend?.currents;
+  const legendCurrents: LegendCurrents | undefined =
+    declaredCurrents === 'primary' || declaredCurrents === 'secondary'
+      || declaredCurrents === 'both'
+      ? declaredCurrents
+      : undefined;
+
+  /**
+   * Elements asked for in secondary amps that carry no CT ratio.
+   *
+   * Named in the legend rather than silently left in primary: a sheet
+   * that says it is in secondary amps and shows a primary figure is
+   * off by the ratio, which is the sort of error that reaches a relay.
+   */
+  const missingCtRatio = new Set<string>();
 
   const pageTitle = opts.page?.title;
   const titleText = typeof pageTitle === 'string' ? pageTitle : pageTitle?.text;
@@ -818,8 +921,36 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   /**
+   * Current a named condition gives, in one level's own frame.
+   *
+   * A fault is one figure at one level, so reaching another level means
+   * referring it by ampere-turns -- and only where the quantity survives
+   * the windings between them. A scenario needs none of that when it
+   * declares the level asked for, which is the whole reason to write
+   * one: the lookup returns that level's own figures and the referral
+   * below is a no-op.
+   */
+  const conditionCurrentAt = (
+    name: string,
+    voltage: string | undefined,
+    quantity: MeasuredQuantity,
+  ): number | null => {
+    const c = resolveCondition(study, name, voltage);
+    if (!c) return null;
+
+    const resolved = resolveCurrent(quantity, c.currents, c.type);
+    if (resolved == null) return null;
+
+    const fromKv = c.voltage_kV;
+    const levelKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
+    if (fromKv == null || levelKv == null || fromKv === levelKv) return resolved.value;
+    if (!survivesVoltageReferral(quantity, study, c.voltage, voltage)) return null;
+    return resolved.value * (fromKv / levelKv);
+  };
+
+  /**
    * Current an annotation refers to, in the referenced device's own
-   * frame. A named `fault` is projected onto that level; a bare
+   * frame. A named condition is projected onto that level; a bare
    * `at_I_A` is taken as already being in it.
    */
   const annotationCurrent = (
@@ -827,8 +958,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     annotation: Annotation,
     voltage: string | undefined,
     /**
-     * What the annotated element measures. A named fault is resolved to
-     * *that* quantity, so an earth-fault element is annotated at the
+     * What the annotated element measures. A named condition is resolved
+     * to *that* quantity, so an earth-fault element is annotated at the
      * residual and a negative-sequence element at `I2`.
      *
      * This used to take `fault.I_A` unconditionally, which put every
@@ -838,23 +969,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     quantity: MeasuredQuantity = 'phase',
   ): number | null => {
-    if (annotation.fault) {
-      const fault = study.faults.get(annotation.fault);
-      if (!fault) return null;
-
-      const resolved = resolveCurrent(
-        quantity,
-        { phase: fault.I_A, I2: fault.I2_A, I0: fault.I0_A, residual: fault.earth_A },
-        isFaultType(fault.type) ? fault.type : undefined,
-      );
-      if (resolved == null) return null;
-
-      /* Refer it to the element's own level, as grading does. */
-      const faultKv = fault.voltage_kV;
-      const levelKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
-      if (faultKv == null || levelKv == null || faultKv === levelKv) return resolved.value;
-      if (!survivesVoltageReferral(quantity, study, fault.voltage, voltage)) return null;
-      return resolved.value * (faultKv / levelKv);
+    if (annotation.condition) {
+      return conditionCurrentAt(annotation.condition, voltage, quantity);
     }
     return Number.isFinite(annotation.at_I_A) ? annotation.at_I_A! : null;
   };
@@ -901,9 +1017,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const pickupLabel = (stage: Stage, element: Element): string => {
     if (stage.I_pu_A == null || !Number.isFinite(stage.I_pu_A)) return '';
     const primaryA = formatSi(stage.I_pu_A, 'A');
-    if (axisMode !== 'secondary' || !element.ct_ratio) return primaryA;
-    const secondary = stage.I_pu_A / element.ct_ratio;
-    return `${primaryA} (${trimZeros(secondary)} A sec)`;
+
+    /*
+     * A study is written in primary amps because that is what the fault
+     * study gives, but the number an engineer types into the relay is
+     * the secondary one. `page { legend { currents } }` asks for that
+     * figure whatever the abscissa is doing -- the two are separate
+     * questions, and a sheet taken to site wants the settings in the
+     * units of the settings sheet.
+     *
+     * Defaults to today's rule: primary, with the secondary in brackets
+     * only when the axis itself is in secondary amps.
+     */
+    const want = legendCurrents ?? (axisMode === 'secondary' ? 'both' : 'primary');
+    if (want === 'primary') return primaryA;
+
+    if (!element.ct_ratio) {
+      /* Nothing to convert with. Named once in the legend rather than
+       * quietly showing primary amps under a "secondary" heading. */
+      missingCtRatio.add(element.label);
+      return primaryA;
+    }
+
+    const secondary = `${trimZeros(stage.I_pu_A / element.ct_ratio)} A sec`;
+    return want === 'secondary' ? secondary : `${primaryA} (${secondary})`;
   };
 
   /** Legend detail for one stage, as discrete fields. */
@@ -995,6 +1132,22 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const offAxisElements: string[] = [];
   /** Elements drawn against a quantity other than the one they measure. */
   const convertedElements: string[] = [];
+  /**
+   * Elements whose own current cannot reach this sheet, named one by
+   * one with the reason.
+   *
+   * Distinct from `offAxisElements`, which is about the abscissa. These
+   * are about the *network*: a residual element behind a delta measures
+   * a current the sheet's level does not carry, so the objection is not
+   * that the axis is inconvenient but that the element cannot operate.
+   * Counted rather than named, a reader would have no way to tell which
+   * relay had gone missing from a study that grades against it.
+   *
+   * Keyed on the label, because `axisFactorFor` is asked again for every
+   * annotation that points at the element and each answer would
+   * otherwise add the same sentence to the legend.
+   */
+  const blockedElements = new Map<string, string>();
 
   /**
    * Element units per unit of the axis quantity.
@@ -1009,6 +1162,53 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     const measures = elementQuantity(element.stages);
     if (measures == null || measures === 'mixed') return null;
+
+    /*
+     * Can what this element measures reach this sheet at all?
+     *
+     * Asked before anything about the axis, and before the shortcut for
+     * an element already measuring the axis quantity, because it is a
+     * question about the network rather than about the drawing. Zero
+     * sequence does not cross a delta, so an HV residual element has no
+     * position on an LV sheet whatever quantity that sheet is drawn
+     * against -- and the turns ratio would happily give it one.
+     *
+     * The same rule the fault rules and the marked points obey. Curves
+     * were the one thing still exempt from it: on a phase sheet in the
+     * star-side frame, an HV `51G` was drawn from the *sheet's* level's
+     * residual-to-phase ratio, a level the element is not on, and
+     * appeared as a working backup while the grading report for the same
+     * condition said NO_OPERATION.
+     */
+    const sameFrame = element.voltage_kV == null || V_view_kV == null
+      || element.voltage_kV === V_view_kV;
+    if (!sameFrame
+        && !survivesVoltageReferral(measures, study, element.voltage, viewLevelName)) {
+      blockedElements.set(element.label,
+        `${element.label} measures ${quantityLabel(measures)}, which does not cross `
+        + `${element.voltage} to ${viewLevelName ?? 'this level'}`);
+      return null;
+    }
+
+    /*
+     * And does it carry any of that current at *its own* bus under this
+     * condition? The ratios below come from the level the sheet is drawn
+     * in, which for an element on another level answers a question
+     * about the wrong bus.
+     */
+    if (condition && conditionName && element.voltage && element.voltage !== condition.voltage) {
+      const atOwnLevel = resolveCondition(study, conditionName, element.voltage);
+      const own = atOwnLevel
+        ? resolveCurrent(measures, atOwnLevel.currents, atOwnLevel.type)
+        : null;
+      if (own != null && !(Math.abs(own.value) > 0)) {
+        blockedElements.set(element.label,
+          `${element.label} carries no ${quantityLabel(measures)} at ${element.voltage} `
+          + `under ${conditionName}`);
+        return null;
+      }
+    }
+
     if (measures === axisQuantity) return 1;
 
     /* Without a condition there are no ratios, so nothing converts. */
@@ -1031,16 +1231,31 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * residual element behind a delta, whose condition states
      * `I0_A = 0`. Left as a number it became a divisor of zero, and the
      * curve was counted as converted and then quietly not drawn.
+     *
+     * Reported as what it is. "Not on this axis" is true but weak: the
+     * element is not missing because the abscissa is inconvenient, it is
+     * missing because there is none of its current to measure.
      */
+    if (factor === 0) {
+      blockedElements.set(element.label,
+        `${element.label} carries no ${quantityLabel(measures)}`
+        + `${condition.voltage ? ` at ${condition.voltage}` : ''}`
+        + `${conditionName ? ` under ${conditionName}` : ''}`);
+      return null;
+    }
     if (factor == null || !(factor > 0) || !Number.isFinite(factor)) return null;
 
     return factor;
   };
 
   for (const element of allElements(study)) {
+    const blockedBefore = blockedElements.size;
     const factor = axisFactorFor(element);
     if (factor == null) {
-      offAxisElements.push(element.label);
+      /* One reason each: an element the network keeps off the sheet has
+       * already been named, and counting it again as merely off-axis
+       * would state a second, weaker reason for the same absence. */
+      if (blockedElements.size === blockedBefore) offAxisElements.push(element.label);
       continue;
     }
     if (factor !== 1) convertedElements.push(element.label);
@@ -1414,7 +1629,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const dash = faultDash(i);
     out.push(
       `<line x1="${px}" y1="${topMargin}" x2="${px}" y2="${topMargin + plotH}" class="tc-fault" ` +
-      `data-fault="${escapeXml(f.name)}" data-current="${I}" ` +
+      /* `data-fault` and `data-current` stay adjacent: they are scraped
+       * as a pair, and a new attribute between them breaks that. */
+      `data-fault="${escapeXml(f.name)}" data-current="${I}" data-kind="${f.kind}" ` +
       `stroke="${faultColour}" stroke-opacity="0.7" stroke-width="${faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
@@ -1475,6 +1692,23 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * rather than each avoiding only the frame.
    */
   const placer = new LabelPlacer({ x: leftMargin, y: topMargin, w: plotW, h: plotH });
+
+  /*
+   * The drawn characteristics, so captions can keep off them.
+   *
+   * A label printed along a curve is hard to read and hides the line
+   * the sheet exists to show -- worst on a definite-time shelf, where
+   * the text sits exactly on a long horizontal run. The placer treats
+   * these as a preference rather than an obstruction: see `avoidLine`.
+   */
+  for (const c of curves) {
+    for (const run of polylineRuns(c.pathD)) placer.avoidLine(run);
+  }
+  for (const band of deviceBands) {
+    for (const d of [band.lowerD, band.upperD]) {
+      for (const run of polylineRuns(d)) placer.avoidLine(run);
+    }
+  }
 
   if (legendMode === 'direct') {
     const direct = directLabels(curves, {
@@ -1547,8 +1781,39 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   for (const point of study.points) {
-    if (!(point.I_A > 0) || !(point.t_s > 0)) continue;
-    const I_view = project(point.I_A, point.voltage_kV);
+    if (!(point.t_s > 0)) continue;
+
+    /*
+     * A point either states its current or names a condition that
+     * supplies it. Where a condition supplies it, the figure is already
+     * in the frame of the point's own level -- `conditionCurrentAt`
+     * refers a fault onto that level and takes a scenario's own entry
+     * for it -- so the projection below is the one every other point
+     * gets, and a scenario's number is never referred twice.
+     */
+    const I_declared = point.condition
+      ? conditionCurrentAt(point.condition, point.voltage ?? viewLevelName, viewQuantity)
+      : point.I_A;
+    if (I_declared == null || !(I_declared > 0)) continue;
+
+    /*
+     * Whether the marker's current reaches this sheet at all. `project`
+     * below scales by the turns ratio unconditionally, which is right
+     * for phase current and wrong for a residual behind a delta -- so
+     * the same rule the fault rules obey is applied here, and a point
+     * that cannot be referred is named in the legend rather than drawn
+     * at a current that does not exist on this side.
+     */
+    if (point.voltage_kV != null && V_view_kV != null && point.voltage_kV !== V_view_kV
+        && !survivesVoltageReferral(viewQuantity, study, point.voltage, viewLevelName)) {
+      unreferrablePoints.push(
+        `point ${point.label ?? point.id} is on ${point.voltage}, and `
+        + `${quantityLabel(viewQuantity)} does not cross to this level`,
+      );
+      continue;
+    }
+
+    const I_view = project(I_declared, point.voltage_kV);
     const px = xScale.toPx(I_view);
     const py = yScale.toPx(point.t_s);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
@@ -1563,7 +1828,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `data-current="${I_view}" data-time="${point.t_s}" ` +
       `data-px="${px.toFixed(1)}" data-py="${py.toFixed(1)}">`,
     );
-    out.push(pointMarker(point.shape ?? 'cross', px, py, colour));
+    /* Drawn after the curves, and haloed in the page colour, so a point
+     * marking a spot *on* a characteristic reads as being in front of
+     * it rather than merging with it. */
+    out.push(pointMarker(point.shape ?? 'cross', px, py, colour, th.background));
 
     const base = point.label ?? point.id;
     const text = point.coords ? `${base} (${coordText(I_view, point.t_s)})` : base;
@@ -1836,6 +2104,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (condition) {
       const kind = condition.type ? faultTypeLabel(condition.type) : 'declared';
       axisNotes.push(`drawn for ${conditionName} (${kind})`);
+      /*
+       * A scenario named as the sheet's condition but silent about the
+       * level being drawn supplies no ratios, so nothing converts and
+       * every curve measuring something else is left off. Without this
+       * the panel claimed the sheet was drawn for a condition and then
+       * gave no reason for the curves that went missing.
+       */
+      if (condition.kind === 'scenario' && condition.voltage == null) {
+        axisNotes.push(
+          `${conditionName} declares no currents at ${viewLevelName ?? 'this level'}, `
+          + 'so no curve converts onto this axis',
+        );
+      }
     }
     if (convertedElements.length > 0 && condition) {
       axisNotes.push(
@@ -1848,6 +2129,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         + `not on this axis (${quantityLabel(viewQuantity)})`,
       );
     }
+    /*
+     * A scenario that could not be marked is named individually rather
+     * than counted. Unlike a converted curve, the reader has no way to
+     * work out which condition is missing or why, and grading may well
+     * be reporting a margin against it.
+     */
+    for (const note of unmarkedScenarios) axisNotes.push(note);
+    for (const note of blockedElements.values()) axisNotes.push(note);
+
+    /*
+     * Pickups the legend could not put into secondary amps. Stated,
+     * because a panel headed one way and figured the other is off by
+     * the CT ratio -- an error that ends up in a relay.
+     */
+    if (missingCtRatio.size > 0) {
+      const names = [...missingCtRatio];
+      axisNotes.push(
+        `${names.length === 1 ? names[0] : `${names.length} elements`} `
+        + 'shown in primary amps: no ct_ratio to convert with',
+      );
+    }
+    for (const note of unreferrablePoints) axisNotes.push(note);
 
     for (const note of axisNotes) {
       for (const wrapped of wrapText(note, width, FONT_DETAIL - 1)) {
@@ -2012,9 +2315,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        */
       const faultProjection = new Map(shownFaults.map((i) => {
         const f = faults[i];
-        return [i, f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6
-          ? wrapText(`-> ${formatSi(f.I_view, 'A')} on axis`, textWidth, FONT_DETAIL - 1)
-          : []] as const;
+        const referred = f.I_view != null && Math.abs(f.I_view - f.I_A) > f.I_A * 1e-6;
+        /*
+         * A scenario says so, in one word. Its figure is the one the
+         * study wrote down for the level on the line above rather than a
+         * fault current carried there by the turns ratio, and once
+         * faults and scenarios can share a sheet that difference is
+         * something the reader has to be able to see. Kept to a word
+         * because on a sheet of nothing but scenarios a full sentence
+         * repeats itself down the whole panel.
+         */
+        const provenance = f.kind === 'scenario' ? ['scenario'] : [];
+        return [i, [
+          ...provenance,
+          ...(referred ? [`-> ${formatSi(f.I_view!, 'A')} on axis`] : []),
+        ].flatMap((line) => wrapText(line, textWidth, FONT_DETAIL - 1))] as const;
       }));
       /* `description` is the author's note on what the fault *is*;
        * it belongs with the entry rather than being parsed and
@@ -2037,8 +2352,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         faultsY = Math.max(wanted, cursorY + 12);
       }
 
+      /*
+       * "Faults" while they all are; "Conditions" once a scenario is
+       * among them, since a scenario is not a fault current and heading
+       * a list of both with the narrower word misnames half of it.
+       */
+      const heading = shownFaults.some((i) => faults[i].kind === 'scenario')
+        ? 'Conditions'
+        : 'Faults';
       lines.push(
-        `<text x="${originX}" y="${faultsY}" font-size="${FONT_HEADING}" font-weight="600" fill="${faultColour}">Faults</text>`,
+        `<text x="${originX}" y="${faultsY}" font-size="${FONT_HEADING}" font-weight="600" fill="${faultColour}">${heading}</text>`,
       );
       faultsY += LINE_HEADING;
 
@@ -2476,6 +2799,33 @@ function directLabels(
  * outright, leave that curve as the one thing on the plot with no
  * name.
  */
+/**
+ * A path's points, split into the runs the pen actually drew.
+ *
+ * `M` lifts the pen, so the gap it leaves is not part of the line and
+ * a label may sit across it -- a characteristic that stops operating
+ * and starts again leaves exactly such a gap. Splitting on `M` keeps
+ * that gap available instead of spanning it with a phantom segment.
+ */
+function polylineRuns(pathD: string): Array<Array<{ x: number; y: number }>> {
+  const runs: Array<Array<{ x: number; y: number }>> = [];
+  let current: Array<{ x: number; y: number }> = [];
+
+  for (const m of pathD.matchAll(/([ML])\s*(-?[\d.]+)[ ,]+(-?[\d.]+)/g)) {
+    const x = Number(m[2]);
+    const y = Number(m[3]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    if (m[1] === 'M') {
+      if (current.length > 1) runs.push(current);
+      current = [{ x, y }];
+    } else {
+      current.push({ x, y });
+    }
+  }
+  if (current.length > 1) runs.push(current);
+  return runs;
+}
+
 function lastPointInside(
   pathD: string,
   topY: number,
@@ -2589,26 +2939,63 @@ function pointMarker(
   px: number,
   py: number,
   colour: string,
+  /**
+   * Page colour, for the ring that separates the marker from whatever
+   * it sits on.
+   *
+   * A marked point is usually *at* a curve -- that is the comparison
+   * being made -- so the two collide by design, and drawing the marker
+   * later is not enough to make it read as being in front: a 2 px
+   * stroke through a 10 px marker still looks like one shape. A ring in
+   * the surface colour cuts the line where the marker crosses it, which
+   * is the ordinary way to show which of two marks is on top.
+   */
+  surface?: string,
 ): string {
   const r = 5;
   const stroke = `stroke="${colour}" stroke-width="1.8" fill="none"`;
   const filled = `fill="${colour}" stroke="none"`;
 
+  /*
+   * The halo is a second, larger copy of the same shape drawn
+   * underneath, rather than a wide stroke on the marker itself.
+   * `paint-order="stroke"` would be tidier but is not carried by every
+   * renderer this output has to survive -- where it is ignored the
+   * stroke lands on top of the fill and eats the marker instead of
+   * ringing it.
+   */
+  const ring = (body: string): string => (surface ? body : '');
+  const haloFill = `fill="${surface ?? 'none'}" stroke="none"`;
+  const hr = r + 1.75;
+
   switch (shape) {
     case 'circle':
-      return `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r}" ${filled}/>`;
+      return ring(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${hr}" ${haloFill}/>`)
+        + `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r}" ${filled}/>`;
     case 'square':
-      return `<rect x="${(px - r).toFixed(1)}" y="${(py - r).toFixed(1)}" ` +
-        `width="${r * 2}" height="${r * 2}" ${filled}/>`;
+      return ring(`<rect x="${(px - hr).toFixed(1)}" y="${(py - hr).toFixed(1)}" `
+        + `width="${(hr * 2).toFixed(1)}" height="${(hr * 2).toFixed(1)}" ${haloFill}/>`)
+        + `<rect x="${(px - r).toFixed(1)}" y="${(py - r).toFixed(1)}" `
+        + `width="${r * 2}" height="${r * 2}" ${filled}/>`;
     case 'diamond':
-      return `<polygon points="${px},${py - r} ${px + r},${py} ${px},${py + r} ${px - r},${py}" ${filled}/>`;
+      return ring(`<polygon points="${px},${py - hr} ${px + hr},${py} ${px},${py + hr} ${px - hr},${py}" ${haloFill}/>`)
+        + `<polygon points="${px},${py - r} ${px + r},${py} ${px},${py + r} ${px - r},${py}" ${filled}/>`;
     case 'triangle':
-      return `<polygon points="${px},${py - r} ${px + r},${py + r} ${px - r},${py + r}" ${filled}/>`;
-    case 'x':
-      return `<path d="M${px - r} ${py - r} L${px + r} ${py + r} M${px + r} ${py - r} L${px - r} ${py + r}" ${stroke}/>`;
+      return ring(`<polygon points="${px},${(py - hr).toFixed(1)} ${(px + hr).toFixed(1)},${(py + hr).toFixed(1)} ${(px - hr).toFixed(1)},${(py + hr).toFixed(1)}" ${haloFill}/>`)
+        + `<polygon points="${px},${py - r} ${px + r},${py + r} ${px - r},${py + r}" ${filled}/>`;
+    /* An open mark has no fill to hide the halo, so its ring is a wider
+     * stroke along the same path. */
+    case 'x': {
+      const d = `M${px - r} ${py - r} L${px + r} ${py + r} M${px + r} ${py - r} L${px - r} ${py + r}`;
+      return ring(`<path d="${d}" fill="none" stroke="${surface}" stroke-width="4.5" stroke-linecap="round"/>`)
+        + `<path d="${d}" ${stroke}/>`;
+    }
     case 'cross':
-    default:
-      return `<path d="M${px - r} ${py} L${px + r} ${py} M${px} ${py - r} L${px} ${py + r}" ${stroke}/>`;
+    default: {
+      const d = `M${px - r} ${py} L${px + r} ${py} M${px} ${py - r} L${px} ${py + r}`;
+      return ring(`<path d="${d}" fill="none" stroke="${surface}" stroke-width="4.5" stroke-linecap="round"/>`)
+        + `<path d="${d}" ${stroke}/>`;
+    }
   }
 }
 

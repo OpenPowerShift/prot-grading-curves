@@ -770,9 +770,97 @@ view { voltage = "HV"; quantity = I2; condition = "F"; current_min = 0.1 A; curr
     expect(drawn.join(' ')).not.toContain('51G');
   });
 
-  it('counts what it actually drew', () => {
+  it('counts what it actually drew, and names what it did not', () => {
     const notes = [...svg.matchAll(/font-style="italic">([^<]*)</g)].map((m) => m[1]).join(' | ');
     expect(notes).toContain('1 converted onto I2');
-    expect(notes).toContain('1 element not on this axis');
+    /*
+     * Named with its reason rather than counted as merely off-axis. The
+     * element is not absent because the abscissa is inconvenient -- it
+     * is absent because this condition gives it nothing to measure, and
+     * a reader cannot work out which relay that was from a tally.
+     */
+    expect(notes).toContain('51G carries no residual 3I0 at HV');
+  });
+});
+
+/* ---------------------------------------------------------------- */
+
+describe('quoting pickups in secondary amps', () => {
+  /*
+   * A study is written in primary amps because that is what the fault
+   * study gives, but the number an engineer types into the relay is the
+   * secondary one. `page { legend { currents } }` asks for that figure
+   * whatever the abscissa is doing -- the two are separate questions,
+   * and a sheet taken to site wants the settings in the units of the
+   * settings sheet.
+   */
+  const STUDY = (legend: string) => `
+system { voltages { "HV" { kV = 33; } } }
+faults { "F" { I_A = 6 kA; voltage = "HV"; } }
+relay R_CT {
+  voltage = "HV"; ct_ratio = 600/5;
+  element 51 { curve = iec.si; I_pu = 720 A; tms = 0.3; }
+  element 50 { curve = definite; I_pu = 4.8 kA; t_delay = 50 ms; }
+}
+relay R_BARE {
+  voltage = "HV";
+  element 51 { curve = iec.si; I_pu = 300 A; tms = 0.2; }
+}
+page { ${legend} }
+view { voltage = "HV"; }
+`;
+
+  const render = (legend: string): string =>
+    parseAndRender(STUDY(legend), { theme: 'light' }).svg;
+
+  it('quotes primary amps by default, as before', () => {
+    const svg = render('');
+    expect(svg).toContain('720 A');
+    expect(svg).not.toContain('A sec');
+  });
+
+  it('converts by the CT ratio when asked for secondary', () => {
+    /* 600/5 is a ratio of 120: 720 A primary is 6 A at the relay. */
+    const svg = render('legend = { currents = "secondary"; };');
+    expect(svg).toContain('6 A sec');
+    expect(svg).toContain('40 A sec');
+    /* The primary figure gives way to it, rather than both being shown. */
+    expect(svg).not.toContain('720 A ·');
+  });
+
+  it('shows both when asked for both', () => {
+    const svg = render('legend = { currents = "both"; };');
+    expect(svg).toContain('720 A (6 A sec)');
+  });
+
+  it('is independent of what the axis is drawn in', () => {
+    /*
+     * The point of the option: a primary-amp axis with settings-sheet
+     * figures beside it. `view { axis }` decides the abscissa and this
+     * decides the legend; neither implies the other.
+     */
+    const svg = parseAndRender(
+      STUDY('legend = { currents = "secondary"; };').replace(
+        'view { voltage = "HV"; }', 'view { voltage = "HV"; axis = "primary"; }'),
+      { theme: 'light' },
+    ).svg;
+    expect(svg).toContain('6 A sec');
+    expect(svg).toContain('Current (A primary');
+  });
+
+  it('says which elements it could not convert', () => {
+    /*
+     * A panel headed one way and figured the other is out by the CT
+     * ratio -- the sort of error that ends up in a relay -- so an
+     * element with no ratio to convert with is named, not left to look
+     * like a very large secondary setting.
+     */
+    const svg = render('legend = { currents = "secondary"; };');
+    const notes = [...svg.matchAll(/font-style="italic"[^>]*>([^<]*)</g)]
+      .map((m) => m[1]).join(' ');
+    expect(notes).toContain('no ct_ratio');
+    expect(notes).toContain('R_BARE:51');
+    /* And that one keeps its honest primary figure. */
+    expect(svg).toContain('300 A');
   });
 });

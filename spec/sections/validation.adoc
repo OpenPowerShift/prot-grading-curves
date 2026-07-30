@@ -164,6 +164,25 @@ different currents, so the margin compares operate times for two
 different currents at one fault. Legitimate practice -- an I2 backup
 for an earth fault is exactly this -- but worth stating on the report.
 
+=== Condition references
+
+Applies to `annotate` and `point`, which may name a condition rather
+than state a current; see <<semantics,Semantics>> _Condition references
+on `annotate` and `point`_.
+
+`POINT_CURRENT_AND_CONDITION`:: A `point` declares both `I_A` and a
+named condition. They are alternatives: a precedence rule would leave
+the losing figure sitting in the source looking as though it did
+something.
+
+`UNRESOLVED_REFERENCE`:: The name is declared as neither a fault nor a
+scenario. Reported with the nearest declared name where one is close.
+
+`SCENARIO_LEVEL_MISSING`:: A named scenario declares no currents at the
+level the mark sits on, so the mark asks for a position that was never
+measured. A scenario declaring exactly one level answers for it
+whatever level was asked, there being nothing to choose between.
+
 === Repeated declarations
 
 Faults and scenarios are keyed by name, so a repeat replaces the

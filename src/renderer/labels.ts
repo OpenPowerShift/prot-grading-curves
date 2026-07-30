@@ -77,6 +77,55 @@ export function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
+/** A drawn line a label should keep off, with its bounds precomputed. */
+interface Segment {
+  x1: number; y1: number; x2: number; y2: number;
+  minX: number; maxX: number; minY: number; maxY: number;
+}
+
+/** Which side of the directed line `a->b` the point `c` falls. */
+function side(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
+  return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+
+/** Do two line segments cross? Collinear touching does not count. */
+function segmentsCross(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number,
+): boolean {
+  const d1 = side(ax, ay, bx, by, cx, cy);
+  const d2 = side(ax, ay, bx, by, dx, dy);
+  const d3 = side(cx, cy, dx, dy, ax, ay);
+  const d4 = side(cx, cy, dx, dy, bx, by);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
+    && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/**
+ * Does a line segment touch a box?
+ *
+ * Point sampling would not do. A definite-time stage is two points a
+ * plot's width apart, so a box sitting squarely on that shelf contains
+ * neither of them -- which is exactly the case a reader complains
+ * about, a caption printed along a horizontal line.
+ */
+function segmentHitsRect(s: Segment, r: Rect): boolean {
+  const right = r.x + r.w;
+  const bottom = r.y + r.h;
+
+  /* Bounds first: most segments of a curve are nowhere near a label. */
+  if (s.maxX <= r.x || s.minX >= right || s.maxY <= r.y || s.minY >= bottom) return false;
+
+  const inside = (x: number, y: number): boolean =>
+    x > r.x && x < right && y > r.y && y < bottom;
+  if (inside(s.x1, s.y1) || inside(s.x2, s.y2)) return true;
+
+  return segmentsCross(s.x1, s.y1, s.x2, s.y2, r.x, r.y, right, r.y)
+    || segmentsCross(s.x1, s.y1, s.x2, s.y2, right, r.y, right, bottom)
+    || segmentsCross(s.x1, s.y1, s.x2, s.y2, right, bottom, r.x, bottom)
+    || segmentsCross(s.x1, s.y1, s.x2, s.y2, r.x, bottom, r.x, r.y);
+}
+
 /**
  * Places labels so that none overlap.
  *
@@ -85,6 +134,7 @@ export function overlaps(a: Rect, b: Rect): boolean {
  */
 export class LabelPlacer {
   private readonly taken: Rect[] = [];
+  private readonly lines: Segment[] = [];
 
   /** Plot area labels must stay inside. */
   constructor(private readonly bounds: Rect) {}
@@ -99,9 +149,37 @@ export class LabelPlacer {
     this.taken.push(rect);
   }
 
+  /**
+   * Keep labels off a drawn line where there is room to.
+   *
+   * A caption printed along a characteristic is hard to read and hides
+   * the thing the sheet is about. Unlike a reserved box this is a
+   * *preference*: a crowded sheet is mostly curve, and refusing every
+   * position that touches one would push labels somewhere worse. See
+   * {@link place}.
+   */
+  avoidLine(points: ReadonlyArray<{ x: number; y: number }>): void {
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      if (!Number.isFinite(a.x) || !Number.isFinite(a.y)) continue;
+      if (!Number.isFinite(b.x) || !Number.isFinite(b.y)) continue;
+      this.lines.push({
+        x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+        minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x),
+        minY: Math.min(a.y, b.y), maxY: Math.max(a.y, b.y),
+      });
+    }
+  }
+
   /** Boxes taken so far, for tests and for diagnostics. */
   occupied(): readonly Rect[] {
     return this.taken;
+  }
+
+  /** True when a box would print over a line handed to {@link avoidLine}. */
+  onLine(rect: Rect): boolean {
+    return this.lines.some((s) => segmentHitsRect(s, rect));
   }
 
   place(request: PlacementRequest): Placement {
@@ -109,35 +187,53 @@ export class LabelPlacer {
     const gap = request.gap ?? 8;
     const prefer = request.prefer ?? DEFAULT_PREFER;
 
-    /* 1. The caller's preferred sides, in order. */
-    for (const side of prefer) {
-      const rect = this.rectFor(side, anchor, size, gap);
-      if (this.fits(rect)) {
-        this.taken.push(rect);
-        return this.result(rect, side, size, false);
-      }
-    }
-
     /*
-     * 2. Nothing free: step away vertically, trying each preferred
-     * side in turn. Alternating up and down keeps a cluster balanced
-     * about its anchors rather than trailing off in one direction.
+     * Curves are avoided on the first sweep and ignored on the second.
      *
-     * Each candidate is pulled inside the plot first. Searching from an
-     * unclamped base means an anchor near a corner -- where every side
-     * fails on the bounds, not on a collision -- searches a column of
-     * positions that are all outside the plot, and the label ends up
-     * off the sheet.
+     * Two passes rather than one hard rule, because the constraints are
+     * not equally important. Two labels on top of each other are
+     * unreadable; a label crossing a curve is merely untidy. On a
+     * crowded sheet the plot is mostly curve, so treating a line as
+     * solid would have labels shoved to the far side of the drawing --
+     * worse than the crossing it avoided. Clear of everything if
+     * possible, clear of the other labels regardless.
      */
-    const step = size.h + 3;
-    for (let n = 1; n <= 40; n++) {
+    for (const dodgeLines of [true, false]) {
+      /* 1. The caller's preferred sides, in order. */
       for (const side of prefer) {
-        const base = this.clamp(this.rectFor(side, anchor, size, gap));
-        for (const direction of [-1, 1]) {
-          const rect = this.clamp({ ...base, y: base.y + direction * n * step });
-          if (this.fits(rect)) {
-            this.taken.push(rect);
-            return this.result(rect, side, size, true);
+        const rect = this.rectFor(side, anchor, size, gap);
+        if (this.fits(rect, dodgeLines)) {
+          this.taken.push(rect);
+          /*
+           * A label that moved only to dodge a curve is still beside its
+           * anchor, so it needs no leader; one that had to leave its
+           * preferred side does.
+           */
+          return this.result(rect, side, size, false);
+        }
+      }
+
+      /*
+       * 2. Nothing free: step away vertically, trying each preferred
+       * side in turn. Alternating up and down keeps a cluster balanced
+       * about its anchors rather than trailing off in one direction.
+       *
+       * Each candidate is pulled inside the plot first. Searching from
+       * an unclamped base means an anchor near a corner -- where every
+       * side fails on the bounds, not on a collision -- searches a
+       * column of positions that are all outside the plot, and the
+       * label ends up off the sheet.
+       */
+      const step = size.h + 3;
+      for (let n = 1; n <= 40; n++) {
+        for (const side of prefer) {
+          const base = this.clamp(this.rectFor(side, anchor, size, gap));
+          for (const direction of [-1, 1]) {
+            const rect = this.clamp({ ...base, y: base.y + direction * n * step });
+            if (this.fits(rect, dodgeLines)) {
+              this.taken.push(rect);
+              return this.result(rect, side, size, true);
+            }
           }
         }
       }
@@ -167,11 +263,17 @@ export class LabelPlacer {
     };
   }
 
-  /** Inside the plot, and clear of everything placed so far. */
-  private fits(rect: Rect): boolean {
+  /**
+   * Inside the plot, and clear of everything placed so far.
+   *
+   * `dodgeLines` adds the drawn curves to that, for the first of the
+   * two sweeps in {@link place}.
+   */
+  private fits(rect: Rect, dodgeLines = false): boolean {
     if (rect.x < this.bounds.x || rect.x + rect.w > this.bounds.x + this.bounds.w) return false;
     if (rect.y < this.bounds.y || rect.y + rect.h > this.bounds.y + this.bounds.h) return false;
-    return !this.taken.some((other) => overlaps(rect, other));
+    if (this.taken.some((other) => overlaps(rect, other))) return false;
+    return !dodgeLines || !this.onLine(rect);
   }
 
   private rectFor(

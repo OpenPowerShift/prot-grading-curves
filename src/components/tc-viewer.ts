@@ -38,6 +38,53 @@ import { sheetSize } from '../renderer/sheet.js';
 const SNAP_RADIUS_PX = 24;
 const ZOOM_STEP = 1.25;
 
+/**
+ * A screen position in the SVG's own user units.
+ *
+ * Everything the pointer does -- snapping to a curve, anchoring a zoom,
+ * dragging a pan -- is computed against coordinates the renderer wrote,
+ * so the conversion has to be exact.
+ *
+ * It was being done by hand as `(clientX - rect.left) * viewBox.width /
+ * rect.width`, which is only correct when the element and the viewBox
+ * have the same aspect ratio. They generally do not: the drawing has a
+ * fixed shape and the pane is whatever shape the window and the
+ * splitter leave it, and with no `preserveAspectRatio` the default
+ * `xMidYMid meet` letterboxes the content -- scaling both axes by the
+ * *smaller* factor and centring the result. Two independent scales and
+ * no offset then put the cursor further and further from the truth the
+ * further it is from the middle of the sheet: on a 1702 x 954 pane
+ * holding a 1500 x 1000 drawing the error reached 128 user units at the
+ * edges, about 145 screen pixels, which is six times the snap radius.
+ * Hiding the source pane makes the pane wider and the mismatch worse,
+ * which is how it was noticed.
+ *
+ * `getScreenCTM` is the transform the browser actually used, so it
+ * carries the viewBox, the letterboxing and any CSS transform above the
+ * element. The manual arithmetic is kept only for the case where there
+ * is no CTM at all -- a detached or display:none element -- where the
+ * answer is unused anyway.
+ */
+function toUserSpace(
+  svg: SVGSVGElement,
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } {
+  const ctm = svg.getScreenCTM();
+  if (ctm) {
+    const point = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+    return { x: point.x, y: point.y };
+  }
+
+  const rect = svg.getBoundingClientRect();
+  const vbW = svg.viewBox.baseVal.width || rect.width;
+  const vbH = svg.viewBox.baseVal.height || rect.height;
+  return {
+    x: rect.width ? (clientX - rect.left) * (vbW / rect.width) : 0,
+    y: rect.height ? (clientY - rect.top) * (vbH / rect.height) : 0,
+  };
+}
+
 interface SnapState {
   pxI: number;
   pxT: number;
@@ -54,6 +101,12 @@ interface SnapState {
    * reports the coordinate it asserts.
    */
   target?: 'curve' | 'fault' | 'point';
+  /**
+   * Which form declared a condition rule: a `fault` is one current at
+   * one level, a `scenario` the same condition at every level. The
+   * readout says which, since "fault level" is wrong for a scenario.
+   */
+  conditionKind?: 'fault' | 'scenario';
 }
 
 @customElement('tc-viewer')
@@ -225,11 +278,7 @@ export class TcViewer extends LitElement {
     let bestDist = Infinity;
     const SNAP_SQ = SNAP_RADIUS_PX * SNAP_RADIUS_PX;
 
-    const rect = svg.getBoundingClientRect();
-    const scaleX = svg.viewBox.baseVal.width / rect.width;
-    const scaleY = svg.viewBox.baseVal.height / rect.height;
-    const cursorPxI = (ev.clientX - rect.left) * scaleX;
-    const cursorPxT = (ev.clientY - rect.top) * scaleY;
+    const { x: cursorPxI, y: cursorPxT } = toUserSpace(svg, ev.clientX, ev.clientY);
 
     /* Plot rectangle, for deciding whether the pointer is over the
      * chart at all. */
@@ -313,6 +362,7 @@ export class TcViewer extends LitElement {
           protocol: 'snap',
           pathD: '',
           target: 'fault',
+          conditionKind: line.getAttribute('data-kind') === 'scenario' ? 'scenario' : 'fault',
         };
       }
     }
@@ -465,9 +515,7 @@ export class TcViewer extends LitElement {
     if (!svg) return;
 
     /* Convert screen pixels to SVG user units before dividing. */
-    const rect = svg.getBoundingClientRect();
-    const scaleX = (svg.viewBox.baseVal.width || rect.width) / rect.width;
-    const dxUser = (ev.clientX - pan.startX) * scaleX;
+    const dxUser = toUserSpace(svg, ev.clientX, 0).x - toUserSpace(svg, pan.startX, 0).x;
 
     /* Drag right => look at lower currents, so the domain moves left. */
     const shift = -dxUser / pan.pxPerDecade;
@@ -505,9 +553,7 @@ export class TcViewer extends LitElement {
     ev.preventDefault();
 
     /* Pointer position in the SVG's own pixel space. */
-    const rect = svg.getBoundingClientRect();
-    const viewBoxW = svg.viewBox.baseVal.width || rect.width;
-    const px = ((ev.clientX - rect.left) / rect.width) * viewBoxW;
+    const px = toUserSpace(svg, ev.clientX, ev.clientY).x;
 
     const { xMin, xMax } = proj.scale;
     const logLo = Math.log10(proj.domain.I_min);
@@ -566,9 +612,7 @@ export class TcViewer extends LitElement {
     const svg = this.querySelector('svg') as SVGSVGElement | null;
     if (!svg || ev.touches.length === 0) return null;
 
-    const rect = svg.getBoundingClientRect();
-    const viewBoxW = svg.viewBox.baseVal.width || rect.width;
-    const toSvg = (clientX: number): number => ((clientX - rect.left) / rect.width) * viewBoxW;
+    const toSvg = (clientX: number): number => toUserSpace(svg, clientX, 0).x;
 
     if (ev.touches.length === 1) {
       return { centre: toSvg(ev.touches[0].clientX), spread: 0 };
@@ -962,7 +1006,12 @@ render() {
     lines.push(`I = ${prettyNum(hover.I_A)}`);
     /* A fault marker asserts a current, not a time. */
     if (hover.target !== 'fault') lines.push(`t = ${prettyTime(hover.t_s)}`);
-    if (hover.target === 'fault') lines.push('fault level');
+    if (hover.target === 'fault') {
+      /* A scenario's figure was declared for this level, not referred
+       * to it, so calling it a fault level would misstate where it
+       * came from. */
+      lines.push(hover.conditionKind === 'scenario' ? 'scenario, this level' : 'fault level');
+    }
     if (snapped && hover.voltage) lines.push(hover.voltage);
 
     const lineH = 13;

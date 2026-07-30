@@ -28,6 +28,7 @@ import {
   shareLink,
   sourceFromLink,
   studySource,
+  urlWithoutStudy,
   type SavedStudy,
 } from '../editor/share.js';
 
@@ -42,6 +43,14 @@ import './tc-guide.js';
 const DEFAULT_SPLIT_LEFT_PCT = 20;
 
 const STARTER = DEFAULT_EXAMPLE.source;
+
+/**
+ * Picker value for a study opened from a link and not yet saved.
+ *
+ * Distinct from every example id and from the saved-study prefix, so
+ * re-selecting it is a no-op rather than a load of something else.
+ */
+const LINK_OPTION = 'link:current';
 
 @customElement('tc-app')
 export class TcApp extends LitElement {
@@ -129,6 +138,16 @@ export class TcApp extends LitElement {
 
   /** Name of the saved study currently open, if any. */
   @state() private savedName: string | null = null;
+  /**
+   * Name of a study opened from a link and not yet saved.
+   *
+   * Held separately from {@link savedName} because nothing has been
+   * written to this browser's store: adopting the name outright would
+   * mean a link could silently overwrite a study of the same name that
+   * the engineer had saved themselves. It names the buffer in the
+   * picker and seeds the Save prompt; saving is still their decision.
+   */
+  @state() private linkName: string | null = null;
   /**
    * UI theme for both panes. Seeded from the OS preference and then
    * remembered, so the choice survives a reload.
@@ -233,6 +252,26 @@ export class TcApp extends LitElement {
     if (shared) {
       this.src = shared;
       this.exampleId = null;
+      /*
+       * A study arriving by link becomes the working draft, named after
+       * itself.
+       *
+       * The name matters because without one the picker shows whatever
+       * option happens to be first while a quite different study is on
+       * screen, and the export filename falls back to "grading".
+       *
+       * The link is then taken out of the address bar. Left there it
+       * wins over the draft on every load, so a refresh after an hour's
+       * editing silently restores the study as it was sent -- and the
+       * source that comes back looks right, which is what makes it
+       * dangerous. Writing the draft first means the refresh it is
+       * protecting against has something to restore.
+       */
+      this.linkName = studyName(shared);
+      saveDraft(shared, null);
+      try {
+        window.history.replaceState(null, '', urlWithoutStudy());
+      } catch { /* a sandboxed frame may refuse; the study still loaded */ }
     } else {
       const draft = loadDraft();
       if (draft) {
@@ -498,11 +537,15 @@ export class TcApp extends LitElement {
    * so the value carries which kind it is.
    */
   private pick(value: string): void {
+    /* The buffer that is already open; nothing to load. */
+    if (value === LINK_OPTION) return;
+
     if (value.startsWith(SAVED_PREFIX)) {
       const name = value.slice(SAVED_PREFIX.length);
       const source = studySource(name);
       if (source == null) return;
       this.savedName = name;
+      this.linkName = null;
       this.exampleId = value;
       this.src = source;
       this.parseSource(source, 0);
@@ -510,6 +553,7 @@ export class TcApp extends LitElement {
       return;
     }
     this.savedName = null;
+    this.linkName = null;
     this.loadExample(value);
   }
 
@@ -529,6 +573,7 @@ export class TcApp extends LitElement {
     if (!entry) return;
 
     this.savedName = entry.name;
+    this.linkName = null;
     this.exampleId = SAVED_PREFIX + entry.name;
     this.saved = listStudies();
     saveDraft(this.src, this.exampleId);
@@ -539,6 +584,7 @@ export class TcApp extends LitElement {
    * is what an engineer would have called it anyway.
    */
   private suggestedName(): string {
+    if (this.linkName) return this.linkName;
     const project = this.study?.meta?.project;
     if (typeof project === 'string' && project.trim()) return project.trim();
     return 'Untitled study';
@@ -577,6 +623,7 @@ export class TcApp extends LitElement {
   private resetDraft(): void {
     clearDraft();
     this.savedName = null;
+    this.linkName = null;
     this.exampleId = null;
     this.loadExample(DEFAULT_EXAMPLE.id);
   }
@@ -592,6 +639,7 @@ export class TcApp extends LitElement {
   private exportStem(): string {
     const project = this.study?.meta?.project;
     const base = this.savedName
+      ?? this.linkName
       ?? (typeof project === 'string' && project.trim() ? project : null)
       ?? EXAMPLES.find((e) => e.id === this.exampleId)?.id
       ?? 'grading';
@@ -829,6 +877,21 @@ export class TcApp extends LitElement {
             <select class="picker"
                     title="Load a saved study or a worked example"
                     @change=${(e: Event) => { this.pick((e.target as HTMLSelectElement).value); }}>
+              ${/*
+                 * A study opened from a link is named here so the
+                 * control agrees with what is on screen. Without it the
+                 * browser shows the first option -- some unrelated
+                 * example -- while a quite different study is loaded.
+                 * It is not in the saved list because it has not been
+                 * saved; picking anything else discards it, which is
+                 * why the entry says so.
+                 */''}
+              ${this.linkName && !this.savedName ? html`
+                <optgroup label="Opened from a link">
+                  <option value=${LINK_OPTION} selected
+                          title="Not saved in this browser yet — use Save to keep it"
+                  >${this.linkName}</option>
+                </optgroup>` : null}
               ${this.saved.length > 0 ? html`
                 <optgroup label="Saved in this browser">
                   ${this.saved.map((st) => html`
@@ -839,7 +902,8 @@ export class TcApp extends LitElement {
               <optgroup label="Examples">
                 ${EXAMPLES.map((ex) => html`
                   <option value=${ex.id}
-                          ?selected=${ex.id === this.exampleId && !this.savedName}>${ex.name}</option>
+                          ?selected=${ex.id === this.exampleId && !this.savedName && !this.linkName}
+                  >${ex.name}</option>
                 `)}
               </optgroup>
             </select>
@@ -938,6 +1002,29 @@ export class TcApp extends LitElement {
           @tc-guide-close=${() => { this.showGuide = false; }}></tc-guide>
     `;
   }
+}
+
+/**
+ * What a study calls itself, for naming the buffer it arrived in.
+ *
+ * `meta.project` is the engineer's own name for the work and is what
+ * they would have typed at the Save prompt anyway; `meta.study` is the
+ * next best thing. Parsed rather than pattern-matched out of the text,
+ * so a name in a comment or inside another string is not mistaken for
+ * one -- and a study too broken to parse simply has no name, which is
+ * a better answer than a wrong one.
+ */
+function studyName(source: string): string | null {
+  try {
+    const doc = parse(source).document;
+    if (!doc) return null;
+    const study = buildStudy(doc);
+    for (const key of ['project', 'study'] as const) {
+      const value = study.meta?.[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  } catch { /* unparseable; it stays unnamed */ }
+  return null;
 }
 
 /** localStorage key holding the Source/Plot layout choice. */

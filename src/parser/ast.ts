@@ -280,8 +280,17 @@ export interface AnnotateBlock extends BaseNode {
   primary?: Ref;
   /** Margin form: the slower device. */
   backup?: Ref;
-  /** Margin form: name a declared fault instead of a bare current. */
-  fault?: string;
+  /**
+   * Named conditions instead of a bare current.
+   *
+   * Collected from `fault`, `faults`, `scenario` and `scenarios`, each
+   * of which takes one name or a bracketed list -- they are alternative
+   * spellings of one idea, so one field records them all. Naming more
+   * than one draws the annotation once per condition, which is how a
+   * margin is shown at both the maximum and the minimum fault on one
+   * sheet.
+   */
+  conditions?: string[];
   label?: string;
   style?: 'leader' | 'pin' | 'tag';
   color?: string;
@@ -426,7 +435,22 @@ export interface PageLegend extends BaseNode {
   color?: string;
   swatch?: 'line' | 'box' | 'circle';
   title?: string;
+  /**
+   * Which amps the legend quotes a pickup in.
+   *
+   * Independent of `view { axis }`, which decides what the *abscissa*
+   * is. A study is normally written in primary amps because that is
+   * what the fault study gives, but the figure an engineer types into
+   * the relay is the secondary one -- so a sheet used for commissioning
+   * wants both, whatever the axis is doing. Needs the relay's
+   * `ct_ratio`; without one there is nothing to convert and the pickup
+   * stays primary.
+   */
+  currents?: LegendCurrents;
 }
+
+/** Spellings of {@link PageLegend.currents}. */
+export type LegendCurrents = 'primary' | 'secondary' | 'both';
 
 export interface PageAxes extends BaseNode {
   color?: string;
@@ -540,10 +564,25 @@ export interface PageBlock extends BaseNode {
 export interface PointBlock extends BaseNode {
   type: 'point';
   id: string;
-  /** Current in primary amps at `voltage`. */
+  /**
+   * Current in primary amps at `voltage`.
+   *
+   * `NaN` when the point takes its current from a named condition
+   * instead; the two are alternatives, and declaring both is an error
+   * rather than a precedence rule to remember.
+   */
   I_A: number;
   /** Time in seconds. */
   t_s: number;
+  /**
+   * Conditions supplying the current, as on an `annotate` block.
+   *
+   * A point marks a time -- a breaker's clearing time, a withstand
+   * limit -- and the current it belongs at is often a declared fault or
+   * scenario rather than a figure to copy by hand. Naming several draws
+   * one marker per condition at the same time.
+   */
+  conditions?: string[];
   label?: string;
   /** Voltage level this current is measured at. */
   voltage?: string;

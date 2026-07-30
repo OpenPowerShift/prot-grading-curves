@@ -412,6 +412,48 @@ says so.
 
 `fault` and `scenario` are alternatives; declaring both is an error.
 
+==== Scenarios on the drawing
+
+A scenario draws its own vertical rule, at **its own figure for the
+level the sheet is in** -- 153 A of residual on an LV sheet, nothing at
+all on a delta-side residual sheet. Nothing is referred across the
+transformer, which is the whole reason to write one. The rule stands at
+the value of whatever quantity the view is drawn against, so a sheet in
+`I2` marks the scenario's `I2`.
+
+Where a scenario cannot be marked, the legend says so rather than
+leaving it off quietly -- grading still reports a margin against it, so
+silence would invite the reader to assume it was not relevant:
+
+[none]
+* `system normal declares no currents at LV (has HV, MV)` -- it was
+  never measured on the level being drawn. A scenario declaring just
+  *one* level is unambiguous and is carried onto the sheet by the turns
+  ratio instead.
+* `system normal carries no residual 3I0 at HV` -- the component is
+  zero there, which is a real answer and has no place on a log axis.
+
+Faults and scenarios can share a sheet. When they do, the panel is
+headed *Conditions* rather than *Faults*, and each scenario entry says
+`scenario` under it, because the figure came from the study's own
+measurement at that level rather than from a turns-ratio referral.
+
+[WARNING]
+====
+A *curve* still crosses voltage levels by the turns ratio, because an
+element's characteristic is a property of the element and not of any
+condition. A scenario's per-level figures deliberately need not agree
+with that ratio -- for the delta-star above, 460 A at LV is declared
+against 3.9 A at HV, where the ratio alone would give 6.7 A.
+
+So on a sheet drawn in one frame, a curve belonging to another frame is
+positioned by kV, while the grading report for that pair uses the
+scenario's declared figures. The margin in the report is the correct
+one; the drawn curve can disagree with it. Keep a marked point on the
+level and quantity the sheet is drawn in and it will sit where the
+report says.
+====
+
 === device
 
 Fuses, cable damage curves, recloser characteristics -- anything with a
@@ -544,6 +586,45 @@ annotate {                          # a single curve at one current
 }
 ----
 
+==== Taking the current from a condition
+
+Neither block needs the current typed in. Name a declared condition --
+a `fault` or a `scenario` -- and the figure comes from the study, at the
+quantity the sheet is drawn against, in the frame of whatever the mark
+belongs to:
+
+[source,tc]
+----
+point "ACB clears" {
+    scenario = "system normal";      # instead of I_A
+    voltage  = "HV";
+    t_s      = 2.00 s;
+}
+
+annotate {
+    primary   = R_850:46;
+    backup    = R_FDR:46;
+    scenarios = ["system normal", "one tx out"];   # one margin each
+    label     = "CTI";
+}
+----
+
+`fault`, `faults`, `scenario` and `scenarios` are all the same key: a
+condition, one name or a bracketed list of them. Name several and the
+mark is drawn once per condition, each at its own current -- which is
+how a margin is shown at both a maximum and a minimum fault on one
+sheet. A point drawn several times has the condition appended to its
+label, so the markers can be told apart.
+
+For a margin, each side is read in *its own* frame, exactly as grading
+does, so the figure drawn is the one the report computes. A scenario
+that declares both levels is not referred at all.
+
+A point states its current *or* names a condition -- doing both is an
+error rather than a precedence rule to remember. Naming a scenario that
+declares nothing at the point's level is an error too: the mark asks for
+a position that was never measured.
+
 ==== Which current the sheet is drawn against
 
 By default the axis is simply *current*, and every curve is drawn
@@ -621,7 +702,23 @@ view { voltage = "HV"; quantity = I2; condition = "F_2ph"; }
 * **Elements the condition cannot operate are suppressed.** On a
   `three_phase` condition there is no `I2` and no `I0`, so earth-fault
   and negative-sequence elements are left off rather than drawn where
-  they could never operate.
+  they could never operate. So is an element whose current cannot reach
+  the sheet's level at all -- an HV residual element behind a delta is
+  off *every* sheet of an LV earth fault, not only the residual one.
+  Each is named in the legend with its reason:
++
+[none]
+* `... 51G measures residual 3I0, which does not cross HV to LV`
+* `... 51G carries no residual 3I0 at HV under LV earth fault`
+
+`condition` takes a scenario as readily as a fault. With a scenario the
+ratios come from *the level the sheet is drawn in* -- never from another
+level's figures, which would mix two turns ratios into one number:
+
+[source,tc]
+----
+view { voltage = "HV"; quantity = I2; condition = "LV earth fault"; }
+----
 
 ===== Zero sequence across a transformer
 
@@ -738,6 +835,34 @@ Three levers, in the order they matter:
 A legend too tall for its space sheds detail rather than running off
 the page: make and model first, then settings, then names only, and
 finally `+N more not shown`.
+
+==== Settings in secondary amps
+
+A study is written in primary amps because that is what the fault study
+gives, but the number an engineer types into the relay is the secondary
+one. `legend { currents }` asks for that figure, whatever the abscissa
+is doing:
+
+[source,tc]
+----
+page {
+    legend = { currents = "secondary"; };   # or "both", or "primary"
+}
+----
+
+* `primary` -- as declared. The default.
+* `secondary` -- divided by the relay's `ct_ratio`: a 720 A pickup
+  behind a 600/5 CT reads `6 A sec`.
+* `both` -- `720 A (6 A sec)`.
+
+Independent of `view { axis }`, which decides what the *current axis*
+is: a sheet can have a primary-amp axis and settings-sheet figures
+beside it, which is what a commissioning copy wants.
+
+The conversion needs `ct_ratio` on the relay. An element without one
+keeps its primary figure and is named in the legend -- a panel headed
+one way and figured the other is out by the ratio, which is the sort of
+error that reaches a relay.
 
 == Reading the output
 

@@ -32,6 +32,11 @@
 #   * the HV *negative-sequence* element (46) is what backs it up.
 #
 # Grade both pairs and the report shows exactly that.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Sequence currents";
@@ -85,29 +90,19 @@ scenario "LV three-phase fault" {
     level "HV" { I_A = 7.6 A; I1_A = 7.6 A; I2_A = 0 A; I0_A = 0 A; }
 }
 
-# ---- A fault rule for the sheet to mark. ------------------------------
-#      Scenarios drive the grading; a `faults` entry is what draws a
-#      vertical rule. The rule stands at the value of whichever quantity
-#      the view is drawn against, so declare the components you want
-#      marked: on the I2 sheet below this stands at 2.2 A, on a phase
-#      sheet at 3.9 A, and on a 3I0 sheet not at all -- there is no zero
-#      sequence on the delta side.
-faults {
-    "LV earth fault at HV" {
-        # `type` gives the ratios between phase current and the
-        # components, so a component the study does not declare is
-        # derived -- and a curve measured in one quantity can be placed
-        # on an axis drawn in another. A declared component always wins,
-        # which is how you override the table: I2_A below is stated
-        # because the delta changes what reaches this side.
-        type        = single_phase_earth;
-        I_A         = 3.9 A;
-        I2_A        = 2.2 A;
-        I0_A        = 0 A;
-        voltage     = "HV";
-        description = "LV phase-earth fault, referred to the 33 kV side";
-    }
-}
+# ---- Nothing else is needed to mark them. -----------------------------
+#      A scenario draws its own vertical rule, at ITS OWN FIGURE FOR THE
+#      LEVEL THE SHEET IS IN -- 2.2 A of I2 on the HV sheet below, 153 A
+#      on an LV one. Nothing is referred across the transformer, which is
+#      the whole reason to write a scenario instead of a `faults` entry.
+#
+#      A scenario silent about the level being drawn, or carrying none of
+#      the quantity on the axis, gets no rule and says so in the legend:
+#      "LV three-phase fault carries no I2 at HV" is the balanced
+#      condition, which has no negative sequence at all.
+#
+#      `faults { ... }` still works and the two can share a sheet; a
+#      fault is one current at one level, referred by the turns ratio.
 
 # ---- Downstream: the LV air circuit breaker. ---------------------------
 relay R_ACB {
@@ -215,6 +210,42 @@ grade {
     CTI_min_s = 0.30;
 }
 
+# ---- Putting the margin on the drawing. --------------------------------
+#      The annotation reads each side in ITS OWN frame, taking the
+#      scenario's figure for that level -- the 850's I2 at HV, the ACB's
+#      at LV -- so the figure drawn is the one the report computes.
+#
+#      Name several conditions and the margin is drawn once for each, at
+#      each one's own current. `scenario = "..."`, `scenarios = [...]`,
+#      `fault = "..."` and `faults = [...]` are all the same key: a
+#      condition, one or several.
+annotate {
+    primary   = R_850:46;
+    backup    = R_FDR:46;
+    scenario  = "LV earth fault";
+    label     = "CTI";
+}
+
+# ---- A marked point at a condition's current. --------------------------
+#      A point normally states its own `I_A`. Naming a condition takes
+#      the current from the study instead, at the quantity the sheet is
+#      drawn against -- so this marker moves with the fault study rather
+#      than having to be edited alongside it.
+#
+#      This one is on the 850's own level and own quantity, so it lands
+#      exactly on that element's curve: 2.2 A of I2 at HV, cleared by its
+#      2.00 s definite-time stage. A marker taken from a level other than
+#      the one drawn is carried here by the turns ratio, which for a
+#      scenario is NOT the same as its declared figure for this level --
+#      see the note in the guide.
+point "850 negative-sequence trip" {
+    scenario = "LV earth fault";
+    voltage  = "HV";
+    t_s      = 2.00 s;
+    label    = "850 46 operates";
+    shape    = square;
+}
+
 page {
     size        = "A4";
     orientation = "landscape";
@@ -238,17 +269,23 @@ page {
 #        quantity = 3I0;     residual current
 #        quantity = I2;      negative sequence (this sheet)
 #
-#      `condition` names what the sheet depicts. With it, curves
-#      measuring something else are CONVERTED onto the axis using that
-#      condition's fault type -- the HV 51 appears here at
-#      I_phase = 3 x I2, a phase-earth fault's ratio -- and elements the
-#      condition cannot operate are suppressed instead of being drawn
-#      where they never could. Drop `condition` and the sheet falls back
-#      to showing only what measures I2.
+#      `condition` names what the sheet depicts -- a fault or a scenario.
+#      With it, curves measuring something else are CONVERTED onto the
+#      axis using that condition's own numbers: the HV 51 measures phase
+#      current and appears here at 3.9 / 2.2 = 1.77 times its own pickup,
+#      the ratio this condition actually declares. Where a component is
+#      not declared the fault type supplies it (a phase-earth fault would
+#      give 3), and a declared figure always wins -- which is how the
+#      delta's effect on this side gets into the drawing.
+#
+#      Elements the condition cannot operate are suppressed rather than
+#      drawn where they never could: the 51G is absent from this sheet
+#      because I0 = 0 at HV. Drop `condition` and the sheet falls back to
+#      showing only what measures I2.
 view {
     voltage     = "HV";
     quantity    = I2;
-    condition   = "LV earth fault at HV";
+    condition   = "LV earth fault";
     current_min = 0.5 A;
     current_max = 50 A;
     time_min    = 20 ms;

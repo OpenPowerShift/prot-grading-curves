@@ -76,6 +76,34 @@ export function sourceFromLink(hash: string = window.location.hash): string | nu
 }
 
 /**
+ * The same URL with the study taken out of it.
+ *
+ * Once the study is in the buffer the link has done its job, and
+ * leaving it in the address bar is actively harmful: the fragment wins
+ * over the saved draft on every load, so an afternoon's editing is
+ * discarded by a refresh -- silently, since the source that comes back
+ * looks like the one that was opened. It also leaves a kilobyte of
+ * base64 in the address bar and in any bookmark made of it.
+ *
+ * Other fragment parameters are preserved; a fragment that held nothing
+ * else is dropped entirely rather than left as a bare `#`.
+ */
+export function urlWithoutStudy(href: string = window.location.href): string {
+  const url = new URL(href);
+  const raw = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
+  if (!raw) return url.toString();
+
+  const params = new URLSearchParams(raw);
+  if (!params.has('s')) return url.toString();
+
+  params.delete('s');
+  const rest = params.toString();
+  url.hash = rest ? `#${rest}` : '';
+  /* `url.hash = ''` still leaves a trailing '#' on some engines. */
+  return rest ? url.toString() : url.toString().replace(/#$/, '');
+}
+
+/**
  * Write the working draft.
  *
  * Failures are swallowed: a full or disabled store is a reason to

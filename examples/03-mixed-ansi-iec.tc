@@ -4,6 +4,11 @@
 # (ANSI moderately inverse on the LV feeder, IEC very inverse on
 # the HV incomer) so the engineer can see normalised TCC curves line
 # up at M=1.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project  = "Cross-vendor study";
@@ -19,8 +24,8 @@ system {
 }
 
 faults {
-    "F_lv_3ph" { I_A =  5500 A; voltage = "LV"; }
-    "F_hv_3ph" { I_A = 12000 A; voltage = "HV"; }
+    "LV 3ph" { I_A =  5500 A; voltage = "LV"; }
+    "HV 3ph" { I_A = 12000 A; voltage = "HV"; }
 }
 
 relay R_FDR {
@@ -52,7 +57,7 @@ relay R_INC {
 grade {
     primary  = R_FDR:51;
     backup   = R_INC:51;
-    fault    = "F_lv_3ph";
+    fault    = "LV 3ph";
     margin_s = 0.35;
 }
 

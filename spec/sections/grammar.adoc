@@ -14,10 +14,12 @@ file            ::= { top-level } ;
 top-level       ::= meta-block
                   | system-block
                   | faults-block
+                  | scenario-block
                   | relay-block
                   | device-block
                   | grade-block
                   | annotate-block
+                  | point-block
                   | combine-block
                   | view-block
                   | page-block
@@ -173,6 +175,7 @@ the composite and the per-stage individual visible curves. See
 element-block   ::= "element" element-id "{" { element-member } "}" ;
 element-member  ::= name-asg
                   | function-asg
+                  | measures-asg
                   | curve-asg
                   | formula-asg
                   | flex_points-asg
@@ -194,6 +197,11 @@ element-id      ::= number | identifier ;
 function-asg    ::= "function"    "=" function-keyword ";" ;
 function-keyword ::= "phase_oc" | "earth_fault" | "neg_seq"
                    | "thermal" | "breaker_fail" ;
+
+(* Which current the pickup is expressed in. Defaulted from `function`
+   where the standards make it unambiguous; required for `neg_seq`,
+   where IEDs differ over the factor of three. *)
+measures-asg    ::= "measures"    "=" measured-quantity ";" ;
 
 curve-asg       ::= "curve" "=" ( curve-id | "definite" ) ";" ;
 curve-id        ::= identifier "." identifier ;
@@ -299,18 +307,54 @@ the grading margin matches `margin_s` (or `CTI_min_s` if `margin_s`
 is omitted) at the declared `fault`. See
 <<semantics,Semantics>> _Solver -- automatic grading_.
 
-=== Annotations
+=== Annotations and marked points
 
 [source,ebnf]
 ----
 annotate-block  ::= "annotate" "{" { annotate-member } "}" ;
-annotate-member ::= "on_curve" "=" ref ";"
+annotate-member ::= "on_curve" "=" ref ";"          (* point form *)
+                  | "primary"  "=" ref ";"          (* margin form *)
+                  | "backup"   "=" ref ";"
                   | "at_I_A"   "=" number current-unit ";"
+                  | condition-asg
                   | "label"    "=" string  ";"
                   | "style"    "=" annotation-style ";"
-                  | "color"    "=" color-value ";" ;
+                  | "color"    "=" color-value ";"
+                  | "coords"   "=" boolean ";" ;
 annotation-style ::= "leader" | "pin" | "tag" ;
+
+point-block     ::= "point" point-id "{" { point-member } "}" ;
+point-id        ::= string | identifier ;
+point-member    ::= "I_A"     "=" number current-unit ";"
+                  | "t_s"     "=" number time-unit ";"
+                  | condition-asg
+                  | "voltage" "=" voltage-ref ";"
+                  | "label"   "=" string ";"
+                  | "shape"   "=" point-shape ";"
+                  | "color"   "=" color-value ";"
+                  | "coords"  "=" boolean ";"
+                  | "description" "=" string ";" ;
+point-shape     ::= "circle" | "square" | "diamond" | "triangle"
+                  | "cross" | "x" ;
 ----
+
+A **condition reference** names one or more declared conditions -- a
+`fault` or a `scenario`, which are alternative ways of naming the same
+thing. All four spellings of the key are equivalent, and each accepts a
+single name or a list:
+
+[source,ebnf]
+----
+condition-asg   ::= condition-key "=" condition-list ";" ;
+condition-key   ::= "fault" | "faults" | "scenario" | "scenarios" ;
+condition-list  ::= condition-name
+                  | "[" condition-name { "," condition-name } "]" ;
+condition-name  ::= string | identifier ;
+----
+
+A block naming several conditions is drawn once per condition, each at
+that condition's own current. Repeated names are drawn once. See
+<<semantics,Semantics>> _Conditions on the drawing_.
 
 === Notes
 
@@ -548,7 +592,14 @@ legend-member   ::= "show"      "=" boolean ";"
                   | "position"  "=" legend-position ";"
                   | "color"     "=" color-value ";"
                   | "swatch"    "=" legend-swatch-keyword ";"
+                  | "currents"  "=" legend-currents ";"
                   | "title"     "=" string ";" ;
+(* Which amps the legend quotes a pickup in. Independent of
+   `view { axis }`, which decides the abscissa; `secondary` and `both`
+   need the relay's `ct_ratio` and fall back to primary without one. *)
+legend-currents ::= "primary"    # as declared (default)
+                  | "secondary"  # divided by ct_ratio
+                  | "both" ;     # primary, with the secondary in brackets
 legend-style    ::= "column"    # default; a gutter down the right
                   | "inside"    # the same panel, floated on the plot
                   | "direct"    # no panel; each curve labelled in place

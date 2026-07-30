@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { LabelPlacer, overlaps, type Rect } from '@tc/renderer/labels';
+import { theme } from '@tc/renderer/theme';
 import { parseAndRender } from '@tc/index';
 
 const PLOT: Rect = { x: 0, y: 0, w: 1000, h: 600 };
@@ -120,6 +121,165 @@ describe('placing labels that compete', () => {
 
     expect(second.rect.w).toBe(SIZE.w);
     expect(second.displaced).toBe(true);
+  });
+});
+
+describe('keeping labels off the drawn lines', () => {
+  /** A horizontal line across the middle of the plot. */
+  const SHELF = [{ x: 0, y: 300 }, { x: 1000, y: 300 }];
+
+  it('knows a box is on a line it was given', () => {
+    const placer = new LabelPlacer(PLOT);
+    placer.avoidLine(SHELF);
+
+    /* Straddling it, and clear of it. */
+    expect(placer.onLine({ x: 400, y: 295, w: 100, h: 12 })).toBe(true);
+    expect(placer.onLine({ x: 400, y: 200, w: 100, h: 12 })).toBe(false);
+  });
+
+  it('catches a long segment with no point inside the box', () => {
+    /*
+     * The case point-sampling misses: a definite-time stage is two
+     * points a plot's width apart, so a caption sitting squarely on
+     * that shelf contains neither of them -- and it is exactly the
+     * caption a reader complains about.
+     */
+    const placer = new LabelPlacer(PLOT);
+    placer.avoidLine(SHELF);
+    expect(placer.onLine({ x: 480, y: 294, w: 40, h: 12 })).toBe(true);
+  });
+
+  it('does not span the gap where the pen was lifted', () => {
+    /* Two runs, not one: a characteristic that stops operating and
+     * starts again leaves a real gap a label may sit in. */
+    const placer = new LabelPlacer(PLOT);
+    placer.avoidLine([{ x: 0, y: 300 }, { x: 200, y: 300 }]);
+    placer.avoidLine([{ x: 800, y: 300 }, { x: 1000, y: 300 }]);
+    expect(placer.onLine({ x: 400, y: 295, w: 100, h: 12 })).toBe(false);
+  });
+
+  it('moves a label off the line when there is room', () => {
+    const placer = new LabelPlacer(PLOT);
+    placer.avoidLine(SHELF);
+
+    /* Anchored right on the shelf: to the right at the same height
+     * would print along it, so it has to go somewhere else. */
+    const p = placer.place({ anchor: { x: 400, y: 300 }, size: SIZE, gap: 8 });
+    expect(placer.onLine(p.rect)).toBe(false);
+  });
+
+  it('places the label anyway when the line cannot be dodged', () => {
+    /*
+     * A curve is a preference, not an obstruction. Two labels on top of
+     * each other are unreadable; a label crossing a curve is untidy. On
+     * a sheet that is mostly curve, refusing every position that touches
+     * one would push labels somewhere worse than the crossing avoided.
+     */
+    const placer = new LabelPlacer({ x: 0, y: 0, w: 1000, h: 40 });
+    /* A line through every row of a plot only one label tall. */
+    for (let y = 0; y <= 40; y += 4) placer.avoidLine([{ x: 0, y }, { x: 1000, y }]);
+
+    const p = placer.place({ anchor: { x: 400, y: 20 }, size: SIZE, gap: 8 });
+    expect(p.rect.w).toBe(SIZE.w);
+    expect(p.rect.y).toBeGreaterThanOrEqual(0);
+    expect(p.rect.y + p.rect.h).toBeLessThanOrEqual(40);
+  });
+
+  it('still keeps labels off each other while dodging lines', () => {
+    const placer = new LabelPlacer(PLOT);
+    placer.avoidLine(SHELF);
+
+    const placed = Array.from({ length: 6 }, () =>
+      placer.place({ anchor: { x: 400, y: 300 }, size: SIZE, gap: 8 }));
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        expect(overlaps(placed[i].rect, placed[j].rect), `${i} vs ${j}`).toBe(false);
+      }
+    }
+  });
+});
+
+/* ---------------------------------------------------------------- */
+
+describe('a point caption sitting on a curve', () => {
+  /*
+   * The worst case, and the one that prompted this: a marked point on a
+   * definite-time shelf. The caption's natural place is to the right of
+   * the marker, at the same height -- printed along the line.
+   */
+  const ON_A_SHELF = `
+system { voltages { hv { kV = 11; } } }
+relay R { voltage = hv; element 50 { curve = definite; I_pu = 400 A; t_delay = 0.5 s; } }
+point "P" { I_A = 3000 A; t_s = 0.5 s; voltage = hv; label = "clears in 500 ms"; }
+view { voltage = hv; current_min = 100 A; current_max = 30 kA; time_min = 10 ms; time_max = 100 s; }
+`;
+
+  const svg = parseAndRender(ON_A_SHELF, { theme: 'light' }).svg;
+
+  /** Polyline runs of every drawn curve, as the placer sees them. */
+  function curveRuns(src: string): Array<Array<{ x: number; y: number }>> {
+    const runs: Array<Array<{ x: number; y: number }>> = [];
+    for (const path of src.matchAll(/<path d="([^"]+)"[^>]*class="tc-curve/g)) {
+      let current: Array<{ x: number; y: number }> = [];
+      for (const m of path[1].matchAll(/([ML])\s*(-?[\d.]+)[ ,]+(-?[\d.]+)/g)) {
+        const point = { x: Number(m[2]), y: Number(m[3]) };
+        if (m[1] === 'M') {
+          if (current.length > 1) runs.push(current);
+          current = [point];
+        } else current.push(point);
+      }
+      if (current.length > 1) runs.push(current);
+    }
+    return runs;
+  }
+
+  it('draws the curve and the caption', () => {
+    expect(curveRuns(svg).length).toBeGreaterThan(0);
+    expect(svg).toContain('clears in 500 ms');
+  });
+
+  it('does not print the caption along the line', () => {
+    const caption = svg.match(
+      /<text x="([\d.-]+)" y="([\d.-]+)" text-anchor="(start|end)" font-size="11"[^>]*>clears in 500 ms</,
+    );
+    expect(caption).not.toBeNull();
+
+    const FONT = 11;
+    const w = 'clears in 500 ms'.length * FONT * 0.6;
+    const box = {
+      x: caption![3] === 'end' ? Number(caption![1]) - w : Number(caption![1]),
+      y: Number(caption![2]) - FONT,
+      w,
+      h: FONT + 2,
+    };
+
+    /* Judged with the same geometry the placer used. */
+    const probe = new LabelPlacer({ x: 0, y: 0, w: 10_000, h: 10_000 });
+    for (const run of curveRuns(svg)) probe.avoidLine(run);
+    expect(probe.onLine(box)).toBe(false);
+  });
+
+  it('draws the marker after the curve, so it sits in front', () => {
+    const curveAt = svg.indexOf('class="tc-curve');
+    const markerAt = svg.indexOf('<g class="tc-point"');
+    expect(curveAt).toBeGreaterThan(-1);
+    expect(markerAt).toBeGreaterThan(curveAt);
+  });
+
+  it('rings the marker in the page colour, so the line stops at it', () => {
+    /*
+     * Drawing it later is not enough: a 2 px stroke through a 10 px
+     * marker still reads as one shape. Checked against the theme rather
+     * than a literal, since the surface is off-white and a test that
+     * assumed `#fff` would pass only by luck.
+     */
+    const group = svg.slice(svg.indexOf('<g class="tc-point"'));
+    const marker = group.slice(0, group.indexOf('<text'));
+    const surface = theme('light').background;
+
+    expect(marker).toContain(`stroke="${surface}"`);
+    /* Wider than the mark it rings, and drawn before it. */
+    expect(marker.indexOf(surface)).toBeLessThan(marker.indexOf('stroke-width="1.8"'));
   });
 });
 

@@ -358,6 +358,29 @@ class Parser {
     }
     return null;
   }
+  /**
+   * One name, or a bracketed list of them.
+   *
+   * `scenario = "A"` and `scenarios = ["A", "B"]` are the same shape as
+   * far as the reader is concerned, so both spellings of the key accept
+   * both forms rather than pairing a singular key with a scalar and a
+   * plural key with a list -- which only produces a syntax error for
+   * writing the sentence the other way round.
+   */
+  private parseNameList(): string[] {
+    if (this.eat('LBRACK')) {
+      const names: string[] = [];
+      if (!this.at('RBRACK')) {
+        names.push(this.parseStringOrIdent());
+        while (this.eat('COMMA')) names.push(this.parseStringOrIdent());
+      }
+      this.expect('RBRACK', ']');
+      return names;
+    }
+    const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+    return tok ? [unquote(tok.image)] : [];
+  }
+
   private expectKeyword(...names: string[]): string {
     const v = this.matchKeyword(...names);
     if (v !== null) return v;
@@ -504,6 +527,15 @@ class Parser {
       switch (k.image) {
         case 'I_A':   p.I_A = this.parseNumberWithUnit_A(); break;
         case 't_s':   p.t_s = this.parseNumberWithUnit_s(); break;
+        /* The current may come from a named condition instead. */
+        case 'fault':
+        case 'faults':
+        case 'scenario':
+        case 'scenarios': {
+          const names = this.parseNameList();
+          if (names.length > 0) p.conditions = [...(p.conditions ?? []), ...names];
+          break;
+        }
         case 'label': p.label = this.parseStringOrIdent(); break;
         case 'voltage': p.voltage = this.parseStringOrIdent(); break;
         case 'color': p.color = this.parseStringOrIdent(); break;
@@ -1345,11 +1377,20 @@ if (kwName === 'flex_points') {
             a.backup = this.parseRef();
             this.eat('SEMI');
             break;
+          /*
+           * The condition -- a fault or a scenario, one or several.
+           * They are alternative names for the same idea, so they
+           * accumulate into one list and the annotation is drawn once
+           * per condition named.
+           */
           case 'fault':
+          case 'faults':
+          case 'scenario':
+          case 'scenarios':
             {
-              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              const names = this.parseNameList();
               this.eat('SEMI');
-              if (tok) a.fault = unquote(tok.image);
+              if (names.length > 0) a.conditions = [...(a.conditions ?? []), ...names];
             }
             break;
           case 'label':
@@ -2024,6 +2065,7 @@ function applyPageSubBlock(
         color: str('color'),
         swatch: str('swatch') as 'line' | 'box' | 'circle' | undefined,
         title: str('title'),
+        currents: str('currents') as import('./ast.js').LegendCurrents | undefined,
       };
       break;
     case 'axes':

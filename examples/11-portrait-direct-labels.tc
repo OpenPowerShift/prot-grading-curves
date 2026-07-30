@@ -25,6 +25,11 @@
 # The relays also carry `name`, which is what the labels show; `grade`
 # still refers to them by identifier (R_FDR:51), so naming something
 # for the reader never breaks a reference to it.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Northgate 11 kV";
@@ -44,9 +49,9 @@ system {
 }
 
 faults {
-    "F_bus"  { I_A = 13_500 A; voltage = "MV"; description = "switchboard bus fault"; }
-    "F_fdr"  { I_A =  7_200 A; voltage = "MV"; description = "feeder fault"; }
-    "F_spur" { I_A =  2_400 A; voltage = "MV"; description = "spur fault"; }
+    "Bus fault"  { I_A = 13_500 A; voltage = "MV"; description = "switchboard bus fault"; }
+    "Feeder fault"  { I_A =  7_200 A; voltage = "MV"; description = "feeder fault"; }
+    "Spur fault" { I_A =  2_400 A; voltage = "MV"; description = "spur fault"; }
 }
 
 # ---- Incomer: slowest, backs up everything downstream. -------------
@@ -107,7 +112,7 @@ relay R_FDR {
 grade {
     primary   = R_FDR:51;
     backup    = R_BUS:51;
-    fault     = "F_fdr";
+    fault     = "Feeder fault";
     CTI_min_s = 0.30;
     comment   = "feeder graded against the bus section";
 }
@@ -115,7 +120,7 @@ grade {
 grade {
     primary   = R_BUS:51;
     backup    = R_INC:51;
-    fault     = "F_bus";
+    fault     = "Bus fault";
     CTI_min_s = 0.30;
     comment   = "bus section graded against the incomer";
 }
@@ -123,7 +128,7 @@ grade {
 annotate {
     primary = R_FDR:51;
     backup  = R_BUS:51;
-    fault   = "F_fdr";
+    fault   = "Feeder fault";
     label   = "CTI";
 }
 

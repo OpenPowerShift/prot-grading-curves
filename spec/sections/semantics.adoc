@@ -928,6 +928,80 @@ applied. If the device is on a different voltage level than the
 plot's axis mode, the renderer emits a *Warning*
 (`ANNOTATE_VOLTAGE_MISMATCH`).
 
+==== Conditions on the drawing
+
+A **condition** is a named `fault` or `scenario`. Both are marked with a
+vertical rule, a name below the axis, and a legend entry; they differ in
+where the plotted figure comes from.
+
+* A **fault** is one current at one level. Its rule stands at that
+  figure referred to the view's level by the turns ratio
+  (`I_view = I_fault × V_fault / V_view`), and only where the plotted
+  quantity survives the windings between them -- see _Zero sequence
+  across a transformer_.
+* A **scenario** declares a figure per level. Its rule stands at **the
+  view level's own declared figure, unreferred**. A scenario declaring
+  exactly one level is unambiguous and is referred like a fault; one
+  declaring several and not the level being drawn is *not* marked, and
+  the omission is stated in the legend.
+
+Either way the rule stands at the condition's value of the *axis*
+quantity (`view.quantity`), resolved as _Sequence ratios by fault type_
+describes: declared components win, the fault type derives the rest. A
+condition carrying none of that quantity -- zero, which is a real answer
+-- is not marked, since zero has no position on a logarithmic axis.
+
+Where a sheet marks both forms, the legend section is headed
+*Conditions* rather than *Faults*, and each scenario entry is annotated
+`scenario`.
+
+An element is drawn only where the current it measures can reach the
+level being drawn. The rule is the one _Zero sequence across a
+transformer_ states, applied to curves as it is to condition rules and
+to marked points: an element whose measured quantity does not cross
+between its own level and the view's has no position on that sheet, and
+neither does one carrying none of that quantity at its own level under
+the depicted condition. Both are named in the legend with the reason,
+not counted -- a reader cannot identify a missing curve from a tally,
+and grading may be reporting a margin against it.
+
+[NOTE]
+====
+An element's curve is positioned across voltage levels by the turns
+ratio, because a characteristic is a property of the element rather than
+of any condition. A scenario's declared figures need not agree with that
+ratio -- that is precisely why scenarios exist -- so on a cross-voltage
+sheet a curve's drawn position and the margin reported for it against a
+scenario may disagree. The report is authoritative.
+====
+
+===== Condition references on `annotate` and `point`
+
+`annotate` and `point` may name conditions in place of a current, using
+any of `fault`, `faults`, `scenario`, `scenarios` (the keys are
+equivalent; each takes one name or a list):
+
+* Each named condition produces one annotation or one marker, at that
+  condition's own current. Repeated names produce one.
+* The current is resolved in the frame of what the mark belongs to --
+  the annotated element's level, or the point's `voltage`. A fault is
+  referred onto that level; a scenario declaring it is taken directly.
+* For the margin form, each side is evaluated at the current *it*
+  measures in *its own* frame, exactly as _CTI computation_ specifies,
+  so an annotated figure agrees with the report for the same pair and
+  condition.
+* A `point` declaring both `I_A` and a condition is an *Error*
+  (`POINT_CURRENT_AND_CONDITION`). A condition that is neither a
+  declared fault nor a declared scenario is an *Error*
+  (`UNRESOLVED_REFERENCE`). A scenario silent about the level a mark
+  sits on is an *Error* (`SCENARIO_LEVEL_MISSING`).
+* A marker whose level differs from the view's, where the axis quantity
+  does not cross between them, is not drawn; the legend says so.
+
+When a point stands for several conditions, its identifier and label
+carry the condition name (`withstand · one tx out`) so the markers are
+distinguishable and duplicate-identifier checking still applies.
+
 ==== Comparison with the rejected design
 
 Earlier drafts of the spec carried both a `system.transformers`

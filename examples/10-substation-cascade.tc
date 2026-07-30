@@ -12,6 +12,11 @@
 # Each adjacent pair is graded, and each margin is annotated at the
 # fault that governs it — so the sheet carries the whole coordination
 # argument, not just the curves.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project   = "Northgate 33/11 kV";
@@ -33,11 +38,11 @@ system {
 }
 
 faults {
-    "F_bus_max"  { I_A = 8.20 kA; voltage = "MV"; }
-    "F_fdr_max"  { I_A = 5.60 kA; voltage = "MV"; }
-    "F_sub_max"  { I_A = 3.10 kA; voltage = "MV"; }
-    "F_spur_max" { I_A = 1.25 kA; voltage = "MV"; }
-    "F_sub_min"  { I_A = 0.95 kA; voltage = "MV"; }
+    "Bus max"  { I_A = 8.20 kA; voltage = "MV"; }
+    "Feeder max"  { I_A = 5.60 kA; voltage = "MV"; }
+    "Sub max"  { I_A = 3.10 kA; voltage = "MV"; }
+    "Spur max" { I_A = 1.25 kA; voltage = "MV"; }
+    "Sub min"  { I_A = 0.95 kA; voltage = "MV"; }
 }
 
 device "spur_fuse_65T" {
@@ -91,7 +96,7 @@ relay R_SUB {
 grade {
     primary   = R_TIE:51;
     backup    = R_INC:51;
-    fault     = "F_bus_max";
+    fault     = "Bus max";
     CTI_min_s = 0.30;
     upstream  = true;
 }
@@ -99,7 +104,7 @@ grade {
 grade {
     primary   = R_FDR:51;
     backup    = R_TIE:51;
-    fault     = "F_fdr_max";
+    fault     = "Feeder max";
     CTI_min_s = 0.30;
     upstream  = true;
 }
@@ -113,7 +118,7 @@ grade {
 grade {
     primary     = R_SUB:51;
     backup      = R_FDR:51;
-    fault       = "F_sub_max";
+    fault       = "Sub max";
     CTI_min_s   = 0.30;
     upstream_to = 3.1 kA;
 }
@@ -121,15 +126,15 @@ grade {
 grade {
     primary   = spur_fuse_65T;
     backup    = R_SUB:51;
-    fault     = "F_spur_max";
+    fault     = "Spur max";
     CTI_min_s = 0.15;              # fuse-relay pairs run tighter
 }
 
 # ---- each margin, on the sheet ---------------------------------------
-annotate { primary = R_TIE:51;      backup = R_INC:51; fault = "F_bus_max";  label = "CTI"; }
-annotate { primary = R_FDR:51;      backup = R_TIE:51; fault = "F_fdr_max";  label = "CTI"; }
-annotate { primary = R_SUB:51;      backup = R_FDR:51; fault = "F_sub_max";  label = "CTI"; }
-annotate { primary = spur_fuse_65T; backup = R_SUB:51; fault = "F_spur_max"; label = "CTI"; }
+annotate { primary = R_TIE:51;      backup = R_INC:51; fault = "Bus max";  label = "CTI"; }
+annotate { primary = R_FDR:51;      backup = R_TIE:51; fault = "Feeder max";  label = "CTI"; }
+annotate { primary = R_SUB:51;      backup = R_FDR:51; fault = "Sub max";  label = "CTI"; }
+annotate { primary = spur_fuse_65T; backup = R_SUB:51; fault = "Spur max"; label = "CTI"; }
 
 annotate {
     on_curve = R_INC:51;

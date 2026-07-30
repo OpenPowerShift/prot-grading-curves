@@ -44,7 +44,8 @@ describe('margin annotations', () => {
     expect(annotation.kind).toBe('margin');
     expect(annotation.primary?.text).toBe('R_FDR:51');
     expect(annotation.backup?.text).toBe('R_INC:51');
-    expect(annotation.fault).toBe('F_max');
+    /* `fault` and `scenario` both resolve to one named condition. */
+    expect(annotation.condition).toBe('F_max');
   });
 
   it('labels the same margin the report computes', () => {

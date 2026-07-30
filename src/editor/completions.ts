@@ -26,55 +26,68 @@ import { allCurveIds } from '../constants/curves.js';
 import { constantsFromId } from '../semantics/curves.js';
 import { snippetCompletions } from './snippets.js';
 
-/** Decide the most likely enclosing block based on the source text
- *  up to the cursor. We walk backwards looking for the most
- *  unmatched `meta`, `system`, etc. block.  Anything inside the
- *  `{}` of that block is the "active" scope. */
+/**
+ * The keyword that opened the block whose `{` sits at `braceIndex`.
+ *
+ * Read back to whatever ended the previous statement and take the
+ * first word of what is left, so the name between the keyword and the
+ * brace is stepped over: `relay R_FDR {` opens a `relay`, and
+ * `device "spur_fuse" {` a `device`.
+ *
+ * An empty string for a brace opened by something that is not a
+ * keyword -- a fault entry, a voltage level, any block named by a bare
+ * string. The stack still needs the entry so the matching `}` pops the
+ * right thing; the name simply is not one we have fields for.
+ */
+function blockKeywordAt(src: string, braceIndex: number): string {
+  let start = braceIndex - 1;
+  while (start >= 0 && !'{};\n'.includes(src[start])) start--;
+
+  const head = src.slice(start + 1, braceIndex).trim();
+  const first = /^([A-Za-z_][\w]*)/.exec(head);
+  return first ? first[1] : '';
+}
+
+/**
+ * The block the cursor is inside, as a key into `BLOCK_FIELDS`.
+ *
+ * A brace stack rather than a scan for keywords near a brace. The scan
+ * looked back a fixed twelve characters, so whether a block was
+ * recognised depended on how long the name in front of its brace
+ * happened to be: `element 51 {` was found and `relay R {` was not,
+ * and the fields offered inside a relay were the top-level block
+ * keywords.
+ *
+ * The stack also gives nesting for free, which the old code had to
+ * special-case by searching for the nearest `stages` or `voltages`.
+ */
 function detectActiveBlock(src: string, pos: number): string | null {
-  let depth = 0;
-  const blocks: string[] = [];
+  const stack: string[] = [];
   for (let i = 0; i < pos && i < src.length; i++) {
-    const c = src[i];
-    if (c === '{') depth++;
-    else if (c === '}') depth--;
-    // Try matching a block keyword right after whitespace/newline
-    // at this position; the keyword block-start detection is rough
-    // but it covers 95% of the cases.
-    const tail = src.slice(Math.max(0, i - 12), i).trim();
-    for (const kw of TOP_BLOCK_KEYWORDS) {
-      if (tail === kw || tail.endsWith(kw)) {
-        if (depth > 0) blocks.push(kw);
-        break;
-      }
-    }
+    if (src[i] === '{') stack.push(blockKeywordAt(src, i));
+    else if (src[i] === '}') stack.pop();
   }
-  if (blocks.length === 0) return null;
-  // Return the deepest block we're currently inside (last pushed).
-  // `element` vs `stage` need disambiguation -- if any `stages {...}`
-  // is open and we're inside it, we are inside `stages`.
-  const last = blocks[blocks.length - 1];
-  if (last === 'element') {
-    // Check if a `stages { ... }` sub-block is currently open.
-    const text = src.slice(0, pos);
-    const lastStages = text.lastIndexOf('stages');
-    const lastRbraceAfterStages = text.indexOf('}', lastStages);
-    const lastLbraceAfterStages = text.indexOf('{', lastStages);
-    if (lastStages >= 0 && (lastLbraceAfterStages === -1 || lastLbraceAfterStages < lastRbraceAfterStages)) {
-      return 'stage';
-    }
+
+  const open = stack.filter(Boolean);
+  if (open.length === 0) return null;
+
+  /* `stages { stage { ... } }` and the shorthand both take stage
+   * fields; `BLOCK_FIELDS` keys that set as `stage`. */
+  const named = open.map((b) => (b === 'stages' ? 'stage' : b));
+
+  /*
+   * Most specific first: a sub-block with its own field list is keyed
+   * by its path (`system.voltages`), and anything else falls back to
+   * the innermost block that has fields at all.
+   */
+  for (let depth = named.length; depth > 0; depth--) {
+    const path = named.slice(named.length - depth).join('.');
+    if (path in BLOCK_FIELDS) return path;
   }
-  if (last === 'system') {
-    // Are we inside `voltages { ... }`?
-    const text = src.slice(0, pos);
-    const lastVoltages = text.lastIndexOf('voltages');
-    if (lastVoltages >= 0) {
-      const after = text.slice(lastVoltages);
-      const opens = (after.match(/\{/g) ?? []).length;
-      const closes = (after.match(/\}/g) ?? []).length;
-      if (opens > closes) return 'system.voltages';
-    }
+  for (let i = named.length - 1; i >= 0; i--) {
+    if (named[i] in BLOCK_FIELDS) return named[i];
   }
-  return last;
+  return named[named.length - 1] ?? null;
 }
 
 function makeCompletion(label: string, detailKind?: string): Completion {
@@ -162,14 +175,31 @@ function refCompletions(src: string): Completion[] {
 }
 
 /** Named faults declared in the source, offered at `fault = "..."`. */
+/**
+ * Named conditions declared in the document: faults and scenarios.
+ *
+ * Both, because everything that references a condition -- `grade`,
+ * `annotate`, `point`, `view { condition }` -- accepts either, so
+ * offering only the faults hides half the answer.
+ */
 function faultCompletions(src: string): Completion[] {
   const out: Completion[] = [];
+
   const faultsBlock = src.match(/\bfaults\s*\{([\s\S]*?)\n\}/);
-  if (!faultsBlock) return out;
-  const nameRe = /"([^"]+)"\s*\{/g;
-  for (let m = nameRe.exec(faultsBlock[1]); m; m = nameRe.exec(faultsBlock[1])) {
-    out.push({ label: m[1], type: 'variable', detail: 'fault', boost: 4 });
+  if (faultsBlock) {
+    const nameRe = /"([^"]+)"\s*\{/g;
+    for (let m = nameRe.exec(faultsBlock[1]); m; m = nameRe.exec(faultsBlock[1])) {
+      out.push({ label: m[1], type: 'variable', detail: 'fault', boost: 4 });
+    }
   }
+
+  /* `scenario "name" {` is a top-level block, so it is matched
+   * directly rather than inside an enclosing one. */
+  const scenarioRe = /\bscenario\s+"([^"]+)"\s*\{/g;
+  for (let m = scenarioRe.exec(src); m; m = scenarioRe.exec(src)) {
+    out.push({ label: m[1], type: 'variable', detail: 'scenario', boost: 4 });
+  }
+
   return out;
 }
 
@@ -284,7 +314,11 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
     if (target === 'curve') options = curveCompletions();
     else if (target === 'primary' || target === 'backup' || target === 'on_curve' ||
              target === 'reference_ct' || target === 'sources') options = refCompletions(src);
-    else if (target === 'fault') options = faultCompletions(src);
+    /* Every spelling of a condition reference offers the same names. */
+    else if (target === 'fault' || target === 'faults' || target === 'scenario'
+             || target === 'scenarios' || target === 'condition') {
+      options = faultCompletions(src);
+    }
     else if (target === 'voltage') {
       /* `voltage` names a level everywhere except inside a fault or a
        * device rating, so offer the declared levels first and fall
@@ -301,12 +335,22 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
     }
   }
 
-  if (!word) return null;
-  if (word.from === word.to && !ctx.explicit) return null;
+  /*
+   * Asking outright is always answered.
+   *
+   * `matchBefore` finds nothing on an empty line, which used to end the
+   * whole function -- so pressing `?` on the blank line inside a fresh
+   * `view { }` offered nothing at all, and the only way to see a
+   * block's fields was to guess a first letter and ask again. Typing
+   * ahead still needs a word to filter on; an explicit request does
+   * not, and lists everything the block accepts.
+   */
+  if (!word && !ctx.explicit) return null;
+  if (word && word.from === word.to && !ctx.explicit) return null;
 
   const block = detectActiveBlock(src, pos);
 
-  const from = word.from;
+  const from = word ? word.from : pos;
   let options: Completion[];
   if (block == null) {
     /* Top level: block keywords, plus the snippet skeletons. */

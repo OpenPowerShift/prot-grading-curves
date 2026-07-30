@@ -4,6 +4,11 @@
 # slow trip + a definite-time stage for the high-set instantaneous.
 # The renderer draws a separate visible curve per stage (or the
 # pointwise-min composite, whichever `view.stages` is set to).
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values -- curve names, quantities, declared
+# conditions and voltage levels included.
 
 meta {
     project = "Multi-stage demo";
@@ -17,8 +22,8 @@ system {
 }
 
 faults {
-    "F_bus"   { I_A = 6000 A; }
-    "F_far"   { I_A = 1200 A; }
+    "Bus fault"   { I_A = 6000 A; }
+    "Remote fault"   { I_A = 1200 A; }
 }
 
 relay R_TGT {

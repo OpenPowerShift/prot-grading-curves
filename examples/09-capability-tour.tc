@@ -145,6 +145,7 @@ view {
 # ---- page: sheet geometry, decoration, and theme. ------------------
 page {
     size        = "A4";
+    legend      = { position = "bottom_left"; };
     orientation = "landscape";
     theme       = "light";
     border      = true;

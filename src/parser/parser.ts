@@ -64,6 +64,29 @@ export const RENAMED_KEYS: Readonly<Record<string, string>> = {
 };
 
 /** Keys removed outright, with why. */
+/**
+ * Fields each `page` styling sub-block accepts.
+ *
+ * These blocks took anything at all: `page { legend = { titel = "E" } }`
+ * parsed, validated, rendered, and silently used the default heading. A
+ * cosmetic key is not a margin, but a study can still be issued looking
+ * nothing like the office standard its author thought they had set, and
+ * nothing anywhere said why.
+ */
+export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'currents', 'notes'],
+  axes: ['color', 'grid_color', 'label_color', 'label_size_px', 'tick_size_px',
+    'frame', 'mirror'],
+  curves: ['palette', 'line_width_px', 'auto_color'],
+  points: ['color', 'shape', 'size_px', 'outline'],
+  leaders: ['show', 'style', 'width_px', 'color', 'label_offset_px'],
+  scale: ['auto', 'x_min', 'x_max', 'y_min', 'y_max', 'tick_density'],
+  margins_mm: ['top', 'right', 'bottom', 'left'],
+  faults: ['width_px', 'color', 'style', 'labels'],
+  times: ['width_px', 'color', 'style', 'labels'],
+  footer: ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
+};
+
 export const REMOVED_KEYS: Readonly<Record<string, string>> = {
   frequency_Hz: 'nothing in the tool reads it',
   grounding: 'nothing in the tool reads it; zero_sequence declares what mattered',
@@ -680,7 +703,12 @@ class Parser {
           if (v) p.shape = v as import('./ast.js').PointBlock['shape'];
           break;
         }
-        default: this.parseScalarValue(); break;
+        default:
+          this.parseScalarValue();
+          this.noteUnknownKey('a point', k, ['I', 'I1', 'I2', 'I0', 'residual', 't',
+            'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'voltage',
+            'color', 'description', 'coords', 'shape', 'on_curve']);
+          break;
       }
       this.eat('SEMI');
     }
@@ -855,7 +883,11 @@ class Parser {
             case 'I2':    level.I2_A = this.parseNumberWithUnit_A(); break;
             case 'I0':    level.I0_A = this.parseNumberWithUnit_A(); break;
             case 'residual': level.earth_A = this.parseNumberWithUnit_A(); break;
-            default:        this.parseScalarValue(); break;
+            default:
+              this.parseScalarValue();
+              this.noteUnknownKey("a scenario's level", k,
+                ['I', 'I1', 'I2', 'I0', 'residual']);
+              break;
           }
           this.eat('SEMI');
         }
@@ -905,9 +937,22 @@ class Parser {
         continue;
       }
 
-      /* Unknown member: consume it so the loop cannot stick. */
+      /* Unknown member: consume it so the loop cannot stick, and say
+       * so -- silently skipped, a mistyped `level` or `sees` took a
+       * whole level's figures out of the study without a word. */
       this.pos++;
+      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'description']);
       if (this.at('EQUALS')) { this.pos++; this.parseScalarValue(); this.eat('SEMI'); }
+      else {
+        /*
+         * A misspelled `level` still has a braced body behind it. Left
+         * to the loop, every field inside it is read as a scenario
+         * member and warned about in turn, so one typo produced a
+         * column of complaints and the real one was the first.
+         */
+        void (this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW'));
+        if (this.at('LBRACE')) this.skipBracedGroup();
+      }
     }
     this.expect('RBRACE', '}');
     return block;
@@ -1106,6 +1151,18 @@ if (kwName === 'flex_points') {
    * nothing, and a stage is where a multi-stage study actually puts the
    * `tms` that was being dropped.
    */
+  /** Consume a `{ ... }` group, braces balanced, wherever the cursor is. */
+  private skipBracedGroup(): void {
+    if (!this.at('LBRACE')) return;
+    let depth = 0;
+    while (!this.at('EOF')) {
+      if (this.at('LBRACE')) depth++;
+      else if (this.at('RBRACE')) { depth--; this.pos++; if (depth === 0) break; continue; }
+      this.pos++;
+    }
+    this.eat('SEMI');
+  }
+
   private noteUnknownElementSetting(what: 'an element' | 'a stage'): void {
     const at = this.peek();
     if (!((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS')) return;
@@ -1905,12 +1962,14 @@ if (kwName === 'flex_points') {
    * unquoted, booleans as booleans -- so the caller can assign them to
    * typed fields without re-parsing.
    */
-  private parsePageSubBlock(): Record<string, string | number | boolean> {
+  private parsePageSubBlock(name: string): Record<string, string | number | boolean> {
     this.expect('LBRACE', '{');
+    const accepts = PAGE_SUB_FIELDS[name] ?? [];
     const out: Record<string, string | number | boolean> = {};
     while (!this.at('RBRACE') && !this.at('EOF')) {
       const key = this.eat('KW') ?? this.eat('IDENT');
       if (!key) { this.pos++; continue; }
+      if (accepts.length > 0) this.noteUnknownKey(`page ${name}`, key, accepts);
       this.expect('EQUALS', '=');
 
       const t = this.peek();
@@ -1995,7 +2054,7 @@ if (kwName === 'flex_points') {
             this.eat('SEMI');
             continue;
           }
-          const fields = this.parsePageSubBlock();
+          const fields = this.parsePageSubBlock(k.image);
           this.eat('SEMI');
           applyPageSubBlock(p, k.image, fields);
           continue;

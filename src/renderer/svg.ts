@@ -3057,12 +3057,36 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         );
         lines.push(hatchLines(clipId, originX, swatchY - bh / 2, originX + swatchW, swatchY + bh / 2, c.color, 5));
       } else {
-        lines.push(
-          `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
-          `stroke="${c.color}" stroke-width="${isHighlighted ? 4.5 : 2.5}"` +
-          `${(c.dashArray ?? (c.dashed ? '6 4' : '')) ? ` stroke-dasharray="${c.dashArray ?? '6 4'}"` : ''}` +
-          ` stroke-linecap="round"/>`,
-        );
+        /*
+         * `page { legend = { swatch } }` was parsed, validated and
+         * offered while being read by nothing, so a study asking for
+         * boxes or circles got lines and no indication otherwise.
+         *
+         * A line is the default because it can carry the curve's own
+         * dash pattern, which is half of how two curves are told apart
+         * when the palette runs out; box and circle cannot, so they are
+         * only right where every curve has its own hue.
+         */
+        const swatchKind = opts.page?.legend?.swatch ?? 'line';
+        const w = isHighlighted ? 4.5 : 2.5;
+        if (swatchKind === 'box') {
+          lines.push(
+            `<rect x="${originX}" y="${(swatchY - 5).toFixed(1)}" ` +
+            `width="${swatchW}" height="10" fill="${c.color}" stroke="none"/>`,
+          );
+        } else if (swatchKind === 'circle') {
+          lines.push(
+            `<circle cx="${(originX + swatchW / 2).toFixed(1)}" cy="${swatchY.toFixed(1)}" ` +
+            `r="${isHighlighted ? 6 : 5}" fill="${c.color}" stroke="none"/>`,
+          );
+        } else {
+          lines.push(
+            `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
+            `stroke="${c.color}" stroke-width="${w}"` +
+            `${(c.dashArray ?? (c.dashed ? '6 4' : '')) ? ` stroke-dasharray="${c.dashArray ?? '6 4'}"` : ''}` +
+            ` stroke-linecap="round"/>`,
+          );
+        }
       }
       /* Wrapped like the detail lines beneath it: a declared `name`
        * is free text and routinely outruns the column. */

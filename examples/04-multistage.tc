@@ -48,6 +48,9 @@ relay R_TGT {
 
 page {
     size  = "A4";
+    # `column` is the default gutter; stated here so the
+    # alternatives (inside / direct / none) have something to read against.
+    legend = { style = "column"; };
     theme = "light";
     title = "Multi-stage element (composite view)";
 }

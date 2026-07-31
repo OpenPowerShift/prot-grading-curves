@@ -77,9 +77,10 @@ grade {
 }
 
 page {
-    size        = "A4";
+    size        = "Letter";
     orientation = "landscape";
-    theme       = "light";
+    # `print` drops to inks that survive a mono plan copier.
+    theme       = "print";
     border      = true;
     title       = { text     = "Plant 11 kV — incomer / feeder grading";
                     subtitle = "Pick-ups entered in secondary amps (SEL-751)"; };

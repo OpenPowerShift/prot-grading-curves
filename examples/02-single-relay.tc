@@ -36,7 +36,8 @@ relay R_FDR_480 {
 }
 
 page {
-    size  = "A4";
+    # One relay needs little paper; A5 is a page in a report.
+    size  = "A5";
     theme = "light";
     title = "Plant 480 V — single-relay OC study";
 }

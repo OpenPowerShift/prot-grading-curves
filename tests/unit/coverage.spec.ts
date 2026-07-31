@@ -1,0 +1,101 @@
+/**
+ * Every advertised key and value is demonstrated somewhere.
+ *
+ * The playground offers a vocabulary through `?`; the spec and guide
+ * describe it. Nothing kept those three in step with each other, and an
+ * audit found the drift: keys named in the spec that the parser had
+ * renamed, values offered in a block where they were hard errors, a
+ * field completions still suggested a release after it was removed, and
+ * three `page` sub-blocks that were parsed, validated, documented and
+ * read by nothing at all.
+ *
+ * An example is the only one of the four that cannot lie. It is
+ * processed on every run, so a key that stops working stops the build.
+ * These tests keep the offered vocabulary and the worked examples
+ * pinned together: add a key to the completion tables without using it
+ * anywhere, and this fails until you show what it is for.
+ */
+
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { BLOCK_FIELDS, FIELD_VALUES, TOP_BLOCK_KEYWORDS } from '@tc/help/help-data';
+import { process } from '@tc/index';
+
+const repoRoot = (): string =>
+  (globalThis as { process?: { cwd(): string } }).process!.cwd();
+
+const exampleDir = () => join(repoRoot(), 'examples');
+const exampleFiles = () => readdirSync(exampleDir()).filter((f) => f.endsWith('.tc'));
+
+/**
+ * Example sources with comments stripped.
+ *
+ * A key named in a comment is documentation, not use; counting it would
+ * let this test pass on a file that only *talks* about a feature.
+ */
+const exampleCode = (): string =>
+  exampleFiles()
+    .map((f) => readFileSync(join(exampleDir(), f), 'utf8'))
+    .join('\n')
+    .split('\n')
+    .map((l) => l.replace(/#.*$/, ''))
+    .join('\n');
+
+describe('the offered vocabulary is demonstrated', () => {
+  const code = exampleCode();
+
+  /** Used as a key: `k =`, `k {`, or `k <name> {` for a named block. */
+  const usesKey = (k: string): boolean =>
+    new RegExp(`(^|[{;\\s])${k}\\s*=`, 'm').test(code)
+    || new RegExp(`(^|[{;\\s])${k}\\s*\\{`, 'm').test(code)
+    || new RegExp(`(^|[{;\\s])${k}\\s+["\\w][^;{]*\\{`, 'm').test(code);
+
+  it('uses every field offered inside a block', () => {
+    const missing: string[] = [];
+    for (const [block, fields] of Object.entries(BLOCK_FIELDS)) {
+      for (const f of fields) if (!usesKey(f)) missing.push(`${block}.${f}`);
+    }
+    expect(missing, 'offered by `?` but in no example').toEqual([]);
+  });
+
+  it('uses every top-level block', () => {
+    const missing = TOP_BLOCK_KEYWORDS.filter((b) => !usesKey(b));
+    expect(missing, 'a whole block with nothing to read').toEqual([]);
+  });
+
+  it('uses every enumerated value', () => {
+    /*
+     * Several of these cannot share a sheet -- a page has one theme,
+     * one size, one palette -- so they are spread across the examples
+     * rather than crammed into one. That is the only way to show them
+     * at all, and it makes the library look like a drawing office's
+     * rather than one sheet repeated.
+     */
+    const missing: string[] = [];
+    for (const [field, choices] of Object.entries(FIELD_VALUES)) {
+      for (const c of choices) {
+        const v = c.value.replace(/^"|"$/g, '');
+        const esc = v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (!new RegExp(`\\b${esc}\\b`).test(code)) missing.push(`${field} = ${v}`);
+      }
+    }
+    expect(missing, 'offered as a value but in no example').toEqual([]);
+  });
+});
+
+describe('every example still means something', () => {
+  /*
+   * Coverage is worthless if the file that provides it does not parse.
+   * A key could be "demonstrated" by a line the processor rejects.
+   */
+  for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.tc'))) {
+    it(`${file} processes without an error`, () => {
+      const result = process(readFileSync(join(repoRoot(), 'examples', file), 'utf8'));
+      const errors = [...result.parseErrors, ...result.diagnostics]
+        .filter((d) => d.severity === 'error');
+      expect(errors.map((e) => `${e.code}: ${e.message}`)).toEqual([]);
+      expect(result.study).toBeDefined();
+    });
+  }
+});

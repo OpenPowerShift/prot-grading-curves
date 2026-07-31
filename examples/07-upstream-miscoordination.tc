@@ -70,7 +70,8 @@ grade {
 page {
     size        = "A4";
     orientation = "landscape";
-    theme       = "light";
+    # Dark, for reading on a screen in a substation at night.
+    theme       = "dark";
     border      = true;
     title       = { text     = "Curve families that converge";
                     subtitle = "IEC SI feeder against an IEC EI incomer"; };

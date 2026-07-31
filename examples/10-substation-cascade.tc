@@ -144,7 +144,8 @@ annotate {
 }
 
 page {
-    size        = "A4";
+    # A five-device cascade wants the extra width.
+    size        = "Legal";
     orientation = "landscape";
     theme       = "light";
     border      = true;

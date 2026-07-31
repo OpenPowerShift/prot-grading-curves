@@ -898,6 +898,20 @@ function validateAnnotations(ctx: Ctx): void {
 
   for (const item of ctx.doc.items) {
     if (item.type !== 'annotate') continue;
+    /*
+     * A condition and a bare current are two ways to say where the
+     * annotation goes, and the condition silently won -- so adding
+     * `at_I_A` to an annotation that already named a scenario did
+     * nothing at all, and gave no reason. Refused rather than ranked,
+     * as `point` refuses the same pair.
+     */
+    if ((item.conditions?.length ?? 0) > 0 && item.at_I_A != null) {
+      add(ctx, 'ANNOTATE_CURRENT_AND_CONDITION', 'error',
+        'annotate declares at_I_A and names a condition; they are alternatives -- ' +
+        'a condition supplies the current, so at_I_A would be ignored',
+        item.loc);
+    }
+
     for (const name of item.conditions ?? []) {
       /*
        * Judged at the level of whatever the annotation points at: each

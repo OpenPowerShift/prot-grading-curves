@@ -251,3 +251,53 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
     expect(() => drawn('annotate { primary = R:50; at_t_s = 20 ms; point = "nonesuch"; }')).not.toThrow();
   });
 });
+
+describe('saying where an annotation goes', () => {
+  const BASE = `
+system { voltages { "HV" { kV = 33; } } }
+faults { "F" { I_A = 9 kA; voltage = "HV"; } }
+relay R_A { voltage = "HV"; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.15; } }
+relay R_B { voltage = "HV"; element 51 { curve = iec.si; I_pu = 700 A; tms = 0.30; } }
+view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
+`;
+
+  it('moves the margin when at_I_A moves', () => {
+    const at = (a: string): number => Number(
+      parseAndRender(BASE + a, { theme: 'light' }).svg
+        .match(/<line x1="([\d.]+)" y1="[\d.]+" x2="\1"/)![1]);
+    const near = at('annotate { primary = R_A:51; backup = R_B:51; at_I_A = 2 kA; label = "m"; }');
+    const far = at('annotate { primary = R_A:51; backup = R_B:51; at_I_A = 20 kA; label = "m"; }');
+    expect(far).toBeGreaterThan(near + 100);
+  });
+
+  it('refuses a condition and a bare current together', () => {
+    /*
+     * The condition quietly won, so adding `at_I_A` to an annotation
+     * that already named one did nothing and gave no reason.
+     */
+    const codes = process(
+      `${BASE}annotate { primary = R_A:51; backup = R_B:51; fault = "F"; at_I_A = 2 kA; }`,
+    ).diagnostics.filter((d) => d.severity === 'error').map((d) => d.code);
+    expect(codes).toContain('ANNOTATE_CURRENT_AND_CONDITION');
+  });
+
+  it('reads at_I_A at the level named, so it agrees with the report', () => {
+    /*
+     * Handed to each side unchanged, one number was read once at 11 kV
+     * and once at 33 kV -- two different currents -- and the drawn
+     * margin contradicted the report: 667 ms against 1.639 s.
+     */
+    const cross = `
+system { voltages { "HV" { kV = 33; } "LV" { kV = 11; } } }
+faults { "F" { I_A = 6.4 kA; voltage = "LV"; } }
+relay R_FDR { voltage = "LV"; ct_ratio = 400/5; element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; } }
+relay R_INC { voltage = "HV"; ct_ratio = 600/5; element 51 { curve = iec.si; I_pu = 720 A; tms = 0.30; } }
+grade { primary = R_FDR:51; backup = R_INC:51; fault = "F"; CTI_min_s = 0.3; }
+annotate { primary = R_FDR:51; backup = R_INC:51; at_I_A = 6.4 kA; voltage = "LV"; label = "CTI"; }
+view { voltage = "HV"; }
+`;
+    const reported = process(cross).reports[0].rows.find((r) => r.at === 'I')!.margin_s;
+    expect(reported).toBeCloseTo(1.639, 2);
+    expect(parseAndRender(cross, { theme: 'light' }).svg).toContain('CTI 1.64 s');
+  });
+});

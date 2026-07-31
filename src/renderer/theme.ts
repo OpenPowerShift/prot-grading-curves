@@ -41,7 +41,16 @@ export const THEMES: Record<ThemeName, Theme> = {
     label:     '#52514e',
     legend:    '#0b0b0b',
     curve:     '#2a78d6',
-    point:     '#2a78d6',
+    /*
+     * Marked points get their own ink, distinct from both the curve
+     * blue and the fault red. They used to default to the fault
+     * colour, which said a marked point was a fault current -- and on
+     * a sheet carrying both, an inrush cross and a fault rule read as
+     * the same kind of thing. Checked against the other two with
+     * `scripts/validate_palette.js`: worst adjacent dE 19.1 under
+     * protanopia, 20.9 normal.
+     */
+    point:     '#7d3c98',
     fault:     '#c0392b',
   },
   dark: {
@@ -52,7 +61,9 @@ export const THEMES: Record<ThemeName, Theme> = {
     label:     '#c3c2b7',
     legend:    '#ffffff',
     curve:     '#3987e5',
-    point:     '#3987e5',
+    /* Its own step for dark, not a flip of the light one; dE 14.2
+     * protan against the fault red on the dark surface. */
+    point:     '#b07cc6',
     fault:     '#e66767',
   },
   monochrome: {
@@ -74,7 +85,7 @@ export const THEMES: Record<ThemeName, Theme> = {
     label:     '#000000',
     legend:    '#000000',
     curve:     '#003366',
-    point:     '#003366',
+    point:     '#5b2c6f',
     fault:     '#cc0033',
   },
 };

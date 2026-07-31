@@ -301,6 +301,26 @@ export interface AnnotateBlock extends BaseNode {
   on_curve?: Ref;
   /** Current at which to place the annotation, in primary amps. */
   at_I_A?: number;
+  /**
+   * Time at which to measure a *current* margin, in seconds.
+   *
+   * The horizontal counterpart of the vertical margin arrow: with
+   * `primary` and `backup`, it spans the gap in current between the two
+   * characteristics at one time, and labels it as a percentage of the
+   * primary's current. That is how a current-grading margin is quoted
+   * -- "the backup picks up 40% above" -- rather than in amps, which
+   * means nothing without knowing which end of the axis you are at.
+   */
+  at_t_s?: number;
+  /**
+   * A marked point the current margin is measured to, by id.
+   *
+   * The far end of a current margin need not be another characteristic:
+   * a pickup is as often quoted against a fault level or against an
+   * inrush point ("120% of the inrush peak", "35% below the minimum
+   * two-phase fault") as against another relay.
+   */
+  pointRef?: string;
   /** Margin form: the faster device. */
   primary?: Ref;
   /** Margin form: the slower device. */
@@ -388,6 +408,15 @@ export interface ViewBlock extends BaseNode {
    * Unnamed views are numbered.
    */
   name?: string;
+  /**
+   * Draw this sheet when nothing else selects one.
+   *
+   * There is no multi-page output, so a file declaring several sheets
+   * has to be able to say which one a plain `render` produces --
+   * otherwise the answer is "whichever you wrote first", and choosing
+   * means reordering the file. The CLI's `--view` overrides it.
+   */
+  isDefault?: boolean;
   /**
    * Title for this sheet, overriding `page { title }`.
    *

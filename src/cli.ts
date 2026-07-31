@@ -37,6 +37,8 @@ interface Options {
   scale?: number;
   size?: string;
   orientation?: 'portrait' | 'landscape';
+  /** Which declared `view` to draw, by name. */
+  view?: string;
   quiet: boolean;
 }
 
@@ -52,6 +54,8 @@ Options:
       --svg             Render SVG (default)
       --png             Rasterise to PNG
       --pdf             Render to PDF
+      --view <name>     which declared view to draw (default: the one
+                        marked "default = true", else the first)
       --width <px>      PNG width in pixels
       --scale <n>       PNG scale factor when --width is absent (default 2)
       --size <name>     PDF paper size: A0-A5, Letter, Legal, Tabloid (default A4)
@@ -80,6 +84,7 @@ function parseArgs(argv: string[]): Options {
       case '--width': opts.width = Number(argv[++i]); break;
       case '--scale': opts.scale = Number(argv[++i]); break;
       case '--size': opts.size = argv[++i]; break;
+      case '--view': opts.view = argv[++i]; break;
       default:
         if (arg.startsWith('-')) throw new Error(`unknown option ${arg}`);
         rest.push(arg);
@@ -103,6 +108,33 @@ function formatDiagnostic(d: Diagnostic, file: string): string {
 function defaultOutput(input: string, format: Format): string {
   const stem = basename(input, extname(input));
   return `${stem}.${format}`;
+}
+
+/**
+ * The `view` a render should draw, as render options.
+ *
+ * A study may declare several sheets and there is no multi-page output,
+ * so the one drawn has to be selectable without the playground:
+ * `--view` by name, else the sheet marked `default = true`, else the
+ * first declared. An unknown name is an error rather than a silent
+ * fall back to the first -- the whole point of asking was to get a
+ * particular sheet.
+ */
+function selectedView(
+  result: ReturnType<typeof processStudy>,
+  wanted: string | undefined,
+): { view?: import('./parser/index.js').ViewBlock } {
+  const views = result.study?.views ?? [];
+  if (!wanted) return {};
+
+  const found = views.find((v, i) => (v.name ?? `Sheet ${i + 1}`) === wanted);
+  if (!found) {
+    const names = views.map((v, i) => v.name ?? `Sheet ${i + 1}`);
+    throw new Error(
+      `no view named "${wanted}"; this study declares ${names.length > 0 ? names.map((n) => `"${n}"`).join(', ') : 'none'}`,
+    );
+  }
+  return { view: found };
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -174,8 +206,8 @@ async function main(argv: string[]): Promise<number> {
    * declared theme -- they may be embedded in a dark document.
    */
   const svg = opts.format === 'pdf'
-    ? renderStudy(result, { theme: 'light' })
-    : renderStudy(result);
+    ? renderStudy(result, { theme: 'light', ...selectedView(result, opts.view) })
+    : renderStudy(result, selectedView(result, opts.view));
   const outputPath = resolvePath(opts.output ?? defaultOutput(opts.input, opts.format));
 
   try {

@@ -295,7 +295,12 @@ export interface StudyPoint {
 
 /** A resolved annotation: either a point on a curve, or a margin. */
 export interface Annotation {
-  kind: 'point' | 'margin';
+  /**
+   * `margin` spans the two curves vertically at one current and reports
+   * a time; `current_margin` spans them horizontally at one time and
+   * reports a percentage of current.
+   */
+  kind: 'point' | 'margin' | 'current_margin';
   on_curve?: Ref;
   primary?: Ref;
   backup?: Ref;
@@ -307,6 +312,10 @@ export interface Annotation {
    */
   condition?: string;
   at_I_A?: number;
+  /** Time a current margin is measured at, in seconds. */
+  at_t_s?: number;
+  /** A marked point the current margin is measured to, by id. */
+  pointRef?: string;
   label?: string;
   style: 'leader' | 'pin' | 'tag';
   color?: string;
@@ -455,9 +464,12 @@ export function buildStudy(doc: Document): Study {
         break;
       case 'view':
         study.views.push(item);
-        /* The first declared view is the sheet, unless a caller picks
-         * another; `selectView` does the picking. */
-        study.view ??= item;
+        /*
+         * The sheet a plain render draws: the one marked `default`, or
+         * the first declared. A caller may still pick another.
+         */
+        if (item.isDefault) study.view = item;
+        else study.view ??= item;
         break;
       case 'page':
         study.page = item;
@@ -588,12 +600,23 @@ export function buildStudy(doc: Document): Study {
         for (const condition of expandConditions(item.conditions)) {
           study.annotations.push({
             /* Two references means a margin; one means a point. */
-            kind: item.primary && item.backup ? 'margin' : 'point',
+            /* Two references and a time is a current margin; two and a
+             * current (or a condition) is the usual time margin. */
+            /*
+             * A time margin spans two curves vertically at one current.
+             * A current margin spans horizontally at one time, from a
+             * curve to another curve, a condition, or a marked point.
+             */
+            kind: item.at_t_s != null && item.primary
+              ? 'current_margin'
+              : (item.primary && item.backup ? 'margin' : 'point'),
             on_curve: item.on_curve,
             primary: item.primary,
             backup: item.backup,
             condition,
             at_I_A: item.at_I_A,
+            at_t_s: item.at_t_s,
+            pointRef: item.pointRef,
             label: item.label,
             style: item.style ?? 'leader',
             color: item.color,

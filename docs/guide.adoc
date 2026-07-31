@@ -642,6 +642,51 @@ in the legend, with the key that would fix it. Nothing changes for a
 point declaring `I_A` on a phase axis -- which is the default -- so
 existing studies are untouched.
 
+==== Margins: in time, and in current
+
+The vertical arrow measures a *time* margin between two curves at one
+current. Its horizontal counterpart measures a *current* margin at one
+time, reported as a percentage -- which is how a current-grading margin
+is quoted, amps meaning little without knowing where on the axis you
+are:
+
+[source,tc]
+----
+annotate {                          # curve to curve
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    at_t_s  = 1 s;
+    label   = "Current margin";
+}
+
+annotate {                          # curve to a fault level
+    primary = R_RMU:50;
+    at_t_s  = 20 ms;
+    fault   = "2ph min";
+    label   = "below min 2ph";      # -> "below min 2ph +52.9%"
+}
+
+annotate {                          # curve to a marked point
+    primary = R_RMU:50;
+    at_t_s  = 20 ms;
+    point   = "TX inrush";
+    label   = "above inrush";       # -> "above inrush -16.9%"
+}
+----
+
+`at_t_s` is what makes it a current margin. The far end is another
+characteristic (`backup`), a declared condition (`fault` / `scenario`),
+or a marked point (`point`) -- a pickup is as often quoted against a
+fault level or an inrush peak as against another relay. The percentage
+is of the primary's current, and both ends are put on the sheet's own
+axis before they are compared, so the figure is the one the drawn arrow
+spans.
+
+A current is read as *the smallest current whose operate time is at or
+below* `at_t_s`. On an inverse curve that is the point where it crosses;
+on a definite-time stage, which is flat, it is the pickup -- which is
+the answer meant.
+
 ==== Taking the current from a condition
 
 Neither block needs the current typed in. Name a declared condition --
@@ -893,8 +938,26 @@ view "I2 grading" {
 ----
 
 The playground shows a picker beside the plot when a study declares more
-than one, and the CLI draws the first. Nothing changes for a study with
-a single unnamed `view`.
+than one. Nothing changes for a study with a single unnamed `view`.
+
+Without the playground -- the CLI, or the API -- the sheet is chosen in
+one of three ways, most specific first:
+
+[source,bash]
+----
+tc-curves render study.tc --svg -o out.svg --view "I2 grading"
+----
+
+[source,tc]
+----
+view "I2 grading" { default = true; ... }   # when nothing else says
+----
+
+and failing both, the first declared view. An unknown `--view` name is
+an error listing the sheets the study does declare, rather than a
+silent fall back to the first: the point of asking was to get a
+particular sheet. From the API, pass the view itself:
+`renderStudy(result, { view: result.study.views[1] })`.
 
 `title` and `subtitle` on a view override `page { title }`, which every
 sheet shares -- a negative-sequence sheet headed "Phase grading" because

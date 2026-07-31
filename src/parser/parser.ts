@@ -1421,6 +1421,17 @@ if (kwName === 'flex_points') {
             a.at_I_A = this.parseNumberWithUnit_A();
             this.eat('SEMI');
             break;
+          case 'at_t_s':
+            a.at_t_s = this.parseNumberWithUnit_s();
+            this.eat('SEMI');
+            break;
+          case 'point':
+            {
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) a.pointRef = unquote(tok.image);
+            }
+            break;
           /* Margin form: the pair whose separation is being labelled. */
           case 'primary':
             a.primary = this.parseRef();
@@ -1669,6 +1680,9 @@ if (kwName === 'flex_points') {
             v.subtitle = this.parseStringOrIdent(); this.eat('SEMI'); break;
           case 'name':
             v.name = this.parseStringOrIdent(); this.eat('SEMI'); break;
+          /* Which sheet a non-interactive render draws. */
+          case 'default':
+            v.isDefault = this.parseBool(); this.eat('SEMI'); break;
           default:
             this.parseScalarValue(); this.eat('SEMI');
         }

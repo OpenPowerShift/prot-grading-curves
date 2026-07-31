@@ -2024,7 +2024,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       I_view >= I_min && I_view <= I_max && point.t_s >= t_min && point.t_s <= t_max;
     if (onPlot) pointsOnPlot.add(point.id);
 
-    const colour = point.color ?? th.fault;
+    /* A marked point is not a fault current; it gets its own ink. */
+    const colour = point.color ?? th.point;
     out.push(
       `<g class="tc-point" data-point="${escapeXml(oneLine(point.label ?? point.id))}" ` +
       `data-current="${I_view}" data-time="${point.t_s}" ` +
@@ -2061,8 +2062,140 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * equal times -- which is exactly the judgement the chart should be
    * making for them.
    */
+  /**
+   * The current at which a side reaches a given operating time.
+   *
+   * A binary search for the *smallest* current whose operate time is at
+   * or below `t`, rather than a root-find on `t(I) = t`. The two agree
+   * on an inverse curve, but a definite-time stage is flat: every
+   * current above pickup gives the same time, so an equality solve
+   * converges wherever it happens to start, while "the smallest current
+   * that achieves it" is the pickup -- which is the answer a reader
+   * means. Monotone because `t` falls as `I` rises, composite stages
+   * included.
+   */
+  const currentAtTime = (
+    side: { element?: Element; device?: Device },
+    t: number,
+    role: 'primary' | 'backup',
+  ): number | null => {
+    if (!(t > 0)) return null;
+    const reaches = (I: number): boolean => {
+      const at = sideTime(side, I, role);
+      return Number.isFinite(at) && at <= t;
+    };
+
+    let lo = I_min;
+    let hi = I_max;
+    if (!reaches(hi)) return null;      /* never that fast in the domain */
+    if (reaches(lo)) return lo;         /* already there at the left edge */
+
+    for (let i = 0; i < 60; i++) {
+      const mid = Math.sqrt(lo * hi);   /* bisect in log space, as the axis is */
+      if (reaches(mid)) hi = mid; else lo = mid;
+    }
+    return hi;
+  };
+
   for (const annotation of study.annotations) {
     const colour = annotation.color ?? th.foreground;
+
+    /*
+     * Current margin: the horizontal counterpart of the vertical
+     * arrow. Spans the gap in current between two characteristics at
+     * one time, and reports it as a percentage of the primary's
+     * current -- which is how a current-grading margin is quoted, amps
+     * meaning little without knowing where on the axis you are.
+     */
+    if (annotation.kind === 'current_margin') {
+      const primary = resolveRef(study, annotation.primary);
+      const backup = resolveRef(study, annotation.backup);
+      const t = annotation.at_t_s!;
+
+      const pFactor = primary.element ? axisFactorFor(primary.element) : 1;
+      const bFactor = backup.element ? axisFactorFor(backup.element) : 1;
+      if (pFactor == null || bFactor == null) continue;
+
+      const Ip = currentAtTime(primary, t, 'primary');
+      if (Ip == null) continue;
+
+      /*
+       * The far end: another characteristic, a declared condition, or a
+       * marked point. A pickup is as often quoted against a fault level
+       * or an inrush peak -- "120% of the inrush", "35% below the
+       * minimum two-phase fault" -- as against another relay, and each
+       * of those is a current already on the sheet.
+       */
+      const farEnd = ((): number | null => {
+        if (annotation.backup) {
+          const I = currentAtTime(backup, t, 'backup');
+          if (I == null || bFactor == null) return null;
+          return project(I, backup.element?.voltage_kV ?? backup.device?.voltage_kV) / bFactor;
+        }
+        if (annotation.pointRef) {
+          const marker = study.points.find(
+            (pt) => pt.id === annotation.pointRef || pt.label === annotation.pointRef,
+          );
+          if (!marker) return null;
+          const declared = marker.condition
+            ? conditionCurrentAt(marker.condition, marker.voltage ?? viewLevelName, viewQuantity)
+            : resolveCurrent(viewQuantity, {
+              phase: marker.I_A, I1: marker.I1_A, I2: marker.I2_A,
+              I0: marker.I0_A, residual: marker.earth_A,
+            }, marker.type)?.value ?? null;
+          return declared == null ? null : project(declared, marker.voltage_kV);
+        }
+        if (annotation.condition) {
+          /* The condition's own rule, at the quantity the axis is in --
+           * the same figure the vertical rule stands at. */
+          const entry = faults.find((f) => f.name === annotation.condition);
+          return entry?.I_view ?? entry?.I_A ?? null;
+        }
+        return null;
+      })();
+      if (farEnd == null) continue;
+
+      /*
+       * Both put on the sheet's own axis before they are compared. Two
+       * currents on different windings are not comparable as they
+       * stand, and the percentage has to be the one the drawn arrow
+       * actually spans.
+       */
+      const viewP = project(Ip, primary.element?.voltage_kV ?? primary.device?.voltage_kV) / pFactor;
+      const viewB = farEnd;
+      if (!(viewP > 0) || !(viewB > 0)) continue;
+
+      const pxP = xScale.toPx(viewP);
+      const pxB = xScale.toPx(viewB);
+      const py = yScale.toPx(t);
+      if (![pxP, pxB, py].every(Number.isFinite)) continue;
+      const pct = ((viewB - viewP) / viewP) * 100;
+
+      const text = annotation.label
+        ? `${annotation.label} ${pct >= 0 ? '+' : ''}${trimZeros(Number(pct.toFixed(1)))}%`
+        : `${pct >= 0 ? '+' : ''}${trimZeros(Number(pct.toFixed(1)))}%`;
+
+      out.push(
+        `<line x1="${pxP.toFixed(1)}" y1="${py.toFixed(1)}" x2="${pxB.toFixed(1)}" y2="${py.toFixed(1)}" ` +
+        `stroke="${colour}" stroke-width="1.4"/>`,
+      );
+      out.push(arrowHeadH(pxP, py, pxP < pxB ? 1 : -1, colour));
+      out.push(arrowHeadH(pxB, py, pxB < pxP ? 1 : -1, colour));
+
+      /* Short uprights at each end, so the span is unambiguous. */
+      for (const px of [pxP, pxB]) {
+        out.push(
+          `<line x1="${px.toFixed(1)}" y1="${(py - 6).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(py + 6).toFixed(1)}" ` +
+          `stroke="${colour}" stroke-width="1.4"/>`,
+        );
+      }
+
+      placer.avoidLine([{ x: Math.min(pxP, pxB), y: py }, { x: Math.max(pxP, pxB), y: py }]);
+      out.push(...placeLabel(text, { x: (pxP + pxB) / 2, y: py }, colour, {
+        prefer: ['above', 'below', 'right'], gap: 8, weight: 600,
+      }));
+      continue;
+    }
 
     if (annotation.kind === 'margin') {
       const primary = resolveRef(study, annotation.primary);
@@ -2176,6 +2309,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * and moved clear if something is already there.
        */
       const midY = (pyP + pyB) / 2;
+      placer.avoidLine([{ x: px, y: Math.min(pyP, pyB) }, { x: px, y: Math.max(pyP, pyB) }]);
       out.push(...placeLabel(text, { x: px, y: midY }, colour, { gap: 10, weight: 600 }));
       continue;
     }
@@ -2445,20 +2579,35 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * paragraph. The bullet is in WinAnsi, so it survives the PDF
      * export as itself rather than becoming a question mark.
      */
+    /*
+     * The notes are emitted at the *foot* of the panel, under their own
+     * heading -- see `emitNotes` below. Set immediately under the
+     * legend title they pushed the curves down the page and read as
+     * preamble, when what a reader wants first is the list of
+     * characteristics; the caveats are what they come back for.
+     */
     const BULLET_INDENT = 9;
-    for (const note of axisNotes) {
-      const wrapped = wrapText(note, width - BULLET_INDENT, FONT_DETAIL - 1);
-      for (const [i, line] of wrapped.entries()) {
-        const x = originX + (i === 0 ? 0 : BULLET_INDENT);
-        const text = i === 0 ? `• ${line}` : line;
-        lines.push(
-          `<text x="${x}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
-          `font-size="${FONT_DETAIL - 1}" font-style="italic">${escapeXml(text)}</text>`,
-        );
-        cursorY += LINE_DETAIL - 2;
+    const emitNotes = (): void => {
+      if (axisNotes.length === 0) return;
+      cursorY += 10;
+      lines.push(
+        `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
+        `font-weight="600" class="tc-legend" fill="${legendInk}">Notes</text>`,
+      );
+      cursorY += LINE_HEADING;
+      for (const note of axisNotes) {
+        const wrapped = wrapText(note, width - BULLET_INDENT, FONT_DETAIL - 1);
+        for (const [i, line] of wrapped.entries()) {
+          const x = originX + (i === 0 ? 0 : BULLET_INDENT);
+          const text = i === 0 ? `• ${line}` : line;
+          lines.push(
+            `<text x="${x}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+            `font-size="${FONT_DETAIL - 1}" font-style="italic">${escapeXml(text)}</text>`,
+          );
+          cursorY += LINE_DETAIL - 2;
+        }
       }
-    }
-    if (axisNotes.length > 0) cursorY += 4;
+    };
 
     for (const c of curves) {
       /* Out of room: count what is left and say so at the end. */
@@ -2544,7 +2693,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       cursorY += LINE_HEADING;
 
       for (const point of legendPoints) {
-        const colour = point.color ?? th.fault;
+        /* A marked point is not a fault current; it gets its own ink. */
+    const colour = point.color ?? th.point;
         const swatchY = cursorY - FONT_LABEL / 3;
         lines.push(pointMarker(point.shape ?? 'cross', originX + swatchW / 2, swatchY, colour));
 
@@ -2763,6 +2913,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       cursorY += LINE_DETAIL - 2;
     }
+
+    emitNotes();
 
     if (dropped > 0) {
       lines.push(
@@ -3434,6 +3586,16 @@ function arrowHead(px: number, py: number, direction: 1 | -1, colour: string): s
   const baseY = py + direction * h;
   return `<polygon points="${px.toFixed(1)},${tipY.toFixed(1)} ` +
     `${(px - w).toFixed(1)},${baseY.toFixed(1)} ${(px + w).toFixed(1)},${baseY.toFixed(1)}" ` +
+    `fill="${colour}"/>`;
+}
+
+/** The same arrowhead lying down: pointing right (+1) or left (-1). */
+function arrowHeadH(px: number, py: number, direction: 1 | -1, colour: string): string {
+  const w = 3.2;
+  const h = 6;
+  const baseX = px + direction * h;
+  return `<polygon points="${px.toFixed(1)},${py.toFixed(1)} ` +
+    `${baseX.toFixed(1)},${(py - w).toFixed(1)} ${baseX.toFixed(1)},${(py + w).toFixed(1)}" ` +
     `fill="${colour}"/>`;
 }
 

@@ -176,3 +176,78 @@ view { voltage = "HV"; stages = "individual"; current_min = 10 A; current_max = 
     expect(svg).toContain('CTI 350 ms');
   });
 });
+
+/* ---------------------------------------------------------------- */
+
+describe('current margins, measured horizontally', () => {
+  /*
+   * The vertical arrow measures a time margin between two curves at one
+   * current; this is its counterpart -- the gap in *current* at one
+   * time, as a percentage, which is how a current-grading margin is
+   * quoted. Amps alone mean little without knowing where on the axis
+   * you are.
+   */
+  const STUDY = (annotations: string) => `
+system { voltages { "HV" { kV = 33; } } }
+faults { "2ph min" { I_A = 390 A; type = two_phase; voltage = "HV"; } }
+relay R {
+  voltage = "HV"; ct_ratio = 250/1;
+  element 50 { function = "phase_oc"; curve = definite; I_pu = 255 A; t_delay = 20 ms; }
+  element 51 { function = "phase_oc"; curve = iec.si; I_pu = 400 A; tms = 0.15; }
+}
+point "TX inrush" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "inrush"; }
+${annotations}
+view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
+       time_min = 10 ms; time_max = 10 s; }
+`;
+
+  const drawn = (annotations: string): string =>
+    parseAndRender(STUDY(annotations), { theme: 'light' }).svg;
+
+  it('measures to a declared fault level', () => {
+    /* A 255 A pickup against a 390 A fault: (390 - 255) / 255. */
+    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    expect(svg).toContain('m +52.9%');
+  });
+
+  it('measures to a marked point, and signs it', () => {
+    /* The inrush is *below* the pickup, so the margin is negative --
+     * which is the fact the drawing is there to show. */
+    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; point = "TX inrush"; label = "m"; }');
+    expect(svg).toContain('m -16.9%');
+  });
+
+  it('measures between two characteristics', () => {
+    const svg = drawn('annotate { primary = R:50; backup = R:51; at_t_s = 1 s; label = "m"; }');
+    expect(svg).toMatch(/m [+-][\d.]+%/);
+  });
+
+  it('takes a definite-time stage at its pickup, not somewhere on its shelf', () => {
+    /*
+     * A flat stage gives the same time at every current above pickup,
+     * so an equality solve would land wherever it started. The current
+     * read is the *smallest* that achieves the time, which is the
+     * pickup -- and that is what makes the 52.9% above exact.
+     */
+    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    expect(svg).toContain('m +52.9%');
+  });
+
+  it('draws a horizontal span with arrowheads', () => {
+    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    const arrow = svg.match(/<line x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="\2" stroke="[^"]*" stroke-width="1\.4"\/>/);
+    expect(arrow).not.toBeNull();
+    expect(Number(arrow![3])).not.toBeCloseTo(Number(arrow![1]), 1);
+  });
+
+  it('keeps its label off its own arrow', () => {
+    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    const arrowY = Number(svg.match(/<line x1="[\d.]+" y1="([\d.]+)" x2="[\d.]+" y2="\1" stroke="[^"]*" stroke-width="1\.4"\/>/)![1]);
+    const labelY = Number(svg.match(/<text x="[\d.-]+" y="([\d.-]+)"[^>]*>m [+-]/)![1]);
+    expect(Math.abs(labelY - arrowY)).toBeGreaterThan(6);
+  });
+
+  it('is skipped, not crashed, when the far end resolves to nothing', () => {
+    expect(() => drawn('annotate { primary = R:50; at_t_s = 20 ms; point = "nonesuch"; }')).not.toThrow();
+  });
+});

@@ -205,7 +205,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   grade:       ['primary', 'backup', 'fault', 'scenario', 'CTI_min_s', 'margin_s',
                'tolerance_pct', 'upstream', 'upstream_to_A', 'solve', 'comment'],
   solve:       ['strategy', 'tolerance_pct', 'free'],
-  view:        ['name', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle',
+  view:        ['name', 'default', 'voltage', 'axis', 'quantity', 'condition',
+               'title', 'subtitle',
                'two_axes', 'reference_ct', 'stages',
                'current_min', 'current_max', 'time_min', 'time_max'],
   page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
@@ -224,8 +225,9 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   combined:    ['name', 'sources', 'as', 'color', 'style', 'label'],
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */
-  annotate:    ['on_curve', 'at_I_A', 'primary', 'backup', 'fault', 'faults',
-               'scenario', 'scenarios', 'label', 'style', 'color', 'coords'],
+  annotate:    ['on_curve', 'at_I_A', 'at_t_s', 'primary', 'backup', 'point',
+               'fault', 'faults', 'scenario', 'scenarios',
+               'label', 'style', 'color', 'coords'],
   point:       ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'type', 't_s',
                'fault', 'faults', 'scenario', 'scenarios', 'voltage',
                'label', 'shape', 'color', 'coords', 'description'],

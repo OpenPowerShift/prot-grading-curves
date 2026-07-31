@@ -171,9 +171,8 @@ describe('<tc-guide>', () => {
   });
 
   it('asks the host to close it', async () => {
-    const el = document.createElement('tc-guide') as HTMLElement & {
+    const el = document.createElement('tc-guide') as unknown as HTMLElement & {
       open: boolean; updateComplete: Promise<unknown>;
-      close?: () => void;
     };
     host.append(el);
     el.open = true;

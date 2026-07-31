@@ -301,6 +301,22 @@ function validateElements(ctx: Ctx): void {
     for (const element of relay.elements) {
       for (const stage of element.stages) {
         const producer = stage.producer;
+
+        /*
+         * A characteristic is read at a multiple of pickup, so without
+         * one there is no multiple and no operate time. The element was
+         * simply absent from the sheet and from every margin, with
+         * nothing said -- the quietest way to lose a relay from a
+         * study.
+         */
+        if (producer && producer.kind !== 'flex'
+            && (stage.I_pu_A == null || !Number.isFinite(stage.I_pu_A))
+            && !stage.I_pu_in_secondary) {
+          add(ctx, 'PICKUP_MISSING', 'error',
+            `${element.ref}${element.staged ? ` stage "${stage.id}"` : ''} has no `
+            + 'I_pickup, so it has no multiple to read its curve at and cannot operate',
+            stage.node.loc);
+        }
         const curveKey =
           producer?.kind === 'standard' ? producer.id
           : producer?.kind === 'formula' ? `formula:${producer.k}/${producer.c}/${producer.alpha}`
@@ -710,6 +726,18 @@ function validateGrades(ctx: Ctx): void {
        * scenarios both keyed on an empty string and the second was
        * reported as a duplicate of the first.
        */
+      /*
+       * A pair that is the same element twice always answers zero, and
+       * reports it as a failure -- so a transposed reference read as a
+       * grading failure to be chased rather than as the typo it was.
+       */
+      if (grade.primary.text === grade.backup.text) {
+        add(ctx, 'GRADE_SELF_PAIR', 'error',
+          `${grade.primary.text} is graded against itself; the margin between an `
+          + 'element and itself is always zero',
+          loc);
+      }
+
       const condition = grade.scenario ? `scenario:${grade.scenario}` : `fault:${grade.fault ?? ''}`;
       const key = `${grade.primary.text}|${grade.backup.text}|${condition}`;
       if (pairs.has(key)) {
@@ -972,6 +1000,18 @@ function validateAnnotations(ctx: Ctx): void {
      * nothing at all, and gave no reason. Refused rather than ranked,
      * as `point` refuses the same pair.
      */
+    /*
+     * `on_curve` naming something the study does not declare drew
+     * nothing and said nothing, so a renamed relay quietly took its
+     * annotations with it.
+     */
+    const target = item.on_curve ? resolveRef(ctx.study, item.on_curve) : undefined;
+    if (item.on_curve && target && !target.element && !target.device) {
+      add(ctx, 'UNRESOLVED_REFERENCE', 'error',
+        `annotate points at ${item.on_curve.text}, which this study does not declare`,
+        item.loc);
+    }
+
     if ((item.conditions?.length ?? 0) > 0 && item.at_I_A != null) {
       add(ctx, 'ANNOTATE_CURRENT_AND_CONDITION', 'error',
         'annotate declares at_I and names a condition; they are alternatives -- ' +

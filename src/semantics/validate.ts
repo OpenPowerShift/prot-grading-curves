@@ -101,6 +101,7 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateDevices(ctx);
   validateCombines(ctx);
   validateGrades(ctx);
+  validateTimes(ctx);
   validateAnnotations(ctx);
   validatePoints(ctx);
   validateView(ctx);
@@ -855,6 +856,40 @@ function checkConditionReference(
       `${level ?? 'the level it is drawn on'}` +
       (resolved.levels.length > 0 ? ` (it declares ${resolved.levels.join(', ')})` : ''),
       loc, name.length);
+  }
+}
+
+/**
+ * `times` blocks: the horizontal counterpart of `faults`.
+ *
+ * Keyed by name like the faults are, so a repeat replaces the first
+ * with nothing said -- and which limit the sheet rules at becomes a
+ * question of declaration order.
+ */
+function validateTimes(ctx: Ctx): void {
+  const seen = new Map<string, number>();
+  for (const item of ctx.doc?.items ?? []) {
+    if (item.type !== 'times') continue;
+    for (const t of item.times) {
+      const first = seen.get(t.name);
+      if (first != null) {
+        add(ctx, 'DUPLICATE_TIME', 'error',
+          `time "${t.name}" is declared more than once (first at line ${first}); ` +
+          'the later declaration silently replaces the earlier',
+          t.loc, t.name.length);
+      } else {
+        seen.set(t.name, t.loc?.line ?? 0);
+      }
+    }
+  }
+
+  for (const t of ctx.study.times.values()) {
+    if (!Number.isFinite(t.t_s) || t.t_s <= 0) {
+      add(ctx, 'TIME_INVALID', 'error',
+        `time "${t.name}" declares t_s = ${t.t_s}; it must be strictly positive to have ` +
+        'a place on a logarithmic axis',
+        t.loc, t.name.length);
+    }
   }
 }
 

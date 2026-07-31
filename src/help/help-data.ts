@@ -16,7 +16,7 @@ import { CURVES } from '../constants/curves.js';
 
 export interface HelpEntry {
   /** Where in the .tc source this construct lives. */
-  scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'scenario' | 'relay'
+  scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'times' | 'scenario' | 'relay'
        | 'element' | 'stage' | 'device' | 'grade' | 'solve' | 'annotate' | 'point'
        | 'view' | 'page';
   /** One-line summary for the hover tooltip. */
@@ -36,6 +36,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   meta:        M('top', 'Project metadata block (engineer, date, standard, defaults).', 'meta { engineer = "..."; }'),
   system:      M('top', 'Network-level declarations: voltages, frequency, grounding.', 'system { voltages { ... } }'),
   faults:      M('top', 'Named fault-current table; each fault has a current and a voltage.', 'faults { "F1" { I_A = 6400 A; voltage = "LV"; } }'),
+  times:       M('top', 'Named required times, drawn as horizontal rules: the other axis\u2019s answer to a fault. An arc-flash limit, a withstand, a grid-code clearance.', 'times { "Arc flash limit" { t_s = 200 ms; } }'),
   relay:       M('top', 'A relay instance with its voltage level and current transformer ratio.', 'relay R_FDR { voltage = "LV"; ct_ratio = 600/5; ... }'),
   element:     M('top', 'A protection function on a relay -- IDMT, instantaneous, etc.', 'element 51 { curve = iec.si; ... }'),
   device:      M('top', 'Auxiliary TCC asset: fuse, cable, transformer damage, recloser, motor.', 'device "ferraz_abc_100a" { kind = fuse; ... }'),
@@ -168,7 +169,7 @@ export const CURVE_HELP: Record<string, string> = (() => {
  * left margin of a .tc file).
  */
 export const TOP_BLOCK_KEYWORDS = [
-  'meta', 'system', 'faults', 'scenario', 'relay', 'element', 'device',
+  'meta', 'system', 'faults', 'times', 'scenario', 'relay', 'element', 'device',
   'grade', 'combine', 'annotate', 'point', 'view', 'page', 'notes',
 ] as const;
 
@@ -187,6 +188,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   'system.voltages': ['kV', 'description'],
   faults:      ['I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 'type', 'voltage',
                'description'],
+  times:       ['t_s', 'description'],
   scenario:    ['type', 'description', 'level'],
   'scenario.level': ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'current_pct'],
   relay:       ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults',
@@ -208,7 +210,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'current_min', 'current_max', 'time_min', 'time_max'],
   page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
                'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders',
-               'faults'],
+               'faults', 'times'],
   /* `page` sub-blocks, so asking inside one lists what it accepts
    * rather than repeating the page's own fields. */
   legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents'],
@@ -234,6 +236,7 @@ export const SCOPE_OF_TOP_BLOCK: Record<string, keyof typeof BLOCK_FIELDS> = {
   meta: 'meta',
   system: 'system',
   faults: 'faults',
+  times: 'times',
   relay: 'relay',
   element: 'element',
   device: 'device',

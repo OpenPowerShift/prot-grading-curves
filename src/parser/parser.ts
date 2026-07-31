@@ -43,7 +43,7 @@ import type {
  */
 export const KEYWORDS = new Set([
   // top-level blocks
-  'meta', 'system', 'faults', 'scenario', 'level', 'sees',
+  'meta', 'system', 'faults', 'times', 'scenario', 'level', 'sees',
   'relay', 'element', 'device', 'grade',
   'annotate', 'combine', 'view', 'page', 'notes', 'stage', 'stages', 'point',
   // system sub-block header
@@ -455,6 +455,7 @@ class Parser {
       case 'meta':    return this.parseMeta();
       case 'system':  return this.parseSystem();
       case 'faults':  return this.parseFaults();
+      case 'times':   return this.parseTimes();
       case 'scenario':return this.parseScenario();
       case 'relay':   return this.parseRelay();
       case 'element': return this.parseElement(/*topLevel*/ true);
@@ -831,6 +832,46 @@ class Parser {
         list.push(f);
       }
       return { type: 'faults', faults: list, loc: this.loc(head) } as FaultsBlock;
+    }, '}');
+  }
+
+  /**
+   * `times { "Arc flash limit" { t_s = 200 ms; } }`
+   *
+   * The horizontal counterpart of `faults`, and deliberately the same
+   * shape so one is read by anyone who knows the other. A time needs no
+   * voltage level: a second is a second on every winding.
+   */
+  private parseTimes(): import('./ast.js').TimesBlock | null {
+    const head = this.peek();
+    return this.parseBlock('times', () => {
+      const list: import('./ast.js').TimeDecl[] = [];
+      while (!this.at('RBRACE') && !this.at('EOF')) {
+        const nameTok = this.eat('STRING') ?? this.eat('IDENT');
+        if (!nameTok) { this.pos++; continue; }
+        const t: import('./ast.js').TimeDecl = {
+          name: unquote(nameTok.image), t_s: NaN, loc: this.loc(nameTok),
+        };
+        this.expect('LBRACE', '{');
+        while (!this.at('RBRACE') && !this.at('EOF')) {
+          const k = this.eat('KW') ?? this.eat('IDENT');
+          if (!k) { this.pos++; continue; }
+          this.expect('EQUALS', '=');
+          switch (k.image) {
+            case 't_s': t.t_s = this.parseNumberWithUnit_s(); break;
+            case 'description': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) t.description = unquote(tok.image);
+              break;
+            }
+            default: this.parseScalarValue();
+          }
+          this.eat('SEMI');
+        }
+        this.expect('RBRACE', '}');
+        list.push(t);
+      }
+      return { type: 'times', times: list, loc: this.loc(head) } as import('./ast.js').TimesBlock;
     }, '}');
   }
 
@@ -2184,6 +2225,15 @@ function applyPageSubBlock(
       break;
     case 'faults':
       page.faults = {
+        loc: page.loc,
+        width_px: num('width_px'),
+        color: str('color'),
+        style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
+        labels: bool('labels'),
+      };
+      break;
+    case 'times':
+      page.times = {
         loc: page.loc,
         width_px: num('width_px'),
         color: str('color'),

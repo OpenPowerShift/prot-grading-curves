@@ -195,6 +195,12 @@ order.
 
 `DUPLICATE_SCENARIO`:: Two scenarios share a name.
 
+`DUPLICATE_TIME`:: Two required times share a name, so which limit the
+sheet rules at becomes a question of declaration order.
+
+`TIME_INVALID`:: A required time is zero or negative, and so has no
+place on a logarithmic axis.
+
 `DUPLICATE_GRADE`:: The same pair checked twice under the same
 condition. Checking one pair at several faults, or under several
 scenarios, is normal practice and is not a duplicate -- the condition

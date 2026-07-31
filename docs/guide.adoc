@@ -243,6 +243,39 @@ derives the other, and errors if you declare both inconsistently.
 
 If only `I_A` is given, `min_A` and `max_A` default to it.
 
+=== times
+
+Required clearances, drawn as horizontal rules -- the other axis's
+answer to a `fault`:
+
+[source,tc]
+----
+times {
+    "Arc flash limit"     { t_s = 200 ms; description = "PPE category boundary"; }
+    "Grid code clearance" { t_s = 430 ms; }
+    "Bus zone backup"     { t_s = 2 s; }
+}
+----
+
+A study is judged against currents *and* against times: an arc-flash
+limit, a transformer withstand, a grid-code disconnection time, a
+bus-zone backup. Writing them down puts the requirement on the sheet
+beside the characteristic that has to meet it, instead of the reader
+holding the number in their head.
+
+A time needs no voltage level -- a second is a second on every winding
+-- which is the one way this is simpler than a fault. Each rule is
+labelled on the plot, listed in a *Required times* legend section, and
+widens the time axis so a requirement can never fall off the sheet that
+is meant to show it being met. One declared outside an explicit
+`view { time_min / time_max }` says so rather than disappearing.
+
+Style them with `page { times = { color = ...; width_px = ...; style =
+"solid" | "dashed" | "dotted"; labels = false; }; }`, which mirrors
+`page { faults }`. They are drawn in a different ink from the fault
+rules by default, so it is never a question which axis a rule belongs
+to.
+
 === relay and element
 
 [source,tc]

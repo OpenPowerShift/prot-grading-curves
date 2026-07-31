@@ -14,6 +14,8 @@ file            ::= { top-level } ;
 top-level       ::= meta-block
                   | system-block
                   | faults-block
+                  | times-block
+                  | times-block
                   | scenario-block
                   | relay-block
                   | device-block
@@ -88,6 +90,20 @@ through `relay { faults = ["F1", "F2"]; }`, and a `grade` block
 references it as `fault = "F1";`. The processor uses the
 voltage-level name on the fault to compute cross-voltage grading
 margins automatically.
+
+=== Times (named required clearances)
+
+The horizontal counterpart of `faults`: a limit the curves are judged
+against rather than a current they are evaluated at. A time carries no
+voltage level, a second being a second at every level.
+
+[source,ebnf]
+----
+times-block     ::= "times" "{" { time-asg } "}" ;
+time-asg        ::= string "{" { time-member } "}" ;
+time-member     ::= "t_s"         "=" number time-unit ";"
+                  | "description" "=" string ";" ;
+----
 
 === Relay
 

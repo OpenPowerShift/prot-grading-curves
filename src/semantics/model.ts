@@ -243,6 +243,19 @@ export interface Grade {
   node: GradeBlock;
 }
 
+/**
+ * A required time, drawn as a horizontal rule.
+ *
+ * The other axis's answer to a {@link Fault}: a limit the curves are
+ * judged against rather than a current they are evaluated at.
+ */
+export interface RequiredTime {
+  name: string;
+  t_s: number;
+  description?: string;
+  loc?: SourceLocation;
+}
+
 /** A marked (I, t) coordinate -- inrush, motor start, damage point. */
 export interface StudyPoint {
   id: string;
@@ -317,6 +330,8 @@ export interface Study {
   faults: Map<string, Fault>;
   /** Named conditions with their currents at every level. */
   scenarios: Map<string, Scenario>;
+  /** Named times the sheet rules across, keyed by name. */
+  times: Map<string, RequiredTime>;
   relays: Map<string, Relay>;
   /** Elements declared at the top level, outside any relay. */
   looseElements: Element[];
@@ -389,6 +404,7 @@ export function buildStudy(doc: Document): Study {
     I_units: 'primary',
     faults: new Map(),
     scenarios: new Map(),
+    times: new Map(),
     zeroSequence: new Map(),
     relays: new Map(),
     looseElements: [],
@@ -424,6 +440,16 @@ export function buildStudy(doc: Document): Study {
             name: lvl.name,
             kV: lvl.kV,
             description: lvl.description,
+          });
+        }
+        break;
+      case 'times':
+        for (const t of item.times) {
+          study.times.set(t.name, {
+            name: t.name,
+            t_s: t.t_s,
+            description: t.description,
+            loc: t.loc,
           });
         }
         break;

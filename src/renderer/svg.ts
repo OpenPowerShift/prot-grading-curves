@@ -457,6 +457,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const unmarkedScenarios: string[] = [];
 
+  /*
+   * Required times, drawn as horizontal rules.
+   *
+   * The other axis's answer to a fault: a limit the curves are judged
+   * against rather than a current they are evaluated at. They widen the
+   * time domain the way a fault widens the current domain, so a
+   * requirement can never be off the sheet that is supposed to show it
+   * being met.
+   */
+  const times = [...study.times.values()].filter((t) => Number.isFinite(t.t_s) && t.t_s > 0);
+  for (const t of times) {
+    if (t.t_s * 0.7 < t_lo) t_lo = t.t_s * 0.7;
+    if (t.t_s * 1.4 > t_hi) t_hi = t.t_s * 1.4;
+  }
+
   const faults: FaultEntry[] = [];
   for (const item of doc.items) {
     if (item.type === 'faults') {
@@ -1651,6 +1666,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * distinct pattern lets the eye trace one line down to its name. An
    * explicit `style` overrides that and makes them uniform.
    */
+  /*
+   * Required-time styling (`page { times { ... } }`), mirroring the
+   * fault rules' but with its own ink so the two kinds of rule are
+   * told apart at a glance.
+   */
+  const timeStyle = opts.page?.times;
+  const timeWidth = timeStyle?.width_px ?? 1.4;
+  const timeColour = timeStyle?.color ?? th.label;
+  const timeDash =
+    timeStyle?.style === 'solid' ? ''
+      : timeStyle?.style === 'dashed' ? '6 4'
+        : '2 4';
+
   const faultStyle = opts.page?.faults;
   const FAULT_DASHES = ['5 4', '10 4', '2 3', '10 3 2 3', '16 4', '6 3 2 3 2 3'];
   const faultWidth = faultStyle?.width_px ?? 1.4;
@@ -1694,6 +1722,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `data-fault="${escapeXml(f.name)}" data-current="${I}" data-kind="${f.kind}" ` +
       `stroke="${faultColour}" stroke-opacity="0.7" stroke-width="${faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
+    );
+  }
+
+  /*
+   * Required-time rules, drawn with the fault rules and under the
+   * curves: a requirement is context for the characteristic that has to
+   * meet it, so it must not obscure the thing being judged.
+   *
+   * Styled apart from the fault rules on purpose. They are the same
+   * kind of furniture but they answer a different question -- "is the
+   * curve under this?" rather than "what happens at this current?" --
+   * and a reader should not have to work out which axis a dashed red
+   * line belongs to.
+   */
+  const timesOnPlot = times.filter((t) => t.t_s >= t_min && t.t_s <= t_max);
+  for (const t of timesOnPlot) {
+    const py = yScale.toPx(t.t_s);
+    if (!Number.isFinite(py)) continue;
+    out.push(
+      `<line x1="${leftMargin}" y1="${py.toFixed(1)}" ` +
+      `x2="${leftMargin + plotW}" y2="${py.toFixed(1)}" class="tc-time" ` +
+      `data-time-name="${escapeXml(t.name)}" data-time="${t.t_s}" ` +
+      `stroke="${timeColour}" stroke-opacity="0.75" stroke-width="${timeWidth}"` +
+      `${timeDash ? ` stroke-dasharray="${timeDash}"` : ''}/>`,
     );
   }
 
@@ -1767,6 +1819,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   for (const band of deviceBands) {
     for (const d of [band.lowerD, band.upperD]) {
       for (const run of polylineRuns(d)) placer.avoidLine(run);
+    }
+  }
+  /*
+   * The rules are drawn lines too. A required-time label printed along
+   * its own rule is the worst case of all -- the line runs through the
+   * text it belongs to -- and a caption lying on a fault's vertical is
+   * no better.
+   */
+  for (const t of timesOnPlot) {
+    const py = yScale.toPx(t.t_s);
+    if (Number.isFinite(py)) {
+      placer.avoidLine([{ x: leftMargin, y: py }, { x: leftMargin + plotW, y: py }]);
+    }
+  }
+  for (const f of faults) {
+    const I = f.I_view ?? f.I_A;
+    if (!inDomain(I)) continue;
+    const fx = xScale.toPx(I);
+    if (Number.isFinite(fx)) {
+      placer.avoidLine([{ x: fx, y: topMargin }, { x: fx, y: topMargin + plotH }]);
     }
   }
 
@@ -1850,6 +1922,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     );
     return emitted;
   };
+
+  /*
+   * Required-time labels, placed like every other label on the sheet.
+   *
+   * The rule spans the whole plot, so its name has no natural anchor --
+   * it is put at the left-hand end, where the eye starts, and the
+   * placer moves it clear of the curves and of anything already there.
+   */
+  if (opts.page?.times?.labels !== false) {
+    for (const t of timesOnPlot) {
+      const py = yScale.toPx(t.t_s);
+      if (!Number.isFinite(py)) continue;
+      const caption = `${t.name} · ${formatSi(t.t_s, 's')}`;
+      out.push(...placeLabel(caption, { x: leftMargin + 6, y: py }, timeColour, {
+        prefer: ['above', 'below', 'right'],
+        gap: 6,
+      }));
+    }
+  }
 
   for (const point of study.points) {
     if (!(point.t_s > 0)) continue;
@@ -2614,6 +2705,63 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         }
       }
       cursorY = faultsY;
+    }
+
+    /*
+     * Required times.
+     *
+     * Their own section, because they answer a different question from
+     * the conditions above -- "is the curve under this?" rather than
+     * "what happens at this current?" -- and a reader tracing a
+     * horizontal rule should not have to search a list of currents for
+     * its name.
+     */
+    if (timesOnPlot.length > 0) {
+      cursorY += 8;
+      lines.push(
+        `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
+        `font-weight="600" fill="${timeColour}">Required times</text>`,
+      );
+      cursorY += LINE_HEADING;
+
+      for (const t of timesOnPlot) {
+        const swatchY = cursorY - FONT_LABEL / 3;
+        lines.push(
+          `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
+          `stroke="${timeColour}" stroke-width="${Math.max(timeWidth, 1.5)}"` +
+          `${timeDash ? ` stroke-dasharray="${timeDash}"` : ''}/>`,
+        );
+        for (const wrapped of wrapText(`${t.name} · ${formatSi(t.t_s, 's')}`, textWidth, FONT_DETAIL)) {
+          lines.push(
+            `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${th.foreground}" ` +
+            `font-size="${FONT_DETAIL}">${escapeXml(wrapped)}</text>`,
+          );
+          cursorY += LINE_LABEL;
+        }
+        if (showDetail && t.description) {
+          for (const wrapped of wrapText(oneLine(t.description), textWidth, FONT_DETAIL - 1)) {
+            lines.push(
+              `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+              `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
+            );
+            cursorY += LINE_DETAIL - 2;
+          }
+        }
+      }
+    }
+
+    /*
+     * A required time off the sheet is worth saying: it is the limit
+     * the drawing exists to demonstrate being met.
+     */
+    for (const t of times) {
+      if (timesOnPlot.includes(t)) continue;
+      lines.push(
+        `<text x="${originX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+        `font-size="${FONT_DETAIL - 1}" font-style="italic">` +
+        `${escapeXml(`• ${t.name} (${formatSi(t.t_s, 's')}) is outside the plotted times`)}</text>`,
+      );
+      cursorY += LINE_DETAIL - 2;
     }
 
     if (dropped > 0) {

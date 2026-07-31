@@ -124,6 +124,31 @@ export interface FaultsBlock extends BaseNode {
   faults: FaultDecl[];
 }
 
+/**
+ * A required time, drawn as a horizontal rule.
+ *
+ * The other axis's answer to a `fault`. A coordination study is judged
+ * against currents *and* against times -- an arc-flash limit, a
+ * withstand, a grid-code clearance, a bus-zone requirement -- and those
+ * are lines the curves must sit under or over. Written down, the sheet
+ * shows the requirement beside the characteristic that has to meet it,
+ * instead of the reader holding the number in their head.
+ *
+ * No voltage level: a second is a second on every winding, which is
+ * the one way this is simpler than a fault.
+ */
+export interface TimeDecl extends BaseNode {
+  name: string;
+  /** The required time, in seconds. */
+  t_s: number;
+  description?: string;
+}
+
+export interface TimesBlock extends BaseNode {
+  type: 'times';
+  times: TimeDecl[];
+}
+
 export type RelayMember = RelayScalarMember | RelayElementMember;
 
 export interface RelayScalarMember {
@@ -542,6 +567,15 @@ export interface PageFaults extends BaseNode {
   labels?: boolean;
 }
 
+/** Styling for the horizontal rules a `times` block declares. */
+export interface PageTimes extends BaseNode {
+  width_px?: number;
+  color?: string;
+  style?: 'solid' | 'dashed' | 'dotted';
+  /** Draw the rule labels on the plot. Defaults to true. */
+  labels?: boolean;
+}
+
 export interface PageBlock extends BaseNode {
   type: 'page';
   size?: string | { width_mm: number; height_mm: number };
@@ -554,6 +588,7 @@ export interface PageBlock extends BaseNode {
   points?: PagePoints;
   leaders?: PageLeaders;
   faults?: PageFaults;
+  times?: PageTimes;
   title?: string | PageTitle;
   footer?: PageFooter;
   theme?: 'light' | 'dark' | 'monochrome' | 'print';
@@ -654,6 +689,7 @@ export type TopLevel =
   | MetaBlock
   | SystemBlock
   | FaultsBlock
+  | TimesBlock
   | ScenarioBlock
   | RelayBlock
   | ElementBlock        // standalone element block (also inside relay.member)

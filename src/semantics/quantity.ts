@@ -229,12 +229,45 @@ export function conversionFactor(
 ): number | null {
   if (from === to) return 1;
 
+  /*
+   * The same component in a different scaling needs no condition at
+   * all: `3I2` is three times `I2` by definition, whatever the fault
+   * is. Handled before anything is resolved, because requiring a
+   * condition for it made an `I2` element vanish from a `3I2` sheet --
+   * a factor of three the tool already knew, refused for want of data
+   * it never needed.
+   */
+  const scaled = scalingBetween(from, to);
+  if (scaled != null) return scaled;
+
   const a = resolveCurrent(from, currents, type);
   const b = resolveCurrent(to, currents, type);
   if (a == null || b == null) return null;
   if (!(Math.abs(b.value) > 0)) return null;
 
   return a.value / b.value;
+}
+
+/** A quantity split into the component it is and the factor on it. */
+function componentAndScale(q: MeasuredQuantity): { base: string; scale: number } {
+  switch (q) {
+    case '3I2': return { base: 'I2', scale: 3 };
+    case '3I0': return { base: 'I0', scale: 3 };
+    default: return { base: q, scale: 1 };
+  }
+}
+
+/**
+ * Factor between two spellings of one component, or `null` when they
+ * are different components and a condition is needed to relate them.
+ */
+export function scalingBetween(
+  from: MeasuredQuantity,
+  to: MeasuredQuantity,
+): number | null {
+  const a = componentAndScale(from);
+  const b = componentAndScale(to);
+  return a.base === b.base ? a.scale / b.scale : null;
 }
 
 /**

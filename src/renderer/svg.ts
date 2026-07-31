@@ -47,7 +47,9 @@ import {
   elementQuantity,
   isMeasuredQuantity,
   resolveCurrent,
+  scalingBetween,
   quantityLabel,
+  quantityField,
   survivesVoltageReferral,
   type MeasuredQuantity,
 } from '../semantics/quantity.js';
@@ -706,9 +708,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const missingCtRatio = new Set<string>();
 
+  /*
+   * The sheet's own heading wins over the page's.
+   *
+   * `page` is paper and decoration and is shared by every sheet of a
+   * study; what a sheet is *of* changes with it. A negative-sequence
+   * sheet headed "Phase grading" because the page said so is worse
+   * than no title at all, so `view { title }` overrides -- the
+   * ordinary more-specific-wins, entirely inside the presentation
+   * layer.
+   */
   const pageTitle = opts.page?.title;
-  const titleText = typeof pageTitle === 'string' ? pageTitle : pageTitle?.text;
-  const subtitleText = typeof pageTitle === 'string' ? undefined : pageTitle?.subtitle;
+  const titleText = opts.view?.title
+    ?? (typeof pageTitle === 'string' ? pageTitle : pageTitle?.text);
+  const subtitleText = opts.view?.subtitle
+    ?? (typeof pageTitle === 'string' ? undefined : pageTitle?.subtitle);
 
   const leftMargin = 92 + sheetInset;
   const rightMargin = (legendMode === 'column' ? 330 : (mirrorAxes ? 104 : 58)) + sheetInset;
@@ -728,7 +742,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       + (subtitleText ? labelExtraHeightPx(subtitleText, FONT_SUBTITLE) : 0)
     : 0;
   const topMargin =
-    (opts.page?.title ? 52 : 32) + (mirrorAxes ? 22 : 0) + headingExtra + sheetInset;
+    (titleText ? 52 : 32) + (mirrorAxes ? 22 : 0) + headingExtra + sheetInset;
   const plotW = W - leftMargin - rightMargin;
 
   /*
@@ -1131,7 +1145,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /** Elements the axis leaves off the sheet, and why. */
   const offAxisElements: string[] = [];
   /** Elements drawn against a quantity other than the one they measure. */
-  const convertedElements: string[] = [];
+  const convertedElements = new Map<string, { measures: MeasuredQuantity; factor: number }>();
   /**
    * Elements whose own current cannot reach this sheet, named one by
    * one with the reason.
@@ -1211,8 +1225,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     if (measures === axisQuantity) return 1;
 
-    /* Without a condition there are no ratios, so nothing converts. */
-    if (!condition) return null;
+    /*
+     * The same component in another scaling is a fixed factor of three
+     * and needs no condition: an element set in `I2` belongs on a `3I2`
+     * sheet at a third of its own current whatever the fault is. Asked
+     * before the condition, since requiring one made those elements
+     * vanish from a sheet the tool could perfectly well place them on.
+     */
+    const scaled = scalingBetween(measures, axisQuantity);
+    if (scaled != null) return scaled;
+
+    /*
+     * Different components, and no condition to relate them by. Said
+     * rather than left as a bare count: the reader has done nothing
+     * wrong, they have simply not told the sheet which condition it
+     * depicts, and that is a one-line fix.
+     */
+    if (!condition) {
+      blockedElements.set(element.label,
+        `${element.label} measures ${quantityLabel(measures)}; name a condition `
+        + `to convert it onto ${quantityLabel(axisQuantity)}`);
+      return null;
+    }
 
     /*
      * A condition carrying none of what the element measures means the
@@ -1258,7 +1292,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       if (blockedElements.size === blockedBefore) offAxisElements.push(element.label);
       continue;
     }
-    if (factor !== 1) convertedElements.push(element.label);
+    if (factor !== 1) {
+      const measures = elementQuantity(element.stages);
+      if (measures != null && measures !== 'mixed') {
+        convertedElements.set(element.label, { measures, factor });
+      }
+    }
 
     const { color, dash } = pickStyle();
     const V_source = element.voltage_kV;
@@ -1791,10 +1830,44 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * for it -- so the projection below is the one every other point
      * gets, and a scenario's number is never referred twice.
      */
+    /*
+     * The marker's value of *the axis quantity*, resolved exactly as a
+     * fault rule's is: declared where the point gives it, otherwise
+     * derived from its `type`.
+     *
+     * A point used to carry one `I_A` that was plotted against whatever
+     * the axis happened to be, so the same number meant phase current
+     * on one sheet and negative sequence on the next. Studies worked
+     * around it with a comment -- "49 A, which is |I2| on this sheet"
+     * -- which is the tool asking the reader to keep its books.
+     */
     const I_declared = point.condition
       ? conditionCurrentAt(point.condition, point.voltage ?? viewLevelName, viewQuantity)
-      : point.I_A;
-    if (I_declared == null || !(I_declared > 0)) continue;
+      : resolveCurrent(
+        viewQuantity,
+        {
+          phase: point.I_A, I1: point.I1_A, I2: point.I2_A,
+          I0: point.I0_A, residual: point.earth_A,
+        },
+        point.type,
+      )?.value ?? null;
+
+    if (I_declared == null || !(I_declared > 0)) {
+      /*
+       * Named rather than dropped, for the same reason a suppressed
+       * curve is: the reader declared a marker and it is not on the
+       * sheet, and a count would not tell them which or why.
+       */
+      const declaresSomething = [point.I_A, point.I1_A, point.I2_A, point.I0_A, point.earth_A]
+        .some((v) => v != null && Number.isFinite(v));
+      if (!point.condition && declaresSomething) {
+        unreferrablePoints.push(
+          `point ${point.label ?? point.id} declares no ${quantityLabel(viewQuantity)}; `
+          + `give it ${quantityField(viewQuantity)} or a type to derive it from`,
+        );
+      }
+      continue;
+    }
 
     /*
      * Whether the marker's current reaches this sheet at all. `project`
@@ -1832,6 +1905,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * marking a spot *on* a characteristic reads as being in front of
      * it rather than merging with it. */
     out.push(pointMarker(point.shape ?? 'cross', px, py, colour, th.background));
+    /*
+     * The marker is an obstacle too. A caption printed across the very
+     * mark it names is the same fault as one printed along a curve, and
+     * markers are drawn before most labels are placed.
+     */
+    placer.reserve({ x: px - 7, y: py - 7, w: 14, h: 14 });
 
     const base = point.label ?? point.id;
     const text = point.coords ? `${base} (${coordText(I_view, point.t_s)})` : base;
@@ -1881,8 +1960,54 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       if (I == null || I_backup == null) continue;
 
-      const tP = sideTime(primary, I, 'primary');
-      const tB = sideTime(backup, I_backup, 'backup');
+      /*
+       * The *smallest* separation, across every pair of stages.
+       *
+       * `sideTime` gives the composite -- the fastest stage at that
+       * current -- which is what the element trips at and so what the
+       * margin report uses. Drawn between two multi-stage elements it
+       * spans the widest gap on the sheet and calls it the margin,
+       * while a slower stage of the same element sits far closer to the
+       * backup. On a study whose stages are alternatives under
+       * different conditions -- one inrush-blocked, one not -- that
+       * overstates the coordination by the whole difference between
+       * them: 0.35 s drawn where the binding gap is 0.10 s.
+       *
+       * The closest pair is the honest one to put on a drawing, and it
+       * is the one an engineer is checking. `stages = "individual"`
+       * draws those stages, so the arrow now lands between two curves
+       * the reader can see.
+       */
+      const stageTimes = (
+        side: { element?: Element; device?: Device },
+        current: number,
+        role: 'primary' | 'backup',
+      ): number[] => {
+        const stages = side.element?.stages;
+        if (!stages || stages.length < 2) {
+          const t = sideTime(side, current, role);
+          return Number.isFinite(t) ? [t] : [];
+        }
+        return stages
+          .map((stage) => tTripStage(stage, current))
+          .filter((t) => Number.isFinite(t) && t > 0);
+      };
+
+      const primaryTimes = stageTimes(primary, I, 'primary');
+      const backupTimes = stageTimes(backup, I_backup, 'backup');
+      if (primaryTimes.length === 0 || backupTimes.length === 0) continue;
+
+      let tP = primaryTimes[0];
+      let tB = backupTimes[0];
+      let closest = Infinity;
+      for (const p of primaryTimes) {
+        for (const b of backupTimes) {
+          /* Signed, so a stage that has crossed its backup reports the
+           * violation rather than an absolute value that hides it. */
+          const gap = b - p;
+          if (gap < closest) { closest = gap; tP = p; tB = b; }
+        }
+      }
       if (!Number.isFinite(tP) || !Number.isFinite(tB)) continue;
 
       /* The arrow stands where the primary's current falls on *this*
@@ -1955,48 +2080,56 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     if (annotation.style !== 'tag') {
       out.push(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${colour}"/>`);
+      placer.reserve({ x: px - 5, y: py - 5, w: 10, h: 10 });
     }
     if (annotation.style === 'leader') {
       /*
-       * Leader up and away from the curve, flipping to the left when a
-       * right-hand label would run past the plot and under the legend.
+       * The label goes where there is room, and the leader follows it.
+       *
+       * It used to go at a fixed offset up and to the right, and only
+       * *reserve* that box afterwards -- so it avoided nothing already
+       * on the sheet and would print straight over a marked point's
+       * caption, another annotation, or a margin figure. Reserving
+       * after the fact stops the next label landing on this one; it
+       * cannot move this one out of the way of the last.
+       *
+       * Asking the placer first keeps the elbow -- which is what makes
+       * a leader read as a leader -- while letting the label go
+       * wherever it fits. `above` is preferred so it still points away
+       * from the curve it marks.
        */
-      const labelWidth = labelWidthPx(text, FONT_DETAIL);
-      const wantRight = px + 26 + 12 + 16 + labelWidth < leftMargin + plotW;
-      const dir = wantRight ? 1 : -1;
-
-      const lx = px + dir * 26;
-      /*
-       * A leader points *away* from its curve, so extra lines have to
-       * grow upwards; anchoring the block's middle would push the
-       * lower line back down onto the point being annotated.
-       */
-      const ly = py - 22 - labelExtraHeightPx(text, FONT_DETAIL);
-      const elbow = lx + dir * 12;
-      out.push(
-        `<path d="M${px.toFixed(1)} ${py.toFixed(1)} L${lx.toFixed(1)} ${ly.toFixed(1)} ` +
-        `L${elbow.toFixed(1)} ${ly.toFixed(1)}" fill="none" stroke="${colour}" stroke-width="1"/>`,
-      );
-      const tx = elbow + dir * 4;
-      out.push(
-        `<text x="${tx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" ` +
-        `text-anchor="${wantRight ? 'start' : 'end'}" ` +
-        `font-size="${FONT_DETAIL}" fill="${colour}">` +
-        `${labelBody(text, tx, FONT_DETAIL, 'first')}</text>`,
-      );
-      /*
-       * A leader's elbow is a deliberate shape, so it is not handed to
-       * the placer -- but the text it ends at is reserved, so nothing
-       * placed afterwards lands on top of it.
-       */
-      const leaderW = labelWidthPx(text, FONT_DETAIL);
-      const leaderH = Math.max(FONT_DETAIL + 2, labelLines(text).length * FONT_DETAIL * LINE_SPACING);
-      placer.reserve({
-        x: wantRight ? tx : tx - leaderW,
-        y: ly - leaderH / 2,
-        w: leaderW,
-        h: leaderH,
+      const size = {
+        w: labelWidthPx(text, FONT_DETAIL),
+        h: Math.max(FONT_DETAIL + 2, labelLines(text).length * FONT_DETAIL * LINE_SPACING),
+      };
+      const placement = placer.place({
+        anchor: { x: px, y: py },
+        size,
+        prefer: ['above', 'right', 'left', 'below'],
+        gap: 24,
       });
+
+      /*
+       * Elbow: away from the marker, then a short horizontal run into
+       * the near edge of the label, so the line meets the text rather
+       * than ending in space.
+       */
+      const labelCy = placement.rect.y + placement.rect.h / 2;
+      const toRight = placement.anchorText === 'start';
+      const nearX = toRight ? placement.rect.x : placement.rect.x + placement.rect.w;
+      const elbowX = nearX + (toRight ? -10 : 10);
+      out.push(
+        `<path d="M${px.toFixed(1)} ${py.toFixed(1)} ` +
+        `L${elbowX.toFixed(1)} ${labelCy.toFixed(1)} ` +
+        `L${nearX.toFixed(1)} ${labelCy.toFixed(1)}" ` +
+        `fill="none" stroke="${colour}" stroke-width="1"/>`,
+      );
+      out.push(
+        `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
+        `text-anchor="${placement.anchorText}" ` +
+        `font-size="${FONT_DETAIL}" fill="${colour}">` +
+        `${labelBody(text, placement.x, FONT_DETAIL)}</text>`,
+      );
     } else if (annotation.style === 'tag') {
       /* A tag reads as a caption above its point, then beside it. */
       out.push(...placeLabel(text, { x: px, y: py }, colour, {
@@ -2118,10 +2251,24 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         );
       }
     }
-    if (convertedElements.length > 0 && condition) {
-      axisNotes.push(
-        `${convertedElements.length} converted onto ${quantityLabel(viewQuantity)}`,
-      );
+    /*
+     * Named, one apiece, with the multiplier that placed them.
+     *
+     * A count said that some curve on the sheet was not where its own
+     * setting would put it, without saying which -- so a reader
+     * checking a pickup against the axis had no way to know whether
+     * this was the converted one. The factor is quoted because the
+     * position rests on the depicted condition's ratios rather than on
+     * the element, and it is the number that makes that checkable: a
+     * 100 A phase pickup shown at 0.57x sits at 57 A on an I2 axis.
+     */
+    if (condition) {
+      for (const [label, { measures, factor }] of convertedElements) {
+        axisNotes.push(
+          `${label}: ${quantityLabel(measures)} drawn on the `
+          + `${quantityLabel(viewQuantity)} axis, x${trimZeros(Number((1 / factor).toFixed(3)))}`,
+        );
+      }
     }
     if (offAxisElements.length > 0) {
       axisNotes.push(
@@ -2152,11 +2299,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
     for (const note of unreferrablePoints) axisNotes.push(note);
 
+    /*
+     * One bullet per note, with the continuation lines indented under
+     * the text rather than under the marker.
+     *
+     * These notes are sentences, several of them name a relay, and most
+     * are long enough to wrap. Set flush left in one muted block they
+     * ran together: there was no way to see where one ended and the
+     * next began, so a panel carrying three of them read as a
+     * paragraph. The bullet is in WinAnsi, so it survives the PDF
+     * export as itself rather than becoming a question mark.
+     */
+    const BULLET_INDENT = 9;
     for (const note of axisNotes) {
-      for (const wrapped of wrapText(note, width, FONT_DETAIL - 1)) {
+      const wrapped = wrapText(note, width - BULLET_INDENT, FONT_DETAIL - 1);
+      for (const [i, line] of wrapped.entries()) {
+        const x = originX + (i === 0 ? 0 : BULLET_INDENT);
+        const text = i === 0 ? `• ${line}` : line;
         lines.push(
-          `<text x="${originX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
-          `font-size="${FONT_DETAIL - 1}" font-style="italic">${escapeXml(wrapped)}</text>`,
+          `<text x="${x}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+          `font-size="${FONT_DETAIL - 1}" font-style="italic">${escapeXml(text)}</text>`,
         );
         cursorY += LINE_DETAIL - 2;
       }
@@ -2166,6 +2328,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     for (const c of curves) {
       /* Out of room: count what is left and say so at the end. */
       if (cursorY - originY > budget) { dropped++; continue; }
+
+      /*
+       * The entry for the curve the cursor is on is emphasised with it.
+       * Following a highlighted curve to its settings meant reading
+       * down a column of identical-looking blocks and matching by
+       * colour, which is precisely the work the highlight exists to
+       * save.
+       */
+      const isHighlighted = hlLabel !== '' && c.label.trim() === hlLabel
+        && (!hlVolt || (c.voltage ?? '').trim() === hlVolt);
 
       const swatchY = cursorY - FONT_LABEL / 3;
       if (c.band) {
@@ -2185,7 +2357,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       } else {
         lines.push(
           `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
-          `stroke="${c.color}" stroke-width="2.5"` +
+          `stroke="${c.color}" stroke-width="${isHighlighted ? 4.5 : 2.5}"` +
           `${(c.dashArray ?? (c.dashed ? '6 4' : '')) ? ` stroke-dasharray="${c.dashArray ?? '6 4'}"` : ''}` +
           ` stroke-linecap="round"/>`,
         );
@@ -2194,7 +2366,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * is free text and routinely outruns the column. */
       for (const wrapped of wrapText(oneLine(c.label), textWidth, FONT_LABEL)) {
         lines.push(
-          `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${th.foreground}" font-size="${FONT_LABEL}" font-weight="600">` +
+          `<text x="${textX}" y="${cursorY}" class="tc-legend${isHighlighted ? ' tc-legend-snap' : ''}" ` +
+          `fill="${isHighlighted ? c.color : th.foreground}" font-size="${FONT_LABEL}" font-weight="600">` +
           `${escapeXml(wrapped)}</text>`,
         );
         cursorY += LINE_LABEL;

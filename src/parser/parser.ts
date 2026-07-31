@@ -525,7 +525,19 @@ class Parser {
       if (!k) { this.pos++; continue; }
       this.expect('EQUALS', '=');
       switch (k.image) {
-        case 'I_A':   p.I_A = this.parseNumberWithUnit_A(); break;
+        /* The same vocabulary a fault and a scenario level use, so
+         * one way of writing a current covers the whole language. */
+        case 'I_A':     p.I_A = this.parseNumberWithUnit_A(); break;
+        case 'I1_A':    p.I1_A = this.parseNumberWithUnit_A(); break;
+        case 'I2_A':    p.I2_A = this.parseNumberWithUnit_A(); break;
+        case 'I0_A':    p.I0_A = this.parseNumberWithUnit_A(); break;
+        case 'earth_A': p.earth_A = this.parseNumberWithUnit_A(); break;
+        case 'type': {
+          const kw = this.matchKeyword(
+            'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+          if (kw) p.faultType = kw as import('./ast.js').FaultTypeKeyword;
+          break;
+        }
         case 't_s':   p.t_s = this.parseNumberWithUnit_s(); break;
         /* The current may come from a named condition instead. */
         case 'fault':
@@ -1489,8 +1501,25 @@ if (kwName === 'flex_points') {
 
   private parseView(): ViewBlock | null {
     const head = this.peek();
-    return this.parseBlock('view', () => {
+    this.expectKeyword('view');
+
+    /* `view "Phase grading" { ... }` -- the name is optional, so a
+     * study with one sheet reads exactly as it always did. */
+    const nameTok = this.at('STRING') ? this.eat('STRING') : null;
+
+    if (!this.eat('LBRACE')) {
+      this.errors.push({
+        message: "expected '{' after view",
+        line: this.peek().line, column: this.peek().col,
+        offset: this.peek().start, length: 1,
+        severity: 'error', code: 'EXPECTED_LBRACE',
+      });
+      return null;
+    }
+
+    const v = ((): ViewBlock => {
       const v: ViewBlock = { type: 'view', loc: this.loc(head) };
+      if (nameTok) v.name = unquote(nameTok.image);
       while (!this.at('RBRACE') && !this.at('EOF')) {
         const t = this.peek();
         if (t.kind !== 'KW' && t.kind !== 'IDENT') { this.pos++; continue; }
@@ -1576,12 +1605,22 @@ if (kwName === 'flex_points') {
             v.two_axes = this.parseBool(); this.eat('SEMI'); break;
           case 'reference_ct':
             v.reference_ct = this.parseRef(); this.eat('SEMI'); break;
+          /* Per-sheet heading, overriding `page { title }`. */
+          case 'title':
+            v.title = this.parseStringOrIdent(); this.eat('SEMI'); break;
+          case 'subtitle':
+            v.subtitle = this.parseStringOrIdent(); this.eat('SEMI'); break;
+          case 'name':
+            v.name = this.parseStringOrIdent(); this.eat('SEMI'); break;
           default:
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
       return v;
-    }, '}');
+    })();
+
+    this.expect('RBRACE', '}');
+    return v;
   }
 
   /** Token `n` positions ahead, without consuming anything. */

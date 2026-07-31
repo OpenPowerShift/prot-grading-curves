@@ -109,3 +109,70 @@ describe('point annotations', () => {
     expect(svg).not.toMatch(/<circle[^>]*r="3\.5"/);
   });
 });
+
+/* ---------------------------------------------------------------- */
+
+describe('a margin annotation on a multi-stage element', () => {
+  /*
+   * Two stages on the primary (0.10 s and 0.35 s) under a 0.45 s
+   * backup. The composite -- what the element trips at, and what the
+   * margin report uses -- is the faster stage, so a margin drawn to it
+   * spans 0.35 s while a slower stage of the same element sits 0.10 s
+   * from the backup.
+   *
+   * On a study whose stages are alternatives under different conditions
+   * -- one inrush-blocked, one not -- the wide gap is not the binding
+   * one, and drawing it overstates the coordination by the difference
+   * between the stages. The closest pair is the honest figure to put on
+   * a drawing, and with `stages = "individual"` it is the gap between
+   * two curves the reader can see.
+   */
+  const STAGED = `
+system { voltages { "HV" { kV = 33; } } }
+faults { "F" { I_A = 900 A; I2_A = 900 A; voltage = "HV"; } }
+relay R_P {
+  voltage = "HV"; ct_ratio = 250/1;
+  element 46 {
+    function = "neg_seq"; measures = "I2";
+    stages {
+      stage main  { curve = definite; I_pu = 75 A; t_delay = 0.10 s; }
+      stage energ { curve = definite; I_pu = 75 A; t_delay = 0.35 s; }
+    }
+  }
+}
+relay R_B {
+  voltage = "HV"; ct_ratio = 250/1;
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.45 s; }
+}
+annotate { primary = R_P:46; backup = R_B:46; fault = "F"; label = "CTI"; }
+view { voltage = "HV"; stages = "individual"; current_min = 10 A; current_max = 40 kA;
+       time_min = 10 ms; time_max = 10 s; }
+`;
+
+  it('measures the smallest gap, not the widest', () => {
+    const { svg } = parseAndRender(STAGED, { theme: 'light' });
+    expect(svg).toContain('CTI 100 ms');
+    expect(svg).not.toContain('CTI 350 ms');
+  });
+
+  it('spans the two stages that are actually closest', () => {
+    /* The arrow's ends are the 0.35 s stage and the 0.45 s backup, so
+     * it is short; drawn to the composite it would reach 0.10 s. */
+    const { svg } = parseAndRender(STAGED, { theme: 'light' });
+    const arrow = svg.match(/<line x1="([\d.]+)" y1="([\d.]+)" x2="\1" y2="([\d.]+)" stroke="[^"]*" stroke-width="1.4"\/>/);
+    expect(arrow).not.toBeNull();
+    /* Both ends inside the band the two slow curves occupy. */
+    const span = Math.abs(Number(arrow![2]) - Number(arrow![3]));
+    expect(span).toBeGreaterThan(0);
+    expect(span).toBeLessThan(60);
+  });
+
+  it('still works when neither side has stages', () => {
+    const simple = STAGED.replace(
+      /stages \{[\s\S]*?\n    \}\n  \}/,
+      'curve = definite; I_pu = 75 A; t_delay = 0.10 s; }',
+    );
+    const { svg } = parseAndRender(simple, { theme: 'light' });
+    expect(svg).toContain('CTI 350 ms');
+  });
+});

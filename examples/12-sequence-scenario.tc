@@ -72,12 +72,25 @@ system {
 #      components are equal (I1 = I2 = I0 = If/3). On the delta side the
 #      zero sequence is absent, and what remains reads as an unbalance
 #      carrying negative sequence.
+#
+#      The figures are consistent to three significant figures, which
+#      matters because the LEGEND QUOTES THE RATIO THEY IMPLY. Working
+#      it through: 460/3 = 153.3 A per component at LV; those cross the
+#      transformer by the turns ratio 33/0.48 = 68.75, giving 2.23 A at
+#      HV. Zero sequence stays in the delta, so the HV line current is
+#      what the remaining two sum to -- sqrt(3) x 2.23 = 3.86 A, not
+#      3 x 2.23. Hence phase / I2 = sqrt(3) on this side, and a phase
+#      curve is drawn at 0.577 of its own current on the I2 sheet.
+#
+#      Round these to two figures (3.9 and 2.2) and the sheet quotes
+#      0.564 instead: a declared component always beats the type's
+#      table, so the ratio you write is the ratio you get.
 scenario "LV earth fault" {
     type        = single_phase_earth;
     description = "Single phase to earth at 0.48 kV, system normal";
 
-    level "LV" { I_A = 460 A; I1_A = 153 A; I2_A = 153 A; I0_A = 153 A; }
-    level "HV" { I_A = 3.9 A; I1_A = 2.2 A; I2_A = 2.2 A;  I0_A = 0 A;  }
+    level "LV" { I_A = 460 A;  I1_A = 153.3 A; I2_A = 153.3 A; I0_A = 153.3 A; }
+    level "HV" { I_A = 3.86 A; I1_A = 2.23 A;  I2_A = 2.23 A;  I0_A = 0 A;     }
 }
 
 # A second condition for the phase elements: a solid three-phase fault
@@ -227,10 +240,15 @@ annotate {
 }
 
 # ---- A marked point at a condition's current. --------------------------
-#      A point normally states its own `I_A`. Naming a condition takes
-#      the current from the study instead, at the quantity the sheet is
-#      drawn against -- so this marker moves with the fault study rather
-#      than having to be edited alongside it.
+#      A point declares its current the way a `fault` and a `scenario`
+#      level do: `I_A` for phase, `I2_A` for negative sequence, `I0_A`
+#      or `earth_A` for the residual. The sheet then takes whichever
+#      component its axis is drawn in, so one marker is right on every
+#      sheet instead of meaning a different quantity on each.
+#
+#      Naming a condition takes the current from the study instead -- so
+#      this marker moves with the fault study rather than having to be
+#      edited alongside it.
 #
 #      This one is on the 850's own level and own quantity, so it lands
 #      exactly on that element's curve: 2.2 A of I2 at HV, cleared by its

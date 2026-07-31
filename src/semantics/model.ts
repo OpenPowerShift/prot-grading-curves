@@ -247,10 +247,21 @@ export interface Grade {
 export interface StudyPoint {
   id: string;
   /**
-   * Current in primary amps at `voltage`, or `NaN` when `condition`
-   * supplies it instead.
+   * Phase current in primary amps at `voltage`, or `NaN` when
+   * `condition` supplies it instead.
+   *
+   * Declared as a `fault` and a `scenario` level declare theirs, so the
+   * sheet takes whichever component its axis is drawn in rather than
+   * plotting one number against every axis alike.
    */
   I_A: number;
+  I1_A?: number;
+  I2_A?: number;
+  I0_A?: number;
+  /** Residual `3*I0`, when declared directly. */
+  earth_A?: number;
+  /** Fault type, supplying the ratios between the components. */
+  type?: FaultType;
   t_s: number;
   /**
    * Named condition -- a fault or a scenario -- this marker stands at.
@@ -314,7 +325,23 @@ export interface Study {
   grades: Grade[];
   points: StudyPoint[];
   annotations: Annotation[];
+  /**
+   * The sheet being drawn: the first view unless one is selected.
+   *
+   * Kept as a single field so everything downstream reads one view and
+   * knows nothing about there being others.
+   */
   view?: Extract<TopLevel, { type: 'view' }>;
+  /**
+   * Every declared view, in source order -- one per sheet.
+   *
+   * A study routinely wants several sheets of one network: a phase
+   * sheet and a negative-sequence sheet, or the same grading under two
+   * conditions. Presentation stays in the presentation layer; a
+   * `scenario` remains purely what the fault study measured, and a
+   * view names the condition it depicts.
+   */
+  views: Array<Extract<TopLevel, { type: 'view' }>>;
   page?: Extract<TopLevel, { type: 'page' }>;
   notes: Record<string, string | number | boolean>;
   document: Document;
@@ -368,6 +395,7 @@ export function buildStudy(doc: Document): Study {
     devices: new Map(),
     combines: [],
     grades: [],
+    views: [],
     points: [],
     annotations: [],
     notes: {},
@@ -400,7 +428,10 @@ export function buildStudy(doc: Document): Study {
         }
         break;
       case 'view':
-        study.view = item;
+        study.views.push(item);
+        /* The first declared view is the sheet, unless a caller picks
+         * another; `selectView` does the picking. */
+        study.view ??= item;
         break;
       case 'page':
         study.page = item;
@@ -509,6 +540,11 @@ export function buildStudy(doc: Document): Study {
             study.points.push({
               id: `${item.id}${suffix}`,
               I_A: item.I_A,
+              I1_A: item.I1_A,
+              I2_A: item.I2_A,
+              I0_A: item.I0_A,
+              earth_A: item.earth_A,
+              type: isFaultType(item.faultType) ? item.faultType : undefined,
               t_s: item.t_s,
               condition,
               label: item.label ? `${item.label}${suffix}` : undefined,

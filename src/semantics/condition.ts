@@ -128,3 +128,20 @@ export function isConditionName(study: Study, name: string): boolean {
 export function conditionNames(study: Study): string[] {
   return [...study.faults.keys(), ...study.scenarios.keys()];
 }
+
+/**
+ * What a sheet is called in a picker.
+ *
+ * The declared name, else the condition it depicts, else its position.
+ * A study with several sheets and no names still gets a list a reader
+ * can choose from rather than three entries reading "view".
+ */
+export function viewLabel(
+  view: { name?: string; condition?: string; quantity?: string } | undefined,
+  index: number,
+): string {
+  if (view?.name?.trim()) return view.name.trim();
+  if (view?.condition?.trim()) return view.condition.trim();
+  if (view?.quantity && view.quantity !== 'any') return `${view.quantity} sheet`;
+  return `Sheet ${index + 1}`;
+}

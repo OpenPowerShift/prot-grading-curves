@@ -514,8 +514,27 @@ relay R {
     expect(at('3I0')).toMatch(/>Current \(A primary · residual 3I0 · hv · 33 kV\)</);
   });
 
-  it('says how many elements the axis left off', () => {
-    expect(at('I2')).toMatch(/2 elements not on this axis \(I2\)/);
+  it('names the elements the axis left off, and why', () => {
+    /*
+     * A count told the reader that something was missing without
+     * saying what, or what to do about it. Both of these measure a
+     * different component from the axis, and relating two components
+     * needs a condition -- which is a one-line fix the note now names.
+     */
+    const svg = at('I2');
+    expect(svg).toMatch(/R:51 measures phase; name a condition/);
+    expect(svg).toMatch(/R:51G measures residual 3I0; name a condition/);
+  });
+
+  it('needs no condition for the same component in another scaling', () => {
+    /*
+     * `3I2` is three times `I2` by definition, whatever the fault is.
+     * Requiring a condition for that made the 46 vanish from a 3I2
+     * sheet -- a factor of three the tool already knew, refused for
+     * want of data it never needed.
+     */
+    expect(curves(at('3I2'))).toContain('R:46');
+    expect(curves(at('3I0'))).toContain('R:51G');
   });
 
   it('defaults to an unconstrained axis, drawing everything', () => {
@@ -566,7 +585,15 @@ relay R {
   it('converts a phase curve onto a negative-sequence axis', () => {
     const svg = sheet('quantity = I2; condition = "F_2ph";');
     expect(drawn(svg)).toEqual(['R:46', 'R:51']);
-    expect(notes(svg)).toContain('converted onto I2');
+    /*
+     * Named with the multiplier that placed it, not counted. A count
+     * said some curve was not where its own setting would put it
+     * without saying which, so a reader checking a pickup against the
+     * axis could not tell whether this was the converted one. For a
+     * phase-phase fault the phase curve sits at 1/root3 = 0.577 of its
+     * own current on an I2 axis.
+     */
+    expect(notes(svg)).toContain('R:51: phase drawn on the I2 axis, x0.577');
   });
 
   it('places the converted curve at the right current', () => {
@@ -609,8 +636,10 @@ relay R {
     const svg = sheet('quantity = phase; condition = "F_1ph";');
     expect(drawn(svg)).toEqual(['R:46', 'R:51', 'R:51G']);
     /* The residual equals the phase current for this type, so the 51G
-     * needs no conversion -- only the 46 does. */
-    expect(notes(svg)).toContain('1 converted');
+     * needs no conversion -- only the 46 does, at three times, since a
+     * phase-earth fault's I2 is a third of its phase current. */
+    expect(notes(svg)).toContain('R:46: I2 drawn on the phase axis, x3');
+    expect(notes(svg)).not.toContain('R:51G:');
   });
 
   it('names the condition and its type', () => {
@@ -772,7 +801,7 @@ view { voltage = "HV"; quantity = I2; condition = "F"; current_min = 0.1 A; curr
 
   it('counts what it actually drew, and names what it did not', () => {
     const notes = [...svg.matchAll(/font-style="italic">([^<]*)</g)].map((m) => m[1]).join(' | ');
-    expect(notes).toContain('1 converted onto I2');
+    expect(notes).toContain('R:51: phase drawn on the I2 axis');
     /*
      * Named with its reason rather than counted as merely off-axis. The
      * element is not absent because the abscissa is inconvenient -- it
@@ -862,5 +891,44 @@ view { voltage = "HV"; }
     expect(notes).toContain('R_BARE:51');
     /* And that one keeps its honest primary figure. */
     expect(svg).toContain('300 A');
+  });
+});
+
+/* ---------------------------------------------------------------- */
+
+describe('the legend follows the highlighted curve', () => {
+  /*
+   * Following a highlighted curve to its settings meant reading down a
+   * column of identical-looking blocks and matching by colour, which is
+   * the work the highlight exists to save.
+   */
+  const STUDY = `
+system { voltages { hv { kV = 33; } } }
+relay R {
+  voltage = hv;
+  element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; }
+  element 50 { curve = definite; I_pu = 3 kA; t_delay = 50 ms; }
+}
+view { voltage = hv; }
+`;
+
+  const render = (highlight?: string): string =>
+    parseAndRender(STUDY, { theme: 'light', highlightLabel: highlight ?? null }).svg;
+
+  it('thickens the stub and colours the name of the hovered curve', () => {
+    const svg = render('R:51');
+    /* The swatch for the highlighted entry is heavier than the rest. */
+    expect(svg).toMatch(/stroke-width="4\.5"/);
+    expect(svg).toContain('tc-legend-snap');
+  });
+
+  it('leaves every other entry alone', () => {
+    const svg = render('R:51');
+    /* Only one entry is emphasised. */
+    expect([...svg.matchAll(/tc-legend-snap/g)]).toHaveLength(1);
+  });
+
+  it('emphasises nothing when the pointer is off the curves', () => {
+    expect(render()).not.toContain('tc-legend-snap');
   });
 });

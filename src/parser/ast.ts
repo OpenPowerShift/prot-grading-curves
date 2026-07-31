@@ -353,6 +353,26 @@ export interface CombineBlock extends BaseNode {
 
 export interface ViewBlock extends BaseNode {
   type: 'view';
+  /**
+   * Sheet name, when a study declares more than one view.
+   *
+   * A study routinely wants several sheets of one network -- a phase
+   * sheet and a negative-sequence sheet, or the same grading under
+   * two conditions. Each `view` is one sheet; naming them is what
+   * lets a reader (and the playground's picker) tell them apart.
+   * Unnamed views are numbered.
+   */
+  name?: string;
+  /**
+   * Title for this sheet, overriding `page { title }`.
+   *
+   * Per-sheet because the title is the one thing that must change
+   * when the condition does -- a negative-sequence sheet headed
+   * "Phase grading" is worse than no title. `page` keeps the paper
+   * and the decoration; the sheet keeps what it is *of*.
+   */
+  title?: string;
+  subtitle?: string;
   /** View the TCC in a chosen voltage frame. */
   voltage?: string;            // 'pickup', 'HV', '33 kV', '0.48 kV'...
   stages?: 'composite' | 'individual';
@@ -565,13 +585,29 @@ export interface PointBlock extends BaseNode {
   type: 'point';
   id: string;
   /**
-   * Current in primary amps at `voltage`.
+   * Phase current in primary amps at `voltage`.
    *
    * `NaN` when the point takes its current from a named condition
    * instead; the two are alternatives, and declaring both is an error
    * rather than a precedence rule to remember.
+   *
+   * A point declares its current the way a `fault` and a `scenario`
+   * level do -- `I_A` for phase, `I2_A` for negative sequence, and so
+   * on -- so one vocabulary covers every current in the language. The
+   * sheet then takes whichever component its axis is drawn in.
    */
   I_A: number;
+  I1_A?: number;
+  I2_A?: number;
+  I0_A?: number;
+  /** Residual `3*I0` declared directly, as an alternative to `I0_A`. */
+  earth_A?: number;
+  /**
+   * Fault type, as on a `fault`: supplies the ratios between the
+   * components, so a marker declaring only its phase current can still
+   * be placed on a sheet drawn in a component.
+   */
+  faultType?: FaultTypeKeyword;
   /** Time in seconds. */
   t_s: number;
   /**

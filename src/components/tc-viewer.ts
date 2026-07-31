@@ -125,6 +125,14 @@ export class TcViewer extends LitElement {
    */
   @property({ type: String }) theme: ThemeName = 'light';
   @property({ type: Array }) errors: ParseError[] = [];
+  /**
+   * Which declared `view` to draw, by index.
+   *
+   * A study may declare several sheets; the app's picker selects one.
+   * Clamped on use, so an index left over from a previous study cannot
+   * blank the plot.
+   */
+  @property({ type: Number }) viewIndex = 0;
   @property({ type: Number }) width = 1500;
   @property({ type: Number }) height = 1000;
 
@@ -916,8 +924,11 @@ render() {
     const page = (this.document.items.find((i: any) => i.type === 'page') as import('../parser/index.js').PageBlock | undefined) ?? null;
     const system = (this.document.items.find((i: any) => i.type === 'system') as import('../parser/index.js').SystemBlock | undefined) ?? null;
     const faults = (this.document.items.find((i: any) => i.type === 'faults') as import('../parser/index.js').FaultsBlock | undefined) ?? null;
-    const view: import('../parser/index.js').ViewBlock | null =
-      (this.document.items.find((i: any) => i.type === 'view') as import('../parser/index.js').ViewBlock | undefined) ?? null;
+    /*
+     * The selected sheet, of however many the study declares. Falls
+     * back to the first, which is what a single-view study has.
+     */
+    const view: import('../parser/index.js').ViewBlock | null = this.selectedView() ?? null;
     /*
      * A wheel zoom is expressed as the same current bounds a `view`
      * block would declare, so the renderer has one notion of "what is
@@ -1065,6 +1076,14 @@ render() {
   private renderCached(opts: RenderOptions): string {
     const key = JSON.stringify([
       this.docRevision,
+      /*
+       * Which sheet, not just its bounds. Two views of one study
+       * routinely share a current and time range and differ only in
+       * quantity, condition or title -- so keying on the bounds alone
+       * returned the previous sheet's SVG and the picker appeared to
+       * do nothing.
+       */
+      this.viewIndex,
       opts.width, opts.height, opts.theme,
       opts.view?.current_min, opts.view?.current_max,
       opts.view?.time_min, opts.view?.time_max,
@@ -1104,13 +1123,26 @@ render() {
    * because a stale zoom was still winning. Changing them now drops
    * the zoom; re-rendering for any other reason leaves it alone.
    */
+  /**
+   * The declared view this sheet is drawn from.
+   *
+   * One place, so the zoom-reset check and the render agree about
+   * which sheet is on screen -- otherwise switching sheets kept the
+   * previous one's zoom and the new bounds were ignored.
+   */
+  private selectedView(): import('../parser/index.js').ViewBlock | undefined {
+    const views = (this.document?.items ?? [])
+      .filter((i) => i.type === 'view') as import('../parser/index.js').ViewBlock[];
+    if (views.length === 0) return undefined;
+    return views[Math.min(Math.max(this.viewIndex, 0), views.length - 1)];
+  }
+
   private dropZoomIfBoundsEdited(): void {
-    const view = this.document?.items.find((i) => i.type === 'view') as
-      import('../parser/index.js').ViewBlock | undefined;
+    const view = this.selectedView();
     const bounds = view
-      ? `${view.current_min ?? ''}|${view.current_max ?? ''}|` +
+      ? `${this.viewIndex}|${view.current_min ?? ''}|${view.current_max ?? ''}|` +
         `${view.time_min ?? ''}|${view.time_max ?? ''}`
-      : '';
+      : `${this.viewIndex}|`;
 
     if (this.declaredBounds !== null && bounds !== this.declaredBounds) {
       this.currentMin = null;

@@ -325,7 +325,15 @@ annotation-style ::= "leader" | "pin" | "tag" ;
 
 point-block     ::= "point" point-id "{" { point-member } "}" ;
 point-id        ::= string | identifier ;
-point-member    ::= "I_A"     "=" number current-unit ";"
+(* A point declares its current exactly as a `fault` does, so one
+   vocabulary covers every current in the language; the sheet takes
+   whichever component its axis is drawn in. *)
+point-member    ::= "I_A"     "=" number current-unit ";"   # phase
+                  | "I1_A"    "=" number current-unit ";"
+                  | "I2_A"    "=" number current-unit ";"
+                  | "I0_A"    "=" number current-unit ";"   # component
+                  | "earth_A" "=" number current-unit ";"   # residual 3*I0
+                  | "type"    "=" fault-type-keyword ";"
                   | "t_s"     "=" number time-unit ";"
                   | condition-asg
                   | "voltage" "=" voltage-ref ";"
@@ -529,9 +537,21 @@ device-ref  ::= identifier ;
 
 [source,ebnf]
 ----
-view-block      ::= "view" "{" { view-member } "}" ;
-view-member     ::= "stages"        "=" view-stages-keyword ";"
+(* A study may declare several views; each is one sheet. The optional
+   name identifies it to a reader and to a sheet picker. *)
+view-block      ::= "view" [ string ] "{" { view-member } "}" ;
+view-member     ::= "name"          "=" string ";"
+                  | "stages"        "=" view-stages-keyword ";"
                   | "axis"          "=" view-axis-keyword ";"
+                  | "quantity"      "=" axis-quantity ";"
+                  | "condition"     "=" condition-name ";"
+                  | "voltage"       "=" voltage-ref ";"
+                  | "title"         "=" string ";"
+                  | "subtitle"      "=" string ";"
+                  | "current_min"   "=" number current-unit ";"
+                  | "current_max"   "=" number current-unit ";"
+                  | "time_min"      "=" number time-unit ";"
+                  | "time_max"      "=" number time-unit ";"
                   | "two_axes"      "=" boolean ";"
                   | "reference_ct"  "=" ref ";" ;
 view-stages-keyword ::= "composite" | "individual" ;

@@ -928,6 +928,25 @@ applied. If the device is on a different voltage level than the
 plot's axis mode, the renderer emits a *Warning*
 (`ANNOTATE_VOLTAGE_MISMATCH`).
 
+==== Views: one per sheet
+
+Each `view` block is one sheet. A study declaring several produces
+several drawings of the same network -- a phase sheet and a
+negative-sequence sheet, or one grading under two conditions. A
+processor draws the first unless told otherwise; an interactive one
+offers the list.
+
+`title` and `subtitle` on a view override `page { title }`. The page
+carries paper and decoration, which every sheet of a study shares; the
+view carries what its sheet depicts, which is what must change with the
+condition.
+
+Presentation is deliberately kept in the presentation layer: a
+`scenario` declares only what was measured, and the *view* names the
+condition it depicts. A view nested inside a scenario would mix the two
+and require a precedence rule between the sheet's settings and the
+top-level ones, and could not express two sheets of one condition.
+
 ==== Conditions on the drawing
 
 A **condition** is a named `fault` or `scenario`. Both are marked with a
@@ -954,6 +973,12 @@ condition carrying none of that quantity -- zero, which is a real answer
 Where a sheet marks both forms, the legend section is headed
 *Conditions* rather than *Faults*, and each scenario entry is annotated
 `scenario`.
+
+Relating two *different* components requires a condition to supply the
+ratios. Two spellings of the same component do not: `3I2` is three times
+`I2` and `3I0` three times `I0` by definition, whatever the fault, so an
+element set in one is placed on a sheet drawn in the other by that
+factor alone.
 
 An element is drawn only where the current it measures can reach the
 level being drawn. The rule is the one _Zero sequence across a

@@ -343,3 +343,70 @@ view { voltage = hv; current_min = 100 A; current_max = 30 kA; }
     expect(svg).toMatch(/stroke-opacity="0\.6"/);
   });
 });
+
+/* ---------------------------------------------------------------- */
+
+describe('a point caption and an annotation at the same spot', () => {
+  /*
+   * The leader style used to go at a fixed offset up and to the right,
+   * and only *reserve* that box afterwards -- so it avoided nothing
+   * already on the sheet and printed straight over a marked point's
+   * caption. Reserving after the fact stops the next label landing on
+   * this one; it cannot move this one clear of the last.
+   */
+  const COLLIDING = `
+system { voltages { hv { kV = 11; } } }
+faults { "F" { I_A = 4 kA; voltage = hv; } }
+relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
+
+# A marked point sitting exactly where the annotation wants to be.
+point "P" { I_A = 4000 A; t_s = 0.30 s; voltage = hv; label = "inrush limit"; }
+
+annotate { on_curve = R:51; at_I_A = 4000 A; label = "bus fault"; style = "leader"; }
+view { voltage = hv; current_min = 100 A; current_max = 30 kA; }
+`;
+
+  const svg = parseAndRender(COLLIDING, { theme: 'light' }).svg;
+
+  /** Boxes of the two labels, from the emitted text. */
+  function box(text: string): Rect {
+    const m = svg.match(
+      new RegExp(`<text x="([\\d.-]+)" y="([\\d.-]+)" text-anchor="(start|end)" font-size="11"[^>]*>${text}<`),
+    );
+    if (!m) throw new Error(`no label for ${text}`);
+    const FONT = 11;
+    const w = text.length * FONT * 0.6;
+    return {
+      x: m[3] === 'end' ? Number(m[1]) - w : Number(m[1]),
+      y: Number(m[2]) - FONT,
+      w,
+      h: FONT + 2,
+    };
+  }
+
+  it('draws both labels', () => {
+    expect(svg).toContain('inrush limit');
+    expect(svg).toContain('bus fault');
+  });
+
+  it('keeps them off each other', () => {
+    expect(overlaps(box('inrush limit'), box('bus fault'))).toBe(false);
+  });
+
+  it('still draws the annotation its leader', () => {
+    /* The elbow is what makes a leader read as one; it follows the
+     * label rather than the label following it. */
+    expect(svg).toMatch(/<path d="M[\d.]+ [\d.]+ L[\d.-]+ [\d.]+ L[\d.-]+ [\d.]+" fill="none" stroke="[^"]*" stroke-width="1"\/>/);
+  });
+
+  it('keeps a caption off the marker it names', () => {
+    /* A caption printed across the very mark it labels is the same
+     * fault as one printed along a curve. */
+    const marker = svg.match(/data-px="([\d.]+)" data-py="([\d.]+)"/);
+    expect(marker).not.toBeNull();
+    const markerBox: Rect = {
+      x: Number(marker![1]) - 7, y: Number(marker![2]) - 7, w: 14, h: 14,
+    };
+    expect(overlaps(box('inrush limit'), markerBox)).toBe(false);
+  });
+});

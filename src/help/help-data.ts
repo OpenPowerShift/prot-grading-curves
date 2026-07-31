@@ -43,8 +43,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   combine:     M('top', 'Synthetic curve -- pointwise min/max/sum of source curves.', 'combine { name = "OR"; sources = [R_FDR:51, R_INC:51]; as = envelope_min; }'),
   scenario:    M('top', 'One condition with its currents at every level, so nothing is referred across a transformer. As a field on grade, annotate or point, it names one.', 'scenario "LV earth fault" { type = single_phase_earth; level "LV" { I_A = 460 A; I0_A = 153 A; } }'),
   annotate:    M('top', 'A leader-line annotation on a curve at a specific current, or the margin between two.', 'annotate { on_curve = R_FDR:51; at_I_A = 8 kA; label = "Trip"; }'),
-  point:       M('top', 'A marked (current, time) coordinate; the current may come from a named condition.', 'point "inrush" { I_A = 2.4 kA; t_s = 0.1; label = "Inrush"; }'),
-  view:        M('top', 'Display-only directives: voltage frame, axis mode, stages mode.', 'view { voltage = "HV"; current_min = 100 A; }'),
+  point:       M('top', 'A marked (current, time) coordinate. Declares its current as a fault does -- I_A, I2_A, I0_A, earth_A -- or takes it from a named condition.', 'point "inrush" { I_A = 2.4 kA; t_s = 0.1; label = "Inrush"; }'),
+  view:        M('top', 'One sheet: voltage frame, axis quantity, the condition depicted, and its own title. A study may declare several.', 'view "I2 grading" { voltage = "HV"; quantity = I2; condition = "1ph min"; }'),
   page:        M('top', 'Page geometry + theme + title. Output page layout.', 'page { size = "A4"; orientation = "landscape"; title = "..."; }'),
   notes:       M('top', 'Free-form notes attached to the document.', 'notes { revision = "draft"; }'),
 
@@ -203,8 +203,9 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   grade:       ['primary', 'backup', 'fault', 'scenario', 'CTI_min_s', 'margin_s',
                'tolerance_pct', 'upstream', 'upstream_to_A', 'solve', 'comment'],
   solve:       ['strategy', 'tolerance_pct', 'free'],
-  view:        ['voltage', 'axis', 'quantity', 'condition', 'two_axes', 'reference_ct',
-               'stages', 'current_min', 'current_max', 'time_min', 'time_max'],
+  view:        ['name', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle',
+               'two_axes', 'reference_ct', 'stages',
+               'current_min', 'current_max', 'time_min', 'time_max'],
   page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
                'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders',
                'faults'],
@@ -223,7 +224,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
    * current comes from the study rather than being typed in. */
   annotate:    ['on_curve', 'at_I_A', 'primary', 'backup', 'fault', 'faults',
                'scenario', 'scenarios', 'label', 'style', 'color', 'coords'],
-  point:       ['I_A', 't_s', 'fault', 'faults', 'scenario', 'scenarios', 'voltage',
+  point:       ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'type', 't_s',
+               'fault', 'faults', 'scenario', 'scenarios', 'voltage',
                'label', 'shape', 'color', 'coords', 'description'],
   notes:       ['engineer', 'date', 'revision'],
 };

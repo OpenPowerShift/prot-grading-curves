@@ -286,7 +286,11 @@ describe('a point that names a condition', () => {
      * too, and the omission is stated.
      */
     const svg = render(
-      'point "LV residual" { I_A = 400 A; t_s = 1; voltage = "LV"; }',
+      /* A residual marker says so, as a fault would: `earth_A` is the
+       * residual 3*I0. Declared as a phase current it would not be a
+       * residual point at all, and the sheet would decline it for the
+       * duller reason that it carries no 3I0. */
+      'point "LV residual" { earth_A = 400 A; t_s = 1; voltage = "LV"; }',
       'view { voltage = "HV"; quantity = 3I0; current_min = 0.1 A; current_max = 500 A; }',
     );
     expect(points(svg)).toHaveLength(0);
@@ -381,5 +385,80 @@ describe('an annotation that names conditions', () => {
       `annotate { ${PAIR} scenarios = ["system normal", "system normal"]; label = "CTI"; }`,
     );
     expect([...svg.matchAll(/>CTI ([^<]+)</g)]).toHaveLength(1);
+  });
+});
+
+/* ---------------------------------------------------------------- */
+
+describe('a point declares its current as a fault does', () => {
+  /*
+   * One vocabulary for every current in the language. A point used to
+   * carry a single `I_A` that was plotted against whatever the axis
+   * happened to be, so the same number meant phase current on one sheet
+   * and negative sequence on the next -- and studies worked around it
+   * with a comment ("49 A, which is |I2| on this sheet"), which is the
+   * tool asking the reader to keep its books.
+   */
+  const STUDY = (points: string, quantity: string) => `
+system { voltages { "HV" { kV = 33; } } }
+relay R {
+  voltage = "HV"; ct_ratio = 250/1;
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.1 s; }
+}
+${points}
+view { voltage = "HV"; quantity = ${quantity}; current_min = 1 A; current_max = 40 kA; }
+`;
+
+  const drawn = (points: string, quantity: string): Array<[string, number]> =>
+    [...parseAndRender(STUDY(points, quantity), { theme: 'light' }).svg
+      .matchAll(/data-point="([^"]+)" data-current="([\d.]+)"/g)]
+      .map((m) => [m[1], Number(m[2])]);
+
+  const P_I2 = 'point "ext" { I2_A = 49 A; t_s = 0.1 s; voltage = "HV"; label = "ext"; }';
+  const P_PHASE = 'point "inrush" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "inrush"; }';
+  const P_TYPED = 'point "2ph" { I_A = 390 A; type = two_phase; t_s = 0.2 s; voltage = "HV"; label = "2ph"; }';
+
+  it('takes the component the axis is drawn in', () => {
+    expect(drawn(P_I2, 'I2')).toEqual([['ext', 49]]);
+  });
+
+  it('derives a component from the point\'s own fault type', () => {
+    /* 390 A of phase current at a phase-phase fault is 390/root3 of I2. */
+    const [[, I]] = drawn(P_TYPED, 'I2');
+    expect(I).toBeCloseTo(390 / Math.sqrt(3), 1);
+  });
+
+  it('leaves a phase point on a phase axis exactly where it was', () => {
+    /* The unconstrained default is a phase axis, so every existing
+     * study with a bare `I_A` is untouched. */
+    expect(drawn(P_PHASE, 'any')).toEqual([['inrush', 212]]);
+    expect(drawn(P_PHASE, 'phase')).toEqual([['inrush', 212]]);
+  });
+
+  it('withholds a marker whose component the sheet is not drawn in', () => {
+    expect(drawn(P_PHASE, 'I2')).toHaveLength(0);
+    expect(drawn(P_I2, 'phase')).toHaveLength(0);
+  });
+
+  it('names the marker it withheld, and what would fix it', () => {
+    const svg = parseAndRender(STUDY(P_PHASE, 'I2'), { theme: 'light' }).svg;
+    const said = [...svg.matchAll(/font-style="italic"[^>]*>([^<]*)</g)]
+      .map((m) => m[1]).join(' ');
+    expect(said).toContain('point inrush declares no I2');
+    expect(said).toContain('give it I2_A');
+  });
+
+  it('accepts a marker known only in a component, with no phase figure', () => {
+    /* `I2_A` alone is a complete declaration; the validator used to
+     * insist on a phase current that a negative-sequence marker does
+     * not have. */
+    const found = process(STUDY(P_I2, 'I2')).diagnostics.filter((d) => d.severity === 'error');
+    expect(found).toHaveLength(0);
+  });
+
+  it('still requires some current, or a condition to take one from', () => {
+    const codes = process(STUDY('point "bare" { t_s = 1 s; }', 'phase'))
+      .diagnostics.filter((d) => d.severity === 'error').map((d) => d.code);
+    expect(codes).toContain('POINT_CURRENT_INVALID');
   });
 });

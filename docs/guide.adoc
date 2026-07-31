@@ -586,6 +586,29 @@ annotate {                          # a single curve at one current
 }
 ----
 
+==== A point declares its current as a fault does
+
+One vocabulary for every current in the language. `I_A` is phase
+current, `I2_A` negative sequence, `I0_A` the zero-sequence component,
+`earth_A` the residual `3*I0` -- the same keys a `fault` and a
+`scenario` level use. The sheet then takes whichever component its axis
+is drawn in:
+
+[source,tc]
+----
+point "ext fault I2" { I2_A = 49 A;  t_s = 0.10 s; voltage = "HV"; }
+point "TX inrush"    { I_A  = 212 A; t_s = 0.12 s; voltage = "HV"; }
+point "2ph min"      { I_A  = 390 A; type = two_phase; t_s = 0.2 s; }
+----
+
+`type` supplies the ratios, so the last of those is placed on an `I2`
+sheet at `390/sqrt(3)` without anything else being declared.
+
+A marker whose component the sheet is not drawn in is left off and named
+in the legend, with the key that would fix it. Nothing changes for a
+point declaring `I_A` on a phase axis -- which is the default -- so
+existing studies are untouched.
+
 ==== Taking the current from a condition
 
 Neither block needs the current typed in. Name a declared condition --
@@ -697,8 +720,11 @@ view { voltage = "HV"; quantity = I2; condition = "F_2ph"; }
   `I_phase = √3 × I2` for a phase-phase fault, so phase and
   negative-sequence characteristics can be read together. On a log axis
   a conversion is a constant shift, so operate times are untouched --
-  only the abscissa moves. Converted curves are counted in the legend,
-  because their position rests on the assumed fault type.
+  only the abscissa moves. Each converted curve is named in the legend
+  with the multiplier that placed it -- `R:51: phase drawn on the I2
+  axis, x0.577` -- because its position rests on the depicted
+  condition's ratios rather than on its own setting, and the multiplier
+  is what makes that checkable against the axis.
 * **Elements the condition cannot operate are suppressed.** On a
   `three_phase` condition there is no `I2` and no `I0`, so earth-fault
   and negative-sequence elements are left off rather than drawn where
@@ -719,6 +745,15 @@ level's figures, which would mix two turns ratios into one number:
 ----
 view { voltage = "HV"; quantity = I2; condition = "LV earth fault"; }
 ----
+
+===== The same component in another scaling
+
+`3I2` is three times `I2`, and `3I0` three times `I0`, whatever the
+fault is. Those need no condition: an element set in `I2` is drawn on a
+`3I2` sheet at a third of its own current, and a residual element
+belongs on an `I0` sheet. Only relating *different* components -- phase
+to `I2`, `I2` to `3I0` -- needs a condition to supply the ratios, and
+the legend says so by name when one is missing.
 
 ===== Zero sequence across a transformer
 
@@ -799,6 +834,49 @@ view {
 
 Set the bounds explicitly if the automatic range is unhelpful --
 auto-ranging can run wide and squash the curves.
+
+=== view -- one per sheet
+
+A study may declare several views. Each is one sheet: a phase sheet and
+a negative-sequence sheet of the same network, or the same grading under
+two conditions. Name them, and each carries its own title:
+
+[source,tc]
+----
+view "Phase grading" {
+    voltage   = "HV";
+    quantity  = phase;
+    condition = "3ph min";
+    title     = "Broadsound BESS RMU — phase grading";
+}
+
+view "I2 grading" {
+    voltage   = "HV";
+    quantity  = I2;
+    condition = "1ph min";              # the scenario
+    title     = "Broadsound BESS RMU — negative-sequence grading";
+    subtitle  = "480 V earth fault seen at 33 kV";
+}
+----
+
+The playground shows a picker beside the plot when a study declares more
+than one, and the CLI draws the first. Nothing changes for a study with
+a single unnamed `view`.
+
+`title` and `subtitle` on a view override `page { title }`, which every
+sheet shares -- a negative-sequence sheet headed "Phase grading" because
+the page said so is worse than no title. `page` keeps the paper and the
+decoration; the view keeps what the sheet is *of*.
+
+[NOTE]
+====
+Presentation stays in the presentation layer. A `scenario` is only what
+the fault study measured, and stays readable as such; the *view* names
+the condition it depicts. Putting a `view` inside a `scenario` would
+have mixed the two and needed a precedence rule between the sheet's own
+settings and the top-level ones -- and it could not express two sheets
+of one condition, which is the common case.
+====
 
 === page
 

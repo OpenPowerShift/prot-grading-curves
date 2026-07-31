@@ -895,7 +895,9 @@ function validatePoints(ctx: Ctx): void {
      * whichever way it fell the other figure would sit in the source
      * looking as though it did something.
      */
-    if (point.condition && Number.isFinite(point.I_A)) {
+    const statesCurrent = [point.I_A, point.I1_A, point.I2_A, point.I0_A, point.earth_A]
+      .some((v) => v != null && Number.isFinite(v));
+    if (point.condition && statesCurrent) {
       add(ctx, 'POINT_CURRENT_AND_CONDITION', 'error',
         `point "${point.id}" declares I_A and names the condition ` +
         `"${point.condition}"; they are alternatives -- drop one`,
@@ -903,11 +905,25 @@ function validatePoints(ctx: Ctx): void {
     } else if (point.condition) {
       checkConditionReference(ctx, point.condition, `point "${point.id}"`,
         point.voltage ?? viewLevel, undefined);
-    } else if (!(point.I_A > 0)) {
-      add(ctx, 'POINT_CURRENT_INVALID', 'error',
-        `point "${point.id}" declares I_A = ${point.I_A}; it must be strictly positive, ` +
-        'or name a fault or scenario to take it from',
-        undefined);
+    } else {
+      /*
+       * Any one component will do. A point declares its current the way
+       * a fault does, so a marker known only in negative sequence is
+       * written `I2_A` and has no phase figure to check.
+       */
+      const declared = [point.I_A, point.I1_A, point.I2_A, point.I0_A, point.earth_A]
+        .filter((v): v is number => v != null && Number.isFinite(v));
+      if (declared.length === 0) {
+        add(ctx, 'POINT_CURRENT_INVALID', 'error',
+          `point "${point.id}" declares no current; give it I_A (or I1_A, I2_A, I0_A, ` +
+          'earth_A), or name a fault or scenario to take it from',
+          undefined);
+      } else if (declared.some((v) => v <= 0)) {
+        add(ctx, 'POINT_CURRENT_INVALID', 'error',
+          `point "${point.id}" declares a non-positive current; currents must be ` +
+          'strictly positive to have a place on a logarithmic axis',
+          undefined);
+      }
     }
     if (!(point.t_s > 0)) {
       add(ctx, 'POINT_TIME_INVALID', 'error',

@@ -13,6 +13,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { parse, type Document, type ParseError } from '../parser/index.js';
 import { buildStudy, type Study } from '../semantics/model.js';
+import { viewLabel } from '../semantics/condition.js';
 import { validate, type Diagnostic } from '../semantics/validate.js';
 import { reportGrades, formatGradeReports, type GradeReport } from '../semantics/grades.js';
 import { EXAMPLES, DEFAULT_EXAMPLE } from '../examples.js';
@@ -148,6 +149,15 @@ export class TcApp extends LitElement {
    * picker and seeds the Save prompt; saving is still their decision.
    */
   @state() private linkName: string | null = null;
+  /**
+   * Which declared `view` is on screen, by index.
+   *
+   * A study may declare several sheets -- a phase sheet and a
+   * negative-sequence sheet, the same grading under two conditions --
+   * and the picker beside the plot chooses between them. Reset when
+   * the source changes enough to invalidate it.
+   */
+  @state() private viewIndex = 0;
   /**
    * UI theme for both panes. Seeded from the OS preference and then
    * remembered, so the choice survives a reload.
@@ -958,6 +968,21 @@ export class TcApp extends LitElement {
                : 'flex-basis: 100%; width: 100%;'}>
           <div class="side-title">
             <span class="side-title-label">Plot</span>
+            ${/*
+               * One sheet per declared `view`. Shown only when there is
+               * a choice to make: a study with a single view -- which is
+               * most of them -- gets no control it cannot use.
+               */''}
+            ${this.study && this.study.views.length > 1 ? html`
+              <select class="picker sheet-picker"
+                      title="Which declared view to draw"
+                      @change=${(e: Event) => {
+                        this.viewIndex = Number((e.target as HTMLSelectElement).value);
+                      }}>
+                ${this.study.views.map((v, i) => html`
+                  <option value=${i} ?selected=${i === this.viewIndex}>${viewLabel(v, i)}</option>
+                `)}
+              </select>` : null}
             <span class="side-title-spacer"></span>
             ${this.reports.length > 0
               ? html`<button class="side-btn" title="Show the grading margin report"
@@ -993,6 +1018,7 @@ export class TcApp extends LitElement {
               @tc-open-guide=${() => { this.showGuide = true; }}
               .document=${this.ast}
               .study=${this.study}
+              .viewIndex=${this.viewIndex}
               .theme=${this.theme}
               .errors=${this.errors}></tc-viewer>
         </div>

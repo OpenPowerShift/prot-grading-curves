@@ -14,6 +14,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 
 import {
   KEYWORD_HELP,
+  type HelpEntry,
   TOP_BLOCK_KEYWORDS,
   BLOCK_FIELDS,
   CURVE_HELP,
@@ -90,24 +91,51 @@ function detectActiveBlock(src: string, pos: number): string | null {
   return named[named.length - 1] ?? null;
 }
 
+/**
+ * The panel beside a completion, built as elements.
+ *
+ * `Completion.info` renders a *string* as text, so markup handed to it
+ * arrives on screen as `<b>scenario</b> &middot; <i>top</i><br>...` --
+ * the tags read out literally next to the thing they were meant to
+ * style. A function returning a node is the form CodeMirror renders,
+ * and building the node also means nothing has to be escaped: text
+ * assigned to `textContent` cannot be markup.
+ */
+function helpPanel(label: string, help: HelpEntry): () => Node {
+  return () => {
+    const dom = document.createElement('div');
+    dom.className = 'tc-help-info';
+
+    const head = dom.appendChild(document.createElement('div'));
+    head.className = 'cm-help-line';
+    const name = head.appendChild(document.createElement('b'));
+    name.textContent = label;
+    const scope = head.appendChild(document.createElement('span'));
+    scope.className = 'cm-help-scope';
+    scope.textContent = ` · ${help.scope}`;
+
+    const summary = dom.appendChild(document.createElement('div'));
+    summary.className = 'cm-help-summary';
+    summary.textContent = help.summary;
+
+    if (help.example) {
+      const example = dom.appendChild(document.createElement('pre'));
+      example.className = 'cm-help-example';
+      example.textContent = help.example;
+    }
+    return dom;
+  };
+}
+
 function makeCompletion(label: string, detailKind?: string): Completion {
   const help = KEYWORD_HELP[label];
-  const infoText = help
-    ? `<b>${label}</b> · <i>${escapeHtml(help.scope)}</i><br>${escapeHtml(help.summary)}<br><pre>${escapeHtml(help.example)}</pre>`
-    : undefined;
   return {
     label,
     type: 'keyword',
     detail: help?.summary ?? detailKind ?? 'tc-curves',
-    info: infoText,
+    info: help ? helpPanel(label, help) : undefined,
     boost: help?.scope === 'top' ? 5 : 1,
   };
-}
-
-function escapeHtml(s: string): string {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;',
-  }[c] as string));
 }
 
 /**

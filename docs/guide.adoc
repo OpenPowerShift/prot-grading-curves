@@ -642,6 +642,51 @@ in the legend, with the key that would fix it. Nothing changes for a
 point declaring `I_A` on a phase axis -- which is the default -- so
 existing studies are untouched.
 
+==== Saying where, when the axis is not phase current
+
+An annotation's current is declared the way a fault, a scenario level
+and a point declare theirs, because the abscissa is not always phase
+current:
+
+[source,tc]
+----
+annotate { primary = R_850:46; backup = R_SEL:46; at_I2_A = 225 A; }
+annotate { primary = R_850:46; backup = R_SEL:46; at_I_A = 390 A; type = two_phase; }
+----
+
+Both put the arrow in the same place on an `I2` sheet: the first names
+the component, the second gives the phase current and lets the type
+derive it. `at_I_A` still means phase current, so nothing written
+before this moves.
+
+`voltage` names the level the figure is read at, defaulting to the
+view's. Without it a bare current was taken in *each* referenced
+element's own frame, so one number meant two different currents across
+a transformer and the drawn margin contradicted the report.
+
+A condition and a bare current are alternatives; declaring both is an
+error rather than a rule about which wins.
+
+==== Pointing at one stage
+
+A reference means the element as a whole -- the composite, which is
+what the relay trips at. Add a stage to mean just that stage:
+
+[source,tc]
+----
+annotate { primary = R_850:46/energ; backup = R_SEL:46; at_I2_A = 225 A; }
+----
+
+which is what a study whose stages are alternatives under different
+conditions needs: one inrush-blocked, one not, and the margin that
+matters is to the one that is armed.
+
+Where an element's stages are drawn separately
+(`view { stages = "individual" }`), a margin to the element as a whole
+measures the *closest* pair of stages, that being the binding gap. Where
+the sheet draws the composite there is only one line per element, so the
+margin is to that -- otherwise the arrow would end in mid-air.
+
 ==== Margins: in time, and in current
 
 The vertical arrow measures a *time* margin between two curves at one

@@ -167,6 +167,40 @@ view { voltage = "HV"; stages = "individual"; current_min = 10 A; current_max = 
     expect(span).toBeLessThan(60);
   });
 
+  it('lands on the composite when the stages are not drawn apart', () => {
+    /*
+     * The closest pair is the honest margin only when the reader can
+     * see both stages. A sheet drawing the composite has one line per
+     * element -- the pointwise minimum -- so an arrow ending at a
+     * slower stage stops in mid-air, a hundred pixels short of the
+     * curve it should touch. That is what it did on the capability
+     * tour: the lower end sat at y=554.8 with the drawn curve at 656.1.
+     */
+    const composite = STAGED.replace('stages = "individual"; ', '');
+    const svg = parseAndRender(composite, { theme: 'light' }).svg;
+
+    const arrow = svg.match(
+      /<line x1="([\d.]+)" y1="([\d.]+)" x2="\1" y2="([\d.]+)" stroke="[^"]*" stroke-width="1\.4"\/>/,
+    );
+    expect(arrow).not.toBeNull();
+    const px = Number(arrow![1]);
+    const ends = [Number(arrow![2]), Number(arrow![3])];
+
+    /* Every end sits on a drawn curve at that abscissa. */
+    const nearestOnCurves = (x: number): number[] =>
+      [...svg.matchAll(/<path d="([^"]+)" class="tc-curve"/g)].map((m) => {
+        const pts = [...m[1].matchAll(/[ML]([\d.-]+) ([\d.-]+)/g)]
+          .map((q) => [Number(q[1]), Number(q[2])] as const);
+        return pts.reduce((best, [cx, cy]) =>
+          Math.abs(cx - x) < Math.abs(best[0] - x) ? [cx, cy] : best, pts[0])[1];
+      });
+
+    const ys = nearestOnCurves(px);
+    for (const end of ends) {
+      expect(ys.some((y) => Math.abs(y - end) < 3), `end ${end} vs ${ys}`).toBe(true);
+    }
+  });
+
   it('still works when neither side has stages', () => {
     const simple = STAGED.replace(
       /stages \{[\s\S]*?\n    \}\n  \}/,

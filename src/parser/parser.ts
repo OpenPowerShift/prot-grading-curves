@@ -1421,6 +1421,21 @@ if (kwName === 'flex_points') {
             a.at_I_A = this.parseNumberWithUnit_A();
             this.eat('SEMI');
             break;
+          case 'at_I1_A':
+            a.at_I1_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+          case 'at_I2_A':
+            a.at_I2_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+          case 'at_I0_A':
+            a.at_I0_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+          case 'at_earth_A':
+            a.at_earth_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+          case 'type': {
+            const kw = this.matchKeyword(
+              'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+            this.eat('SEMI');
+            if (kw) a.faultType = kw as import('./ast.js').FaultTypeKeyword;
+            break;
+          }
           case 'at_t_s':
             a.at_t_s = this.parseNumberWithUnit_s();
             this.eat('SEMI');
@@ -2037,6 +2052,16 @@ if (kwName === 'flex_points') {
       const second = this.parseDeviceNumberId();
       const deviceId = first.image;
       const elementId = second ? second.image : '';
+
+      /* `R_850:46/energ` -- one stage of a multi-stage element. */
+      if (this.eat('SLASH')) {
+        const stageTok = this.eat('IDENT') ?? this.eat('KW');
+        const stageId = stageTok ? stageTok.image : '';
+        return {
+          deviceId, elementId, stageId,
+          text: `${deviceId}:${elementId}/${stageId}`,
+        };
+      }
       return { deviceId, elementId, text: `${deviceId}:${elementId}` };
     }
     return { deviceId: first.image, text: first.image };

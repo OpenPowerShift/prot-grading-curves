@@ -226,7 +226,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   combined:    ['name', 'sources', 'as', 'color', 'style', 'label'],
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */
-  annotate:    ['on_curve', 'at_I_A', 'at_t_s', 'primary', 'backup', 'point',
+  annotate:    ['on_curve', 'at_I_A', 'at_I1_A', 'at_I2_A', 'at_I0_A', 'at_earth_A',
+               'type', 'at_t_s', 'voltage', 'primary', 'backup', 'point',
                'fault', 'faults', 'scenario', 'scenarios',
                'label', 'style', 'color', 'coords'],
   point:       ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'type', 't_s',

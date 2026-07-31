@@ -314,6 +314,20 @@ export interface AnnotateBlock extends BaseNode {
    */
   voltage?: string;
   /**
+   * The same component vocabulary a `fault`, a `scenario` level and a
+   * `point` use, because the abscissa is not always phase current.
+   *
+   * `at_I_A` named a phase current, which invited one to be written
+   * and then land on an `I2` or `3I0` axis. Naming the component
+   * removes the guess; `type` derives the rest where only one is
+   * given.
+   */
+  at_I1_A?: number;
+  at_I2_A?: number;
+  at_I0_A?: number;
+  at_earth_A?: number;
+  faultType?: FaultTypeKeyword;
+  /**
    * Time at which to measure a *current* margin, in seconds.
    *
    * The horizontal counterpart of the vertical margin arrow: with
@@ -727,6 +741,17 @@ export interface Ref {
   /** Always present; for `device-ref` the elementId is undefined. */
   deviceId?: string;
   elementId?: string;
+  /**
+   * One stage of a multi-stage element, as `R_850:46/energ`.
+   *
+   * Without it a reference means the element as a whole -- the
+   * composite, which is what the relay trips at. A study whose stages
+   * are alternatives under different conditions (one inrush-blocked,
+   * one not) needs to point at the one that is armed, and an
+   * annotation about the energisation stage should say so rather than
+   * quietly describing the fastest.
+   */
+  stageId?: string;
   /** Raw text as written, for round-trip stability. */
   text: string;
 }

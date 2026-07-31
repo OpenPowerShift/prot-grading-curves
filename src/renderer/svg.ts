@@ -31,6 +31,7 @@ import type {
   PageBlock,
   PageLegend,
   LegendCurrents,
+  Ref,
   SystemBlock,
   ViewBlock,
 } from '../parser/ast.js';
@@ -1018,7 +1019,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (annotation.condition) {
       return conditionCurrentAt(annotation.condition, voltage, quantity);
     }
-    if (!Number.isFinite(annotation.at_I_A)) return null;
+    /*
+     * Resolved for the quantity the *side* measures, exactly as a
+     * condition is. `at_I_A` still means phase current, so nothing
+     * written before this changes; naming the component is what makes
+     * an annotation placeable on a sheet whose abscissa is not phase.
+     */
+    const declared = resolveCurrent(
+      quantity,
+      {
+        phase: annotation.at_I_A, I1: annotation.at_I1_A, I2: annotation.at_I2_A,
+        I0: annotation.at_I0_A, residual: annotation.at_earth_A,
+      },
+      annotation.type,
+    );
+    if (declared == null) return null;
 
     /*
      * A bare current needs a level, exactly as a fault's does.
@@ -1036,9 +1051,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const fromLevel = annotation.voltage ?? viewLevelName;
     const fromKv = fromLevel ? voltageKvs.get(fromLevel) : V_view_kV;
     const toKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
-    if (fromKv == null || toKv == null || fromKv === toKv) return annotation.at_I_A!;
+    if (fromKv == null || toKv == null || fromKv === toKv) return declared.value;
     if (!survivesVoltageReferral(quantity, study, fromLevel, voltage)) return null;
-    return annotation.at_I_A! * (fromKv / toKv);
+    return declared.value * (fromKv / toKv);
   };
 
   /** Operate time of a device at a current, by role. */
@@ -1053,6 +1068,24 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * on total clear as a primary and minimum melt as a backup, matching
    * how `grades.ts` reasons about it.
    */
+  /**
+   * Narrow a resolved side to the single stage its reference named.
+   *
+   * `R_850:46/energ` means that stage, not the element. Without it a
+   * reference is the composite -- what the relay trips at -- which is
+   * right for grading and wrong for an annotation about the stage that
+   * is armed under the condition being drawn.
+   */
+  const atStage = (
+    side: { element?: Element; device?: Device },
+    ref: Ref | undefined,
+  ): { element?: Element; device?: Device } => {
+    if (!ref?.stageId || !side.element) return side;
+    const stage = side.element.stages.find((st) => st.id === ref.stageId);
+    if (!stage) return side;
+    return { ...side, element: { ...side.element, stages: [stage] } };
+  };
+
   const sideTime = (
     side: { element?: Element; device?: Device },
     I: number,
@@ -2128,8 +2161,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * meaning little without knowing where on the axis you are.
      */
     if (annotation.kind === 'current_margin') {
-      const primary = resolveRef(study, annotation.primary);
-      const backup = resolveRef(study, annotation.backup);
+      const primary = atStage(resolveRef(study, annotation.primary), annotation.primary);
+      const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
       const t = annotation.at_t_s!;
 
       const pFactor = primary.element ? axisFactorFor(primary.element) : 1;
@@ -2218,8 +2251,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
 
     if (annotation.kind === 'margin') {
-      const primary = resolveRef(study, annotation.primary);
-      const backup = resolveRef(study, annotation.backup);
+      const primary = atStage(resolveRef(study, annotation.primary), annotation.primary);
+      const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
 
       /*
        * Each side is evaluated at the current *it* measures, exactly as
@@ -2266,7 +2299,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         role: 'primary' | 'backup',
       ): number[] => {
         const stages = side.element?.stages;
-        if (!stages || stages.length < 2) {
+        /*
+         * Only where the stages are drawn separately.
+         *
+         * The closest pair is the honest margin when the reader can see
+         * both stages, but a sheet drawing the composite has only one
+         * line per element -- the pointwise minimum -- and an arrow
+         * ending at a slower stage then stops in mid-air, a hundred
+         * pixels short of the curve it is supposed to touch. On a
+         * composite sheet the composite is what the arrow must land on;
+         * `R_850:46/energ` is how a particular stage is named, and that
+         * narrows the side before it gets here.
+         */
+        if (!individual || !stages || stages.length < 2) {
           const t = sideTime(side, current, role);
           return Number.isFinite(t) ? [t] : [];
         }
@@ -2335,7 +2380,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
 
     /* Point form: mark one curve at one current. */
-    const { element, device } = resolveRef(study, annotation.on_curve);
+    const { element, device } = atStage(
+      resolveRef(study, annotation.on_curve), annotation.on_curve);
     const annotatedQ = element ? elementQuantity(element.stages) : 'phase';
     const I = annotationCurrent(
       study, annotation, element?.voltage ?? device?.voltage,

@@ -318,6 +318,12 @@ export interface Annotation {
   pointRef?: string;
   /** Level `at_I_A` is measured at; defaults to the view's. */
   voltage?: string;
+  /** The component vocabulary, as a fault and a point use it. */
+  at_I1_A?: number;
+  at_I2_A?: number;
+  at_I0_A?: number;
+  at_earth_A?: number;
+  type?: FaultType;
   label?: string;
   style: 'leader' | 'pin' | 'tag';
   color?: string;
@@ -620,6 +626,11 @@ export function buildStudy(doc: Document): Study {
             at_t_s: item.at_t_s,
             pointRef: item.pointRef,
             voltage: item.voltage,
+            at_I1_A: item.at_I1_A,
+            at_I2_A: item.at_I2_A,
+            at_I0_A: item.at_I0_A,
+            at_earth_A: item.at_earth_A,
+            type: isFaultType(item.faultType) ? item.faultType : undefined,
             label: item.label,
             style: item.style ?? 'leader',
             color: item.color,

@@ -702,7 +702,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
       diagnostics.push({
         code: 'SOLVE_WITHOUT_TARGET',
         severity: 'error',
-        message: 'solve block declared with neither margin_s nor CTI_min_s to aim at',
+        message: 'solve block declared with neither margin_target nor margin to aim at',
       });
     } else if (!backup.element) {
       diagnostics.push({
@@ -784,8 +784,8 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
       code: 'MARGIN_NO_SOLVE',
       severity: 'warning',
       message:
-        'margin_s is declared without a solve block; it is reported as a target only. ' +
-        'Add solve { ... } to have the tool meet it, or use CTI_min_s for a constraint',
+        'margin_target is declared without a solve block; it is reported as a target only. ' +
+        'Add solve { ... } to have the tool meet it, or use margin for a constraint',
     });
   }
 

@@ -749,7 +749,7 @@ function validateGrades(ctx: Ctx): void {
 
     if (grade.margin_s != null && grade.CTI_min_s != null && grade.margin_s < grade.CTI_min_s) {
       add(ctx, 'MARGIN_BELOW_CTI', 'error',
-        `grade declares margin_s = ${grade.margin_s} s below CTI_min_s = ${grade.CTI_min_s} s; ` +
+        `grade declares margin_target = ${grade.margin_s} s below margin = ${grade.CTI_min_s} s; ` +
         'the design target asks for less margin than the constraint allows',
         loc);
     }
@@ -766,21 +766,21 @@ function validateGrades(ctx: Ctx): void {
     }
     if ((grade.upstream || grade.upstream_to_A != null) && grade.CTI_min_s == null) {
       add(ctx, 'UPSTREAM_WITHOUT_CTI', 'warning',
-        'the upstream sweep reports the tightest margin but has no CTI_min_s to judge it against',
+        'the upstream sweep reports the tightest margin but has no margin to judge it against',
         loc);
     }
 
     if (grade.margin_s != null && !grade.solve) {
       add(ctx, 'MARGIN_NO_SOLVE', 'warning',
-        'margin_s is declared without a solve block; it is reported as a target only. ' +
-        'Add solve { ... } to act on it, or use CTI_min_s for a constraint',
+        'margin_target is declared without a solve block; it is reported as a target only. ' +
+        'Add solve { ... } to act on it, or use margin for a constraint',
         loc);
     }
 
     if (grade.solve) {
       if (grade.margin_s == null && grade.CTI_min_s == null) {
         add(ctx, 'SOLVE_WITHOUT_TARGET', 'error',
-          'solve block declared with neither margin_s nor CTI_min_s; the solver has no target',
+          'solve block declared with neither margin_target nor margin; the solver has no target',
           loc);
       }
       const tol = grade.solve.tolerance_pct;
@@ -811,7 +811,7 @@ function validateGrades(ctx: Ctx): void {
       if (p.voltage_kV == null || b.voltage_kV == null) {
         add(ctx, 'VOLTAGE_RATIO_UNRESOLVED', 'error',
           `grade ${p.ref} / ${b.ref} spans voltage levels "${p.voltage}" and "${b.voltage}", ` +
-          'but at least one has no declared kV',
+          'but at least one has no declared voltage',
           loc);
       }
     }
@@ -958,7 +958,7 @@ function validateTimes(ctx: Ctx): void {
   for (const t of ctx.study.times.values()) {
     if (!Number.isFinite(t.t_s) || t.t_s <= 0) {
       add(ctx, 'TIME_INVALID', 'error',
-        `time "${t.name}" declares t_s = ${t.t_s}; it must be strictly positive to have ` +
+        `time "${t.name}" declares t = ${t.t_s}; it must be strictly positive to have ` +
         'a place on a logarithmic axis',
         t.loc, t.name.length);
     }
@@ -979,8 +979,8 @@ function validateAnnotations(ctx: Ctx): void {
      */
     if ((item.conditions?.length ?? 0) > 0 && item.at_I_A != null) {
       add(ctx, 'ANNOTATE_CURRENT_AND_CONDITION', 'error',
-        'annotate declares at_I_A and names a condition; they are alternatives -- ' +
-        'a condition supplies the current, so at_I_A would be ignored',
+        'annotate declares at_I and names a condition; they are alternatives -- ' +
+        'a condition supplies the current, so at_I would be ignored',
         item.loc);
     }
 
@@ -1020,7 +1020,7 @@ function validatePoints(ctx: Ctx): void {
       .some((v) => v != null && Number.isFinite(v));
     if (point.condition && statesCurrent) {
       add(ctx, 'POINT_CURRENT_AND_CONDITION', 'error',
-        `point "${point.id}" declares I_A and names the condition ` +
+        `point "${point.id}" declares I and names the condition ` +
         `"${point.condition}"; they are alternatives -- drop one`,
         undefined);
     } else if (point.condition) {
@@ -1036,8 +1036,8 @@ function validatePoints(ctx: Ctx): void {
         .filter((v): v is number => v != null && Number.isFinite(v));
       if (declared.length === 0) {
         add(ctx, 'POINT_CURRENT_INVALID', 'error',
-          `point "${point.id}" declares no current; give it I_A (or I1_A, I2_A, I0_A, ` +
-          'earth_A), or name a fault or scenario to take it from',
+          `point "${point.id}" declares no current; give it I (or I1, I2, I0, ` +
+          'residual), or name a fault or scenario to take it from',
           undefined);
       } else if (declared.some((v) => v <= 0)) {
         add(ctx, 'POINT_CURRENT_INVALID', 'error',
@@ -1048,7 +1048,7 @@ function validatePoints(ctx: Ctx): void {
     }
     if (!(point.t_s > 0)) {
       add(ctx, 'POINT_TIME_INVALID', 'error',
-        `point "${point.id}" declares t_s = ${point.t_s}; it must be strictly positive`,
+        `point "${point.id}" declares t = ${point.t_s}; it must be strictly positive`,
         undefined);
     }
     if (point.voltage && !ctx.study.voltages.has(point.voltage)) {

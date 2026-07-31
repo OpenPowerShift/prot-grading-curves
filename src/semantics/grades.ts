@@ -20,7 +20,7 @@ import { solveGrade, type SolveResult } from './solver.js';
 import { controllingStage, tTripElement } from './stages.js';
 import { faultCurrentAt } from './xvoltage.js';
 import {
-  currentFor,
+  resolveCurrent,
   elementQuantity,
   quantityField,
   quantityLabel,
@@ -134,6 +134,15 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
 
 interface SideCurrent {
   I_A?: number;
+  /**
+   * True when the component came from the fault type's ratio table
+   * rather than from a declared figure.
+   *
+   * A margin computed from a ratio is still a margin, but it rests on
+   * an assumed fault shape rather than on measured data, and a reader
+   * checking the report is entitled to know which they are looking at.
+   */
+  derived?: boolean;
   error?: { code: string; message: string };
 }
 
@@ -184,12 +193,24 @@ function sideCurrentAt(
       : undefined };
   }
 
-  const declared = currentFor(quantity, {
+  /*
+   * Declared where the study gives it, otherwise derived from the
+   * fault's `type`, exactly as the plot does.
+   *
+   * This used `currentFor`, which never derives -- so a fault
+   * declaring only its phase current and a `type` had its components
+   * derived for the *drawing* and refused for the *report*: the sheet
+   * placed the rule and both curves while the margin table said
+   * SEQUENCE_DATA_MISSING and failed the pair. One condition, two
+   * answers.
+   */
+  const resolved = resolveCurrent(quantity, {
     phase: at === 'min' ? fault.min_A : at === 'max' ? fault.max_A : fault.I_A,
     I2: fault.I2_A,
     I0: fault.I0_A,
     residual: fault.earth_A,
-  });
+  }, fault.type);
+  const declared = resolved?.value ?? null;
 
   if (declared == null) {
     return {
@@ -197,7 +218,8 @@ function sideCurrentAt(
         code: 'SEQUENCE_DATA_MISSING',
         message:
           `${side.ref} measures ${quantityLabel(quantity)}, but fault "${fault.name}" ` +
-          `declares no ${quantityField(quantity)}; this pair cannot be graded until it does`,
+          `declares no ${quantityField(quantity)} and has no type to derive it from; ` +
+          'this pair cannot be graded until it does',
       },
     };
   }
@@ -211,7 +233,7 @@ function sideCurrentAt(
   const sideKv = side.voltage ? study.voltages.get(side.voltage)?.kV : undefined;
   const sameLevel = faultKv == null || sideKv == null || faultKv === sideKv;
 
-  if (sameLevel) return { I_A: declared };
+  if (sameLevel) return { I_A: declared, derived: resolved?.derived };
 
   if (!survivesVoltageReferral(quantity, study, fault.voltage, side.voltage)) {
     return {
@@ -227,7 +249,7 @@ function sideCurrentAt(
     };
   }
 
-  return { I_A: declared * (faultKv / sideKv) };
+  return { I_A: declared * (faultKv / sideKv), derived: resolved?.derived };
 }
 
 /**
@@ -271,6 +293,22 @@ function reportScenarioGrade(
 
   const atPrimary = sideCurrentInScenario(scenario, primary);
   const atBackup = sideCurrentInScenario(scenario, backup);
+
+  /*
+   * A margin resting on a derived component says so. `resolveCurrent`
+   * has carried the flag since the ratio table was added; nothing read
+   * it, so a report computed from an assumed fault shape looked exactly
+   * like one computed from measured figures.
+   */
+  if (atPrimary.derived || atBackup.derived) {
+    diagnostics.push({
+      code: 'MARGIN_FROM_DERIVED_COMPONENT',
+      severity: 'warning',
+      message:
+        `a component was derived from the condition's fault type rather than declared; ` +
+        'the margin rests on that assumed fault shape',
+    });
+  }
 
   let blocked = false;
   for (const side of [atPrimary, atBackup]) {
@@ -348,13 +386,15 @@ function sideCurrentInScenario(
         `where ${side.ref} sits; add a level "${levelName ?? '?'}" { ... } block` } };
   }
 
-  const declared = currentFor(quantity, {
+  /* As for a fault: declared first, then the type's ratios. */
+  const resolved = resolveCurrent(quantity, {
     phase: level.I_A,
     I1: level.I1_A,
     I2: level.I2_A,
     I0: level.I0_A,
     residual: level.earth_A,
-  });
+  }, scenario.type);
+  const declared = resolved?.value ?? null;
 
   if (declared == null) {
     return { error: { code: 'SEQUENCE_DATA_MISSING',
@@ -367,7 +407,7 @@ function sideCurrentInScenario(
   const pct = relayId != null ? scenario.shares.get(relayId) : undefined;
   const share = pct != null && Number.isFinite(pct) ? pct / 100 : 1;
 
-  return { I_A: declared * share };
+  return { I_A: declared * share, derived: resolved?.derived };
 }
 
 /**
@@ -517,6 +557,10 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   const endpoints: Array<'I' | 'min' | 'max'> =
     fault.min_A === fault.I_A && fault.max_A === fault.I_A ? ['I'] : ['I', 'min', 'max'];
 
+  /* Set where any row's current came from the type's ratios rather
+   * than a declared figure; reported once at the end. */
+  let derivedAny = false;
+
   /*
    * A margin between two different measured quantities is not a
    * like-for-like comparison -- an I2 backup against a phase primary
@@ -539,6 +583,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   for (const at of endpoints) {
     const atPrimary = sideCurrentAt(study, fault, primary, at);
     const atBackup = sideCurrentAt(study, fault, backup, at);
+    if (atPrimary.derived || atBackup.derived) derivedAny = true;
 
     let blocked = false;
     for (const side of [atPrimary, atBackup]) {
@@ -614,6 +659,22 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
           `(${from.toFixed(0)} A); nothing to sweep`,
       });
     }
+  }
+
+  /*
+   * A margin resting on a derived component says so. `resolveCurrent`
+   * has carried the flag since the ratio table was added; nothing read
+   * it, so a report computed from an assumed fault shape looked exactly
+   * like one computed from measured figures.
+   */
+  if (derivedAny) {
+    diagnostics.push({
+      code: 'MARGIN_FROM_DERIVED_COMPONENT',
+      severity: 'warning',
+      message:
+        `a component was derived from fault "${fault.name}"'s type rather than declared; ` +
+        'the margin rests on that assumed fault shape',
+    });
   }
 
   const declaredRow = report.rows.find((r) => r.at === 'I');

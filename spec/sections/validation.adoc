@@ -152,12 +152,17 @@ Stages of one element are stages of one protection function, so the
 element cannot be graded or plotted as a single characteristic.
 
 `SEQUENCE_DATA_MISSING`:: An element measures a component the
-referenced fault does not declare. The pair is not graded; no other
-quantity is substituted.
+referenced condition neither declares nor has a `type` to derive it
+from. The pair is not graded; no other quantity is substituted.
 
 `SEQUENCE_ACROSS_LEVELS`:: A zero-sequence quantity would have to be
 referred across a voltage ratio, which is not physical. Declare the
 component at the relay's own level.
+
+`MARGIN_FROM_DERIVED_COMPONENT`:: (*Warning*) A component the margin
+rests on was derived from the condition's fault type rather than
+declared. Still a margin, but it rests on an assumed fault shape rather
+than on measured figures, and the reader is entitled to know which.
 
 `GRADE_MIXED_QUANTITY`:: (*Warning*) The two sides of a grade measure
 different currents, so the margin compares operate times for two

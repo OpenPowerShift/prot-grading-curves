@@ -40,6 +40,27 @@ export const PER_UNIT_SUFFIXES = new Set(['pu', 'xCT', 'xIn', 'xct', 'xin']);
 export const SECONDARY_SUFFIXES = new Set(['A_sec', 'Asec', 'A_secondary']);
 export const PRIMARY_SUFFIXES = new Set(['A_pri', 'Apri', 'A_primary']);
 
+/**
+ * Every suffix the language recognises, in any position.
+ *
+ * `readNumber` deliberately leaves an unrecognised suffix alone rather
+ * than guessing -- but nothing then complained, so `4 KA` was read as
+ * 4 A and `60 msec` as 60 seconds: a factor of a thousand, silently,
+ * in the fields that decide whether a relay trips. This is the set the
+ * validator checks against, which is the "validator is responsible for
+ * complaining about it" the reader has always assumed.
+ */
+export const KNOWN_UNITS: ReadonlySet<string> = new Set([
+  ...Object.keys(CURRENT_A),
+  ...Object.keys(TIME_S),
+  ...Object.keys(VOLTAGE_KV),
+  ...PER_UNIT_SUFFIXES,
+  ...SECONDARY_SUFFIXES,
+  ...PRIMARY_SUFFIXES,
+  /* Declared elsewhere in the grammar. */
+  'MVA', 'kVA', 'MW', 'kW', 'deg', 'Hz', 'pct', '%',
+]);
+
 export interface NumberReading {
   /** Value converted to the category's base unit (A, s, kV). */
   value: number;

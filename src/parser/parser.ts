@@ -957,7 +957,25 @@ if (kwName === 'flex_points') {
       // member scalar
       const k = this.parseElementScalar(el);
       if (!k) {
-        // unknown token -- skip one
+        /*
+         * A name the language does not know, being assigned to.
+         *
+         * Skipped in silence, a transposition cost a study its answer
+         * without a word: `tsm = 0.1` left the element at the default
+         * multiplier and the margin out by a factor of ten. The
+         * element block is where this bites hardest, every field in it
+         * being a setting that decides whether a relay operates.
+         */
+        const at = this.peek();
+        if ((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS') {
+          this.errors.push({
+            message: `unknown setting "${at.image}"; an element accepts function, measures, `
+              + 'curve, formula, flex_points, I_pu, I_units, current_pct, tms, t_delay, '
+              + 't_reset, char_angle, reset, directional, name, comment',
+            line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
+            severity: 'error', code: 'UNKNOWN_SETTING',
+          });
+        }
         this.pos++;
       }
     }
@@ -1955,37 +1973,55 @@ if (kwName === 'flex_points') {
 
   /* Parse a number with optional unit suffix (e.g. "100 A" or "33 kV"),
    * returning the canonical value converted to a single unit. */
-  private parseNumberWithUnit_A(): number {
+  /**
+   * A number with a unit suffix, folded to the base unit.
+   *
+   * An unrecognised suffix is an *error*, not a shrug. Each of these
+   * used to end in `return raw` for anything it did not know, so `4 KA`
+   * became 4 A and `60 msec` became 60 seconds -- a factor of a
+   * thousand, silently, in a field that decides whether a relay trips.
+   * The case matters (`kA`, not `KA`) and so does the spelling, so the
+   * message lists what is accepted rather than merely refusing.
+   */
+  private parseNumberWithUnit(
+    factors: Record<string, number>,
+    base: string,
+  ): number {
     const t = this.eat('NUMBER');
     if (!t) return NaN;
     const raw = Number(t.image.replace(/_/g, ''));
-    const u = this.eat('IDENT') ?? this.eat('KW');
-    const unit = u?.image ?? 'A';
-    if (unit === 'kA') return raw * 1e3;
-    if (unit === 'mA') return raw * 1e-3;
-    if (unit === 'MA') return raw * 1e6;
-    return raw; // assume A
+
+    /* Only take the next token if it could be a suffix: a bare number
+     * is followed by `;`, and eating that would swallow the statement. */
+    if (!this.at('IDENT') && !this.at('KW')) return raw;
+
+    const u = this.tokens[this.pos];
+    const factor = factors[u.image];
+    if (factor == null) {
+      this.errors.push({
+        message: `unknown unit "${u.image}"; ${base} accepts `
+          + Object.keys(factors).map((k) => `"${k}"`).join(', '),
+        line: u.line, column: u.col, offset: u.start, length: u.end - u.start,
+        severity: 'error', code: 'UNIT_UNKNOWN',
+      });
+      this.pos++;
+      return raw;
+    }
+    this.pos++;
+    return raw * factor;
+  }
+
+  private parseNumberWithUnit_A(): number {
+    return this.parseNumberWithUnit(
+      { A: 1, kA: 1e3, mA: 1e-3, MA: 1e6 }, 'a current');
   }
   private parseNumberWithUnit_kV(): number {
-    const t = this.eat('NUMBER');
-    if (!t) return NaN;
-    const raw = Number(t.image.replace(/_/g, ''));
-    const u = this.eat('IDENT') ?? this.eat('KW');
-    const unit = u?.image ?? 'kV';
-    if (unit === 'V') return raw * 1e-3;
-    if (unit === 'MV') return raw * 1e3;
-    return raw; // assume kV
+    return this.parseNumberWithUnit(
+      { kV: 1, V: 1e-3, MV: 1e3 }, 'a voltage');
   }
   private parseNumberWithUnit_s(): number {
-    const t = this.eat('NUMBER');
-    if (!t) return NaN;
-    const raw = Number(t.image.replace(/_/g, ''));
-    const u = this.eat('IDENT') ?? this.eat('KW');
-    const unit = u?.image ?? 's';
-    if (unit === 'ms') return raw * 1e-3;
-    if (unit === 'min') return raw * 60;
-    if (unit === 'ks') return raw * 1e3;
-    return raw; // assume seconds
+    return this.parseNumberWithUnit(
+      { s: 1, ms: 1e-3, min: 60, ks: 1e3 }, 'a time');
   }
   private parseBool(): boolean {
     const v = this.matchKeyword('true','false');

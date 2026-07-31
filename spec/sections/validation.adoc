@@ -164,6 +164,23 @@ different currents, so the margin compares operate times for two
 different currents at one fault. Legitimate practice -- an I2 backup
 for an earth fault is exactly this -- but worth stating on the report.
 
+=== Typos
+
+Names and units the language does not know are refused. Both of these
+parsed clean until v0.1.0, and each moved a reported margin by a factor
+of ten or a thousand with nothing said.
+
+`UNKNOWN_SETTING`:: A name being assigned to inside an `element` or
+`stage` that is not one of its fields. `tsm = 0.1` for `tms` left the
+element at the default multiplier of 1.0.
+
+`UNIT_UNKNOWN`:: A unit suffix outside the language's set. `readNumber`
+leaves an unrecognised suffix alone rather than guessing, so `4 KA` was
+read as 4 A and `60 msec` as 60 seconds. Suffixes are case-sensitive.
+Checked against the union of every suffix rather than the one the field
+expects, so a suffix that is real but wrong for its quantity
+(`I_pu = 5 ms`) is not yet caught.
+
 === Condition references
 
 Applies to `annotate` and `point`, which may name a condition rather

@@ -149,6 +149,15 @@ used to win silently.
 
 `MISSING_VALUE`:: An `=` with nothing after it.
 
+`UNKNOWN_SETTING`:: A name inside an `element` the language does not
+know -- `tsm` for `tms`. It used to be skipped in silence, leaving the
+element at its default and the margin out by a factor of ten.
+
+`UNIT_UNKNOWN`:: A unit suffix outside the set below. Suffixes are
+case-sensitive: `kA`, not `KA`; `ms`, not `msec`. An unrecognised one
+used to be read as no unit at all -- a thousandfold error in the fields
+that decide whether a relay operates.
+
 == Identifiers
 
 *Relay ids* are letters, digits, underscores, starting with a letter or

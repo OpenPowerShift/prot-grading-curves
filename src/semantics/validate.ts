@@ -26,6 +26,7 @@ import {
   measuredQuantityOf,
 } from './quantity.js';
 import { conditionNames, resolveCondition } from './condition.js';
+import { KNOWN_UNITS } from './units.js';
 
 export type Severity = 'error' | 'warning' | 'info';
 
@@ -101,6 +102,7 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateDevices(ctx);
   validateCombines(ctx);
   validateGrades(ctx);
+  validateUnits(ctx);
   validateTimes(ctx);
   validateAnnotations(ctx);
   validatePoints(ctx);
@@ -866,6 +868,46 @@ function checkConditionReference(
  * with nothing said -- and which limit the sheet rules at becomes a
  * question of declaration order.
  */
+/**
+ * Unit suffixes the language does not know.
+ *
+ * `readNumber` leaves an unrecognised suffix alone rather than guessing
+ * -- deliberately, and its comment has always said the validator would
+ * complain. Nothing did, so `I_pu = 4 KA` was read as 4 A and
+ * `t_delay = 60 msec` as 60 seconds: a thousandfold error, silent, in
+ * the two fields that decide whether a relay operates.
+ *
+ * Checked against the union of every suffix rather than the one the
+ * field expects, because that catches the whole dangerous class -- a
+ * misspelling or the wrong case -- without the validator having to
+ * carry a second copy of which key means which quantity. A suffix that
+ * is real but wrong for its field (`I_pu = 5 ms`) still slips through;
+ * that is a narrower hole and a rarer mistake.
+ */
+function validateUnits(ctx: Ctx): void {
+  const seen = new Set<string>();
+
+  const walk = (node: unknown): void => {
+    if (node == null || typeof node !== 'object') return;
+    if (Array.isArray(node)) { for (const item of node) walk(item); return; }
+
+    const o = node as Record<string, unknown>;
+    if (o.kind === 'number' && typeof o.unit === 'string' && !KNOWN_UNITS.has(o.unit)) {
+      if (!seen.has(o.unit)) {
+        seen.add(o.unit);
+        add(ctx, 'UNIT_UNKNOWN', 'error',
+          `"${o.unit}" is not a unit this language knows; the value was read as though ` +
+          'it carried none. Units are case-sensitive -- "kA" not "KA", "ms" not "msec"',
+          undefined, o.unit.length);
+      }
+      return;
+    }
+    for (const value of Object.values(o)) walk(value);
+  };
+
+  walk(ctx.doc?.items ?? []);
+}
+
 function validateTimes(ctx: Ctx): void {
   const seen = new Map<string, number>();
   for (const item of ctx.doc?.items ?? []) {

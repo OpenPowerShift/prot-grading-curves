@@ -40,7 +40,7 @@ import { ticks, formatSi } from './ticks.js';
 import { paletteFor, paletteFromList, strokeDashFor, type Palette } from './palette.js';
 import { measuredQuantityOf } from '../semantics/quantity.js';
 import {
-  faultTypeLabel, isFaultType, quantityIsAbsent,
+  faultTypeLabel, isFaultType, quantityIsAbsent, type FaultType,
 } from '../constants/sequence.js';
 import { LabelPlacer, type Placement, type Rect } from './labels.js';
 import {
@@ -456,6 +456,48 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * state before this: the margin report cited something that appeared
    * nowhere on the sheet, so a reader had no way to see where it stood.
    */
+  /**
+   * Anything this sheet places by the turns ratio where that ratio is
+   * known not to hold.
+   *
+   * `survivesVoltageReferral` answers `true` for phase current
+   * unconditionally, and for a balanced fault that is right. It is not
+   * right behind a winding that blocks zero sequence: phase current is
+   * `I1 + I2 + I0`, and with the zero-sequence third trapped in the
+   * delta the remaining two do not sum to the ratio's answer.
+   *
+   * The study has already said which windings block it, so the sheet
+   * can say when it is relying on a ratio that does not apply. Six
+   * places refer by that ratio -- fault rules, scenario rules, marked
+   * points, annotations, condition currents and (as a fallback) curves
+   * -- and all of them come through here, so the advice is worded once
+   * and cannot drift between them.
+   *
+   * Advisory, not suppressing: the sheet is still worth reading, and
+   * the fix is one line of source.
+   */
+  const referralCaveats = new Map<string, string>();
+
+  const noteReferralCaveat = (
+    subject: string,
+    quantity: MeasuredQuantity,
+    fromLevel: string | undefined,
+    toLevel: string | undefined,
+    type: FaultType | undefined,
+  ): void => {
+    if (quantity !== 'phase') return;
+    if (!fromLevel || !toLevel || fromLevel === toLevel) return;
+    /* A balanced fault carries no zero sequence to be blocked, so the
+     * ratio holds and there is nothing to warn about. */
+    if (type === 'three_phase') return;
+    if (study.zeroSequence.get(levelPairKey(fromLevel, toLevel)) !== 'blocked') return;
+    referralCaveats.set(subject,
+      `${subject} placed by the ${fromLevel}-${toLevel} turns ratio. Zero sequence is `
+      + 'blocked between them, so phase current does not follow that ratio under an '
+      + 'unbalanced fault; declare the condition as a scenario with figures at both '
+      + 'levels and it is placed from the study\'s own numbers instead');
+  };
+
   const unmarkedScenarios: string[] = [];
 
   /*
@@ -511,6 +553,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         if (differentLevel
             && !survivesVoltageReferral(viewQuantity, study, f.voltage, viewLevelName)) {
           continue;
+        }
+        if (differentLevel) {
+          noteReferralCaveat(`fault ${oneLine(f.name)}`, viewQuantity,
+            f.voltage, viewLevelName, f.type);
         }
 
         const I_view = V_fault && V_view_kV ? declared * (V_fault / V_view_kV) : declared;
@@ -602,6 +648,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const I_view = V_level && V_view_kV && V_level !== V_view_kV
       ? declared * (V_level / V_view_kV)
       : declared;
+    if (V_level && V_view_kV && V_level !== V_view_kV) {
+      noteReferralCaveat(oneLine(scenario.name), viewQuantity,
+        c.voltage, viewLevelName, c.type);
+    }
     if (V_level && V_view_kV && V_level !== V_view_kV
         && !survivesVoltageReferral(viewQuantity, study, c.voltage, viewLevelName)) {
       unmarkedScenarios.push(
@@ -992,6 +1042,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const levelKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
     if (fromKv == null || levelKv == null || fromKv === levelKv) return resolved.value;
     if (!survivesVoltageReferral(quantity, study, c.voltage, voltage)) return null;
+    noteReferralCaveat(oneLine(name), quantity, c.voltage, voltage, c.type);
     return resolved.value * (fromKv / levelKv);
   };
 
@@ -1053,6 +1104,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const toKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
     if (fromKv == null || toKv == null || fromKv === toKv) return declared.value;
     if (!survivesVoltageReferral(quantity, study, fromLevel, voltage)) return null;
+    noteReferralCaveat('an annotation\'s declared current', quantity,
+      fromLevel, voltage, condition?.type);
     return declared.value * (fromKv / toKv);
   };
 
@@ -1259,12 +1312,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const blockedElements = new Map<string, string>();
 
   /**
-   * Cross-level curves still placed by the turns ratio where that ratio
-   * is known to be unreliable. Advisory: the curve is drawn.
-   */
-  const referralCaveats = new Map<string, string>();
-
-  /**
    * Where an element sits, taken *wholly* from the depicted condition.
    *
    * A curve on another level used to be placed in two independent
@@ -1314,26 +1361,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   /**
-   * Note a curve the turns ratio may be placing wrongly.
-   *
-   * Only where zero sequence is blocked between the two levels: that is
-   * exactly when phase current stops following the ratio, and the study
-   * has told us so. A balanced condition refers correctly either way,
-   * so it says nothing there.
-   */
-  const noteReferralCaveat = (element: Element, measures: MeasuredQuantity): void => {
-    if (measures !== 'phase' || !element.voltage || viewLevelName == null) return;
-    if (element.voltage === viewLevelName) return;
-    if (condition?.type === 'three_phase') return;
-    if (study.zeroSequence.get(levelPairKey(element.voltage, viewLevelName)) !== 'blocked') return;
-    referralCaveats.set(element.label,
-      `${element.label} placed by the ${element.voltage}-${viewLevelName} turns ratio. `
-      + 'Zero sequence is blocked between them, so phase current does not follow that '
-      + 'ratio under an unbalanced fault; name a condition declaring both levels to '
-      + 'place it from the study\'s own figures');
-  };
-
-  /**
    * Element units per unit of the axis quantity, and the level the
    * curve is referred from.
    *
@@ -1356,7 +1383,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       if (measures != null && measures !== 'mixed') {
         const placed = conditionPlacement(element, measures, measures);
         if (placed != null) return { factor: placed, V_source: undefined };
-        noteReferralCaveat(element, measures);
+        noteReferralCaveat(element.label, measures, element.voltage, viewLevelName, condition?.type);
       }
       return { factor: 1, V_source: element.voltage_kV };
     }
@@ -1415,7 +1442,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     const placed = conditionPlacement(element, measures, axisQuantity);
     if (placed != null) return { factor: placed, V_source: undefined };
-    noteReferralCaveat(element, measures);
+    noteReferralCaveat(element.label, measures, element.voltage, viewLevelName, condition?.type);
 
     if (measures === axisQuantity) return { factor: 1, V_source: element.voltage_kV };
 
@@ -2186,7 +2213,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       pointsAccountedFor.add(point.id);
       continue;
     }
-
     /*
      * Whether the marker's current reaches this sheet at all. `project`
      * below scales by the turns ratio unconditionally, which is right
@@ -2203,6 +2229,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       pointsAccountedFor.add(point.id);
       continue;
+    }
+    /* Past the gate, so this describes a marker that is drawn. */
+    if (point.voltage_kV != null && V_view_kV != null && point.voltage_kV !== V_view_kV) {
+      noteReferralCaveat(`point ${oneLine(point.label ?? point.id)}`, viewQuantity,
+        point.voltage, viewLevelName, condition?.type);
     }
 
     const I_view = project(I_declared, point.voltage_kV);

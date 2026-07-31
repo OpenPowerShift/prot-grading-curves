@@ -182,12 +182,6 @@ have had one; what is left is chores.
 . *Range sweep does nothing for sequence elements* but still prints a
   range-check table implying it ran.
 
-. *A `fault` marker crossing a blocked winding is still referred by the
-  turns ratio silently.* `conditionCurrentAt` gates the referral on
-  `survivesVoltageReferral`, which answers `true` for `phase`
-  unconditionally -- the same over-claim curves have just been taken
-  off. Curves now warn in that case; markers do not. Same class of
-  defect, smaller blast radius, and no example reaches it.
 
 . *Twelve diagnostic codes carry no source location* and report at 1:1.
 
@@ -211,6 +205,15 @@ have had one; what is left is chores.
   rendered sheet: example 12's LV breaker now crosses the fault rule
   at 1.631 s, the time its own report gives. Four cross-level examples
   render byte for byte as before.
+* *Everything the sheet refers by the turns ratio now says so where
+  the ratio does not hold.* The over-claim was never confined to
+  curves: six sites gate on `survivesVoltageReferral`, which waves
+  phase current through unconditionally. All six -- fault rules,
+  scenario rules, marked points, annotations, condition currents and
+  the curve fallback -- go through one helper, so the sentence is
+  worded once and cannot drift between them. It fires only where
+  `zero_sequence` is declared `blocked` and the condition is
+  unbalanced; a balanced fault refers correctly and gets no note.
 * *Page-cosmetic keys keep their unit in the name*, by decision. The
   spec states it as an exception with the reasoning rather than
   leaving it to look like an oversight.

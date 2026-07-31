@@ -538,7 +538,13 @@ one current at one level -- the turns ratio is used, which is right for
 it. If the study has declared `zero_sequence` blocked between the two
 levels and the condition is unbalanced, the legend says the placement
 rests on a ratio phase current does not follow, and names the one-line
-fix: give the sheet a condition that declares both levels.
+fix: declare the condition as a scenario with figures at both levels.
+
+That note covers everything the sheet places by the ratio, not curves
+alone -- fault rules, scenario rules, marked points, annotations and
+condition currents all refer the same way and all say the same thing
+when the ratio is the wrong instrument. A balanced fault carries no
+zero sequence to be blocked, so it refers correctly and says nothing.
 
 The legend states a converted cross-level curve in full -- both levels,
 the factor, and the condition it came from -- because a factor that

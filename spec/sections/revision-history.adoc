@@ -308,6 +308,15 @@
                                 factor and the condition, since a factor
                                 carrying a change of level as well as of
                                 quantity reads as neither alone.
+                              * The same statement is made for
+                                everything else the sheet refers --
+                                fault rules, scenario rules, marked
+                                points, annotations and condition
+                                currents -- since all six sites gate on
+                                the same referral rule and warning about
+                                one while a silently misplaced marker
+                                sits beside it would be a worse sheet
+                                than either.
 
 | 2026-07-31 | 0.2.0-draft | *Correction -- `abb.ri`.* The RI row
                               carried RD's constants in a linear form,

@@ -145,7 +145,7 @@ describe('a condition that does not declare both levels', () => {
     const n = notes(svgOf(WITH_FAULT));
     expect(n).toContain('placed by the LV-HV turns ratio');
     expect(n).toContain('Zero sequence is blocked');
-    expect(n).toContain('name a condition declaring both levels');
+    expect(n).toContain('declare the condition as a scenario with figures at both levels');
   });
 
   it('stays quiet on a balanced condition, where the ratio is right', () => {
@@ -156,6 +156,47 @@ describe('a condition that does not declare both levels', () => {
   it('stays quiet where zero sequence is not declared blocked', () => {
     const open = WITH_FAULT.replace('zero_sequence { "HV" to "LV" = blocked; }', '');
     expect(notes(svgOf(open))).not.toContain('turns ratio');
+  });
+});
+
+describe('everything else the sheet places by that ratio', () => {
+  /*
+   * The over-claim was never confined to curves. Six places refer by
+   * the turns ratio -- fault rules, scenario rules, marked points,
+   * annotations, condition currents and curves -- and all gate on the
+   * same `survivesVoltageReferral`, which waves phase current through
+   * unconditionally. Warning about the curve and staying silent about
+   * the marker sitting beside it would be a worse sheet than either.
+   */
+  const WITH_MARK = `
+    system {
+      voltages { "HV" { V = 10 kV; } "LV" { V = 1 kV; } }
+      zero_sequence { "HV" to "LV" = blocked; }
+    }
+    faults { "F_lv" { I = 900 A; type = single_phase_earth; voltage = "LV"; } }
+    relay R_HV {
+      voltage = "HV"; ct_ratio = 200/1;
+      element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 50 A; tms = 0.2; }
+    }
+    point "trip" { fault = "F_lv"; voltage = "LV"; t = 0.4 s; label = "ACB trip"; }
+    view { voltage = "HV"; quantity = phase; condition = "F_lv";
+           current_min = 1 A; current_max = 1 kA; }
+  `;
+
+  it('names the fault rule it referred', () => {
+    expect(notes(svgOf(WITH_MARK))).toContain('fault F_lv placed by the LV-HV turns ratio');
+  });
+
+  it('names the marked point it referred', () => {
+    expect(notes(svgOf(WITH_MARK))).toContain('point ACB trip placed by the LV-HV turns ratio');
+  });
+
+  it('words the advice once, however many things it applies to', () => {
+    /* One helper writes the sentence, so the fault and the point cannot
+     * end up telling the reader two different fixes. */
+    const n = notes(svgOf(WITH_MARK));
+    const advice = [...n.matchAll(/declare the condition as a scenario/g)].length;
+    expect(advice).toBeGreaterThanOrEqual(2);
   });
 });
 

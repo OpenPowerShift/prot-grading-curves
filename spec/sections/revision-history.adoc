@@ -265,6 +265,50 @@
                                 author from suffixing every cosmetic
                                 value.
 
+| 2026-07-31 | 0.2.0-draft | *Correction -- cross-voltage curve
+                              placement.* A curve belonging to another
+                              level was positioned in two independent
+                              steps: the turns ratio for the voltage,
+                              then the depicted condition's ratios for
+                              the quantity. The two disagree whenever a
+                              scenario's per-level figures do not follow
+                              the turns ratio -- and behind a delta they
+                              must not, since phase current is
+                              `I1 + I2 + I0` and the zero-sequence part
+                              does not cross.
+
+                              On the normative sequence example this put
+                              the LV breaker's curve a factor of
+                              `sqrt(3)` to the right: its pickup fell
+                              past the fault rule, so the sheet showed a
+                              breaker that never operates while the
+                              grading report had it clearing the same
+                              fault in 1.631 s and passing.
+
+                              * Where the named condition declares
+                                figures at *both* levels, a curve is
+                                placed from that condition alone -- one
+                                factor for quantity and voltage
+                                together -- and no referral is
+                                performed. Plot and report agree by
+                                construction.
+                              * Where it declares only one (a `fault`
+                                is one current at one level), the turns
+                                ratio still applies, unchanged.
+                              * `survivesVoltageReferral` answering
+                                `true` for `phase` unconditionally is
+                                retained for that fallback, but where
+                                `zero_sequence` is declared `blocked`
+                                between the levels and the condition is
+                                unbalanced, the sheet states that the
+                                placement rests on a ratio phase current
+                                does not follow.
+                              * A converted cross-level curve is stated
+                                in the legend with both levels, the
+                                factor and the condition, since a factor
+                                carrying a change of level as well as of
+                                quantity reads as neither alone.
+
 | 2026-07-31 | 0.2.0-draft | *Correction -- `abb.ri`.* The RI row
                               carried RD's constants in a linear form,
                               `t = 5.8 - 1.35 * M`, which crosses zero

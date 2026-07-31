@@ -55,7 +55,7 @@ import {
 } from '../semantics/quantity.js';
 import { resolveCondition, type ResolvedCondition } from '../semantics/condition.js';
 import { theme as loadTheme, type ThemeName } from './theme.js';
-import { buildStudy, allElements, resolveRef, type Annotation, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
+import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
 import { tTripStage } from '../semantics/curves.js';
 import { tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
@@ -1101,10 +1101,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   /** Every pickup an element steps at, in the view frame. */
-  const breakpointsOf = (element: Element): number[] =>
+  const breakpointsOf = (element: Element, V_source: number | undefined): number[] =>
     element.stages
       .filter((s) => s.I_pu_A != null && Number.isFinite(s.I_pu_A))
-      .map((s) => project(s.I_pu_A!, element.voltage_kV));
+      .map((s) => project(s.I_pu_A!, V_source));
 
   /**
    * Pickup as the legend should show it.
@@ -1207,7 +1207,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     return lines.filter((l) => l.text);
   };
 
-  const pickupPxOf = (element: Element, axisFactor = 1): number => {
+  const pickupPxOf = (
+    element: Element,
+    axisFactor = 1,
+    V_source: number | undefined = element.voltage_kV,
+  ): number => {
     /* The lowest pickup is where the composite curve starts. */
     let lowest = Infinity;
     for (const stage of element.stages) {
@@ -1218,7 +1222,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (!Number.isFinite(lowest)) return NaN;
     /* The pickup is in the element's own quantity, so it comes back onto
      * the axis by the same factor the curve did. */
-    return xScale.toPx(project(lowest, element.voltage_kV) / axisFactor);
+    return xScale.toPx(project(lowest, V_source) / axisFactor);
   };
 
   /*
@@ -1230,7 +1234,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /** Elements the axis leaves off the sheet, and why. */
   const offAxisElements: string[] = [];
   /** Elements drawn against a quantity other than the one they measure. */
-  const convertedElements = new Map<string, { measures: MeasuredQuantity; factor: number }>();
+  const convertedElements = new Map<string, {
+    measures: MeasuredQuantity;
+    factor: number;
+    /** Level the element sits on, when the factor also carries the
+     * change of level. `undefined` for a same-frame conversion. */
+    fromLevel?: string;
+  }>();
   /**
    * Elements whose own current cannot reach this sheet, named one by
    * one with the reason.
@@ -1249,17 +1259,107 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const blockedElements = new Map<string, string>();
 
   /**
-   * Element units per unit of the axis quantity.
-   *
-   * `1` when the element measures the axis quantity, or when the axis
-   * is unconstrained. Otherwise the ratio for the depicted condition,
-   * which is what lets a phase curve sit on a negative-sequence sheet.
-   * `null` means it cannot be placed at all.
+   * Cross-level curves still placed by the turns ratio where that ratio
+   * is known to be unreliable. Advisory: the curve is drawn.
    */
-  const axisFactorFor = (element: Element): number | null => {
-    if (axisQuantity === 'any') return 1;
+  const referralCaveats = new Map<string, string>();
 
+  /**
+   * Where an element sits, taken *wholly* from the depicted condition.
+   *
+   * A curve on another level used to be placed in two independent
+   * steps: the turns ratio for the voltage, then the condition's ratios
+   * for the quantity. The two disagree, because a scenario's per-level
+   * figures need not follow the turns ratio -- and behind a delta they
+   * must not. Phase current is `I1 + I2 + I0`, and the zero-sequence
+   * part does not cross, so an unbalanced fault's phase current is not
+   * the other level's divided by the ratio.
+   *
+   * On example 12 that put the LV breaker's curve a factor of sqrt(3)
+   * to the right: its pickup landed at 2.56 A on an axis whose fault
+   * rule stands at 2.23 A, so the sheet showed a breaker that never
+   * picks up while the report had it clearing in 1.631 s and passing.
+   * One drawing, two answers.
+   *
+   * When the condition declares figures at both levels there is no need
+   * to refer anything. The element measures a stated current at its own
+   * bus; the axis reads a stated current at the sheet's. Their ratio is
+   * the whole mapping, voltage included, and it makes the plot agree
+   * with the report by construction rather than by coincidence.
+   *
+   * `null` where the condition is silent about either level -- notably
+   * for a `fault`, which is one current at one level and is properly
+   * referred by the turns ratio. Those keep the old path.
+   */
+  const conditionPlacement = (
+    element: Element,
+    measures: MeasuredQuantity,
+    onAxis: MeasuredQuantity,
+  ): number | null => {
+    if (!conditionName || !element.voltage || viewLevelName == null) return null;
+    if (element.voltage === viewLevelName) return null;
+
+    const own = resolveCondition(study, conditionName, element.voltage);
+    const sheet = resolveCondition(study, conditionName, viewLevelName);
+    /* `voltage` comes back undefined when the condition says nothing at
+     * the level asked for, which is the case this must not guess at. */
+    if (own?.voltage !== element.voltage || sheet?.voltage !== viewLevelName) return null;
+
+    const there = resolveCurrent(measures, own.currents, own.type);
+    const here = resolveCurrent(onAxis, sheet.currents, sheet.type);
+    if (there == null || here == null) return null;
+    if (!(there.value > 0) || !(here.value > 0)) return null;
+
+    return there.value / here.value;
+  };
+
+  /**
+   * Note a curve the turns ratio may be placing wrongly.
+   *
+   * Only where zero sequence is blocked between the two levels: that is
+   * exactly when phase current stops following the ratio, and the study
+   * has told us so. A balanced condition refers correctly either way,
+   * so it says nothing there.
+   */
+  const noteReferralCaveat = (element: Element, measures: MeasuredQuantity): void => {
+    if (measures !== 'phase' || !element.voltage || viewLevelName == null) return;
+    if (element.voltage === viewLevelName) return;
+    if (condition?.type === 'three_phase') return;
+    if (study.zeroSequence.get(levelPairKey(element.voltage, viewLevelName)) !== 'blocked') return;
+    referralCaveats.set(element.label,
+      `${element.label} placed by the ${element.voltage}-${viewLevelName} turns ratio. `
+      + 'Zero sequence is blocked between them, so phase current does not follow that '
+      + 'ratio under an unbalanced fault; name a condition declaring both levels to '
+      + 'place it from the study\'s own figures');
+  };
+
+  /**
+   * Element units per unit of the axis quantity, and the level the
+   * curve is referred from.
+   *
+   * `V_source` is `undefined` when `factor` already carries the change
+   * of level -- the condition-placed case, where referring by the turns
+   * ratio on top of it would apply the step twice.
+   */
+  interface CurvePlacement { factor: number; V_source: number | undefined }
+
+  const placementFor = (element: Element): CurvePlacement | null => {
     const measures = elementQuantity(element.stages);
+
+    if (axisQuantity === 'any') {
+      /*
+       * A mixed axis has no quantity to convert onto, but it still has
+       * a level, and the condition still knows what this element
+       * measures at each. Referring by the condition beats the turns
+       * ratio here for the same reason it does anywhere else.
+       */
+      if (measures != null && measures !== 'mixed') {
+        const placed = conditionPlacement(element, measures, measures);
+        if (placed != null) return { factor: placed, V_source: undefined };
+        noteReferralCaveat(element, measures);
+      }
+      return { factor: 1, V_source: element.voltage_kV };
+    }
     if (measures == null || measures === 'mixed') return null;
 
     /*
@@ -1308,7 +1408,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
     }
 
-    if (measures === axisQuantity) return 1;
+    /*
+     * Placed from the condition where it can be: one factor for the
+     * quantity *and* the level together, so no turns ratio is involved
+     * and the plot cannot disagree with the report.
+     */
+    const placed = conditionPlacement(element, measures, axisQuantity);
+    if (placed != null) return { factor: placed, V_source: undefined };
+    noteReferralCaveat(element, measures);
+
+    if (measures === axisQuantity) return { factor: 1, V_source: element.voltage_kV };
 
     /*
      * The same component in another scaling is a fixed factor of three
@@ -1318,7 +1427,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * vanish from a sheet the tool could perfectly well place them on.
      */
     const scaled = scalingBetween(measures, axisQuantity);
-    if (scaled != null) return scaled;
+    if (scaled != null) return { factor: scaled, V_source: element.voltage_kV };
 
     /*
      * Different components, and no condition to relate them by. Said
@@ -1368,28 +1477,56 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
     if (factor == null || !(factor > 0) || !Number.isFinite(factor)) return null;
 
-    return factor;
+    return { factor, V_source: element.voltage_kV };
+  };
+
+
+  /**
+   * An element's own current, read onto this sheet's axis.
+   *
+   * Everything that positions something against a curve -- margin
+   * arrows, marked points, annotations -- has to land on the same axis
+   * the curve was drawn on, so it goes through the same placement.
+   * Doing the arithmetic inline was how the two got out of step in the
+   * first place. `null` when the element has no position on this sheet.
+   */
+  const onAxisCurrent = (
+    element: Element | undefined,
+    I: number,
+    fallbackV?: number,
+  ): number | null => {
+    if (!element) return project(I, fallbackV);
+    const placed = placementFor(element);
+    if (placed == null) return null;
+    return project(I, placed.V_source) / placed.factor;
   };
 
   for (const element of allElements(study)) {
     const blockedBefore = blockedElements.size;
-    const factor = axisFactorFor(element);
-    if (factor == null) {
+    const placement = placementFor(element);
+    if (placement == null) {
       /* One reason each: an element the network keeps off the sheet has
        * already been named, and counting it again as merely off-axis
        * would state a second, weaker reason for the same absence. */
       if (blockedElements.size === blockedBefore) offAxisElements.push(element.label);
       continue;
     }
+    const { factor } = placement;
     if (factor !== 1) {
       const measures = elementQuantity(element.stages);
       if (measures != null && measures !== 'mixed') {
-        convertedElements.set(element.label, { measures, factor });
+        convertedElements.set(element.label, {
+          measures,
+          factor,
+          fromLevel: placement.V_source === undefined && element.voltage !== viewLevelName
+            ? element.voltage
+            : undefined,
+        });
       }
     }
 
     const { color, dash } = pickStyle();
-    const V_source = element.voltage_kV;
+    const V_source = placement.V_source;
 
     if (individual && element.stages.length > 1) {
       for (const stage of element.stages) {
@@ -1420,14 +1557,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
 
     const pathD = trace(
-      V_source, (I) => tTripElement(element, I), breakpointsOf(element), factor,
+      V_source, (I) => tTripElement(element, I), breakpointsOf(element, V_source), factor,
     );
     if (!pathD) continue;
     curves.push({
       label: element.label,
       color,
       pathD,
-      pickupPx: pickupPxOf(element, factor),
+      pickupPx: pickupPxOf(element, factor, V_source),
       detailLines: elementDetailLines(element),
       voltage: element.voltage,
       voltage_kV: V_source,
@@ -2165,9 +2302,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
       const t = annotation.at_t_s!;
 
-      const pFactor = primary.element ? axisFactorFor(primary.element) : 1;
-      const bFactor = backup.element ? axisFactorFor(backup.element) : 1;
-      if (pFactor == null || bFactor == null) continue;
 
       const Ip = currentAtTime(primary, t, 'primary');
       if (Ip == null) continue;
@@ -2182,8 +2316,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const farEnd = ((): number | null => {
         if (annotation.backup) {
           const I = currentAtTime(backup, t, 'backup');
-          if (I == null || bFactor == null) return null;
-          return project(I, backup.element?.voltage_kV ?? backup.device?.voltage_kV) / bFactor;
+          if (I == null) return null;
+          return onAxisCurrent(backup.element, I, backup.device?.voltage_kV);
         }
         if (annotation.pointRef) {
           const marker = study.points.find(
@@ -2214,7 +2348,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * stand, and the percentage has to be the one the drawn arrow
        * actually spans.
        */
-      const viewP = project(Ip, primary.element?.voltage_kV ?? primary.device?.voltage_kV) / pFactor;
+      const viewP = onAxisCurrent(primary.element, Ip, primary.device?.voltage_kV);
+      if (viewP == null) continue;
       const viewB = farEnd;
       if (!(viewP > 0) || !(viewB > 0)) continue;
 
@@ -2339,9 +2474,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
       /* The arrow stands where the primary's current falls on *this*
        * axis, so it lines up with the curves it spans. */
-      const marginFactor = primary.element ? axisFactorFor(primary.element) : 1;
-      if (marginFactor == null) continue;
-      const I_view = project(I, primary.element?.voltage_kV) / marginFactor;
+      const I_view = onAxisCurrent(primary.element, I);
+      if (I_view == null) continue;
       const px = xScale.toPx(I_view);
       const pyP = yScale.toPx(tP);
       const pyB = yScale.toPx(tB);
@@ -2397,9 +2531,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     /* Placed on the axis the sheet is drawn in, as the curve it marks
      * is -- otherwise the mark sits off its own curve. */
-    const annotationFactor = element ? axisFactorFor(element) : 1;
-    if (annotationFactor == null) continue;
-    const I_view = project(I, element?.voltage_kV ?? device?.voltage_kV) / annotationFactor;
+    const I_view = onAxisCurrent(element, I, device?.voltage_kV);
+    if (I_view == null) continue;
     const px = xScale.toPx(I_view);
     const py = yScale.toPx(t);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
@@ -2592,11 +2725,29 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * 100 A phase pickup shown at 0.57x sits at 57 A on an I2 axis.
      */
     if (condition) {
-      for (const [label, { measures, factor }] of convertedElements) {
-        axisNotes.push(
-          `${label}: ${quantityLabel(measures)} drawn on the `
-          + `${quantityLabel(viewQuantity)} axis, x${trimZeros(Number((1 / factor).toFixed(3)))}`,
-        );
+      for (const [label, { measures, factor, fromLevel }] of convertedElements) {
+        const shown = trimZeros(Number((1 / factor).toPrecision(3)));
+        if (fromLevel != null) {
+          /*
+           * A cross-level factor carries the change of level as well as
+           * the change of quantity, and a bare number would look like
+           * the quantity ratio alone -- 0.005 where the reader expects
+           * something near sqrt(3). Naming both levels and the source of
+           * the ratio is what makes it checkable, and saying it did not
+           * come from the turns ratio is the whole point: for this
+           * condition the turns ratio would be wrong.
+           */
+          axisNotes.push(
+            `${label}: ${fromLevel} ${quantityLabel(measures)} drawn on the `
+            + `${viewLevelName ?? 'sheet'} ${quantityLabel(viewQuantity)} axis, x${shown} `
+            + `-- from ${conditionName ?? 'the condition'}, not the turns ratio`,
+          );
+        } else {
+          axisNotes.push(
+            `${label}: ${quantityLabel(measures)} drawn on the `
+            + `${quantityLabel(viewQuantity)} axis, x${shown}`,
+          );
+        }
       }
     }
     if (offAxisElements.length > 0) {
@@ -2613,6 +2764,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     for (const note of unmarkedScenarios) axisNotes.push(note);
     for (const note of blockedElements.values()) axisNotes.push(note);
+    /*
+     * Curves that *are* drawn, by a ratio the study has told us not to
+     * trust for them. Advisory rather than suppressing: the sheet is
+     * still worth reading, and the fix is one line of source.
+     */
+    for (const note of referralCaveats.values()) axisNotes.push(note);
 
     /*
      * Pickups the legend could not put into secondary amps. Stated,

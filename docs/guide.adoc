@@ -512,20 +512,38 @@ headed *Conditions* rather than *Faults*, and each scenario entry says
 `scenario` under it, because the figure came from the study's own
 measurement at that level rather than from a turns-ratio referral.
 
-[WARNING]
+[NOTE]
 ====
-A *curve* still crosses voltage levels by the turns ratio, because an
-element's characteristic is a property of the element and not of any
-condition. A scenario's per-level figures deliberately need not agree
-with that ratio -- for the delta-star above, 460 A at LV is declared
-against 3.9 A at HV, where the ratio alone would give 6.7 A.
+A curve belonging to another voltage level is placed from the
+*condition the sheet names*, whenever that condition declares figures
+at both levels. Nothing is referred: the element measures a stated
+current at its own bus, the axis reads a stated current at the sheet's,
+and the ratio between those two is the whole mapping -- quantity and
+voltage together. The drawing and the grading report then agree by
+construction rather than by coincidence.
 
-So on a sheet drawn in one frame, a curve belonging to another frame is
-positioned by kV, while the grading report for that pair uses the
-scenario's declared figures. The margin in the report is the correct
-one; the drawn curve can disagree with it. Keep a marked point on the
-level and quantity the sheet is drawn in and it will sit where the
-report says.
+This matters because a scenario's per-level figures deliberately need
+not follow the turns ratio, and behind a delta they must not. For the
+delta-star above, 460 A at LV is declared against 3.86 A at HV, where
+the ratio alone would give 6.7 A. Phase current is `I1 + I2 + I0`, and
+the zero-sequence third stays in the delta.
+
+Placing such a curve by kV put it a factor of `sqrt(3)` too far right:
+its pickup landed past the fault rule, so the sheet showed a breaker
+that never operates while the report had the same breaker clearing the
+same fault in 1.63 s and passing. One drawing, two answers.
+
+Where the condition is silent about one of the levels -- a `fault` is
+one current at one level -- the turns ratio is used, which is right for
+it. If the study has declared `zero_sequence` blocked between the two
+levels and the condition is unbalanced, the legend says the placement
+rests on a ratio phase current does not follow, and names the one-line
+fix: give the sheet a condition that declares both levels.
+
+The legend states a converted cross-level curve in full -- both levels,
+the factor, and the condition it came from -- because a factor that
+carries a change of level as well as a change of quantity reads as
+neither on its own.
 ====
 
 === device

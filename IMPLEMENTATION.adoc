@@ -176,35 +176,18 @@ typecheck, lint and both builds; all twelve examples parse and render.
 
 === Outstanding, most serious first
 
-Reconciled again 2026-07-31 after closing items 2--5 of the previous
-list. Both remaining entries want a decision, not work.
-
-. *Cross-voltage curve placement contradicts the report.* An element's
-  curve crosses voltage levels by the turns ratio, but a scenario's
-  per-level figures deliberately need not agree with that ratio, and
-  `survivesVoltageReferral` returns `true` for `phase` unconditionally
-  -- though phase current is `I1+I2+I0` and does not refer by the
-  ratio behind a delta under an unbalanced fault. On example 12 the
-  drawing says the LV ACB never operates while the report says it
-  clears in 1.63 s and passes.
-+
-Proposed fix, and it needs no new syntax: where a sheet names a
-condition that declares both levels, place curves by that condition's
-own ratio rather than by kV. Plot and report then agree by
-construction. *Needs a decision* -- it moves every cross-voltage sheet.
-
-. *Keys that still name a unit.* The 0.2.0 rename covered every
-  physical quantity. It did **not** cover the page cosmetics --
-  `margins_mm`, `size_px`, `width_px`, `line_width_px`,
-  `label_size_px`, `tick_size_px`, `label_offset_px`, `font_size_px`
-  -- nor `tolerance_pct`. That was an implementation judgement (one
-  unit each, no ambiguity to resolve), not a decision the user made,
-  and it is a visible exception to "no key carries its own unit".
-  *Needs a decision*: finish the job, or write the exception into the
-  spec.
+Reconciled again 2026-07-31. The two entries that wanted a decision
+have had one; what is left is chores.
 
 . *Range sweep does nothing for sequence elements* but still prints a
   range-check table implying it ran.
+
+. *A `fault` marker crossing a blocked winding is still referred by the
+  turns ratio silently.* `conditionCurrentAt` gates the referral on
+  `survivesVoltageReferral`, which answers `true` for `phase`
+  unconditionally -- the same over-claim curves have just been taken
+  off. Curves now warn in that case; markers do not. Same class of
+  defect, smaller blast radius, and no example reaches it.
 
 . *Twelve diagnostic codes carry no source location* and report at 1:1.
 
@@ -217,6 +200,20 @@ construction. *Needs a decision* -- it moves every cross-voltage sheet.
   move: sheet model, legend, annotations, frame.
 
 === Closed 2026-07-31
+
+* *Cross-voltage curve placement contradicted the report.* A curve from
+  another level was positioned by the turns ratio for the voltage and
+  then by the condition's ratios for the quantity, and the two
+  disagree behind a delta. Where the named condition declares figures
+  at both levels a curve is now placed from that condition alone, one
+  factor for both, and no referral happens; where it declares only one
+  the turns ratio still applies, unchanged. Verified by measuring the
+  rendered sheet: example 12's LV breaker now crosses the fault rule
+  at 1.631 s, the time its own report gives. Four cross-level examples
+  render byte for byte as before.
+* *Page-cosmetic keys keep their unit in the name*, by decision. The
+  spec states it as an exception with the reasoning rather than
+  leaving it to look like an oversight.
 
 * *`abb.ri` operated in 0.000 s above `M ~ 4.3`.* The row carried RD's
   constants in a linear form. Replaced with the published hyperbola,

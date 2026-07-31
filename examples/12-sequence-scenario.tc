@@ -288,8 +288,21 @@ page {
 #      `condition` names what the sheet depicts -- a fault or a scenario.
 #      With it, curves measuring something else are CONVERTED onto the
 #      axis using that condition's own numbers: the HV 51 measures phase
-#      current and appears here at 3.9 / 2.2 = 1.77 times its own pickup,
-#      the ratio this condition actually declares. Where a component is
+#      current and appears here at 3.86 / 2.23 = 1.73 times its own
+#      pickup, the ratio this condition actually declares.
+#
+#      A curve from ANOTHER LEVEL is placed the same way -- from the
+#      condition, not from the turns ratio. The LV ACB measures 460 A of
+#      phase current at its own bus under this condition, and this axis
+#      reads 2.23 A of I2, so its whole placement is that one ratio. The
+#      curve then crosses the fault rule at 1.63 s, which is exactly
+#      what the grading report says it does.
+#
+#      By kV instead it would sit sqrt(3) to the right -- picking up
+#      past the rule, so the sheet would show a breaker that never
+#      operates while the report had it clearing and passing. Phase
+#      current is I1 + I2 + I0, and the zero-sequence third stays in
+#      the delta, so the turns ratio is the wrong instrument here. Where a component is
 #      not declared the fault type supplies it (a phase-earth fault would
 #      give 3), and a declared figure always wins -- which is how the
 #      delta's effect on this side gets into the drawing.

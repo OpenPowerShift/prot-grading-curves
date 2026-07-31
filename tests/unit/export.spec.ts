@@ -12,9 +12,14 @@
  * survive where a stylesheet does not.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { parseAndRender } from '@tc/index';
-import { toExportableSvg } from '@tc/export/exportable-svg';
+import { toExportableSvg, svgDimensions } from '@tc/export/exportable-svg';
+import {
+  PAPER_MM, DEFAULT_PAGE_MARGIN_MM, resolveMarginsMm, resolvePageMm,
+  toPdfSafeText, exportPdf,
+} from '@tc/export/export-pdf';
+import { exportPng } from '@tc/export/export-png';
 
 const STUDY = `
 meta { project = "Export check"; }
@@ -103,5 +108,155 @@ describe('light rendering has light ink on a light ground', () => {
       const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
       expect(luminance, `${fill} is invisible on a light ground`).toBeLessThan(0.75);
     }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Paper, margins, and the two binary formats                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * `svg2pdf` measures elements as it walks the tree, and jsdom
+ * implements none of the SVG geometry interfaces. A plausible box is
+ * enough to let the conversion run: what is under test is that a PDF
+ * comes out with the right paper and margins, not where each glyph
+ * landed on it -- that needs a real engine and belongs to the visual
+ * suite.
+ */
+beforeAll(() => {
+  const proto = globalThis.SVGElement?.prototype as unknown as Record<string, unknown>;
+  if (proto && typeof proto.getBBox !== 'function') {
+    proto.getBBox = () => ({ x: 0, y: 0, width: 100, height: 20 });
+  }
+  if (proto && typeof proto.getComputedTextLength !== 'function') {
+    proto.getComputedTextLength = () => 100;
+  }
+});
+
+describe('paper and margins', () => {
+  it('knows every size the language offers', () => {
+    for (const size of ['A3', 'A4', 'A5', 'Letter', 'Legal', 'Tabloid']) {
+      expect(PAPER_MM[size], size).toBeDefined();
+    }
+  });
+
+  it('turns a size and orientation into millimetres', () => {
+    const [lw, lh] = resolvePageMm({ size: 'A4', orientation: 'landscape' });
+    const [pw, ph] = resolvePageMm({ size: 'A4', orientation: 'portrait' });
+    expect(lw).toBeGreaterThan(lh);
+    expect(ph).toBeGreaterThan(pw);
+    /* The same sheet either way round. */
+    expect([lw, lh].sort()).toEqual([pw, ph].sort());
+  });
+
+  it('falls back to a default for a size it does not know', () => {
+    expect(() => resolvePageMm({ size: 'A99' })).not.toThrow();
+    expect(resolvePageMm({ size: 'A99' })).toHaveLength(2);
+  });
+
+  it('gives all four sides the default when none is declared', () => {
+    expect(resolveMarginsMm({}))
+      .toEqual([DEFAULT_PAGE_MARGIN_MM, DEFAULT_PAGE_MARGIN_MM,
+        DEFAULT_PAGE_MARGIN_MM, DEFAULT_PAGE_MARGIN_MM]);
+  });
+
+  it('lets a per-side block win over the single figure', () => {
+    const m = resolveMarginsMm({
+      margin_mm: 5,
+      margins_mm: { top: 20, right: 15, bottom: 25, left: 12 },
+    });
+    expect(m).toEqual([20, 15, 25, 12]);
+  });
+
+  it('fills the sides a per-side block leaves out', () => {
+    const m = resolveMarginsMm({ margins_mm: { top: 20 } });
+    expect(m[0]).toBe(20);
+    expect(m.slice(1).every((v) => Number.isFinite(v))).toBe(true);
+  });
+});
+
+describe('text a PDF can encode', () => {
+  it('leaves ordinary text alone', () => {
+    expect(toPdfSafeText('<text>Riverside 33/11 kV</text>'))
+      .toContain('Riverside 33/11 kV');
+  });
+
+  it('keeps what WinAnsi can carry', () => {
+    /* An em dash, a middle dot and a multiplication sign are all in
+     * WinAnsi, and a drawing is full of them. */
+    const out = toPdfSafeText('<text>33 kV — 11 kV · 2×</text>');
+    expect(out).toContain('—');
+    expect(out).toContain('·');
+    expect(out).toContain('×');
+  });
+
+  it('replaces what it cannot', () => {
+    /*
+     * jsPDF's standard fonts are WinAnsi, and a character outside it
+     * comes out as a wrong glyph rather than an error -- silent
+     * corruption of a title nobody proof-reads twice.
+     */
+    const out = toPdfSafeText('<text>✓ ✗ → 3Φ</text>');
+    for (const ch of ['✓', '✗', '→']) expect(out, ch).not.toContain(ch);
+  });
+
+  it('does not disturb the markup around the text', () => {
+    const out = toPdfSafeText('<svg><text x="10">a ✓ b</text></svg>');
+    expect(out).toContain('<text x="10">');
+    expect(out).toContain('</svg>');
+  });
+});
+
+describe('measuring a sheet', () => {
+  it('reads the width and height back out', () => {
+    const { svg } = parseAndRender(STUDY, { theme: 'light' });
+    const { width, height } = svgDimensions(svg);
+    expect(width).toBeGreaterThan(0);
+    expect(height).toBeGreaterThan(0);
+  });
+
+  it('does not throw on something that is not a sheet', () => {
+    expect(() => svgDimensions('<svg></svg>')).not.toThrow();
+  });
+});
+
+describe('PDF', () => {
+  const sheet = () => parseAndRender(STUDY, { theme: 'light' }).svg;
+
+  it('produces a document beginning with a PDF header', async () => {
+    const bytes = await exportPdf(sheet(), { size: 'A4', orientation: 'landscape' });
+    expect(bytes.byteLength).toBeGreaterThan(1000);
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+  });
+
+  it('honours portrait', async () => {
+    const bytes = await exportPdf(sheet(), { size: 'A4', orientation: 'portrait' });
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+  });
+
+  it('applies per-side margins', async () => {
+    const bytes = await exportPdf(sheet(), {
+      size: 'A3',
+      orientation: 'landscape',
+      margins_mm: { top: 20, right: 15, bottom: 20, left: 15 },
+    });
+    expect(bytes.byteLength).toBeGreaterThan(1000);
+  });
+
+  it('exports a sheet with no curves on it', async () => {
+    const { svg: bare } = parseAndRender('system { voltages { "MV" { V = 11 kV; } } }',
+      { theme: 'light' });
+    await expect(exportPdf(bare, { size: 'A4' })).resolves.toBeDefined();
+  });
+});
+
+describe('PNG', () => {
+  it('fails rather than hangs where there is no rasteriser', async () => {
+    /*
+     * jsdom has no canvas. What matters is that the caller is told,
+     * because the CLI turns this into an exit status and a message.
+     */
+    const { svg } = parseAndRender(STUDY, { theme: 'light' });
+    await expect(exportPng(svg, { width: 800 })).rejects.toBeDefined();
   });
 });

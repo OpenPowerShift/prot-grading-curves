@@ -343,6 +343,20 @@ function validateElements(ctx: Ctx): void {
       }
     }
 
+    /*
+     * A malformed ratio -- `400/` with the denominator still being
+     * typed -- resolved to NaN and said nothing, which then made every
+     * secondary-amp pickup on the relay NaN in turn. A number that is
+     * not a number is worth one diagnostic at the place it came from,
+     * rather than a curve that quietly fails to draw.
+     */
+    if (relay.ct_ratio !== undefined
+        && (!Number.isFinite(relay.ct_ratio) || relay.ct_ratio <= 0)) {
+      add(ctx, 'CT_RATIO_INVALID', 'error',
+        `relay ${relay.id} has a ct_ratio that is not a positive number`,
+        relay.elements[0]?.node.loc);
+    }
+
     for (const element of relay.elements) {
       validateElementShape(ctx, element, relay.ct_ratio, relay.id, relay.voltage_kV);
     }

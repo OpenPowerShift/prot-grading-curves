@@ -87,7 +87,7 @@ renderer's title block and the `[meta.*]` footer macros read, are
 *Inside `faults.<name>`* -- I, I_min, I_max, I1, I2, I0, residual,
 type, voltage, description
 
-*Inside `times.<name>`* -- t, description
+*Inside `times.<name>`* -- t, at_I, description
 
 *Inside `scenario`* -- type, description, level, sees
 
@@ -95,7 +95,8 @@ type, voltage, description
 
 *Inside `element` / `stage`* -- name, function, measures, curve, formula,
 flex_points, I_pickup, I_units, share, tms, t_delay, t_reset,
-char_angle, reset, directional, direction, stages, stage, comment
+char_angle, reset, directional, direction, stages, stage, current_max,
+comment
 
 *Inside `relay`* -- name, voltage, ct_ratio, direction, faults,
 maker, model, comment, description, reference

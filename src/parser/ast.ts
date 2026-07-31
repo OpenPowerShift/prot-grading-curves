@@ -147,6 +147,13 @@ export interface TimeDecl extends BaseNode {
   name: string;
   /** The required time, in seconds. */
   t_s: number;
+  /**
+   * Where along the rule to put its caption, as a current read off the
+   * sheet's own axis. The rule spans the whole plot, so its name has no
+   * natural anchor; without this it goes at the left-hand end, which is
+   * not always where there is room or where the reader is looking.
+   */
+  at_I_A?: number;
   description?: string;
 }
 

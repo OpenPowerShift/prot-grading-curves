@@ -311,11 +311,39 @@ widens the time axis so a requirement can never fall off the sheet that
 is meant to show it being met. One declared outside an explicit
 `view { time_min / time_max }` says so rather than disappearing.
 
+A rule spans the whole plot, so its name has nowhere obvious to sit and
+goes at the left-hand end by default. `at_I` moves it to where the
+reader is actually looking -- beside the curve the clearance applies to:
+
+[source,tc]
+----
+times {
+    "Arc flash limit" { t = 200 ms; at_I = 3 kA; }
+}
+----
+
+The figure is read off the sheet's own axis. One outside the plotted
+currents falls back to the left-hand end rather than writing the caption
+into the margin.
+
 Style them with `page { times = { color = ...; width_px = ...; style =
 "solid" | "dashed" | "dotted"; labels = false; }; }`, which mirrors
 `page { faults }`. They are drawn in a different ink from the fault
 rules by default, so it is never a question which axis a rule belongs
 to.
+
+[TIP]
+====
+A curve runs to the edge of the sheet because a characteristic is
+defined for any multiple. The *network* is not. Past the largest fault
+the bus can deliver, the curve is describing a current that cannot
+flow, and a reader taking a margin off it is grading against a fault
+that does not exist.
+
+`element { current_max = 8 kA; }` stops the curve there. The legend
+records the limit, so a curve that ends short reads as one that was
+told to rather than one the tool failed to finish.
+====
 
 === relay and element
 
@@ -651,6 +679,19 @@ combine {
 ----
 
 `as` is `envelope_min`, `envelope_max`, `sum`, or `select_first`.
+
+[NOTE]
+====
+A mark is drawn only where the sheet can show it. Zoom in -- or declare
+narrow `view { current_min / current_max }` bounds -- and anything whose
+anchor falls outside the window is left off rather than drawn beyond the
+frame: a marked point moves to the legend list, and annotations are
+counted in the notes.
+
+They are suppressed rather than pinned to the edge, because a mark on
+the frame claims a current it does not have, which is a worse answer
+than an absent mark the legend still accounts for.
+====
 
 === point and annotate
 

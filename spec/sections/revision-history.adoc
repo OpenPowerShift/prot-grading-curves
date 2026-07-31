@@ -265,6 +265,46 @@
                                 author from suffixing every cosmetic
                                 value.
 
+| 2026-07-31 | 0.2.0-draft | *Sheet controls.* Four additions, none of
+                              which changes a computed number; all of
+                              them change whether one can be read off
+                              the drawing.
+
+                              * `element { current_max }` stops a curve
+                                at a stated current. A characteristic is
+                                defined for any multiple, but the
+                                network is not: past the largest fault
+                                the bus can deliver, the curve describes
+                                a current that cannot flow, and drawing
+                                it invites a margin to be read at a
+                                fault that does not exist. The legend
+                                states the limit, so a curve stopping
+                                short cannot be mistaken for one the
+                                processor failed to finish.
+                              * `times { at_I }` places a required
+                                time's caption along its rule. The rule
+                                spans the plot and so has no natural
+                                anchor; the left-hand end is a default,
+                                not an answer. A figure outside the
+                                plotted currents falls back to it rather
+                                than writing into the margin.
+                              * Fault rules are drawn at full strength,
+                                matching the legend swatch that names
+                                them. At reduced opacity the rule read
+                                as a different colour from its own
+                                entry.
+                              * Anything anchored outside the plotted
+                                window -- a marked point, an annotation,
+                                the leader running back to one -- is no
+                                longer drawn. `toPx` extrapolates past
+                                the frame, so a zoomed-in sheet placed
+                                marks over its own legend. A point moves
+                                to the legend list instead; annotations
+                                are counted in the notes. Suppressed
+                                rather than clamped: a mark pinned to
+                                the frame edge claims a current it does
+                                not have.
+
 | 2026-07-31 | 0.2.0-draft | *Correction -- cross-voltage curve
                               placement.* A curve belonging to another
                               level was positioned in two independent

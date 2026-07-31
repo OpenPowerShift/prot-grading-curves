@@ -195,6 +195,16 @@ have had one; what is left is chores.
 
 === Closed 2026-07-31
 
+* *The formatter lays blocks out verbosely.* It was line-based and never
+  *split*, so a nested value block written inline stayed inline and the
+  `=` alignment could not help it -- alignment works down a column and
+  there was only one line. An explode pass now gives each brace and each
+  statement its own line before indenting. Brackets are left alone: a
+  `[` list is a value, and `flex_points` tables are read as rows.
+  `expandBlocks: false` keeps the old behaviour. Still idempotent and
+  still meaning-preserving over every shipped example, which the
+  existing property tests check.
+
 * *Cross-voltage curve placement contradicted the report.* A curve from
   another level was positioned by the turns ratio for the voltage and
   then by the condition's ratios for the quantity, and the two

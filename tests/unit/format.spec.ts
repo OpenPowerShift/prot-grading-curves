@@ -67,6 +67,61 @@ date = "2026-01-01";
     expect(out).toMatch(/\n\n/);
   });
 
+  it('gives each brace and statement its own line', () => {
+    /*
+     * The case that prompted this: a nested value block written inline
+     * reads as one dense run of punctuation, and `=` alignment cannot
+     * help because alignment works down a column.
+     */
+    const out = formatSource(
+      'page {\n  title = { text = "Northgate"; subtitle = "cascade"; };\n}\n',
+    );
+    expect(out).toBe(
+      'page {\n'
+      + '    title = {\n'
+      + '        text     = "Northgate";\n'
+      + '        subtitle = "cascade";\n'
+      + '    };\n'
+      + '}\n',
+    );
+  });
+
+  it('starts a new block on its own line after a closer', () => {
+    /* `} "LV" {` must not leave the next block trailing after the brace
+     * that closed the last. */
+    const out = formatSource('system { voltages { "HV" { V = 33 kV; } "LV" { V = 11 kV; } } }\n');
+    expect(out).toContain('        }\n        "LV" {\n');
+  });
+
+  it('keeps a closing brace and its semicolon together', () => {
+    /* Splitting them would leave a line holding one semicolon. */
+    expect(formatSource('page { legend = { title = "E"; }; }\n')).toContain('    };\n');
+  });
+
+  it('leaves bracketed values alone', () => {
+    /*
+     * A `[` list is a value, not a block. `flex_points` tables are read
+     * as rows, and exploding them by element would make them unreadable.
+     */
+    const out = formatSource('device "f" {\n  flex_points = [[100, 5], [200, 1]];\n}\n');
+    expect(out).toContain('    flex_points = [[100, 5], [200, 1]];\n');
+  });
+
+  it('does not split on punctuation inside a string', () => {
+    const out = formatSource('meta {\n  project = "a; b { c } d";\n}\n');
+    expect(out).toContain('    project = "a; b { c } d";\n');
+  });
+
+  it('keeps a trailing comment with the statement it followed', () => {
+    const out = formatSource('meta { project = "X"; # why\n}\n');
+    expect(out).toContain('project = "X"; # why');
+  });
+
+  it('leaves the source alone when expansion is off', () => {
+    const inline = 'page {\n    legend = { title = "E"; };\n}\n';
+    expect(formatSource(inline, { expandBlocks: false })).toBe(inline);
+  });
+
   it('is idempotent', () => {
     for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.tc'))) {
       const src = readFileSync(join(repoRoot(), 'examples', file), 'utf8');

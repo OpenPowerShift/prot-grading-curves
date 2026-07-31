@@ -138,6 +138,15 @@ export interface Element {
   stages: Stage[];
   /** True when the element used the `stages { ... }` form. */
   staged: boolean;
+  /**
+   * Current the curve stops at, in this element's own primary amps.
+   *
+   * A characteristic is defined for any multiple, but the *network* is
+   * not: past the maximum fault the bus can deliver, the curve is
+   * describing a current that cannot flow. Drawing it there invites a
+   * margin to be read at a fault that does not exist.
+   */
+  current_max_A?: number;
   voltage?: string;
   voltage_kV?: number;
   node: ElementBlock;
@@ -253,6 +262,8 @@ export interface Grade {
 export interface RequiredTime {
   name: string;
   t_s: number;
+  /** Caption anchor along the rule, in the sheet's own axis current. */
+  at_I_A?: number;
   description?: string;
   loc?: SourceLocation;
 }
@@ -463,6 +474,7 @@ export function buildStudy(doc: Document): Study {
           study.times.set(t.name, {
             name: t.name,
             t_s: t.t_s,
+            at_I_A: t.at_I_A,
             description: t.description,
             loc: t.loc,
           });
@@ -745,6 +757,13 @@ function resolveElement(
     ref,
     stages: [],
     staged,
+    current_max_A: ((): number | undefined => {
+      const raw = (node.members.find((m) => m.kind === 'scalar' && m.key === 'current_max') as
+        { value?: unknown } | undefined)?.value;
+      if (raw === undefined) return undefined;
+      const read = amps(raw);
+      return Number.isFinite(read.value) && read.value > 0 ? read.value : undefined;
+    })(),
     voltage: relay?.voltage,
     voltage_kV: relay?.voltage_kV,
     node,

@@ -111,9 +111,107 @@ function stripStringsAndComments(line: string): string {
   return out;
 }
 
+/**
+ * Split a line so that each brace and each statement stands alone.
+ *
+ * A block written inline reads as one dense run of punctuation:
+ *
+ *   title = { text = "Northgate 33/11 kV"; subtitle = "cascade"; };
+ *
+ * and the `=` alignment below cannot help, because alignment works down
+ * a column and there is only one line. Broken up, the keys line up
+ * under each other and the braces show the nesting:
+ *
+ *   title = {
+ *       text     = "Northgate 33/11 kV";
+ *       subtitle = "cascade";
+ *   };
+ *
+ * Only `{` and `}` split. A `[` list is a *value* -- `flex_points`
+ * tables are read as rows and exploding them by element would make them
+ * unreadable -- so brackets are left exactly as written.
+ *
+ * Returns fragments in order, or a single-element array when there is
+ * nothing structural to split. Never splits inside a string or a
+ * comment, and a trailing comment stays attached to the fragment it
+ * followed.
+ */
+function explodeLine(line: string, startInComment: boolean): string[] {
+  if (startInComment) return [line];
+
+  const parts: string[] = [];
+  let buf = '';
+  let inString = false;
+
+  const flush = (): void => {
+    if (buf.trim() !== '') parts.push(buf.trim());
+    buf = '';
+  };
+
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    const next = line[i + 1];
+
+    if (inString) {
+      buf += c;
+      if (c === '\\' && next !== undefined) { buf += next; i++; continue; }
+      if (c === '"') inString = false;
+      continue;
+    }
+
+    if (c === '"') { buf += c; inString = true; continue; }
+
+    /*
+     * A comment runs to the end of the line and stays with what it was
+     * written beside. If the statement it trailed has already been
+     * flushed -- `project = "X"; # why` -- it rejoins that fragment
+     * rather than starting a line of its own, where it would read as
+     * annotating whatever came next.
+     */
+    if (c === '#' || (c === '/' && (next === '/' || next === '*'))) {
+      const rest = line.slice(i);
+      if (buf.trim() === '' && parts.length > 0) {
+        parts[parts.length - 1] += ` ${rest.trim()}`;
+        buf = '';
+      } else {
+        buf += rest;
+      }
+      break;
+    }
+
+    if (c === '{') { buf += c; flush(); continue; }
+    if (c === '}') {
+      /* Whatever preceded the closer belongs to the block it closes. */
+      flush();
+      /*
+       * A closer stands alone, but takes an immediately following `;`
+       * with it -- `};` ends a nested value block and splitting the two
+       * would leave a line holding a single semicolon. Emitted at once
+       * so that `} "LV" {` starts the next block on its own line
+       * instead of trailing after the brace that closed the last.
+       */
+      let j = i + 1;
+      while (j < line.length && line[j] === ' ') j++;
+      if (line[j] === ';') { parts.push('};'); i = j; } else { parts.push('}'); }
+      continue;
+    }
+    if (c === ';') { buf += c; flush(); continue; }
+
+    buf += c;
+  }
+  flush();
+
+  return parts.length > 0 ? parts : [line.trim()];
+}
+
 export interface FormatOptions {
   /** Align `=` within runs of assignments. Defaults to true. */
   alignAssignments?: boolean;
+  /**
+   * Give each brace and each statement its own line. Defaults to true.
+   * Off, the formatter only re-indents what the author already broke.
+   */
+  expandBlocks?: boolean;
 }
 
 /**
@@ -124,6 +222,7 @@ export interface FormatOptions {
  */
 export function formatSource(source: string, options: FormatOptions = {}): string {
   const align = options.alignAssignments !== false;
+  const expand = options.expandBlocks !== false;
   const rawLines = source.replace(/\r\n?/g, '\n').split('\n');
 
   interface Out { indent: number; text: string; assignment: { key: string; rest: string } | null }
@@ -147,27 +246,39 @@ export function formatSource(source: string, options: FormatOptions = {}): strin
     }
 
     const wasInComment = inComment;
-    const scan = scanLine(trimmed, inComment);
-    inComment = scan.inComment;
 
     /*
      * A continuation line of a block comment keeps its relative shape;
      * re-indenting the inside of a comment would mangle ASCII art and
-     * aligned notes.
+     * aligned notes. Its braces are still counted, so that a `{` inside
+     * a comment cannot shift the nesting of the code around it.
      */
     if (wasInComment) {
+      inComment = scanLine(trimmed, true).inComment;
       out.push({ indent: depth, text: trimmed, assignment: null });
       continue;
     }
 
-    const indent = Math.max(0, depth - scan.leadingClose);
-    depth = Math.max(0, depth + scan.delta);
+    /*
+     * Split first, then indent each fragment: the depth bookkeeping is
+     * per emitted line, so a line carrying `page { legend = {` has to
+     * become two before either can be given a level.
+     */
+    const fragments = expand ? explodeLine(trimmed, false) : [trimmed];
 
-    out.push({
-      indent,
-      text: trimmed,
-      assignment: align ? splitAssignment(trimmed) : null,
-    });
+    for (const fragment of fragments) {
+      const scan = scanLine(fragment, inComment);
+      inComment = scan.inComment;
+
+      const indent = Math.max(0, depth - scan.leadingClose);
+      depth = Math.max(0, depth + scan.delta);
+
+      out.push({
+        indent,
+        text: fragment,
+        assignment: align ? splitAssignment(fragment) : null,
+      });
+    }
   }
 
   /*

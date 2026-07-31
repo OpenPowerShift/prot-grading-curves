@@ -983,12 +983,15 @@ class Parser {
           this.expect('EQUALS', '=');
           switch (k.image) {
             case 't': t.t_s = this.parseNumberWithUnit_s(); break;
+            case 'at_I': t.at_I_A = this.parseNumberWithUnit_A(); break;
             case 'description': {
               const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
               if (tok) t.description = unquote(tok.image);
               break;
             }
-            default: this.parseScalarValue();
+            default:
+              this.parseScalarValue();
+              this.noteUnknownKey('a time', k, ['t', 'at_I', 'description']);
           }
           this.eat('SEMI');
         }
@@ -1270,6 +1273,7 @@ if (kwName === 'flex_points') {
           'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
           'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
           'char_angle', 'reset', 'directional', 'stages', 'comment',
+          'current_max',
         ], /* strict */ true);
         const v = this.parseScalarValue();
         this.eat('SEMI');

@@ -902,8 +902,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     breakpoints: number[] = [],
     axisFactor = 1,
+    /**
+     * Highest current the characteristic is drawn to, in the element's
+     * own amps. Past it the curve is describing a fault the network
+     * cannot deliver, so it stops rather than running to the frame.
+     */
+    maxSource: number | undefined = undefined,
   ): string => {
     const xs = [...samples];
+    if (maxSource != null) {
+      /* Sample the ceiling itself, or the last sample below it decides
+       * where the curve appears to end -- up to half a decade short. */
+      const onAxis = maxSource / axisFactor;
+      if (onAxis > I_min && onAxis < I_max) xs.push(onAxis);
+    }
     for (const bp of breakpoints) {
       /* Breakpoints arrive in the element's own quantity, so they need
        * the same factor as the samples or a vertical riser lands at the
@@ -928,6 +940,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         V_view_kV != null && V_source != null && V_source > 0 && V_view_kV > 0
           ? I_measured * (V_view_kV / V_source)
           : I_measured;
+      if (maxSource != null && I_source > maxSource) {
+        started = false;
+        previousOperated = false;
+        continue;
+      }
       const t = tAt(I_source);
 
       if (!Number.isFinite(t) || t <= 0) {
@@ -1224,6 +1241,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     const quantity = measuredQuantityOf(stage);
     if (quantity != null && quantity !== 'phase') bits.push(`vs ${quantityLabel(quantity)}`);
+
+    /*
+     * A curve that stops short of the frame looks like one the renderer
+     * failed to finish, unless the sheet says the stop was asked for.
+     */
+    if (element.current_max_A != null) {
+      bits.push(`to ${formatSi(element.current_max_A, 'A')}`);
+    }
 
     return bits.join(' \u00b7 ');
   };
@@ -1562,6 +1587,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           (I) => tTripStage(stage, I),
           stage.I_pu_A != null ? [project(stage.I_pu_A, V_source)] : [],
           factor,
+          element.current_max_A,
         );
         if (!pathD) continue;
         curves.push({
@@ -1585,6 +1611,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     const pathD = trace(
       V_source, (I) => tTripElement(element, I), breakpointsOf(element, V_source), factor,
+      element.current_max_A,
     );
     if (!pathD) continue;
     curves.push({
@@ -1915,6 +1942,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const inDomain = (I: number): boolean =>
     Number.isFinite(I) && I >= I_min && I <= I_max;
 
+  /**
+   * Whether a coordinate falls inside the plotted window.
+   *
+   * `toPx` is affine in `log10` and extrapolates past the frame quite
+   * happily, so anything anchored outside the window was still drawn --
+   * at a position off the plot, over the legend, with a leader running
+   * to it. Zooming in is exactly when that happens, and it is exactly
+   * when the reader is least able to tell a marker that belongs here
+   * from one that does not.
+   *
+   * Suppressed rather than clamped: a marker pinned to the frame edge
+   * claims a current it does not have, which is worse than an absent
+   * marker the legend still lists.
+   */
+  const anchorOnPlot = (I: number, t: number): boolean =>
+    inDomain(I) && Number.isFinite(t) && t >= t_min && t <= t_max;
+
+  /** Annotations dropped because their anchor is off the window. */
+  const offPlotAnnotations: string[] = [];
+
   /* pickup ticks, just below the axis */
   for (const c of curves) {
     if (!Number.isFinite(c.pickupPx)) continue;
@@ -1937,7 +1984,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       /* `data-fault` and `data-current` stay adjacent: they are scraped
        * as a pair, and a new attribute between them breaks that. */
       `data-fault="${escapeXml(f.name)}" data-current="${I}" data-kind="${f.kind}" ` +
-      `stroke="${faultColour}" stroke-opacity="0.7" stroke-width="${faultWidth}"` +
+      /* Full strength, matching the legend swatch. At 0.7 the rule read
+       * as a fainter colour than the entry naming it, so the two did not
+       * obviously belong together. */
+      `stroke="${faultColour}" stroke-width="${faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
   }
@@ -2152,7 +2202,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const py = yScale.toPx(t.t_s);
       if (!Number.isFinite(py)) continue;
       const caption = `${t.name} · ${formatSi(t.t_s, 's')}`;
-      out.push(...placeLabel(caption, { x: leftMargin + 6, y: py }, timeColour, {
+      /*
+       * `at_I` puts the caption where the reader is looking -- beside
+       * the curve the clearance applies to, say -- instead of at the
+       * left-hand end, which is only ever a default. A figure outside
+       * the plotted currents would put the text off the sheet, so it
+       * falls back rather than drawing into the margin.
+       */
+      const anchorX = t.at_I_A != null && t.at_I_A >= I_min && t.at_I_A <= I_max
+        ? xScale.toPx(t.at_I_A)
+        : leftMargin + 6;
+      out.push(...placeLabel(caption, { x: anchorX, y: py }, timeColour, {
         prefer: ['above', 'below', 'right'],
         gap: 6,
       }));
@@ -2241,9 +2301,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const py = yScale.toPx(point.t_s);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
 
-    const onPlot =
-      I_view >= I_min && I_view <= I_max && point.t_s >= t_min && point.t_s <= t_max;
+    const onPlot = anchorOnPlot(I_view, point.t_s);
     if (onPlot) pointsOnPlot.add(point.id);
+    /* Off the window it gets a legend entry instead -- `legendPoints`
+     * picks up exactly the points this set does not hold. */
+    if (!onPlot) continue;
 
     /* A marked point is not a fault current; it gets its own ink. */
     const colour = point.color ?? th.point;
@@ -2507,6 +2569,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * axis, so it lines up with the curves it spans. */
       const I_view = onAxisCurrent(primary.element, I);
       if (I_view == null) continue;
+      /* Both ends of the arrow have to be somewhere the reader can see,
+       * or it measures a gap between two curves that are not on the
+       * sheet. */
+      if (!anchorOnPlot(I_view, tP) || !anchorOnPlot(I_view, tB)) {
+        offPlotAnnotations.push(annotation.label ?? `${annotation.primary?.text ?? ''} margin`);
+        continue;
+      }
       const px = xScale.toPx(I_view);
       const pyP = yScale.toPx(tP);
       const pyB = yScale.toPx(tB);
@@ -2564,6 +2633,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * is -- otherwise the mark sits off its own curve. */
     const I_view = onAxisCurrent(element, I, device?.voltage_kV);
     if (I_view == null) continue;
+    if (!anchorOnPlot(I_view, t)) {
+      offPlotAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
+      continue;
+    }
     const px = xScale.toPx(I_view);
     const py = yScale.toPx(t);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
@@ -2651,7 +2724,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const dash = faultDash(i);
     out.push(
       `<line x1="${px}" y1="${topMargin + plotH}" x2="${px}" y2="${(labelY - 9).toFixed(1)}" ` +
-      `class="tc-fault" stroke="${faultColour}" stroke-opacity="0.7" stroke-width="${faultWidth}"` +
+      `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
     out.push(
@@ -2801,6 +2874,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * still worth reading, and the fix is one line of source.
      */
     for (const note of referralCaveats.values()) axisNotes.push(note);
+    /*
+     * Counted, not named. Zooming is interactive, so this list changes
+     * with every gesture; naming each one would turn the panel into a
+     * running commentary on the viewport.
+     */
+    if (offPlotAnnotations.length > 0) {
+      axisNotes.push(
+        `${offPlotAnnotations.length} annotation`
+        + `${offPlotAnnotations.length === 1 ? '' : 's'} outside the plotted range`,
+      );
+    }
 
     /*
      * Pickups the legend could not put into secondary amps. Stated,

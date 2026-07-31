@@ -105,6 +105,7 @@ voltage level, a second being a second at every level.
 times-block     ::= "times" "{" { time-asg } "}" ;
 time-asg        ::= string "{" { time-member } "}" ;
 time-member     ::= "t"         "=" number time-unit ";"
+                  | "at_I"      "=" number current-unit ";"
                   | "description" "=" string ";" ;
 ----
 
@@ -207,8 +208,11 @@ element-member  ::= name-asg
                   | char_angle-asg
                   | reset-asg
                   | directional-asg
+                  | current_max-asg
                   | comment-asg
                   | stages-block ;
+
+current_max-asg ::= "current_max" "=" number current-unit ";" ;
 
 comment-asg     ::= "comment" "=" string ";" ;
 element-id      ::= number | identifier ;

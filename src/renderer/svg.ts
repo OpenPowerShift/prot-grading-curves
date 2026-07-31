@@ -49,7 +49,6 @@ import {
   resolveCurrent,
   scalingBetween,
   quantityLabel,
-  quantityField,
   survivesVoltageReferral,
   type MeasuredQuantity,
 } from '../semantics/quantity.js';
@@ -448,6 +447,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   let I_lo = 10, I_hi = 50_000;
   let t_lo = 0.01, t_hi = 1000;
 
+  /**
+   * Conditions the sheet cannot mark, and why.
+   *
+   * Stated in the legend rather than dropped, for faults and scenarios
+   * alike. A condition used only for grading and never drawn was the
+   * state before this: the margin report cited something that appeared
+   * nowhere on the sheet, so a reader had no way to see where it stood.
+   */
+  const unmarkedScenarios: string[] = [];
+
   const faults: FaultEntry[] = [];
   for (const item of doc.items) {
     if (item.type === 'faults') {
@@ -467,7 +476,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           { phase: f.I_A, I2: f.I2_A, I0: f.I0_A, residual: f.earth_A },
           isFaultType(f.type) ? f.type : undefined,
         );
-        if (resolved == null) continue;
+        if (resolved == null) {
+          /* Said, as the equivalent scenario case is. A fault silently
+           * absent from a sheet reads as one that was not relevant. */
+          unmarkedScenarios.push(
+            `${f.name} declares no ${quantityLabel(viewQuantity)}`
+            + (f.type ? '' : '; give it a type, or the component itself'),
+          );
+          continue;
+        }
         const declared = resolved.value;
 
         /*
@@ -497,15 +514,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
   }
 
-  /**
-   * Scenarios the sheet cannot mark, and why.
-   *
-   * Stated in the legend rather than dropped. A scenario used only for
-   * grading and never drawn was the state before this: the margin
-   * report cited a condition that appeared nowhere on the sheet, so a
-   * reader had no way to see where it stood.
-   */
-  const unmarkedScenarios: string[] = [];
 
   /**
    * Marked points the sheet's own quantity cannot carry to this level.
@@ -518,6 +526,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * a current that cannot exist there.
    */
   const unreferrablePoints: string[] = [];
+
+  /**
+   * Markers declared in a component this sheet is not drawn in.
+   *
+   * Expected in a study with a sheet per quantity, so they are summed
+   * into one note rather than given a bullet each -- but still named,
+   * since a marker the author wrote and cannot see is worth a line.
+   */
+  const otherQuantityPoints: string[] = [];
 
   /*
    * Scenario rules.
@@ -1254,7 +1271,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * balanced three-phase fault. Drawing it would imply an operation
      * that cannot happen.
      */
-    if (quantityIsAbsent(condition.type, measures)) return null;
+    if (quantityIsAbsent(condition.type, measures)) {
+      blockedElements.set(element.label,
+        `${element.label} carries no ${quantityLabel(measures)} under ${conditionName}`);
+      return null;
+    }
 
     const factor = conversionFactor(measures, axisQuantity, condition.currents, condition.type);
 
@@ -1774,6 +1795,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * earns a line in the panel.
    */
   const pointsOnPlot = new Set<string>();
+  /**
+   * Markers the sheet declined, for a reason it has already given.
+   *
+   * The legend lists points that fell outside the view, on the grounds
+   * that a marker nowhere on the drawing still deserves a line. One
+   * withheld because it measures another quantity is already named in
+   * the notes, so listing it again says the same thing twice -- and in
+   * a two-sheet study that is every marker belonging to the other
+   * sheet.
+   */
+  const pointsAccountedFor = new Set<string>();
 
 
   /** Emit a label, moved clear of the ones already placed. */
@@ -1861,11 +1893,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const declaresSomething = [point.I_A, point.I1_A, point.I2_A, point.I0_A, point.earth_A]
         .some((v) => v != null && Number.isFinite(v));
       if (!point.condition && declaresSomething) {
-        unreferrablePoints.push(
-          `point ${point.label ?? point.id} declares no ${quantityLabel(viewQuantity)}; `
-          + `give it ${quantityField(viewQuantity)} or a type to derive it from`,
-        );
+        /*
+         * Collected rather than one note apiece. A study with a sheet
+         * per quantity has, by design, markers belonging to the other
+         * sheet, and a bullet for each turned the panel into a list of
+         * things that are fine. `oneLine` because a label may carry
+         * newlines for the drawing, which broke the sentence in two.
+         */
+        otherQuantityPoints.push(oneLine(point.label ?? point.id));
       }
+      pointsAccountedFor.add(point.id);
       continue;
     }
 
@@ -1880,9 +1917,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (point.voltage_kV != null && V_view_kV != null && point.voltage_kV !== V_view_kV
         && !survivesVoltageReferral(viewQuantity, study, point.voltage, viewLevelName)) {
       unreferrablePoints.push(
-        `point ${point.label ?? point.id} is on ${point.voltage}, and `
+        `point ${oneLine(point.label ?? point.id)} is on ${point.voltage}, and `
         + `${quantityLabel(viewQuantity)} does not cross to this level`,
       );
+      pointsAccountedFor.add(point.id);
       continue;
     }
 
@@ -2298,6 +2336,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
     }
     for (const note of unreferrablePoints) axisNotes.push(note);
+    if (otherQuantityPoints.length > 0) {
+      axisNotes.push(
+        `${otherQuantityPoints.length} point${otherQuantityPoints.length === 1 ? '' : 's'} `
+        + `declare no ${quantityLabel(viewQuantity)}: ${otherQuantityPoints.join(', ')}`,
+      );
+    }
 
     /*
      * One bullet per note, with the continuation lines indented under
@@ -2400,7 +2444,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * argument, so they belong in the legend with their values rather
      * than only as a glyph on the plot.
      */
-    const legendPoints = study.points.filter((p) => !pointsOnPlot.has(p.id));
+    const legendPoints = study.points
+      .filter((p) => !pointsOnPlot.has(p.id) && !pointsAccountedFor.has(p.id));
     if (legendPoints.length > 0) {
       lines.push(
         `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" font-weight="600" fill="${legendInk}">Points</text>`,

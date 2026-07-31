@@ -444,8 +444,15 @@ view { voltage = "HV"; quantity = ${quantity}; current_min = 1 A; current_max = 
     const svg = parseAndRender(STUDY(P_PHASE, 'I2'), { theme: 'light' }).svg;
     const said = [...svg.matchAll(/font-style="italic"[^>]*>([^<]*)</g)]
       .map((m) => m[1]).join(' ');
-    expect(said).toContain('point inrush declares no I2');
-    expect(said).toContain('give it I2_A');
+    /*
+     * Summed into one note, not a bullet apiece: a study with a sheet
+     * per quantity has markers belonging to the other sheet by design,
+     * and one line each turned the panel into a list of things that
+     * are fine. Still named, since a marker the author wrote and
+     * cannot see is worth a line.
+     */
+    expect(said).toContain('1 point declare no I2');
+    expect(said).toContain('inrush');
   });
 
   it('accepts a marker known only in a component, with no phase figure', () => {

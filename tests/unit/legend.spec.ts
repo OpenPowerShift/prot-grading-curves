@@ -623,7 +623,11 @@ relay R {
      */
     const svg = sheet('quantity = phase; condition = "F_3ph";');
     expect(drawn(svg)).toEqual(['R:51']);
-    expect(notes(svg)).toContain('not on this axis');
+    /* Each named with the reason it cannot operate, rather than
+     * counted as merely off-axis: the condition carries none of what
+     * they measure. */
+    expect(notes(svg)).toContain('R:46 carries no I2 under F_3ph');
+    expect(notes(svg)).toContain('R:51G carries no residual 3I0 under F_3ph');
   });
 
   it('suppresses only the earth element on a phase-phase condition', () => {

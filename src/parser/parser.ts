@@ -1418,9 +1418,25 @@ if (kwName === 'flex_points') {
             break;
           case 'style':
             {
-              const styleKw = this.matchKeyword('leader','pin','tag');
+              const at = this.peek();
+              const styleKw = this.matchKeyword('leader', 'pin', 'tag');
               this.eat('SEMI');
               if (styleKw) a.style = styleKw as any;
+              else {
+                /*
+                 * Said rather than silently defaulted. A spelling the
+                 * parser does not know used to leave the field unset
+                 * and fall back to `leader`, so a study asking for
+                 * something else got a leader and no indication that
+                 * its request had been dropped.
+                 */
+                this.errors.push({
+                  message: `annotate style must be leader, pin or tag, not ${tokenDescribe(at)}`,
+                  line: at.line, column: at.col,
+                  offset: at.start, length: at.end - at.start,
+                  severity: 'error', code: 'ANNOTATE_STYLE_UNKNOWN',
+                });
+              }
             }
             break;
           case 'color':

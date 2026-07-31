@@ -4,7 +4,7 @@
 |===
 | Date       | Version | Summary
 
-| 2026-07-26 | 0.1.0-draft | Initial draft; covers IEC 60255-151 Annex A
+| 2026-07-26 | 0.1.0 | Initial draft; covers IEC 60255-151 Annex A
                               curves A-F, IEEE C37.112 U1..U5,
                               manufacturer-specific curves (SEL, GE,
                               ABB, Schneider, Siemens), grading-pair
@@ -12,7 +12,7 @@
                               export. Distance zones, voltage-restrained
                               OC, and auto-reclosing deferred to v0.2.
 
-| 2026-07-26 | 0.1.0-draft | Additions: `current_pct` factor for
+| 2026-07-26 | 0.1.0 | Additions: `current_pct` factor for
                               parallel-line/transformer current share;
                               `device` block (fuses, cables,
                               transformers damage, reclosers, motor
@@ -24,7 +24,7 @@
                               `margin_s`; cross-voltage grading with
                               `voltage_kV` + transformer turns ratio.
 
-| 2026-07-26 | 0.1.0-draft | Vendor curves regrouped into contiguous
+| 2026-07-26 | 0.1.0 | Vendor curves regrouped into contiguous
                               blocks per vendor. GE Multilin 745 IAC
                               removed (legacy product line; replaced
                               by UR-series). Siemens 7SR45 replaced
@@ -32,11 +32,11 @@
                               replaced by Relion 615. SEL-451
                               constants filled in.
 
-| 2026-07-26 | 0.1.0-draft | Worked numerical tables and solver
+| 2026-07-26 | 0.1.0 | Worked numerical tables and solver
                               worked example corrected
                               after domain-agent review (C1--C7).
 
-| 2026-07-26 | 0.1.0-draft | Added `page` top-level block:
+| 2026-07-26 | 0.1.0 | Added `page` top-level block:
                               size (A0..A5 / Letter / Legal /
                               Tabloid, or custom mm), orientation
                               (portrait / landscape), margins_mm,
@@ -56,7 +56,7 @@
                               print). Validation rules added;
                               CLI flag overrides documented.
 
-| 2026-07-26 | 0.1.0-draft | Voltage-level model simplified: dropped
+| 2026-07-26 | 0.1.0 | Voltage-level model simplified: dropped
                               `system.transformers.transformer`
                               block; replaced with `system.voltages`
                               (`"HV" { kV = 33.0; }` etc). Relays
@@ -72,7 +72,7 @@
                               replaced by `relay.faults = ["F1", ...]`
                               list.
 
-| 2026-07-26 | 0.1.0-draft | Final review fixes (pre-build):
+| 2026-07-26 | 0.1.0 | Final review fixes (pre-build):
                               * Fixed cable-damage grade direction
                                 bug in examples-extended.adoc
                                 (`primary = relay, backup = damage`).
@@ -122,7 +122,7 @@
                                 (v0.2 roadmap) and versioning
                                 roadmap table.
 
-| 2026-07-26 | 0.1.0-draft | Self-consistency pass driven by the
+| 2026-07-26 | 0.1.0 | Self-consistency pass driven by the
                               reference implementation. Six places
                               where the prose contradicted the
                               normative worked examples were resolved
@@ -174,7 +174,7 @@
                               CO-2 emulation) and `abb.rd` (form
                               given without constants).
 
-| 2026-07-28 | 0.1.0-draft | *Correction -- cross-voltage grading.*
+| 2026-07-28 | 0.1.0 | *Correction -- cross-voltage grading.*
                               The previous revision resolved the
                               `I_at_backup` contradiction the wrong
                               way, in favour of the worked examples
@@ -213,7 +213,7 @@
                               not. Implementations must adopt the
                               corrected values.
 
-| 2026-07-31 | 0.2.0-draft | *Breaking -- no key carries its own unit.*
+| 2026-07-31 | 0.1.0 | *Breaking -- no key carries its own unit.*
                               A key naming its unit said it twice when
                               the value carried a suffix and left it
                               ambiguous when it did not, and invited a
@@ -265,7 +265,7 @@
                                 author from suffixing every cosmetic
                                 value.
 
-| 2026-07-31 | 0.2.0-draft | *Sheet controls.* Four additions, none of
+| 2026-07-31 | 0.1.0 | *Sheet controls.* Four additions, none of
                               which changes a computed number; all of
                               them change whether one can be read off
                               the drawing.
@@ -305,7 +305,7 @@
                                 the frame edge claims a current it does
                                 not have.
 
-| 2026-07-31 | 0.2.0-draft | *Correction -- cross-voltage curve
+| 2026-07-31 | 0.1.0 | *Correction -- cross-voltage curve
                               placement.* A curve belonging to another
                               level was positioned in two independent
                               steps: the turns ratio for the voltage,
@@ -358,7 +358,7 @@
                                 sits beside it would be a worse sheet
                                 than either.
 
-| 2026-07-31 | 0.2.0-draft | *Correction -- `abb.ri`.* The RI row
+| 2026-07-31 | 0.1.0 | *Correction -- `abb.ri`.* The RI row
                               carried RD's constants in a linear form,
                               `t = 5.8 - 1.35 * M`, which crosses zero
                               at `M = 4.3`. Every fault above about four
@@ -386,7 +386,7 @@
                               * Lexical errors are no longer reported
                                 twice.
 
-| 2026-07-30 | 0.1.0-draft | *Conditions on the drawing.* A `scenario`
+| 2026-07-30 | 0.1.0 | *Conditions on the drawing.* A `scenario`
                               drove grading but drew nothing, so a
                               margin report could cite a condition that
                               appeared nowhere on the sheet.
@@ -418,7 +418,7 @@
                                 scenario's figures need not, so the two
                                 can disagree on a cross-voltage sheet.
 
-| 2026-07-30 | 0.1.0-draft | *Correction -- curves and the referral
+| 2026-07-30 | 0.1.0 | *Correction -- curves and the referral
                               rule.* Condition rules and marked points
                               were held to the zero-sequence referral
                               rule; element curves were not. An element's

@@ -42,7 +42,7 @@ meta-stmt       ::= identifier "=" value ";" ;
 [source,ebnf]
 ----
 system-block    ::= "system" "{" { system-assignment } "}" ;
-(* `frequency_Hz` and `grounding` were removed at 0.2.0: both were
+(* `frequency_Hz` and `grounding` were removed before 0.1.0: both were
    parsed, stored and read by nothing, and `zero_sequence` declares
    what `grounding` was reaching for. *)
 system-assignment ::=

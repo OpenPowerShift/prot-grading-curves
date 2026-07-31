@@ -18,6 +18,7 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { basename, extname, resolve as resolvePath } from 'node:path';
 import { process as processStudy, renderStudy } from './index.js';
 import { exportPng } from './export/export-png.js';
@@ -66,7 +67,7 @@ Options:
 
 Exit status: 0 clean, 1 validation errors, 2 usage or I/O failure.`;
 
-function parseArgs(argv: string[]): Options {
+export function parseArgs(argv: string[]): Options {
   const opts: Options = { command: 'help', format: 'svg', quiet: false };
   const rest: string[] = [];
 
@@ -137,7 +138,7 @@ function selectedView(
   return { view: found };
 }
 
-async function main(argv: string[]): Promise<number> {
+export async function main(argv: string[]): Promise<number> {
   let opts: Options;
   try {
     opts = parseArgs(argv);
@@ -205,9 +206,23 @@ async function main(argv: string[]): Promise<number> {
    * whatever the study's `page { theme }` says. SVG and PNG honour the
    * declared theme -- they may be embedded in a dark document.
    */
+  /*
+   * `--view` naming a sheet the study does not declare is a usage
+   * error, and `main` answers usage errors with a status rather than
+   * an exception -- the usage text promises a status for every path,
+   * and an embedder calling `main` should not have to catch.
+   */
+  let chosen: ReturnType<typeof selectedView>;
+  try {
+    chosen = selectedView(result, opts.view);
+  } catch (error) {
+    console.error(`tc-curves: ${(error as Error).message}`);
+    return 2;
+  }
+
   const svg = opts.format === 'pdf'
-    ? renderStudy(result, { theme: 'light', ...selectedView(result, opts.view) })
-    : renderStudy(result, selectedView(result, opts.view));
+    ? renderStudy(result, { theme: 'light', ...chosen })
+    : renderStudy(result, chosen);
   const outputPath = resolvePath(opts.output ?? defaultOutput(opts.input, opts.format));
 
   try {
@@ -238,9 +253,22 @@ async function main(argv: string[]): Promise<number> {
   return hasErrors ? 1 : 0;
 }
 
-main(process.argv.slice(2))
-  .then((code) => { process.exitCode = code; })
-  .catch((error: unknown) => {
-    console.error(`tc-curves: ${(error as Error).message}`);
-    process.exitCode = 2;
-  });
+/*
+ * Run only when this file *is* the program.
+ *
+ * Imported -- by a test, or by anything embedding the CLI -- it must
+ * not start rendering somebody's arguments as a side effect of the
+ * import. `main` and `parseArgs` are exported so both can be exercised
+ * directly, which is the only way this file gets tested at all.
+ */
+const invokedDirectly = process.argv[1] !== undefined
+  && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
+  main(process.argv.slice(2))
+    .then((code) => { process.exitCode = code; })
+    .catch((error: unknown) => {
+      console.error(`tc-curves: ${(error as Error).message}`);
+      process.exitCode = 2;
+    });
+}

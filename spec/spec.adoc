@@ -3,7 +3,7 @@
 :toclevels: 4
 :sectnums:
 :sectlinks:
-:version: 0.1.0-draft
+:version: 0.1.0
 :revdate: 2026-07-26
 
 A domain-specific language for capturing protection-relay time-current

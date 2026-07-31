@@ -34,7 +34,7 @@ const M = (scope: HelpEntry['scope'], summary: string, example: string): HelpEnt
 export const KEYWORD_HELP: Record<string, HelpEntry> = {
   // top-level
   meta:        M('top', 'Project metadata block (engineer, date, standard, defaults).', 'meta { engineer = "..."; }'),
-  system:      M('top', 'Network-level declarations: voltages, frequency, grounding.', 'system { voltages { ... } }'),
+  system:      M('top', 'Network-level declarations: named voltage levels, zero-sequence continuity between them, and the per-unit base.', 'system { voltages { ... } zero_sequence { "HV" to "LV" = blocked; } }'),
   faults:      M('top', 'Named fault-current table; each fault has a current and a voltage.', 'faults { "F1" { I_A = 6400 A; voltage = "LV"; } }'),
   times:       M('top', 'Named required times, drawn as horizontal rules: the other axis\u2019s answer to a fault. An arc-flash limit, a withstand, a grid-code clearance.', 'times { "Arc flash limit" { t = 200 ms; at_I = 3 kA; } }'),
   relay:       M('top', 'A relay instance with its voltage level and current transformer ratio.', 'relay R_FDR { voltage = "LV"; ct_ratio = 600/5; ... }'),
@@ -432,12 +432,6 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
   stages: [
     V('composite', 'Draw the stages as one effective curve'),
     V('individual', 'Draw each stage separately'),
-  ],
-  grounding: [
-    V('"solid"', 'Solidly earthed'),
-    V('"low_impedance"', 'Earthed through a low impedance'),
-    V('"high_impedance"', 'Earthed through a high impedance'),
-    V('"isolated"', 'Unearthed'),
   ],
 };
 

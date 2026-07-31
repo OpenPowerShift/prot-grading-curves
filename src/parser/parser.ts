@@ -1084,29 +1084,39 @@ if (kwName === 'flex_points') {
       // member scalar
       const k = this.parseElementScalar(el);
       if (!k) {
-        /*
-         * A name the language does not know, being assigned to.
-         *
-         * Skipped in silence, a transposition cost a study its answer
-         * without a word: `tsm = 0.1` left the element at the default
-         * multiplier and the margin out by a factor of ten. The
-         * element block is where this bites hardest, every field in it
-         * being a setting that decides whether a relay operates.
-         */
-        const at = this.peek();
-        if ((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS') {
-          this.errors.push({
-            message: `unknown setting "${at.image}"; an element accepts function, measures, `
-              + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
-              + 't_reset, char_angle, reset, directional, name, comment',
-            line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
-            severity: 'error', code: 'UNKNOWN_SETTING',
-          });
-        }
+        this.noteUnknownElementSetting('an element');
         this.pos++;
       }
     }
     return el;
+  }
+
+  /**
+   * A name the language does not know, being assigned to inside an
+   * element or a stage.
+   *
+   * Skipped in silence, a transposition cost a study its answer without
+   * a word: `tsm = 0.1` left the element at the default multiplier and
+   * the margin out by a factor of ten. Every field in these two blocks
+   * is a setting that decides whether a relay operates, so an
+   * unrecognised one is refused rather than warned about.
+   *
+   * Shared between the two callers, because it was written for
+   * `element` alone: `parseStageBody` did `this.pos++` and said
+   * nothing, and a stage is where a multi-stage study actually puts the
+   * `tms` that was being dropped.
+   */
+  private noteUnknownElementSetting(what: 'an element' | 'a stage'): void {
+    const at = this.peek();
+    if (!((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS')) return;
+    this.errors.push({
+      message: `unknown setting "${at.image}"; ${what} accepts function, measures, `
+        + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
+        + 't_reset, char_angle, reset, directional, name, comment'
+        + (what === 'an element' ? ', current_max, stages' : ''),
+      line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
+      severity: 'error', code: 'UNKNOWN_SETTING',
+    });
   }
 
   private parseStageBody(id: string, head: Token): StageBlock {
@@ -1116,7 +1126,10 @@ if (kwName === 'flex_points') {
       const t = this.peek();
       if (!(t.kind === 'KW' && (t.image === 'curve' || t.image === 'formula' || t.image === 'flex_points'))) {
         const ok = this.parseElementScalar(st);
-        if (!ok) this.pos++;
+        if (!ok) {
+          this.noteUnknownElementSetting('a stage');
+          this.pos++;
+        }
       } else {
         // curve / formula / flex_points
         const kw = t.image;

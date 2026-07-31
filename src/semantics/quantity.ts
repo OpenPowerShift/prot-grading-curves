@@ -145,12 +145,12 @@ export function quantityLabel(quantity: MeasuredQuantity): string {
  */
 export function quantityField(quantity: MeasuredQuantity): string {
   switch (quantity) {
-    case 'phase': return 'I_A';
-    case 'I1': return 'I1_A';
+    case 'phase': return 'I';
+    case 'I1': return 'I1';
     case 'I2':
-    case '3I2': return 'I2_A';
+    case '3I2': return 'I2';
     case 'I0':
-    case '3I0': return 'I0_A (or earth_A)';
+    case '3I0': return 'I0 (or residual)';
   }
 }
 

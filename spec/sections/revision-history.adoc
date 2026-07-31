@@ -249,6 +249,21 @@
                                 word the language knows nowhere, in a
                                 block whose every field changes a
                                 number, is a typo and is refused.
+                              * *Exception, by decision:* the `page`
+                                block's cosmetic keys keep their unit
+                                in the name -- `margins_mm`, `size_px`,
+                                `width_px`, `line_width_px`,
+                                `label_size_px`, `tick_size_px`,
+                                `label_offset_px`, `font_size_px` --
+                                as does `tolerance_pct`. The rename
+                                exists because a physical quantity can
+                                be written in several units and the key
+                                must not presume one. These describe
+                                the paper, take exactly one unit each,
+                                and have no ambiguity to resolve, so
+                                naming it costs nothing and spares an
+                                author from suffixing every cosmetic
+                                value.
 
 | 2026-07-31 | 0.2.0-draft | *Correction -- `abb.ri`.* The RI row
                               carried RD's constants in a linear form,

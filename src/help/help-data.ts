@@ -389,16 +389,39 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
     V('"Letter"', '215.9 x 279.4 mm'), V('"Legal"', '215.9 x 355.6 mm'),
     V('"Tabloid"', '279.4 x 431.8 mm'),
   ],
-  style: [
-    /* legend.style */
-    V('"column"', 'legend: a gutter down the right-hand side (default)'),
-    V('"inside"', 'legend: the same panel floated over the plot'),
-    V('"direct"', 'legend: no panel; each curve labelled in place'),
-    V('"none"', 'legend: no identification at all'),
-    /* annotate.style */
-    V('leader', 'annotate: elbowed leader line to the label'),
-    V('pin', 'annotate: a dot on the curve'),
-    V('tag', 'annotate: bare text beside the point'),
+  /*
+   * `style` means four unrelated things. Offered as one merged list, a
+   * `?` inside an annotate block suggested the legend's four spellings
+   * -- every one of them a hard ANNOTATE_STYLE_UNKNOWN -- and the two
+   * rule sub-blocks were offered none of their own. Keyed by block, so
+   * each context offers only what it accepts; `valuesFor` falls back to
+   * the bare name for fields that mean one thing everywhere.
+   */
+  'legend.style': [
+    V('"column"', 'a gutter down the right-hand side (default)'),
+    V('"inside"', 'the same panel floated over the plot'),
+    V('"direct"', 'no panel; each curve labelled in place'),
+    V('"none"', 'no identification at all'),
+  ],
+  'annotate.style': [
+    V('leader', 'elbowed leader line to the label'),
+    V('pin', 'a dot on the curve'),
+    V('tag', 'bare text beside the point'),
+  ],
+  'faults.style': [
+    V('"solid"', 'unbroken rule'),
+    V('"dashed"', 'dashed rule (default)'),
+    V('"dotted"', 'dotted rule'),
+  ],
+  'times.style': [
+    V('"solid"', 'unbroken rule'),
+    V('"dashed"', 'dashed rule'),
+    V('"dotted"', 'dotted rule (default)'),
+  ],
+  'leaders.style': [
+    V('"line"', 'a plain line to the label'),
+    V('"arrow"', 'an arrowhead at the mark'),
+    V('"dot"', 'a dot at the mark'),
   ],
   position: [
     V('"top_right"', 'Inside legend pinned to the top right (default)'),

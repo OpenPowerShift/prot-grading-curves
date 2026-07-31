@@ -289,9 +289,16 @@ function unitCompletions(field: string): Completion[] {
   }));
 }
 
-/** Enumerated values a field accepts, as completions. */
-function valueCompletions(field: string): Completion[] {
-  const choices = FIELD_VALUES[field];
+/**
+ * Enumerated values a field accepts, as completions.
+ *
+ * `block` disambiguates a name that means different things in
+ * different places -- `style` is a legend layout, an annotate form, or
+ * a rule's dash pattern, and offering the union suggested values that
+ * are hard errors where the cursor actually is.
+ */
+function valueCompletions(field: string, block?: string): Completion[] {
+  const choices = (block ? FIELD_VALUES[`${block}.${field}`] : undefined) ?? FIELD_VALUES[field];
   if (choices) {
     return choices.map((c, i) => ({
       label: c.value,
@@ -338,6 +345,10 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
     let from = word ? word.from : pos;
     if (src[from - 1] === '"') from -= 1;
 
+    /* Which block the cursor is in, for names that mean different
+     * things in different places. */
+    const ctxBlock = detectActiveBlock(src, pos) ?? undefined;
+
     let options: Completion[] | null = null;
     if (target === 'curve') options = curveCompletions();
     else if (target === 'primary' || target === 'backup' || target === 'on_curve' ||
@@ -352,9 +363,9 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
        * device rating, so offer the declared levels first and fall
        * back to the enumeration if none are declared yet. */
       const levels = voltageCompletions(src);
-      options = levels.length > 0 ? levels : valueCompletions(target);
+      options = levels.length > 0 ? levels : valueCompletions(target, ctxBlock);
     } else {
-      const values = valueCompletions(target);
+      const values = valueCompletions(target, ctxBlock);
       if (values.length > 0) options = values;
     }
 

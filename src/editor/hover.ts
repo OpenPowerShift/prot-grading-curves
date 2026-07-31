@@ -34,7 +34,30 @@ class HelpTooltipView {
 function wordAt(view: EditorView, pos: number): { text: string; from: number; to: number } | null {
   const range = view.state.wordAt(pos);
   if (range && range.from !== range.to) {
-    return { text: view.state.doc.sliceString(range.from, range.to), from: range.from, to: range.to };
+    /*
+     * A dotted identifier is one name, not two.
+     *
+     * `wordAt` stops at the dot, so the caret anywhere in `iec.si`
+     * returned `iec` -- which has no entry, so the one lookup a reader
+     * most wants ("what curve is this?") produced nothing at all. The
+     * plain word is extended over an adjacent dot in either direction
+     * before it is used.
+     */
+    const line = view.state.doc.lineAt(pos);
+    const text = line.text;
+    let from = range.from;
+    let to = range.to;
+    const relFrom = () => from - line.from;
+    const relTo = () => to - line.from;
+    if (text[relTo()] === '.') {
+      const after = /^\.[A-Za-z_]\w*/.exec(text.slice(relTo()));
+      if (after) to += after[0].length;
+    }
+    if (relFrom() > 0 && text[relFrom() - 1] === '.') {
+      const before = /[A-Za-z_]\w*\.$/.exec(text.slice(0, relFrom()));
+      if (before) from -= before[0].length;
+    }
+    return { text: view.state.doc.sliceString(from, to), from, to };
   }
   // dotted identifier like `iec.si`
   const line = view.state.doc.lineAt(pos);
@@ -51,6 +74,29 @@ function wordAt(view: EditorView, pos: number): { text: string; from: number; to
     from: line.from + (col - m1[0].length),
     to: line.from + col + m2[0].length,
   };
+}
+
+/**
+ * The help for whatever token sits at `pos`, as data.
+ *
+ * The same lookup the hover tooltip does, without building any DOM, so
+ * a docked panel can show it beside the source instead of a card
+ * floating over the line being read. A tooltip has to be dismissed and
+ * covers the code; a panel can simply follow the caret.
+ */
+export function helpAt(view: EditorView, pos: number): {
+  name: string;
+  scope?: string;
+  summary: string;
+  example?: string;
+} | null {
+  const w = wordAt(view, pos);
+  if (!w) return null;
+  const e = KEYWORD_HELP[w.text] ?? CURVE_HELP[w.text];
+  if (!e) return null;
+  return typeof e === 'string'
+    ? { name: w.text, summary: e }
+    : { name: w.text, scope: e.scope, summary: e.summary, example: e.example };
 }
 
 export function tcHoverSource({ view, pos }: HoverPos): Tooltip | null {

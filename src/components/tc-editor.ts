@@ -21,7 +21,7 @@ import {
 } from '@codemirror/autocomplete';
 
 import { tcCompletionSource } from '../editor/completions.js';
-import { tcHoverSource } from '../editor/hover.js';
+import { helpAt, tcHoverSource } from '../editor/hover.js';
 import { tcLanguage } from '../highlight/tc-language.js';
 import { tcEditorAppearance } from '../highlight/tc-highlight-style.js';
 
@@ -46,6 +46,13 @@ export class TcEditor extends LitElement {
    *  extends the selection. The argument is the head's character
    *  offset into the editor, suitable for restoring later. */
   @property({ attribute: false }) declare onSelectionMove: ((offset: number) => void) | null;
+  /**
+   * Help for the token under the caret, for the panel beside the
+   * source. A floating tooltip covers the line being read and has to
+   * be dismissed; a panel simply follows the caret.
+   */
+  @property({ attribute: false }) declare onHelp:
+    ((help: ReturnType<typeof helpAt>) => void) | null;
   /** Internal CM view. */
   private view?: EditorView;
 
@@ -236,6 +243,9 @@ export class TcEditor extends LitElement {
         if (u.docChanged) {
           const s = u.state.doc.toString();
           this.onChange?.(s);
+        }
+        if (u.selectionSet && this.onHelp) {
+          this.onHelp(helpAt(u.view, u.state.selection.main.head));
         }
         if (u.selectionSet && this.onSelectionMove) {
           const head = u.state.selection.main.head;

@@ -789,9 +789,10 @@ function validateGrades(ctx: Ctx): void {
           `solve declares tolerance_pct = ${tol}; the accepted range is [0, 50]`, loc);
       }
       for (const free of grade.solve.free) {
-        if (free !== 'tms' && free !== 't_delay' && free !== 'I_pu') {
+        if (free !== 'tms' && free !== 't_delay' && free !== 'I_pickup') {
           add(ctx, 'SOLVE_FREE_UNKNOWN', 'error',
-            `solve declares free variable "${free}"; accepted values are tms, t_delay, I_pu`, loc);
+            `solve declares free variable "${free}"; accepted values are ` +
+            'tms, t_delay, I_pickup', loc);
         }
       }
       const backupEl = resolveRef(study, grade.backup).element;

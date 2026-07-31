@@ -1086,7 +1086,7 @@ if (kwName === 'flex_points') {
         if ((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS') {
           this.errors.push({
             message: `unknown setting "${at.image}"; an element accepts function, measures, `
-              + 'curve, formula, flex_points, I_pu, I_units, current_pct, tms, t_delay, '
+              + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
               + 't_reset, char_angle, reset, directional, name, comment',
             line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
             severity: 'error', code: 'UNKNOWN_SETTING',
@@ -1139,7 +1139,7 @@ if (kwName === 'flex_points') {
    * `51X` -- so they may lead with digits and carry a letter suffix.
    * The tokenizer splits `67N` into NUMBER + IDENT, so the two are
    * rejoined here when they are lexically *adjacent*. The adjacency
-   * test is what keeps `I_pu = 480 A` from being read as an id: the
+   * test is what keeps `I_pickup = 480 A` from being read as an id: the
    * space between them means they are separate tokens.
    */
   /**
@@ -1479,7 +1479,7 @@ if (kwName === 'flex_points') {
             this.eat('SEMI');
             break;
           case 'upstream_to':
-            g.upstream_to_A = this.parseNumberWithUnit_A();
+            g.upstream_to_A = this.parseNumberWithUnit_A('upstream_to');
             this.eat('SEMI');
             break;
           case 'tolerance_pct':
@@ -1528,12 +1528,12 @@ if (kwName === 'flex_points') {
         case 'free':
           {
             this.expect('LBRACK', '[');
-            const arr: ('tms'|'t_delay'|'I_pu')[] = [];
+            const arr: ('tms'|'t_delay'|'I_pickup')[] = [];
             if (!this.at('RBRACK')) {
-              const v = this.matchKeyword('tms','t_delay','I_pu');
+              const v = this.matchKeyword('tms','t_delay','I_pickup');
               if (v) arr.push(v as any);
               while (this.eat('COMMA')) {
-                const w = this.matchKeyword('tms','t_delay','I_pu');
+                const w = this.matchKeyword('tms','t_delay','I_pickup');
                 if (w) arr.push(w as any);
               }
             }

@@ -315,7 +315,7 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
   const pos = ctx.pos;
 
   /*
-   * Unit position first: `I_pu = 5.0 ` wants amperes, not field names.
+   * Unit position first: `I_pickup = 5.0 ` wants amperes, not field names.
    * Checked before the assignment target because the number in
    * between defeats that pattern anyway.
    */

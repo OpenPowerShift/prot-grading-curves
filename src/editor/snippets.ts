@@ -31,7 +31,7 @@ export const SNIPPETS: SnippetSpec[] = [
     study     = "#{study}";
     engineer  = "#{engineer}";
     date      = "#{yyyy-mm-dd}";
-    CTI_min_s = #{0.30};
+    margin    = #{0.30 s};
 }#{}`,
   },
   {
@@ -39,19 +39,18 @@ export const SNIPPETS: SnippetSpec[] = [
     detail: 'system block with named voltage levels',
     template: `system {
     voltages {
-        "#{HV}" { kV = #{33.0}; description = "#{HV side}"; }
-        "#{LV}" { kV = #{11.0}; description = "#{LV side}"; }
+        "#{HV}" { V  = #{33.0 kV}; description = "#{HV side}"; }
+        "#{LV}" { V  = #{11.0 kV}; description = "#{LV side}"; }
     }
-    frequency_Hz = #{50};
-    base_MVA     = #{25.0};
+    base_S       = #{25.0 MVA};
 }#{}`,
   },
   {
     prefix: 'faults',
     detail: 'fault-level table',
     template: `faults {
-    "#{F_max}" { I_A = #{6.40} kA; voltage = "#{LV}"; }
-    "#{F_min}" { I_A = #{2.50} kA; voltage = "#{LV}"; }
+    "#{F_max}" { I   = #{6.40 A}; voltage = "#{LV}"; }
+    "#{F_min}" { I   = #{2.50 A}; voltage = "#{LV}"; }
 }#{}`,
   },
   {
@@ -66,7 +65,7 @@ export const SNIPPETS: SnippetSpec[] = [
     element #{51} {
         function = "phase_oc";
         curve    = #{iec.si};
-        I_pu     = #{480} A;
+        I_pickup = #{480 A};
         tms      = #{0.30};
     }
 }#{}`,
@@ -77,7 +76,7 @@ export const SNIPPETS: SnippetSpec[] = [
     template: `element #{51} {
     function = "phase_oc";
     curve    = #{iec.si};
-    I_pu     = #{480} A;
+    I_pickup = #{480 A};
     tms      = #{0.30};
     reset    = "instant";
 }#{}`,
@@ -88,7 +87,7 @@ export const SNIPPETS: SnippetSpec[] = [
     template: `element #{50} {
     function = "phase_oc";
     curve    = definite;
-    I_pu     = #{4000} A;
+    I_pickup = #{4000 A};
     t_delay  = #{0.10} s;
 }#{}`,
   },
@@ -100,12 +99,12 @@ export const SNIPPETS: SnippetSpec[] = [
     stages {
         stage #{main} {
             curve = #{iec.si};
-            I_pu  = #{400} A;
+            I_pickup = #{400 A};
             tms   = #{0.35};
         }
         stage #{inst} {
             curve   = definite;
-            I_pu    = #{4500} A;
+            I_pickup = #{4500 A};
             t_delay = #{0.08} s;
         }
     }
@@ -118,7 +117,7 @@ export const SNIPPETS: SnippetSpec[] = [
     primary   = #{R_FDR_1}:#{51};
     backup    = #{R_TRF_INC}:#{51};
     fault     = "#{F_FDR1_max}";
-    CTI_min_s = #{0.30};
+    margin    = #{0.30 s};
 }#{}`,
   },
   {
@@ -128,7 +127,7 @@ export const SNIPPETS: SnippetSpec[] = [
     primary  = #{R_FDR_1}:#{51};
     backup   = #{R_TRF_INC}:#{51};
     fault    = "#{F_FDR1_max}";
-    margin_s = #{0.30};
+    margin_target = #{0.30 s};
 
     solve {
         strategy      = "#{tight}";
@@ -141,7 +140,7 @@ export const SNIPPETS: SnippetSpec[] = [
     detail: 'fuse with a min-melt / total-clear band',
     template: `device "#{fuse_100a}" {
     kind        = "fuse";
-    rating_A    = #{100} A;
+    rating_I    = #{100 A};
     min_melt    = [(#{150} A, #{100} s), (#{300} A, #{1.5} s), (#{1000} A, #{0.05} s)];
     total_clear = [(#{150} A, #{60} s), (#{300} A, #{0.6} s), (#{1000} A, #{0.02} s)];
 }#{}`,
@@ -180,7 +179,7 @@ export const SNIPPETS: SnippetSpec[] = [
     detail: 'label a point on a curve',
     template: `annotate {
     on_curve = #{R_TRF_INC}:#{51};
-    at_I_A   = #{18430};
+    at_I     = #{18430 A};
     label    = "#{I_kmax 18.43 kA}";
     style    = "leader";
 }#{}`,

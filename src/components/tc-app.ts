@@ -159,6 +159,17 @@ export class TcApp extends LitElement {
    */
   @state() private viewIndex = 0;
   /**
+   * Help for the token under the caret, shown beside the source.
+   *
+   * Docked rather than floating: a tooltip covers the line being read
+   * and has to be dismissed, where a panel simply follows the caret --
+   * which is what makes it usable for *reading* an existing file
+   * rather than only for writing a new one.
+   */
+  @state() private help: {
+    name: string; scope?: string; summary: string; example?: string;
+  } | null = null;
+  /**
    * UI theme for both panes. Seeded from the OS preference and then
    * remembered, so the choice survives a reload.
    */
@@ -173,6 +184,7 @@ export class TcApp extends LitElement {
   private readonly boundOnChange = (s: string) => this.handleSourceChange(s);
   private readonly boundOnSave   = () => this.saveSource();
   private readonly boundOnOpen   = () => { void this.openSourceViaPicker(); };
+  private readonly boundOnHelp = (help: TcApp['help']) => { this.help = help; };
   private readonly boundOnSelectionMove = (offset: number) => {
     try { localStorage.setItem(this.cursorKey(this.exampleId), String(offset)); } catch { /* */ }
     this.caretLine = lineAtOffset(this.src, offset);
@@ -945,11 +957,23 @@ export class TcApp extends LitElement {
                 ${mode === 'source' ? '⇱ Split' : '⇤ Hide'}
               </button>` : null}
           </div>
-          <tc-editor
-              .source=${this.src}
-              .onChange=${this.boundOnChange}
-              .onSelectionMove=${this.boundOnSelectionMove}
-              .shortcuts=${this.boundShortcuts}></tc-editor>
+          <div class="source-body">
+            <tc-editor
+                .source=${this.src}
+                .onChange=${this.boundOnChange}
+                .onSelectionMove=${this.boundOnSelectionMove}
+                .onHelp=${this.boundOnHelp}
+                .shortcuts=${this.boundShortcuts}></tc-editor>
+            ${this.help ? html`
+              <aside class="help-dock" aria-label="What this means">
+                <div class="help-dock-name">
+                  ${this.help.name}
+                  ${this.help.scope ? html`<span class="help-dock-scope">${this.help.scope}</span>` : null}
+                </div>
+                <div class="help-dock-summary">${this.help.summary}</div>
+                ${this.help.example ? html`<pre class="help-dock-example">${this.help.example}</pre>` : null}
+              </aside>` : null}
+          </div>
           ${this.renderDiagnostics()}
         </div>
         ${mode === 'split' ? html`

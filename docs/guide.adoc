@@ -94,6 +94,19 @@ grade {
 view { voltage = "HV"; }           # draw everything in the 33 kV frame
 ----
 
+=== Finding out what something means
+
+Two ways, both in the playground:
+
+* **`?` or Ctrl-Space** while writing: on a blank line it lists what
+  the enclosing block accepts; after an `=` it lists that field's
+  values -- curve names, quantities, the conditions and voltage levels
+  the file itself declares.
+* **The help panel** beside the source while reading: put the caret on
+  anything and it explains it, including named values like `iec.si`.
+  Docked rather than floating, because a tooltip covers the line you
+  are reading -- which is exactly the line you were asking about.
+
 === Running it
 
 [source,bash]

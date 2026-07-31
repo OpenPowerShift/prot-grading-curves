@@ -252,7 +252,7 @@ export interface StageBlock extends BaseNode {
 /* ------------------------------------------------------------------ */
 
 export type SolveStrategyKeyword = 'tight' | 'loose' | 'safety_factor';
-export type SolveFreeKeyword = 'tms' | 't_delay' | 'I_pu';
+export type SolveFreeKeyword = 'tms' | 't_delay' | 'I_pickup';
 
 export interface SolveBlock extends BaseNode {
   type: 'solve';

@@ -27,7 +27,7 @@ import { slowestStage } from './stages.js';
 import type { Element, Stage } from './model.js';
 
 export type SolveStrategy = 'tight' | 'loose' | 'safety_factor';
-export type FreeVariable = 'tms' | 't_delay' | 'I_pu';
+export type FreeVariable = 'tms' | 't_delay' | 'I_pickup';
 
 export interface SolveRequest {
   /** Backup element whose settings are being computed. */
@@ -205,13 +205,13 @@ export function solveGrade(req: SolveRequest): SolveResult {
    * to recover any margin that rounding `tms` up overshot. Lower
    * pickup means a higher multiple, hence a faster backup.
    */
-  if (req.free.includes('I_pu') && stage.I_pu_A != null && !backup.staged) {
+  if (req.free.includes('I_pickup') && stage.I_pu_A != null && !backup.staged) {
     const floor = Math.max(
       1e-6,
       req.I_pu_primary_A != null ? 1.2 * req.I_pu_primary_A : stage.I_pu_A * 0.5,
     );
     I_pu_A = solvePickup(stage, tms, t_b_target, I_f_A, floor, stage.I_pu_A);
-  } else if (req.free.includes('I_pu') && backup.staged) {
+  } else if (req.free.includes('I_pickup') && backup.staged) {
     /* Spec _Multi-stage solve_: two free variables on a staged
      * element is deferred to v0.2; `tms` alone still applies. */
     I_pu_A = stage.I_pu_A;

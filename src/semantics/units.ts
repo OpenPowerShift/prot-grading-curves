@@ -187,7 +187,7 @@ export const FIELD_QUANTITY: Readonly<Record<string, Quantity>> = {
   V: 'voltage', rating_V: 'voltage',
 
   /* Bounds on the current axis. */
-  current_min: 'current', current_max: 'current',
+  current_min: 'current', current_max: 'current', upstream_to: 'current',
 };
 
 /** Suffixes acceptable for one quantity, for a diagnostic that lists them. */

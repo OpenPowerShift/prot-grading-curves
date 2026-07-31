@@ -62,7 +62,6 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   I:         M('faults', 'Fault current at the named fault, in amperes.', 'I_A = 6400 A;'),
   I_min:       M('faults', 'Minimum fault current for this entry (lower bound of a fault range).', 'min_A = 1500 A;'),
   I_max:       M('faults', 'Maximum fault current for this entry.', 'max_A = 6400 A;'),
-  residual:     M('faults', 'Earth-fault current component (residual 3I0).', 'earth_A = 4500 A;'),
   I0:        M('faults', 'Zero-sequence current component.', 'I0_A = 4500 A;'),
   I2:        M('faults', 'Negative-sequence current component.', 'I2_A = 1500 A;'),
   fault_voltage: M('faults', 'Voltage level name that this fault is declared at (must exist in system.voltages).', 'voltage = "LV";'),
@@ -81,9 +80,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   curve:       M('element', 'Curve family identifier, e.g. iec.si, ansi.mi, or "definite".', 'curve = iec.si;'),
   formula:     M('element', 'Custom IDMT formula: k [s], c [s], alpha.', 'formula = { k = 0.14 s; c = 0; alpha = 0.02; }'),
   flex_points: M('element', 'Piecewise (I, t) pairs for a flex curve.', 'flex_points = [(100 A, 10 s), (1 kA, 0.1 s)];'),
-  I_pickup:        M('element', 'Pickup current in amps (default unit) or multiples.', 'I_pu = 480 A;'),
+  I_pickup:        M('element', 'Pickup current. Give the unit: A, kA, A_sec for the settings-sheet figure, or pu / xCT for a multiple.', 'I_pickup = 480 A;'),
   element_I_units: M('element', "Element's per-element current-units override.", 'I_units = "secondary";'),
-  share: M('element', 'Fraction (0..100) of total fault current the relay sees (parallel feeders).', 'current_pct = 50;'),
   tms:         M('element', 'Time Multiplier Setting -- scales an IDMT curve uniformly.', 'tms = 0.30;'),
   t_delay:     M('element', 'Definite-time delay in seconds.', 't_delay = 0.10 s;'),
   char_angle:  M('element', 'Characteristic angle in degrees.', 'char_angle = 60 deg;'),
@@ -109,14 +107,42 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   /* `scenario` as a *field* shares the word with the block it names,
    * and hover is keyed on the bare word, so one entry covers both. */
   scenarios:   M('annotate', 'Several conditions at once: drawn once per condition, each at its own current.', 'scenarios = ["system normal", "one tx out"];'),
-  margin:   M('grade', 'Minimum Coordination Time Interval (default project CTI).', 'CTI_min_s = 0.30;'),
-  margin_target:    M('grade', 'Target margin for the grade block.', 'margin_s = 0.30;'),
+  margin:   M('grade', 'The coordination margin this pair must achieve, as a floor. Was CTI_min_s; the unit is now yours to write.', 'margin = 0.30 s;'),
+  margin_target:    M('grade', 'A margin to *hit*, for the solver, as opposed to `margin` which is a floor to satisfy.', 'margin_target = 0.30 s;'),
   tolerance_pct: M('grade', 'Allowed slippage on margin_s for solve (default 0).', 'tolerance_pct = 5;'),
   solve:       M('grade', 'Sub-block: directive to compute tms that hits the target.', 'solve { strategy = "tight"; tolerance_pct = 5; }'),
 
+  // grade -- the sweep
+  upstream:    M('grade', 'Sweep the margin *above* the declared fault as well. Grading that holds at the fault can still fail further up, where the two characteristics converge.', 'upstream = true;'),
+  upstream_to: M('grade', 'Ceiling for the upstream sweep, in primary amps at the fault\u2019s level.', 'upstream_to = 20 kA;'),
+
+  // element -- what it measures
+  measures:    M('element', 'Which current the pickup is expressed in: phase, I1, I2, 3I2, I0, 3I0. Required for neg_seq, where IEDs differ over the factor of three.', 'measures = "I2";'),
+  t_reset:     M('element', 'Reset time for a dependent or disk-emulation reset.', 't_reset = 0.5 s;'),
+
+  // conditions
+  type:        M('faults', 'What kind of fault this is. Fixes the ratios between phase current and the components, so a component the study does not declare can be derived.', 'type = two_phase;'),
+  level:       M('scenario', 'One voltage level\u2019s currents under this condition. A scenario declares a figure per level so nothing is referred across a transformer.', 'level "HV" { I = 3.86 A; I2 = 2.23 A; I0 = 0 A; }'),
+  residual:    M('faults', 'Residual current, 3*I0, stated directly as an alternative to I0.', 'residual = 2.4 kA;'),
+  zero_sequence: M('system', 'Whether zero sequence crosses between two levels. A delta blocks it; a star-star with both neutrals earthed passes it. The tool cannot know, so the study says.', 'zero_sequence { "HV" to "LV" = blocked; }'),
+  voltages:    M('system', 'The named voltage levels of the study. Turns ratios are derived from them; there is deliberately no transformer block.', 'voltages { "HV" { V = 33 kV; } }'),
+  share:       M('element', 'Share of the condition\u2019s current this element sees, in percent \u2014 parallel feeders or transformers.', 'share = 50 %;'),
+
+  // view -- the sheet
+  quantity:    M('view', 'Which current the abscissa is: any (the default), phase, I1, I2, 3I2, I0, 3I0. Naming one opts into a strict sheet.', 'quantity = I2;'),
+  condition:   M('view', 'The fault or scenario this sheet depicts. Gives the ratios that convert curves onto the axis and suppress what the condition cannot operate.', 'condition = "1ph min";'),
+  subtitle:    M('view', 'Second line of the sheet\u2019s heading; overrides page { title { subtitle } }.', 'subtitle = "480 V earth fault at 33 kV";'),
+  currents:    M('page', 'Which amps the legend quotes a pickup in: primary, secondary, or both. Independent of view { axis }.', 'currents = "both";'),
+
+  // annotate -- where it goes
+  on_curve:    M('annotate', 'The characteristic being marked.', 'on_curve = R_FDR:51;'),
+  at_I:        M('annotate', 'Phase current to place the annotation at. Use at_I2 / at_I0 / at_residual to name a component instead, or `type` to derive it.', 'at_I = 6.4 kA;'),
+  at_t:        M('annotate', 'Time at which to measure a *current* margin \u2014 the horizontal counterpart of the vertical arrow, reported as a percentage.', 'at_t = 20 ms;'),
+  coords:      M('annotate', 'Append the (current, time) coordinate to the drawn label.', 'coords = true;'),
+
   // solve
   strategy:    M('solve', 'Solver strategy: "tight", "loose", or "safety_factor".', 'strategy = "tight";'),
-  free:        M('solve', 'List of free variables for the solver: tms, t_delay, I_pu.', 'free = ["tms", "I_pu"];'),
+  free:        M('solve', 'List of free variables for the solver: tms, t_delay, I_pu.', 'free = ["tms", "I_pickup"];'),
 
   // view
   view_voltage: M('view', 'Voltage frame for the rendered plot. Named level or "<n> kV" or "pickup".', 'voltage = "HV";'),
@@ -200,7 +226,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'flex_points', 'min_melt', 'total_clear', 't_delay',
                'comment', 'description', 'reference'],
   grade:       ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target',
-               'tolerance_pct', 'upstream', 'upstream_to_A', 'solve', 'comment'],
+               'tolerance_pct', 'upstream', 'upstream_to', 'solve', 'comment'],
   solve:       ['strategy', 'tolerance_pct', 'free'],
   view:        ['name', 'default', 'voltage', 'axis', 'quantity', 'condition',
                'title', 'subtitle',
@@ -450,15 +476,15 @@ export const FIELD_UNITS: Record<string, ValueChoice[]> = {
 
 /** Which unit family a field belongs to. */
 export const UNIT_FAMILY: Record<string, keyof typeof FIELD_UNITS> = {
-  I_pu: '__pickup',
-  I_A: '__current', min_A: '__current', max_A: '__current',
-  earth_A: '__current', I0_A: '__current', I2_A: '__current',
-  I_base_A: '__current', at_I_A: '__current', rating_A: '__current',
+  I_pickup: '__pickup',
+  I: '__current', I_min: '__current', I_max: '__current',
+  residual: '__current', I0: '__current', I2: '__current',
+  I_base_A: '__current', at_I_A: '__current', rating_I: '__current',
   current_min: '__current', current_max: '__current', upstream_to: '__current',
-  t_delay: '__time', t_reset: '__time', t_s: '__time',
+  t_delay: '__time', t_reset: '__time', t: '__time',
   time_min: '__time', time_max: '__time',
-  CTI_min_s: '__time', margin_s: '__time', quantisation_s: '__time',
-  kV: '__voltage', rating_kV: '__voltage', voltage: '__voltage',
-  rating_MVA: '__power', base_MVA: '__power',
+  margin: '__time', margin_target: '__time', quantisation_s: '__time',
+  V: '__voltage', rating_V: '__voltage', voltage: '__voltage',
+  rating_S: '__power', base_MVA: '__power',
   char_angle: '__angle',
 };

@@ -238,7 +238,7 @@ export interface Grade {
   solve?: {
     strategy: 'tight' | 'loose' | 'safety_factor';
     tolerance_pct?: number;
-    free: Array<'tms' | 't_delay' | 'I_pu'>;
+    free: Array<'tms' | 't_delay' | 'I_pickup'>;
   };
   node: GradeBlock;
 }

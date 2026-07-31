@@ -90,6 +90,9 @@ export function helpAt(view: EditorView, pos: number): {
   summary: string;
   example?: string;
 } | null {
+  /* Asked about a position the document does not have -- a stale
+   * hover after an edit shortened it -- there is nothing to explain. */
+  if (pos < 0 || pos > view.state.doc.length) return null;
   const w = wordAt(view, pos);
   if (!w) return null;
   const e = KEYWORD_HELP[w.text] ?? CURVE_HELP[w.text];
@@ -100,6 +103,9 @@ export function helpAt(view: EditorView, pos: number): {
 }
 
 export function tcHoverSource({ view, pos }: HoverPos): Tooltip | null {
+  /* Asked about a position the document does not have -- a stale
+   * hover after an edit shortened it -- there is nothing to explain. */
+  if (pos < 0 || pos > view.state.doc.length) return null;
   const w = wordAt(view, pos);
   if (!w) return null;
   const e = KEYWORD_HELP[w.text] ?? CURVE_HELP[w.text];

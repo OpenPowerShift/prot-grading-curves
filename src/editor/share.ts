@@ -47,7 +47,13 @@ export function decodeSource(encoded: string): string | null {
     const padded = encoded.replace(/-/g, '+').replace(/_/g, '/');
     const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
+    /*
+     * `fatal` so that arbitrary bytes are refused rather than decoded
+     * into replacement characters. Any string at all is valid base64
+     * of *something*, so without this a mistyped fragment loaded a
+     * document of mojibake and called it the user's study.
+     */
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
     return null;
   }

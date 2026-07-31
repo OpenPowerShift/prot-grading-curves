@@ -247,12 +247,18 @@ system {
         "LV" { V  = 11.0 kV; }
     }
     base_S       = 25 MVA;
+    I_base       = 1000 A;         # the 1.0 pu current, for `pu` pickups
     I_units      = "primary";      # study-wide default for pickups
 }
 ----
 
 Voltage levels are named, and the processor derives turns ratios from
 them. There is deliberately no transformer block.
+
+`I_base` is what `1.0 pu` means. A pickup written `I_pickup = 1.2 pu`
+is resolved against it, which lets a settings sheet quoted in per-unit
+be transcribed as written rather than converted by hand -- and the
+conversion is then in the file for the next reader to check.
 
 === faults
 
@@ -438,6 +444,45 @@ element 51 {                                    # a published point table
 linearly. Use them for anything the catalogue does not cover -- ACB
 trip units, thermal curves, manufacturer data.
 
+==== Reset, direction, and the settings that are not a curve
+
+Three element fields describe behaviour a characteristic curve cannot:
+
+[source,tc]
+----
+element 51 {
+    function    = "phase_oc";
+    curve       = ansi.mi;
+    I_pickup    = 480 A;
+    tms         = 1.0;
+
+    reset       = disk_emulation;   # instant, dependent, disk_emulation
+    t_reset     = 6 s;
+
+    directional = true;
+    char_angle  = 45 deg;
+}
+----
+
+`reset` is what the element does *after* a fault clears but before it
+has finished timing. `instant` drops out at once, which is what a
+numeric relay does unless told otherwise. `dependent` and
+`disk_emulation` unwind over `t_reset`, the way an induction disc
+spins back -- and on a reclosing scheme that memory decides whether the
+second shot lands on a partly-run disc. A curve whose standard leaves
+the reset time to the manufacturer cannot take `dependent`; the tool
+says so rather than inventing one.
+
+`directional = true` restricts the element to faults in front of it,
+which is what stops one of a parallel pair tripping for a fault on the
+other. `char_angle` is where its maximum torque sits relative to the
+polarising quantity. The relay itself carries `direction = forward`,
+`reverse` or `none` -- `reverse` for an element looking back into the
+busbar behind it, `none` for a non-directional backup that must not
+care which way the current flows.
+
+Sample 15 grades a parallel pair using all of these.
+
 === What an element measures
 
 A relay does not measure "the fault current". Which current the pickup
@@ -618,8 +663,21 @@ device "spur_fuse_50T" {
     voltage   = "LV";        # the level it sits on
     rating_V  = 12 kV;       # its insulation rating -- a different thing
     rating_I  = 50 A;
+    rating_S  = 1.25 MVA;    # for plant rated in apparent power
+    reference = "Mersen T-link data sheet, table 2";
 }
 ----
+
+The three ratings are independent and none of them is read as a curve:
+they are what the equipment is *called*, printed in the legend so a
+reader can check the device on the sheet against the one in the
+schedule. `rating_S` is the natural one for a transformer, whose damage
+curve is a `transformer_damage` device.
+
+`reference` records where a published table came from. A number nobody
+can trace is a number nobody can check, and a damage curve transcribed
+from a data sheet three revisions ago is the kind of thing that
+survives unnoticed for years. Sample 14 carries one on every device.
 
 === grade
 
@@ -661,8 +719,16 @@ grade {
 ----
 
 `tight` takes the smallest `tms` meeting the margin; `loose` rounds up
-to the next standard step. The solved value is marked `(auto)` in the
+to the next standard step; `safety_factor` aims past the target by a
+margin of its own, for a study that has to survive settings drifting
+before the next review. The solved value is marked `(auto)` in the
 legend.
+
+`solve` *reports* the setting that would meet `margin_target`; it does
+not change the relay. The dial in the file stays the engineer's, and
+the report says whether the tool would have chosen the same -- which is
+the useful direction, since a setting nobody chose is a setting nobody
+can defend.
 
 === combine
 
@@ -764,6 +830,21 @@ Both put the arrow in the same place on an `I2` sheet: the first names
 the component, the second gives the phase current and lets the type
 derive it. `at_I` still means phase current, so nothing written
 before this moves.
+
+Every component has a spelling: `at_I` for phase, `at_I1`, `at_I2`,
+`at_I0`, and `at_residual` for `3*I0`. There is also `at_t`, which
+places the mark by *time* rather than current -- for reading a curve
+the other way round, "what current gives me 300 ms?".
+
+[source,tc]
+----
+annotate { on_curve = R_TEE:51G; at_residual = 2.4 kA; label = "51G"; }
+annotate { on_curve = R_RING:46; at_I1       = 800 A;  label = "I1"; }
+annotate { on_curve = R_RING:51G; at_I0      = 800 A;  label = "I0 not 3I0"; }
+annotate { on_curve = R_TEE:51;  at_t        = 300 ms; label = "at 300 ms"; }
+----
+
+Sample 17 draws all of them across four sheets of one study.
 
 `voltage` names the level the figure is read at, defaulting to the
 view's. Without it a bare current was taken in *each* referenced
@@ -1064,6 +1145,40 @@ view {
 Set the bounds explicitly if the automatic range is unhelpful --
 auto-ranging can run wide and squash the curves.
 
+==== Padding, a second axis, and secondary amps
+
+Where fixed bounds are too rigid -- a study still being settled, whose
+curves move as pick-ups change -- pad the fitted range instead. Each
+value is a factor: `1.5` leaves half again as much room.
+
+[source,tc]
+----
+view {
+    voltage          = "HV";
+    current_pad      = 1.5;    # both ends of the current axis
+    current_pad_low  = 2;      # or one end at a time
+    current_pad_high = 1.2;
+    time_pad         = 1.5;
+    time_pad_low     = 2;
+    time_pad_high    = 2;
+
+    two_axes         = true;   # repeat the time scale down the right edge
+    reference_ct     = R_FDR;  # whose CT ratio secondary amps are quoted in
+}
+----
+
+`two_axes` repeats the time scale on the right-hand edge, so a wide
+sheet can be read without tracking back across it.
+
+`reference_ct` matters when `axis = "secondary"` or the legend quotes
+secondary amps: a sheet carrying several relays has several CT ratios,
+and the sheet has to say which one its secondary figures are in. Name
+the relay whose panel the reader will have in front of them.
+
+`axis` itself takes `"primary"` (the default), `"secondary"`, or
+`"multiples"` -- the last drawing the abscissa in multiples of pickup,
+which is how a relay manual states its curves.
+
 === view -- one per sheet
 
 A study may declare several views. Each is one sheet: a phase sheet and
@@ -1160,6 +1275,178 @@ Three levers, in the order they matter:
 A legend too tall for its space sheds detail rather than running off
 the page: make and model first, then settings, then names only, and
 finally `+N more not shown`.
+
+==== Every page option
+
+The sub-blocks below are all optional and all independent. Sample 16
+sets every one of them in a single sheet if you would rather read it as
+a file.
+
+*Paper and theme*
+
+[source,tc]
+----
+page {
+    size        = "A3";        # A0..A5, Letter, Legal, Tabloid
+    orientation = "landscape";
+    theme       = "monochrome";   # light, dark, monochrome, print
+    watermark   = "UNISSUED — FOR COMMENT";
+    stretch     = false;
+    border      = true;
+    margins_mm  = { top = 14; right = 12; bottom = 16; left = 18; };
+}
+----
+
+`theme` picks the ink set. `light` and `dark` are for screens; `print`
+drops to inks that survive a mono plan copier; `monochrome` goes
+further and distinguishes curves by dash pattern alone, for a drawing
+that will be faxed or photocopied repeatedly.
+
+`watermark` prints diagonally across the plot. It is for status --
+_preliminary_, _superseded_, _for comment_ -- and is deliberately hard
+to remove by accident.
+
+`margins_mm` takes either one number for all four sides or a block
+naming each. It is the *paper* margin, used when exporting to PDF.
+
+*Legend*
+
+[source,tc]
+----
+page {
+    legend = {
+        show     = true;
+        style    = "column";       # column, inside, direct, none
+        position = "top_right";    # top_right, top_left, bottom_right,
+                                   # bottom_left, right, left
+        title    = "Protection";
+        color    = "#222222";
+        swatch   = "line";         # line, box, circle
+        currents = "both";         # primary, secondary, both
+        notes    = true;
+    };
+}
+----
+
+`swatch` is the mark beside each entry. `line` is the default and the
+only one that can carry the curve's own dash pattern -- which is half
+of how two curves are told apart once the palette runs out -- so
+`box` and `circle` are right only where every curve has its own hue.
+
+`currents` decides whether pick-ups are quoted in primary amps,
+secondary amps, or both. A panel headed one way and figured the other
+is off by the CT ratio, which is an error that ends up in a relay.
+
+*Axes and grid*
+
+[source,tc]
+----
+page {
+    axes = {
+        color         = "#333333";
+        grid_color    = "#d8d8d8";
+        label_color   = "#444444";
+        label_size_px = 11;
+        tick_size_px  = 9;
+        frame         = true;
+        mirror        = false;     # repeat the scales top and right
+    };
+    scale = {
+        auto         = true;
+        tick_density = "normal";   # sparse, normal, dense
+    };
+}
+----
+
+Keep the grid recessive. It is there to be read *off*, not looked at,
+and a grid as dark as the curves makes a sheet harder to use.
+
+`scale` can also fix the window outright with `x_min`, `x_max`,
+`y_min` and `y_max`, though `view { current_min ... }` is the usual
+place for that.
+
+*Curves, points and leaders*
+
+[source,tc]
+----
+page {
+    curves = {
+        palette       = "okabe_ito";   # default, okabe_ito, high_contrast,
+                                       # grayscale, ieee, monochrome
+        line_width_px = 1.8;
+        auto_color    = true;
+    };
+    points = {
+        color   = "#111111";
+        shape   = "circle";       # circle, square, diamond, triangle, cross, x
+        size_px = 9;
+        outline = true;           # ring in the page colour, so a marker on a
+                                  # curve reads as being in front of it
+    };
+    leaders = {
+        show            = true;
+        style           = "arrow";     # line, arrow, dot
+        width_px        = 0.9;
+        color           = "#666666";
+        label_offset_px = 14;          # how far a moved label sits from its mark
+    };
+}
+----
+
+`palette` is worth a moment. `default` is a general-purpose set;
+`okabe_ito` is chosen to stay distinguishable under the common forms of
+colour blindness; `high_contrast` is for a projector or a poor screen;
+`ieee` follows the convention of the standards' own figures;
+`grayscale` and `monochrome` are for print, the latter leaning on dash
+patterns rather than lightness.
+
+`auto_color` lets the tool assign hues in slot order. Turn it off and
+every curve needs its own `color`.
+
+*Title block and footer*
+
+[source,tc]
+----
+page {
+    title = {
+        text         = "[meta.project] — [meta.study]";
+        subtitle     = "Drawing [meta.drawing]";
+        align        = "left";        # left, center, right
+        color        = "#000000";
+        font_size_px = 15;
+    };
+    footer = {
+        left         = "[meta.drawing] rev [meta.revision]";
+        center       = "[meta.engineer] · [meta.date]";
+        right        = "Sheet [page] of [of]";
+        font_size_px = 8;
+        color        = "#555555";
+        border       = true;
+    };
+}
+----
+
+Both expand macros: `[meta.<key>]` reads any key from the `meta` block
+-- including ones you invented, since `meta` carries anything through
+-- and `[date]` is today. `[page]` and `[of]` paginate a PDF export;
+a single SVG has no pagination to report and prints `?`.
+
+With `border = true` the footer is drawn along the foot of the title
+block, beside the drawing's own fields rather than instead of them.
+
+*Rules*
+
+[source,tc]
+----
+page {
+    faults = { style = "dashed"; color = "#c0392b"; width_px = 1.4; labels = true; };
+    times  = { style = "solid";  color = "#1d7a4c"; width_px = 1.6; labels = true; };
+}
+----
+
+Both take `solid`, `dashed` or `dotted`. They are drawn in different
+inks by default, so it is never a question which axis a rule belongs
+to. `labels = false` keeps the rule and drops its caption.
 
 ==== Notes, and getting the space back
 

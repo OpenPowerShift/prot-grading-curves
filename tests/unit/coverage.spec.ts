@@ -84,6 +84,40 @@ describe('the offered vocabulary is demonstrated', () => {
   });
 });
 
+describe('the offered vocabulary is documented', () => {
+  /*
+   * The example proves a key works; the guide and the spec say what it
+   * is *for*. A key with neither is a key only its author can use, and
+   * every one of these three drifted from the others at some point --
+   * the spec named keys the parser had renamed, the guide described a
+   * `page` block half of which did nothing, and completions offered a
+   * field that had been removed a release earlier.
+   */
+  const guide = readFileSync(join(repoRoot(), 'docs', 'guide.adoc'), 'utf8');
+  const specDir = join(repoRoot(), 'spec', 'sections');
+  const spec = readdirSync(specDir).filter((f) => f.endsWith('.adoc'))
+    .map((f) => readFileSync(join(specDir, f), 'utf8')).join('\n');
+
+  const mentions = (text: string, k: string): boolean =>
+    new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text);
+
+  const everyField = (): string[] =>
+    [...new Set(Object.values(BLOCK_FIELDS).flat()), ...TOP_BLOCK_KEYWORDS];
+
+  const everyValue = (): string[] =>
+    Object.values(FIELD_VALUES).flat().map((c) => c.value.replace(/^"|"$/g, ''));
+
+  for (const [name, text] of [['guide', guide], ['spec', spec]] as const) {
+    it(`names every offered key in the ${name}`, () => {
+      expect(everyField().filter((k) => !mentions(text, k))).toEqual([]);
+    });
+
+    it(`names every offered value in the ${name}`, () => {
+      expect(everyValue().filter((v) => !mentions(text, v))).toEqual([]);
+    });
+  }
+});
+
 describe('every example still means something', () => {
   /*
    * Coverage is worthless if the file that provides it does not parse.

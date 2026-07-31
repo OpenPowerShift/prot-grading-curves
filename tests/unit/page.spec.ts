@@ -68,10 +68,25 @@ describe('page.footer', () => {
     expect(svg).toContain('? / ?');
   });
 
-  it('gives way to the title block on a bordered sheet', () => {
-    const svg = render('border = true; footer { left = "[meta.project]"; }');
-    /* The title block already carries the project; no duplicate footer. */
-    expect((svg.match(/Page options/g) ?? []).length).toBe(1);
+  it('is drawn along the foot of a bordered title block', () => {
+    /*
+     * This reverses an earlier rule that dropped the footer entirely on
+     * a bordered sheet, to avoid repeating what the title block already
+     * said. It over-applied: an author who writes `right = "Sheet 1 of
+     * 1"` or a drawing number got nothing at all, and no word about it.
+     * Whether a slot duplicates a title-block field is the author's
+     * business; silently discarding their instruction is not.
+     */
+    const svg = render('border = true; footer { right = "Job 4471"; }');
+    expect(svg).toContain('Job 4471');
+  });
+
+  it('leaves the title block\'s own fields in place', () => {
+    const svg = render('border = true; footer { right = "Job 4471"; }');
+    /* Both are present: the strip names the drawing, the footer says
+     * whatever the author wanted said. */
+    expect(svg).toContain('ENGINEER');
+    expect(svg).toContain('Job 4471');
   });
 });
 

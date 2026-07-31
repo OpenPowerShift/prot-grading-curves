@@ -802,10 +802,22 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * layer.
    */
   const pageTitle = opts.page?.title;
-  const titleText = opts.view?.title
-    ?? (typeof pageTitle === 'string' ? pageTitle : pageTitle?.text);
-  const subtitleText = opts.view?.subtitle
-    ?? (typeof pageTitle === 'string' ? undefined : pageTitle?.subtitle);
+  /*
+   * `[meta.*]`, `[date]`, `[page]` and `[of]` are substituted here as
+   * they are in the footer. The footer expanded them and the title did
+   * not, so a heading written to the documented convention printed the
+   * macro rather than the project it names -- and the one place the
+   * reader is most likely to look.
+   */
+  const titleText = expandMacros(
+    opts.view?.title ?? (typeof pageTitle === 'string' ? pageTitle : pageTitle?.text) ?? '',
+    study,
+  ) || undefined;
+  const subtitleText = expandMacros(
+    opts.view?.subtitle
+      ?? (typeof pageTitle === 'string' ? undefined : pageTitle?.subtitle) ?? '',
+    study,
+  ) || undefined;
 
   const leftMargin = 92 + sheetInset;
   const rightMargin = (legendMode === 'column' ? 330 : (mirrorAxes ? 104 : 58)) + sheetInset;
@@ -1809,6 +1821,34 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `fill="${th.foreground}">${escapeXml(value)}</text>`,
       );
     }
+
+    /*
+     * A declared footer, drawn along the foot of the title block.
+     *
+     * The unbordered layout puts it under the plot; bordered, that
+     * space is the title block, and the footer used to be dropped
+     * without a word -- an author who wrote three slots got the
+     * conventional meta fields and no indication their instruction had
+     * been ignored. Drawn here, both fit: the strip's own fields name
+     * the drawing, the author's line says whatever they wanted said.
+     */
+    const tbFooter = opts.page?.footer;
+    if (tbFooter) {
+      const footY = tbY + titleBlockH - 6;
+      const slots: Array<[string | undefined, number, string]> = [
+        [tbFooter.left, fx + padX, 'start'],
+        [tbFooter.center, fx + fw / 2, 'middle'],
+        [tbFooter.right, fx + fw - padX, 'end'],
+      ];
+      for (const [raw, x, anchor] of slots) {
+        if (!raw) continue;
+        out.push(
+          `<text x="${x}" y="${footY}" text-anchor="${anchor}" ` +
+          `font-size="${tbFooter.font_size_px ?? FONT_DETAIL - 1}" ` +
+          `fill="${tbFooter.color ?? th.label}">${escapeXml(expandMacros(raw, study))}</text>`,
+        );
+      }
+    }
   } else if (titleText) {
     /* Bounded by the sheet, so a long heading wraps instead of
      * running off the right-hand edge. */
@@ -1961,6 +2001,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   /** Annotations dropped because their anchor is off the window. */
   const offPlotAnnotations: string[] = [];
+
+  /*
+   * House style for leader lines. The `page { leaders }` block was
+   * parsed, validated and offered in completions while being read by
+   * nothing, so a drawing office that set its leader ink and weight got
+   * the defaults and no indication otherwise.
+   */
+  const leaderStyle = opts.page?.leaders;
+  const leaderColour = (fallback: string): string => leaderStyle?.color ?? fallback;
+  const leaderWidth = (fallback: number): number => leaderStyle?.width_px ?? fallback;
+  const leaderGap = (fallback: number): number => leaderStyle?.label_offset_px ?? fallback;
 
   /* pickup ticks, just below the axis */
   for (const c of curves) {
@@ -2178,7 +2229,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       emitted.push(
         `<path d="M${anchor.x.toFixed(1)} ${anchor.y.toFixed(1)} ` +
         `L${from.toFixed(1)} ${(placement.rect.y + placement.rect.h / 2).toFixed(1)}" ` +
-        `fill="none" stroke="${colour}" stroke-width="0.8" stroke-opacity="0.6"/>`,
+        `fill="none" stroke="${leaderColour(colour)}" ` +
+        `stroke-width="${leaderWidth(0.8)}" stroke-opacity="0.6"/>`,
       );
     }
     emitted.push(
@@ -2307,8 +2359,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * picks up exactly the points this set does not hold. */
     if (!onPlot) continue;
 
-    /* A marked point is not a fault current; it gets its own ink. */
-    const colour = point.color ?? th.point;
+    /*
+     * A marked point is not a fault current; it gets its own ink. The
+     * point's own declaration wins, then the page's house style, then
+     * the theme -- the `page { points }` block was parsed, validated
+     * and offered in completions while being read by nothing, so a
+     * declared house style for markers did nothing at all.
+     */
+    const pagePoints = opts.page?.points;
+    const colour = point.color ?? pagePoints?.color ?? th.point;
     out.push(
       `<g class="tc-point" data-point="${escapeXml(oneLine(point.label ?? point.id))}" ` +
       `data-current="${I_view}" data-time="${point.t_s}" ` +
@@ -2317,7 +2376,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     /* Drawn after the curves, and haloed in the page colour, so a point
      * marking a spot *on* a characteristic reads as being in front of
      * it rather than merging with it. */
-    out.push(pointMarker(point.shape ?? 'cross', px, py, colour, th.background));
+    out.push(pointMarker(
+      point.shape ?? pagePoints?.shape ?? 'cross',
+      px, py, colour,
+      pagePoints?.outline === false ? undefined : th.background,
+      pagePoints?.size_px,
+    ));
     /*
      * The marker is an obstacle too. A caption printed across the very
      * mark it names is the same fault as one printed along a curve, and
@@ -2672,7 +2736,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         anchor: { x: px, y: py },
         size,
         prefer: ['above', 'right', 'left', 'below'],
-        gap: 24,
+        gap: leaderGap(24),
       });
 
       /*
@@ -2688,7 +2752,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `<path d="M${px.toFixed(1)} ${py.toFixed(1)} ` +
         `L${elbowX.toFixed(1)} ${labelCy.toFixed(1)} ` +
         `L${nearX.toFixed(1)} ${labelCy.toFixed(1)}" ` +
-        `fill="none" stroke="${colour}" stroke-width="1"/>`,
+        `fill="none" stroke="${leaderColour(colour)}" stroke-width="${leaderWidth(1)}"/>`,
       );
       out.push(
         `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
@@ -3824,8 +3888,10 @@ function pointMarker(
    * is the ordinary way to show which of two marks is on top.
    */
   surface?: string,
+  /** Half-size in px, from `page { points = { size_px } }`. */
+  size?: number,
 ): string {
-  const r = 5;
+  const r = size != null && size > 0 ? size / 2 : 5;
   const stroke = `stroke="${colour}" stroke-width="1.8" fill="none"`;
   const filled = `fill="${colour}" stroke="none"`;
 
@@ -3964,6 +4030,8 @@ function arrowHeadH(px: number, py: number, direction: 1 | -1, colour: string): 
 function expandMacros(text: string, study: Study): string {
   return text.replace(/\[([\w.]+)\]/g, (match, key: string) => {
     if (key === 'date') return new Date().toISOString().slice(0, 10);
+    /* Spec: pagination macros resolve to "?" for a single SVG, which
+     * has no pagination to report. The PDF exporter paginates. */
     if (key === 'page' || key === 'of') return '?';
     if (key.startsWith('meta.')) {
       const value = study.meta[key.slice(5)];

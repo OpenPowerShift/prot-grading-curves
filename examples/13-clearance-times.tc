@@ -1,0 +1,197 @@
+# Sample 13 — Clearance times: grading against the other axis
+#
+# A coordination study is usually read left to right: at this current,
+# does the downstream device clear before the upstream one? But a study
+# is also judged UP AND DOWN. An arc-flash boundary, a grid-code
+# disconnection time, a transformer through-fault withstand — each is a
+# time the protection must beat, at a current someone has already fixed.
+#
+# `times { ... }` puts those on the sheet as horizontal rules, so the
+# requirement sits beside the characteristic that has to meet it instead
+# of in the reader's head.
+#
+# In the playground, press ? (or Ctrl-Space) for completions: on a blank
+# line it lists what the enclosing block accepts, and after an `=` it
+# lists that field's values — and only the ones legal where you are.
+
+meta {
+    project  = "Kingsford 33/11 kV";
+    study    = "Clearance times against the incomer";
+    engineer = "R. Adeyemi";
+    date     = "2026-08-01";
+    revision = "C";
+    margin   = 0.30 s;
+}
+
+system {
+    voltages {
+        "HV" { V = 33.0 kV; description = "33 kV incoming"; }
+        "MV" { V = 11.0 kV; description = "11 kV switchboard"; }
+    }
+}
+
+faults {
+    "Board max" { I = 9.4 kA; type = three_phase;        voltage = "MV"; }
+    "Board min" { I = 2.1 kA; type = two_phase;          voltage = "MV"; }
+    "Earth max" { I = 1.6 kA; type = single_phase_earth; voltage = "MV"; }
+}
+
+# ---- The requirements, as horizontal rules. --------------------------
+#      A time needs no voltage level: a second is a second on every
+#      winding, which is the one way this is simpler than a fault.
+#
+#      `at_I` says where along the rule to write its name. The rule
+#      spans the whole plot, so its caption has no natural anchor and
+#      goes at the left-hand end unless told otherwise — put it beside
+#      the curve the requirement actually bites on.
+times {
+    "Arc flash boundary" {
+        t           = 500 ms;
+        at_I        = 6 kA;
+        description = "Above this, PPE category rises a level";
+    }
+    "Grid code clearance" {
+        t           = 800 ms;
+        at_I        = 3 kA;
+        description = "DNO connection agreement, 11 kV";
+    }
+    "Transformer withstand" {
+        t           = 4 s;
+        at_I        = 1.2 kA;
+        description = "ONAN 10 MVA, category II through-fault";
+    }
+}
+
+# ---- The board feeder. -----------------------------------------------
+relay R_FDR {
+    name      = "11 kV feeder";
+    maker     = "SEL";
+    model     = "751";
+    reference = "Panel 3B, relay 2";
+    voltage   = "MV";
+    ct_ratio  = 600/5;
+
+    element 51 {
+        name     = "Phase TOC";
+        function = "phase_oc";
+        curve    = iec.vi;
+        I_pickup = 720 A;
+        tms      = 0.14;
+
+        # The board cannot deliver more than 9.4 kA, so the curve stops
+        # there. Drawn to the frame it would invite a margin to be read
+        # at a fault this network cannot produce.
+        current_max = 9.4 kA;
+    }
+
+    element 51G {
+        name     = "Ground TOC";
+        function = "earth_fault";
+        curve    = iec.si;
+        I_pickup = 120 A;
+        tms      = 0.10;
+        current_max = 1.6 kA;
+    }
+}
+
+# ---- The incomer it grades against. ----------------------------------
+relay R_INC {
+    name     = "33/11 kV incomer";
+    maker    = "ABB";
+    model    = "REF615";
+    voltage  = "HV";
+    ct_ratio = 300/5;
+
+    element 51 {
+        name     = "Phase TOC";
+        function = "phase_oc";
+        curve    = iec.vi;
+        I_pickup = 260 A;
+        tms      = 0.40;
+        current_max = 3.2 kA;
+    }
+}
+
+grade {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board max";
+    margin  = 0.30 s;
+    comment = "the case the arc-flash boundary is written for";
+}
+
+grade {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board min";
+    margin  = 0.30 s;
+}
+
+# ---- Marking where a requirement is met. -----------------------------
+#      `style = tag` is bare text beside the point; `pin` is a dot on
+#      the curve with the label alongside; `leader` (the default) draws
+#      an elbowed line when the label has to move to find room.
+annotate {
+    on_curve = R_FDR:51;
+    at_I     = 9.4 kA;
+    label    = "Feeder clears the board fault";
+    style    = tag;
+    coords   = true;
+}
+
+annotate {
+    on_curve = R_INC:51;
+    at_I     = 3.2 kA;
+    label    = "Incomer backup";
+    style    = pin;
+}
+
+# ---- The margin the study exists to prove. ---------------------------
+annotate {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board max";
+    label   = "CTI";
+}
+
+# ---- A marked point taken from the fault study. ----------------------
+point "Withstand corner" {
+    I     = 1.2 kA;
+    t     = 4 s;
+    label = "Transformer withstand corner";
+    shape = diamond;
+    color = "#8e44ad";
+}
+
+point "Inrush" {
+    I     = 2.4 kA;
+    t     = 100 ms;
+    label = "Transformer inrush, 12x for 100 ms";
+    shape = circle;
+}
+
+page {
+    size        = "A3";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+
+    # Rules are styled independently, so it is never a question which
+    # axis a given rule belongs to.
+    faults = { style = "dashed"; labels = true; };
+    times  = { style = "solid"; color = "#1d7a4c"; width_px = 1.6; labels = true; };
+
+    scale  = { tick_density = "sparse"; };
+
+    title  = { text     = "Kingsford 33/11 kV — clearance times";
+               subtitle = "Feeder and incomer against arc-flash, grid-code and withstand limits"; };
+}
+
+view {
+    voltage     = "MV";
+    quantity    = any;
+    current_min = 50 A;
+    current_max = 30 kA;
+    time_min    = 20 ms;
+    time_max    = 20 s;
+}

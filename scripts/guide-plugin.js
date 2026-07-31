@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = resolve(HERE, '..', 'docs');
 const GUIDE_FILE = join(DOCS_DIR, 'guide.adoc');
+const TUTORIAL_FILE = join(DOCS_DIR, 'tutorial.adoc');
 
 const VIRTUAL_ID = 'virtual:tc-guide';
 const RESOLVED_ID = '\0' + VIRTUAL_ID;
@@ -35,7 +36,7 @@ const RESOLVED_ID = '\0' + VIRTUAL_ID;
  * arbitrary files. The guide uses no includes, but the setting costs
  * nothing and keeps the plugin usable for the spec too.
  */
-async function renderGuide() {
+async function renderGuide(file = GUIDE_FILE, fallbackTitle = 'tc-curves user guide') {
   /*
    * Two export shapes in the wild: v2 default-exports a factory that
    * returns the API, v3 exports `loadFile` and friends directly.
@@ -48,7 +49,7 @@ async function renderGuide() {
 
   /* v3's API is asynchronous; v2's returns the document directly, and
    * awaiting a non-promise is harmless. */
-  const doc = await asciidoctor.loadFile(GUIDE_FILE, {
+  const doc = await asciidoctor.loadFile(file, {
     safe: 'safe',
     base_dir: DOCS_DIR,
     attributes: {
@@ -65,7 +66,7 @@ async function renderGuide() {
   const html = await doc.convert();
 
   return {
-    title: doc.getDocumentTitle() ?? 'tc-curves user guide',
+    title: doc.getDocumentTitle() ?? fallbackTitle,
     revision: String(doc.getAttribute('version') ?? ''),
     revdate: String(doc.getAttribute('revdate') ?? ''),
     html,
@@ -133,8 +134,12 @@ export function guidePlugin() {
       for (const file of specFiles()) this.addWatchFile(file);
 
       try {
-        const guide = await renderGuide();
-        return `export default ${JSON.stringify(guide)};`;
+        const [guide, tutorial] = await Promise.all([
+          renderGuide(),
+          renderGuide(TUTORIAL_FILE, 'tc-curves tutorial'),
+        ]);
+        return `export default ${JSON.stringify(guide)};\n`
+          + `export const tutorial = ${JSON.stringify(tutorial)};`;
       } catch (error) {
         /*
          * A spec that fails to convert must not take the whole app

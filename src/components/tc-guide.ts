@@ -21,13 +21,21 @@ export class TcGuide extends LitElement {
   /** Whether the overlay is showing. Owned by the host app. */
   @property({ type: Boolean }) open = false;
 
-  @state() private guide: Guide | null = null;
+  /** The document on screen. Tutorial first: it is where a newcomer
+   * should start, and a reader who wants the reference will switch. */
+  @state() private which: 'tutorial' | 'guide' = 'tutorial';
+  @state() private docs: { tutorial: Guide; guide: Guide } | null = null;
   @state() private failed = '';
   @state() private filter = '';
   /** Anchor of the section currently under the reader. */
   @state() private active = '';
 
   private observer: IntersectionObserver | null = null;
+
+  /** Whichever document is showing. */
+  private get guide(): Guide | null {
+    return this.docs ? this.docs[this.which] : null;
+  }
 
   static styles = css`
     :host {
@@ -76,6 +84,23 @@ export class TcGuide extends LitElement {
       background: var(--tc-bg-sunken, #f6f5f2);
     }
     header h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    header .which { display: flex; gap: 2px; }
+    header .which button {
+      font: inherit;
+      font-size: 12px;
+      padding: 3px 10px;
+      border: 1px solid var(--tc-border, #d8d7d2);
+      background: var(--tc-bg, #fff);
+      color: var(--tc-fg-muted, #6b6a64);
+      cursor: pointer;
+    }
+    header .which button:first-child { border-radius: 4px 0 0 4px; }
+    header .which button:last-child { border-radius: 0 4px 4px 0; }
+    header .which button.on {
+      background: var(--tc-accent, #2a78d6);
+      border-color: var(--tc-accent, #2a78d6);
+      color: #fff;
+    }
     header .rev {
       font-size: 12px;
       color: var(--tc-fg-muted, #6b6a64);
@@ -277,15 +302,34 @@ export class TcGuide extends LitElement {
    * is fetched only when the reader actually opens the guide.
    */
   private async ensureLoaded(): Promise<void> {
-    if (this.guide || this.failed) return;
+    if (this.docs || this.failed) return;
     try {
       const mod = await import('virtual:tc-guide');
-      this.guide = mod.default;
+      this.docs = { guide: mod.default, tutorial: mod.tutorial };
       await this.updateComplete;
       this.watchHeadings();
     } catch (error) {
       this.failed = (error as Error).message;
     }
+  }
+
+  /**
+   * Show one of the two documents.
+   *
+   * The filter and the scroll position belong to the document being
+   * left, so both are cleared; carrying a half-typed filter across
+   * would hide most of whatever the reader just asked for.
+   */
+  private show(which: 'tutorial' | 'guide'): void {
+    if (this.which === which) return;
+    this.which = which;
+    this.filter = '';
+    this.active = '';
+    void this.updateComplete.then(() => {
+      const body = this.renderRoot.querySelector('.body');
+      if (body) body.scrollTop = 0;
+      this.watchHeadings();
+    });
   }
 
   /**
@@ -339,10 +383,19 @@ export class TcGuide extends LitElement {
       <div class="scrim" @click=${() => this.close()}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-label="User guide">
         <header>
-          <h2>${this.guide?.title ?? 'User guide'}</h2>
+          <h2>${this.guide?.title ?? 'Help'}</h2>
           ${this.guide?.revision
             ? html`<span class="rev">${this.guide.revision} · ${this.guide.revdate}</span>`
             : null}
+          <div class="which" role="tablist">
+            ${(['tutorial', 'guide'] as const).map((id) => html`
+              <button role="tab"
+                      class=${this.which === id ? 'on' : ''}
+                      aria-selected=${this.which === id}
+                      @click=${() => this.show(id)}>
+                ${id === 'tutorial' ? 'Tutorial' : 'Reference'}
+              </button>`)}
+          </div>
           <span class="spacer"></span>
           <input class="search"
                  type="search"

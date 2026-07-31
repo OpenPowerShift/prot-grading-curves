@@ -121,14 +121,24 @@ npm run lint       # eslint
 
 === Documentation
 
-Two documents, deliberately separate:
+Three documents, deliberately separate:
+
+`docs/tutorial.adoc`:: The *tutorial*. A walkthrough that starts with a
+single curve and adds one idea at a time -- a second relay, a fault to
+grade against, secondary amps, multi-stage elements, earth faults,
+fuses, annotations, required times, the drawing itself, several sheets
+-- and finishes by introducing scenarios, which is where a study stops
+being one number per fault. Every step is a file you can paste into the
+playground. Read this first if you have not written a `.tc` file
+before.
 
 `docs/guide.adoc`:: The *user guide*. Example-led, about writing
 studies, and a single self-contained file -- so it can be read
 straight through, or handed whole to a language model asked to produce
-a `.tc` study. This is what the playground's *Guide* button opens,
-converted by Asciidoctor at build time
-(`scripts/guide-plugin.js`), with a contents list and a filter.
+a `.tc` study. The playground's *Guide* button opens both,
+converted by Asciidoctor at build time (`scripts/guide-plugin.js`),
+with a contents list and a filter; a *Tutorial* / *Reference* switch in
+the header picks between them, and the tutorial is what opens first.
 
 `spec/spec.adoc`:: The *normative specification*, assembled from
 `spec/sections/`. Grammar productions, curve constant tables,
@@ -136,8 +146,11 @@ conformance requirements. It answers what the language *is*, which is
 the wrong thing to put in front of someone trying to author a file.
 Where the two differ, the spec wins.
 
-The guide's own code blocks are checked against the real parser by
-`tests/unit/guide.spec.ts`, so an example cannot teach a mistake.
+The code blocks in both are checked against the real parser by
+`tests/unit/guide.spec.ts`, so an example cannot teach a mistake. A
+further test requires every key and value the editor offers to appear
+in the guide, in the spec, and in at least one worked example, so the
+four cannot drift apart again.
 Conversion runs in the build, not the browser -- Asciidoctor itself is
 never shipped, only the HTML it produced, in a chunk fetched on first
 open.

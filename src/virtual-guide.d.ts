@@ -23,4 +23,13 @@ declare module 'virtual:tc-guide' {
 
   const guide: Guide;
   export default guide;
+
+  /**
+   * The tutorial -- `docs/tutorial.adoc`, converted the same way.
+   *
+   * A walkthrough that builds one study up step by step, where the
+   * guide is a reference organised by block. Both are shipped so a
+   * reader can start with whichever suits them.
+   */
+  export const tutorial: Guide;
 }

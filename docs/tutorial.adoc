@@ -1,0 +1,545 @@
+= tc-curves tutorial
+:toc: macro
+:sectanchors:
+:sectlinks:
+
+A time-current coordination study, built up one step at a time.
+
+Every step is a working file. Paste it into the playground and it draws
+something; the next step adds one idea to it. By the end you will have a
+complete substation study, and the last section introduces the one
+feature that changes how you think about the rest.
+
+If you want the reference rather than the walkthrough, read the user
+guide -- the *Reference* tab above, or `docs/guide.adoc`. If you want to
+know what a particular key does while you are typing, press `?`.
+
+toc::[]
+
+== 1. One curve
+
+The smallest useful file is a voltage level and a relay:
+
+[source,tc]
+----
+system {
+    voltages {
+        "MV" { V = 11 kV; }
+    }
+}
+
+relay R_FDR {
+    voltage  = "MV";
+    ct_ratio = 400/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pickup = 480 A;
+        tms      = 0.10;
+    }
+}
+----
+
+That draws one inverse-time curve.
+
+Reading it:
+
+* `system.voltages` names the levels. You refer to them by name from
+  then on, and the tool works out turns ratios between them.
+* `relay` is a physical relay; `element` is one protection function
+  inside it. `51` is the IEEE device number for a time overcurrent
+  element -- use whatever number is on your drawing.
+* `curve = iec.si` is IEC standard inverse. Type `iec.` and press `?`
+  to see the rest; every published family is built in.
+* `I_pickup` is in primary amps unless you say otherwise, and `tms` is
+  the time multiplier.
+
+Note that no key carries its unit. You write `480 A` or `0.48 kA`,
+whichever your settings sheet says, and the tool converts.
+
+== 2. A second relay to grade against
+
+One curve tells you nothing. Add the incomer behind the feeder:
+
+[source,tc]
+----
+relay R_INC {
+    voltage  = "MV";
+    ct_ratio = 1200/5;
+
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pickup = 960 A;
+        tms      = 0.25;
+    }
+}
+----
+
+Now there are two curves on the sheet, and you can see whether they
+cross. That is the whole job: the downstream device must clear first,
+at every current either of them will ever see.
+
+== 3. Declare the fault, and let the tool check
+
+Eyeballing two curves is how mistakes survive. Give it the fault
+current and ask:
+
+[source,tc]
+----
+faults {
+    "Board max" { I = 6.2 kA; type = three_phase; voltage = "MV"; }
+}
+
+grade {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board max";
+    margin  = 0.30 s;
+}
+----
+
+`grade` is the check: *primary* is the device that should act first,
+*backup* is the one behind it, and `margin` is the discrimination time
+you require between them.
+
+The report now says:
+
+----
+    t_primary       = 0.267 s
+    t_backup        = 0.921 s
+    achieved margin = 0.654 s        -- pass
+    overall         : PASS
+----
+
+The fault is drawn on the sheet as a vertical rule, so you can see
+where the numbers were read.
+
+`type` matters more than it looks. It tells the tool what kind of fault
+this is, which fixes the relationship between phase current and the
+sequence components -- and that becomes important in section 12.
+
+== 4. A minimum fault as well
+
+A study that only checks the maximum fault is half a study. Grading is
+usually tightest at the *minimum* fault, where the curves are closest:
+
+[source,tc]
+----
+faults {
+    "Board max" { I = 6.2 kA; type = three_phase; voltage = "MV"; }
+    "Board min" { I = 1.8 kA; type = two_phase;   voltage = "MV"; }
+}
+
+grade {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board min";
+    margin  = 0.30 s;
+}
+----
+
+Add one `grade` block per pair per condition. They are all checked, and
+all reported.
+
+== 5. Settings the way your relay states them
+
+Most settings sheets are in secondary amps, not primary. Say so and
+write the number you were given:
+
+[source,tc]
+----
+relay R_FDR {
+    voltage  = "MV";
+    ct_ratio = 400/5;
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_units  = "secondary";
+        I_pickup = 6 A;             # 6 A secondary = 480 A primary
+        tms      = 0.10;
+    }
+}
+----
+
+The CT ratio does the conversion. Nothing else in the file changes, and
+the legend can show both figures:
+
+[source,tc]
+----
+page { legend = { currents = "both"; }; }
+----
+
+This is worth doing. A panel headed one way and figured the other is
+off by the CT ratio, and that is an error that ends up in a relay.
+
+== 6. More than one stage
+
+Real elements have several stages -- an inverse curve for through
+faults and an instantaneous for close-in ones. Declare them together
+and the tool draws the composite:
+
+[source,tc]
+----
+relay R_FDR {
+    voltage  = "MV";
+    ct_ratio = 400/5;
+
+    element 51 {
+        function = "phase_oc";
+        stages {
+            stage main {
+                curve    = iec.si;
+                I_pickup = 480 A;
+                tms      = 0.10;
+            }
+            stage inst {
+                curve    = definite;
+                I_pickup = 4.5 kA;
+                t_delay  = 50 ms;
+            }
+        }
+    }
+}
+----
+
+`curve = definite` is a fixed delay rather than a characteristic.
+
+The composite is what the relay actually does -- the fastest stage that
+has picked up -- so that is what grading uses. To see the stages
+separately on the drawing:
+
+[source,tc]
+----
+view { stages = individual; }
+----
+
+== 7. Earth fault elements
+
+An earth fault element does not measure phase current. It measures the
+residual, `3*I0`, which at the same fault is a different number:
+
+[source,tc]
+----
+relay R_FDR {
+    voltage  = "MV";
+    ct_ratio = 400/5;
+
+    element 51 { function = "phase_oc";    curve = iec.si; I_pickup = 480 A; tms = 0.10; }
+    element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 96 A;  tms = 0.10; }
+}
+----
+
+`function` decides which current the element is evaluated against, so
+you do not have to convert anything by hand. Grade earth-fault elements
+against each other exactly as you did the phase ones:
+
+[source,tc]
+----
+faults {
+    "Earth max" { I = 1.2 kA; type = single_phase_earth; voltage = "MV"; }
+}
+
+grade {
+    primary = R_FDR:51G;
+    backup  = R_INC:51G;
+    fault   = "Earth max";
+    margin  = 0.30 s;
+}
+----
+
+Negative-sequence elements work the same way, with one extra
+requirement: state whether the pickup is scaled in `I2` or `3I2`,
+because the factor of three decides whether the element operates.
+
+[source,tc]
+----
+element 46 {
+    function = "neg_seq";
+    measures = I2;
+    curve    = definite;
+    I_pickup = 200 A;
+    t_delay  = 0.60 s;
+}
+----
+
+== 8. Things that are not relays
+
+Fuses, cables, transformer damage curves and motor starts are published
+as tables, not formulas. `device` carries them:
+
+[source,tc]
+----
+device "spur_fuse_100T" {
+    kind        = fuse;
+    voltage     = "MV";
+    rating_I    = 100 A;
+    reference   = "Mersen T-link data sheet, table 2";
+    min_melt    = [(200 A, 10.0 s), (800 A, 0.14 s)];
+    total_clear = [(200 A, 16.0 s), (800 A, 0.26 s)];
+}
+----
+
+A fuse is a band, not a line -- it *may* start to melt at the first
+curve and is *guaranteed* clear by the second -- so give both and the
+band is shaded for you.
+
+Other kinds take a single table:
+
+[source,tc]
+----
+device "sub_main_cable" {
+    kind        = cable;
+    voltage     = "MV";
+    rating_I    = 400 A;
+    flex_points = [(4 kA, 43.0 s), (16 kA, 2.70 s)];
+}
+----
+
+`kind` takes `fuse`, `recloser`, `cable`, `transformer_damage`,
+`motor_startup` and `breaker`. Grade against them like anything else --
+a relay must be *faster* than a cable's damage curve and *slower* than
+a downstream fuse's total clear.
+
+`reference` is worth filling in. A damage curve transcribed from a data
+sheet three revisions ago is the kind of thing that survives unnoticed
+for years.
+
+== 9. Putting your argument on the drawing
+
+A sheet that only shows curves makes the reader do the work again.
+Mark what matters.
+
+*The margin you just proved:*
+
+[source,tc]
+----
+annotate {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board max";
+    label   = "CTI";
+}
+----
+
+That draws the arrow between the two curves at the fault, with the
+achieved figure on it.
+
+*A point from the fault study or a data sheet:*
+
+[source,tc]
+----
+point "Inrush" {
+    I     = 2.4 kA;
+    t     = 100 ms;
+    label = "Transformer inrush, 12x for 100 ms";
+    shape = diamond;
+}
+----
+
+*A note against one curve:*
+
+[source,tc]
+----
+annotate {
+    on_curve = R_FDR:51;
+    at_I     = 6.2 kA;
+    label    = "Feeder clears the board fault";
+    style    = tag;
+    coords   = true;
+}
+----
+
+`style` is `leader` (an elbowed line, the default), `pin` (a dot on the
+curve) or `tag` (bare text). `coords = true` prints the actual
+(current, time) beside the label.
+
+Anything anchored outside the plotted window is left off rather than
+drawn beyond the frame, so zooming in never leaves marks floating over
+the legend.
+
+== 10. Requirements on the other axis
+
+A study is judged up and down as well as left to right. An arc-flash
+boundary, a grid-code disconnection time, a switchgear rating -- each is
+a time your protection must beat:
+
+[source,tc]
+----
+times {
+    "Arc flash boundary"  { t = 500 ms; at_I = 6 kA; }
+    "Grid code clearance" { t = 800 ms; at_I = 3 kA; }
+}
+----
+
+These draw as horizontal rules. A time needs no voltage level -- a
+second is a second on every winding.
+
+`at_I` says where along the rule to write its name. The rule spans the
+whole plot, so put the caption beside the curve the requirement
+actually bites on.
+
+== 11. Making it a drawing
+
+Everything so far has been about the study. `page` is about the sheet:
+
+[source,tc]
+----
+page {
+    size        = "A3";
+    orientation = "landscape";
+    theme       = "light";
+    border      = true;
+
+    legend = { title = "Protection"; currents = "both"; };
+    faults = { style = "dashed"; };
+    times  = { style = "solid"; color = "#1d7a4c"; };
+
+    title = { text     = "Northgate 33/11 kV";
+              subtitle = "Feeder and incomer grading"; };
+
+    footer = { left  = "Drawing NG-TCC-0021";
+               right = "Rev B"; };
+}
+----
+
+`border = true` adds a drawing frame and a title block filled from your
+`meta` block, which is where the project details go:
+
+[source,tc]
+----
+meta {
+    project  = "Northgate 33/11 kV";
+    study    = "Phase and earth grading";
+    engineer = "A. Cooper";
+    date     = "2026-08-01";
+    revision = "B";
+    margin   = 0.30 s;        # the default for every grade block
+}
+----
+
+Titles and footers can pull from it: `[meta.project]`, `[meta.date]`,
+and any key you invent yourself.
+
+There is a great deal more in `page` -- palettes, marker shapes, axis
+inks, watermarks. Press `?` inside any sub-block, or read the guide's
+page reference.
+
+== 12. Several sheets from one study
+
+A `view` is one sheet. Declare more than one and you get a picker:
+
+[source,tc]
+----
+view "Phase" {
+    default     = true;
+    voltage     = "MV";
+    quantity    = phase;
+    title       = "Phase grading";
+    current_min = 100 A;
+    current_max = 40 kA;
+}
+
+view "Earth" {
+    voltage     = "MV";
+    quantity    = 3I0;
+    title       = "Earth fault grading";
+    current_min = 10 A;
+    current_max = 10 kA;
+}
+----
+
+`quantity` is what the x-axis is drawn in: `phase`, `I2`, `3I2`, `I0`,
+`3I0`, or `any` to put everything on one axis whatever it measures.
+
+This is where the earlier `function` declarations pay off. On the earth
+sheet the tool knows the `51G` belongs there and the `51` does not, and
+it says so rather than quietly drawing one of them in the wrong place.
+
+== 13. Scenarios: when one number is not enough
+
+Everything so far has used `faults` -- one current, at one voltage
+level. That is right for most studies, and if yours is one of them you
+can stop here.
+
+It stops being right when a transformer sits between two relays.
+
+A `fault` is referred across a transformer by the turns ratio. That
+works for phase current in a balanced fault. It does *not* work for
+zero sequence, because a delta winding blocks it -- there is no ratio
+that carries it across. And it does not work for phase current either
+under an unbalanced fault, because part of that phase current *is* zero
+sequence.
+
+So instead of one figure and a conversion, declare what the fault study
+measured at each level:
+
+[source,tc]
+----
+system {
+    voltages {
+        "HV" { V = 33 kV; }
+        "LV" { V = 0.48 kV; }
+    }
+
+    zero_sequence {
+        "HV" to "LV" = blocked;      # delta winding
+    }
+}
+
+scenario "LV earth fault" {
+    type        = single_phase_earth;
+    description = "Single phase to earth at 480 V, system normal";
+
+    level "LV" { I = 460 A;  I1 = 153.3 A; I2 = 153.3 A; I0 = 153.3 A; }
+    level "HV" { I = 3.86 A; I1 = 2.23 A;  I2 = 2.23 A;  I0 = 0 A;     }
+}
+----
+
+Read the HV line: the zero sequence is *zero*, because the delta
+blocked it. That single fact is why an HV earth-fault element cannot
+see an LV earth fault, and why the negative-sequence element is what
+backs it up. Writing the figures down per level makes it obvious;
+deriving them from a ratio would have hidden it.
+
+Nothing has to be transformed, because nothing is being converted --
+the tool selects the figure for the level it needs.
+
+Use a scenario anywhere you used a fault:
+
+[source,tc]
+----
+grade {
+    primary  = R_ACB:51;
+    backup   = R_850:46;
+    scenario = "LV earth fault";
+    margin   = 0.30 s;
+}
+
+view "I2 sheet" {
+    voltage   = "HV";
+    quantity  = I2;
+    condition = "LV earth fault";
+}
+----
+
+That last block is the payoff. `condition` tells the sheet which
+situation it depicts, and with it every curve can be placed correctly
+even when it measures something else or sits on another voltage level:
+the tool uses the scenario's own declared figures rather than a ratio,
+so the drawing and the grading report agree.
+
+Curves that cannot operate under the condition -- an earth-fault
+element on a balanced fault, or one behind a delta with no zero
+sequence to see -- are left off, and the legend says which and why.
+
+== Where to go next
+
+* `examples/` has seventeen worked studies. Sample 13 is clearance
+  times, 14 is devices and fuses, 15 is parallel feeders, 16 is every
+  drawing option in one sheet, and 17 is the sequence sheets.
+* The user guide is the reference: every block, every key, every value.
+  It is the *Reference* tab above.
+* `?` in the editor is faster than either, and knows where your cursor
+  is.

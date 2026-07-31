@@ -18,10 +18,11 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '@tc/parser';
 import { process } from '@tc/index';
 
-const GUIDE = readFileSync(
-  join((globalThis as { process?: { cwd(): string } }).process!.cwd(), 'docs/guide.adoc'),
-  'utf8',
-);
+const docsPath = (name: string): string =>
+  join((globalThis as { process?: { cwd(): string } }).process!.cwd(), 'docs', name);
+
+const GUIDE = readFileSync(docsPath('guide.adoc'), 'utf8');
+const TUTORIAL = readFileSync(docsPath('tutorial.adoc'), 'utf8');
 
 /** Every `[source,tc]` block, in document order. */
 const BLOCKS = [...GUIDE.matchAll(/\[source,tc\]\n----\n([\s\S]*?)\n----/g)].map((m) => m[1]);
@@ -102,5 +103,49 @@ describe('the guide covers what the language has', () => {
     expect(GUIDE).toContain('SEQUENCE_DATA_MISSING');
     /* Units are mandatory, and the commonest authoring error. */
     expect(GUIDE).toMatch(/[Uu]nits are required|Omitting units/);
+  });
+});
+
+describe('the tutorial', () => {
+  /*
+   * The tutorial is the document a newcomer meets first, and every
+   * step of it is presented as a file they can paste in. A block that
+   * does not parse teaches the mistake before anything else has had a
+   * chance to teach the language.
+   */
+  const blocks = [...TUTORIAL.matchAll(/\[source,tc\]\n----\n([\s\S]*?)\n----/g)]
+    .map((m) => m[1]);
+
+  it('has code blocks to check', () => {
+    expect(blocks.length).toBeGreaterThan(15);
+  });
+
+  for (const [i, block] of blocks.entries()) {
+    it(`block ${i + 1} parses`, () => {
+      const errors = parse(block).errors.filter((e) => e.severity === 'error');
+      expect(errors.map((e) => `${e.code}: ${e.message}`), block.split('\n')[0]).toEqual([]);
+    });
+  }
+
+  it('builds to a study that grades, and quotes the figures it gets', () => {
+    /*
+     * Section 3 prints a report. Quoting numbers the tool does not
+     * actually produce is the one error a reader cannot catch, because
+     * they have nothing to check it against yet.
+     */
+    const result = process(`
+      system { voltages { "MV" { V = 11 kV; } } }
+      faults { "Board max" { I = 6.2 kA; type = three_phase; voltage = "MV"; } }
+      relay R_FDR { voltage = "MV"; ct_ratio = 400/5;
+        element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 480 A; tms = 0.10; } }
+      relay R_INC { voltage = "MV"; ct_ratio = 1200/5;
+        element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 960 A; tms = 0.25; } }
+      grade { primary = R_FDR:51; backup = R_INC:51; fault = "Board max"; margin = 0.30 s; }
+    `);
+    const report = result.reports[0];
+    expect(report.rows[0].t_primary_s).toBeCloseTo(0.267, 3);
+    expect(report.rows[0].t_backup_s).toBeCloseTo(0.921, 3);
+    expect(report.min_margin_s).toBeCloseTo(0.654, 3);
+    expect(report.pass).toBe(true);
   });
 });

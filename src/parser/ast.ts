@@ -38,9 +38,14 @@ export interface VoltageLevelDecl extends BaseNode {
 
 export interface SystemBlock extends BaseNode {
   type: 'system';
-  frequency_Hz?: number;
-  base_MVA?: number;
-  grounding?: string;
+  /**
+   * Study MVA base, for the pickup-plausibility check.
+   *
+   * `frequency_Hz` and `grounding` used to sit beside this. Both were
+   * parsed, stored and read by nothing; `zero_sequence` declares the
+   * one thing `grounding` was reaching for.
+   */
+  base_S?: number;
   /**
    * Whether zero sequence crosses between two levels.
    *

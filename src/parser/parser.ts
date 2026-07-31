@@ -8,6 +8,7 @@
  * token vocabulary with the tokenizer here.
  */
 
+import { FIELD_QUANTITY, suffixFits, suffixesFor } from '../semantics/units.js';
 import type {
   AnnotateBlock,
   BaseNode,
@@ -41,6 +42,33 @@ import type {
  * can reuse this set; the parser source remains the canonical
  * vocabulary.
  */
+/**
+ * Keys renamed by the units-everywhere change, and what to write now.
+ *
+ * A hard break, but a signposted one: the old spelling is recognised
+ * precisely so it can be refused with the new one in the message. No
+ * key names its own unit any more -- the unit is the author's to write
+ * and the field's to check -- so `I_A = 450 A` was saying it twice and
+ * `I_A = 450` was saying it once, ambiguously.
+ */
+export const RENAMED_KEYS: Readonly<Record<string, string>> = {
+  I_A: 'I', I1_A: 'I1', I2_A: 'I2', I0_A: 'I0', earth_A: 'residual',
+  min_A: 'I_min', max_A: 'I_max',
+  kV: 'V', t_s: 't',
+  CTI_min_s: 'margin', margin_s: 'margin_target',
+  I_pu: 'I_pickup', I_base_A: 'I_base', base_MVA: 'base_S',
+  current_pct: 'share',
+  at_I_A: 'at_I', at_I1_A: 'at_I1', at_I2_A: 'at_I2', at_I0_A: 'at_I0',
+  at_earth_A: 'at_residual', at_t_s: 'at_t',
+  rating_A: 'rating_I', rating_kV: 'rating_V', rating_MVA: 'rating_S',
+};
+
+/** Keys removed outright, with why. */
+export const REMOVED_KEYS: Readonly<Record<string, string>> = {
+  frequency_Hz: 'nothing in the tool reads it',
+  grounding: 'nothing in the tool reads it; zero_sequence declares what mattered',
+};
+
 export const KEYWORDS = new Set([
   // top-level blocks
   'meta', 'system', 'faults', 'times', 'scenario', 'level', 'sees',
@@ -59,16 +87,25 @@ export const KEYWORDS = new Set([
   // formula / curve
   'definite', 'formula', 'flex_points', 'curve', 't_r',
   // attribute keys
-  'function', 'tms', 't_delay', 't_reset', 'I_pu', 'I_units',
-  'current_pct', 'char_angle', 'reset', 'directional', 'direction',
-  'tolerance_pct', 'CTI_min_s', 'margin_s', 'upstream', 'upstream_to',
+  'function', 'tms', 't_delay', 't_reset', 'I_units',
+  'char_angle', 'reset', 'directional', 'direction',
+  'tolerance_pct', 'upstream', 'upstream_to',
+  /* Units-everywhere names. No key carries its own unit. */
+  'I', 'I_min', 'I_max', 'residual', 't', 'V',
+  'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target',
+  'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t',
+  'rating_I', 'rating_V', 'rating_S',
+  /* Recognised only to be refused with the new spelling. */
   'I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 't_s',
-  'voltage', 'kV', 'frequency_Hz', 'base_MVA', 'grounding', 'I_base_A',
+  'kV', 'I_pu', 'I_base_A', 'base_MVA', 'current_pct',
+  'CTI_min_s', 'margin_s', 'frequency_Hz', 'grounding',
+  'at_I_A', 'at_I1_A', 'at_I2_A', 'at_I0_A', 'at_earth_A', 'at_t_s',
+  'rating_A', 'rating_kV', 'rating_MVA',
+  'voltage',
   'ct_ratio', 'maker', 'model', 'name',
   'measures', 'quantity', 'phase', 'I1', 'I2', '3I2', 'I0', '3I0', 'any',
   'type', 'condition', 'three_phase', 'two_phase', 'two_phase_earth',
   'single_phase_earth', 'zero_sequence', 'blocked', 'continuous', 'to',
-  'rating_A', 'rating_kV', 'rating_MVA',
   'min_melt', 'total_clear',
   // combine/view/page sub
   'sources', 'as', 'style', 'label', 'color', 'name', 'two_axes',
@@ -381,6 +418,83 @@ class Parser {
     return tok ? [unquote(tok.image)] : [];
   }
 
+  /**
+   * A key the block did not recognise.
+   *
+   * Three cases, and they want different answers. A *renamed* key is an
+   * error naming its replacement -- the author knows what they meant
+   * and needs the new spelling. A *removed* key is an error saying so.
+   * Anything else is a **warning**: a key that is merely inapplicable
+   * here, `upstream` inside an `annotate`, should not stop the sheet
+   * being drawn, and a drawing with a warning is more use than no
+   * drawing at all.
+   *
+   * The exception is `strict`, for the fields that carry a number a
+   * typo would silently move -- `tsm` for `tms` left an element at the
+   * default multiplier and the margin out by ten. There a warning is
+   * too quiet.
+   */
+  private noteUnknownKey(
+    block: string,
+    at: Token,
+    accepts: readonly string[],
+    strict = false,
+  ): void {
+    /*
+     * Many blocks route their *ordinary* fields through `default:` --
+     * an element stores `tms` and `t_delay` as generic members -- so
+     * the accepted list is consulted first. Only a name that is not on
+     * it has anything wrong with it.
+     */
+    if (accepts.includes(at.image)) return;
+
+    const renamed = RENAMED_KEYS[at.image];
+    if (renamed) {
+      this.errors.push({
+        message: `"${at.image}" was renamed to "${renamed}"; no key carries its own unit `
+          + `any more, so write the unit yourself (${renamed} = 450 A)`,
+        line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
+        severity: 'error', code: 'RENAMED_KEY',
+      });
+      return;
+    }
+
+    const removed = REMOVED_KEYS[at.image];
+    if (removed) {
+      this.errors.push({
+        message: `"${at.image}" was removed: ${removed}`,
+        line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
+        severity: 'error', code: 'REMOVED_KEY',
+      });
+      return;
+    }
+
+    /*
+     * A key that means something elsewhere in the language is
+     * *misplaced*, not mistyped -- `upstream` inside an `annotate`.
+     * The author knows the word; they have put it in the wrong block,
+     * and the sheet is still drawable, so it warns even where the
+     * block is otherwise strict.
+     *
+     * A word the language does not know anywhere is a typo, and in a
+     * block whose every field changes a number that is refused: `tsm`
+     * for `tms` left an element at the default multiplier and the
+     * margin out by ten.
+     */
+    const knownElsewhere = KEYWORDS.has(at.image);
+    const isTypo = strict && !knownElsewhere;
+
+    this.errors.push({
+      message: isTypo
+        ? `unknown setting "${at.image}"; ${block} accepts ${accepts.join(', ')}`
+        : `${block} does not accept "${at.image}"`
+          + (accepts.length > 0 ? `; it accepts ${accepts.join(', ')}` : ''),
+      line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
+      severity: isTypo ? 'error' : 'warning',
+      code: isTypo ? 'UNKNOWN_SETTING' : 'UNKNOWN_KEY',
+    });
+  }
+
   private expectKeyword(...names: string[]): string {
     const v = this.matchKeyword(...names);
     if (v !== null) return v;
@@ -528,18 +642,18 @@ class Parser {
       switch (k.image) {
         /* The same vocabulary a fault and a scenario level use, so
          * one way of writing a current covers the whole language. */
-        case 'I_A':     p.I_A = this.parseNumberWithUnit_A(); break;
-        case 'I1_A':    p.I1_A = this.parseNumberWithUnit_A(); break;
-        case 'I2_A':    p.I2_A = this.parseNumberWithUnit_A(); break;
-        case 'I0_A':    p.I0_A = this.parseNumberWithUnit_A(); break;
-        case 'earth_A': p.earth_A = this.parseNumberWithUnit_A(); break;
+        case 'I':     p.I_A = this.parseNumberWithUnit_A(); break;
+        case 'I1':    p.I1_A = this.parseNumberWithUnit_A(); break;
+        case 'I2':    p.I2_A = this.parseNumberWithUnit_A(); break;
+        case 'I0':    p.I0_A = this.parseNumberWithUnit_A(); break;
+        case 'residual': p.earth_A = this.parseNumberWithUnit_A(); break;
         case 'type': {
           const kw = this.matchKeyword(
             'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
           if (kw) p.faultType = kw as import('./ast.js').FaultTypeKeyword;
           break;
         }
-        case 't_s':   p.t_s = this.parseNumberWithUnit_s(); break;
+        case 't':   p.t_s = this.parseNumberWithUnit_s(); break;
         /* The current may come from a named condition instead. */
         case 'fault':
         case 'faults':
@@ -610,10 +724,12 @@ class Parser {
                 const k = this.eat('KW');
                 if (!k) { this.pos++; continue; }
                 this.expect('EQUALS', '=');
-                if (k.image === 'kV') lvl.kV = this.parseNumber();
-                else {
-                  const v = this.parseScalarValue();
-                  if (k.image === 'description') lvl.description = String(v);
+                if (k.image === 'V') lvl.kV = this.parseNumberWithUnit_kV('V');
+                else if (k.image === 'description') {
+                  lvl.description = String(this.parseScalarValue());
+                } else {
+                  this.noteUnknownKey('a voltage level', k, ['V', 'description']);
+                  this.parseScalarValue();
                 }
                 this.eat('SEMI');
               }
@@ -651,17 +767,12 @@ class Parser {
             sys.zero_sequence = links;
             continue;
           }
-          case 'frequency_Hz':
-            this.pos++; this.expect('EQUALS', '='); sys.frequency_Hz = this.parseNumber(); this.eat('SEMI'); continue;
-          case 'base_MVA':
-            this.pos++; this.expect('EQUALS', '='); sys.base_MVA = this.parseNumber(); this.eat('SEMI'); continue;
-          case 'grounding':
-            this.pos++; this.expect('EQUALS', '='); {
-              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
-              if (tok) sys.grounding = unquote(tok.image);
-              this.eat('SEMI');
-            } continue;
-          case 'I_base_A':
+          case 'base_S':
+            this.pos++; this.expect('EQUALS', '=');
+            sys.base_S = this.parseNumberWithUnit(
+              { MVA: 1, kVA: 1e-3, GVA: 1e3 }, 'apparent power');
+            this.eat('SEMI'); continue;
+          case 'I_base':
             this.pos++; this.expect('EQUALS', '='); sys.I_base_A = this.parseNumber(); this.eat('SEMI'); continue;
           case 'I_units':
             this.pos++; this.expect('EQUALS', '='); {
@@ -670,6 +781,10 @@ class Parser {
               this.eat('SEMI');
             } continue;
           default:
+            /* `t` is the switch subject here, the loop reading tokens
+             * rather than a `k` bound per arm. */
+            this.noteUnknownKey('system', t,
+              ['voltages', 'zero_sequence', 'base_S', 'I_base', 'I_units']);
             this.pos++;
             continue;
         }
@@ -728,11 +843,11 @@ class Parser {
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
           switch (k.image) {
-            case 'I_A':     level.I_A = this.parseNumberWithUnit_A(); break;
-            case 'I1_A':    level.I1_A = this.parseNumberWithUnit_A(); break;
-            case 'I2_A':    level.I2_A = this.parseNumberWithUnit_A(); break;
-            case 'I0_A':    level.I0_A = this.parseNumberWithUnit_A(); break;
-            case 'earth_A': level.earth_A = this.parseNumberWithUnit_A(); break;
+            case 'I':     level.I_A = this.parseNumberWithUnit_A(); break;
+            case 'I1':    level.I1_A = this.parseNumberWithUnit_A(); break;
+            case 'I2':    level.I2_A = this.parseNumberWithUnit_A(); break;
+            case 'I0':    level.I0_A = this.parseNumberWithUnit_A(); break;
+            case 'residual': level.earth_A = this.parseNumberWithUnit_A(); break;
             default:        this.parseScalarValue(); break;
           }
           this.eat('SEMI');
@@ -756,7 +871,7 @@ class Parser {
           const k = this.eat('KW') ?? this.eat('IDENT');
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
-          if (k.image === 'current_pct') share.current_pct = this.parseNumber();
+          if (k.image === 'share') share.current_pct = this.parseNumber();
           else this.parseScalarValue();
           this.eat('SEMI');
         }
@@ -808,12 +923,12 @@ class Parser {
             /* Fault currents carry an `A` / `kA` suffix; fold it in. */
             case 'type':     f.type = this.parseQuantityValue() as
                                import('./ast.js').FaultTypeKeyword | undefined; break;
-            case 'I_A':      f.I_A = this.parseNumberWithUnit_A(); break;
-            case 'min_A':    f.min_A = this.parseNumberWithUnit_A(); break;
-            case 'max_A':    f.max_A = this.parseNumberWithUnit_A(); break;
-            case 'earth_A':  f.earth_A = this.parseNumberWithUnit_A(); break;
-            case 'I0_A':     f.I0_A = this.parseNumberWithUnit_A(); break;
-            case 'I2_A':     f.I2_A = this.parseNumberWithUnit_A(); break;
+            case 'I':      f.I_A = this.parseNumberWithUnit_A(); break;
+            case 'I_min':    f.min_A = this.parseNumberWithUnit_A(); break;
+            case 'I_max':    f.max_A = this.parseNumberWithUnit_A(); break;
+            case 'residual':  f.earth_A = this.parseNumberWithUnit_A(); break;
+            case 'I0':     f.I0_A = this.parseNumberWithUnit_A(); break;
+            case 'I2':     f.I2_A = this.parseNumberWithUnit_A(); break;
             case 'voltage':  {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
               if (tok) f.voltage = unquote(tok.image);
@@ -825,6 +940,7 @@ class Parser {
               break;
             }
             default: /* ignore */ this.parseScalarValue();
+              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type', 'voltage', 'description']);
           }
           this.eat('SEMI');
         }
@@ -858,7 +974,7 @@ class Parser {
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
           switch (k.image) {
-            case 't_s': t.t_s = this.parseNumberWithUnit_s(); break;
+            case 't': t.t_s = this.parseNumberWithUnit_s(); break;
             case 'description': {
               const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
               if (tok) t.description = unquote(tok.image);
@@ -1136,6 +1252,17 @@ if (kwName === 'flex_points') {
         return k.image;
       }
       default: {
+        /*
+         * Strict here. Every field of an element is a setting that
+         * decides whether a relay operates, so a name it does not know
+         * is refused rather than warned about: `tsm` for `tms` left the
+         * element at the default multiplier and the margin out by ten.
+         */
+        this.noteUnknownKey('an element', k, [
+          'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
+          'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
+          'char_angle', 'reset', 'directional', 'stages', 'comment',
+        ], /* strict */ true);
         const v = this.parseScalarValue();
         this.eat('SEMI');
         el.members.push({ kind: 'scalar', key: k.image, value: v });
@@ -1206,6 +1333,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
+          this.noteUnknownKey('a relay', k, ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults', 'comment', 'description', 'reference']);
           // unknown relay scalar -- consume the value to avoid stuck loops
           this.parseScalarValue();
           this.eat('SEMI');
@@ -1237,15 +1365,15 @@ if (kwName === 'flex_points') {
           }
           break;
         /* Ratings and delays carry unit suffixes; fold them in. */
-        case 'rating_A':
+        case 'rating_I':
           d.rating_A = this.parseNumberWithUnit_A();
           this.eat('SEMI');
           break;
-        case 'rating_kV':
+        case 'rating_V':
           d.rating_kV = this.parseNumberWithUnit_kV();
           this.eat('SEMI');
           break;
-        case 'rating_MVA':
+        case 'rating_S':
           d.rating_MVA = this.parseNumber();
           this.eat('IDENT'); this.eat('KW');
           this.eat('SEMI');
@@ -1282,6 +1410,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
+          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'comment', 'description', 'reference']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -1335,12 +1464,12 @@ if (kwName === 'flex_points') {
               if (tok) g.fault = unquote(tok.image);
             }
             break;
-          case 'CTI_min_s':
-          case 'margin_s':
+          case 'margin':
+          case 'margin_target':
             {
               const n = this.parseNumberWithUnit_s();
               this.eat('SEMI');
-              if (k.image === 'CTI_min_s') g.CTI_min_s = n;
+              if (k.image === 'margin') g.CTI_min_s = n;
               else g.margin_s = n;
             }
             break;
@@ -1368,6 +1497,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
+            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance_pct', 'upstream', 'upstream_to', 'solve', 'comment']);
             this.parseScalarValue();
             this.eat('SEMI');
         }
@@ -1413,6 +1543,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
+          this.noteUnknownKey('a solve', k, ['strategy', 'tolerance_pct', 'free', 'comment']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -1435,17 +1566,17 @@ if (kwName === 'flex_points') {
             a.on_curve = this.parseRef();
             this.eat('SEMI');
             break;
-          case 'at_I_A':
+          case 'at_I':
             a.at_I_A = this.parseNumberWithUnit_A();
             this.eat('SEMI');
             break;
-          case 'at_I1_A':
+          case 'at_I1':
             a.at_I1_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
-          case 'at_I2_A':
+          case 'at_I2':
             a.at_I2_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
-          case 'at_I0_A':
+          case 'at_I0':
             a.at_I0_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
-          case 'at_earth_A':
+          case 'at_residual':
             a.at_earth_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
           case 'type': {
             const kw = this.matchKeyword(
@@ -1454,7 +1585,7 @@ if (kwName === 'flex_points') {
             if (kw) a.faultType = kw as import('./ast.js').FaultTypeKeyword;
             break;
           }
-          case 'at_t_s':
+          case 'at_t':
             a.at_t_s = this.parseNumberWithUnit_s();
             this.eat('SEMI');
             break;
@@ -1539,6 +1670,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
+            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -1600,6 +1732,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
+            this.noteUnknownKey('a combine', k, ['name', 'sources', 'as', 'color', 'style', 'label']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -1724,6 +1857,7 @@ if (kwName === 'flex_points') {
           case 'default':
             v.isDefault = this.parseBool(); this.eat('SEMI'); break;
           default:
+            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'two_axes', 'reference_ct']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -1779,7 +1913,7 @@ if (kwName === 'flex_points') {
       case 'mA': return raw * 1e-3;
       case 'ms': return raw * 1e-3;
       case 'min': return raw * 60;
-      case 'kV': return raw;
+      case 'V': return raw;
       default:   return raw;
     }
   }
@@ -1986,6 +2120,13 @@ if (kwName === 'flex_points') {
   private parseNumberWithUnit(
     factors: Record<string, number>,
     base: string,
+    /**
+     * The key being assigned, so a suffix valid for another quantity
+     * can be refused too. Checking against the union of every suffix
+     * caught a misspelling but not a category error: `I_pickup = 5 ms`
+     * was a real suffix in the wrong place, and passed.
+     */
+    field?: string,
   ): number {
     const t = this.eat('NUMBER');
     if (!t) return NaN;
@@ -1997,6 +2138,18 @@ if (kwName === 'flex_points') {
 
     const u = this.tokens[this.pos];
     const factor = factors[u.image];
+
+    if (factor == null && field != null && suffixFits(field, u.image) === false) {
+      this.errors.push({
+        message: `"${u.image}" is not a unit of ${base}; "${field}" takes `
+          + suffixesFor(FIELD_QUANTITY[field]!).map((k) => `"${k}"`).join(', '),
+        line: u.line, column: u.col, offset: u.start, length: u.end - u.start,
+        severity: 'error', code: 'UNIT_WRONG_QUANTITY',
+      });
+      this.pos++;
+      return raw;
+    }
+
     if (factor == null) {
       this.errors.push({
         message: `unknown unit "${u.image}"; ${base} accepts `
@@ -2011,17 +2164,17 @@ if (kwName === 'flex_points') {
     return raw * factor;
   }
 
-  private parseNumberWithUnit_A(): number {
+  private parseNumberWithUnit_A(field?: string): number {
     return this.parseNumberWithUnit(
-      { A: 1, kA: 1e3, mA: 1e-3, MA: 1e6 }, 'a current');
+      { A: 1, kA: 1e3, mA: 1e-3, MA: 1e6 }, 'current', field);
   }
-  private parseNumberWithUnit_kV(): number {
+  private parseNumberWithUnit_kV(field?: string): number {
     return this.parseNumberWithUnit(
-      { kV: 1, V: 1e-3, MV: 1e3 }, 'a voltage');
+      { kV: 1, V: 1e-3, MV: 1e3 }, 'voltage', field);
   }
-  private parseNumberWithUnit_s(): number {
+  private parseNumberWithUnit_s(field?: string): number {
     return this.parseNumberWithUnit(
-      { s: 1, ms: 1e-3, min: 60, ks: 1e3 }, 'a time');
+      { s: 1, ms: 1e-3, min: 60, ks: 1e3 }, 'time', field);
   }
   private parseBool(): boolean {
     const v = this.matchKeyword('true','false');

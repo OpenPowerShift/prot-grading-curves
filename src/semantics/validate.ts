@@ -26,7 +26,7 @@ import {
   measuredQuantityOf,
 } from './quantity.js';
 import { conditionNames, resolveCondition } from './condition.js';
-import { KNOWN_UNITS } from './units.js';
+import { FIELD_QUANTITY, KNOWN_UNITS, suffixFits, suffixesFor } from './units.js';
 
 export type Severity = 'error' | 'warning' | 'info';
 
@@ -483,10 +483,10 @@ function validateStage(
    * `720 A` where `7.20 kA` was meant.
    */
   if (
-    stage.I_pu_A != null && relayKv != null && ctx.study.base_MVA != null &&
-    relayKv > 0 && ctx.study.base_MVA > 0
+    stage.I_pu_A != null && relayKv != null && ctx.study.base_S != null &&
+    relayKv > 0 && ctx.study.base_S > 0
   ) {
-    const I_base = (ctx.study.base_MVA * 1e6) / (relayKv * 1e3 * Math.sqrt(3));
+    const I_base = (ctx.study.base_S * 1e6) / (relayKv * 1e3 * Math.sqrt(3));
     if (stage.I_pu_A < 0.05 * I_base) {
       add(ctx, 'PICKUP_TOO_LOW_FOR_VOLTAGE', 'warning',
         `${where} pickup ${stage.I_pu_A.toFixed(0)} A is below 5% of the ${relayKv} kV base ` +
@@ -892,17 +892,46 @@ function validateUnits(ctx: Ctx): void {
     if (Array.isArray(node)) { for (const item of node) walk(item); return; }
 
     const o = node as Record<string, unknown>;
+
+    /*
+     * A `{ kind: 'scalar', key, value }` member carries the field name
+     * beside the number, which is what lets the suffix be judged
+     * against the quantity the field actually takes rather than
+     * against the union of every suffix. `I_pickup = 5 ms` is a real
+     * suffix in the wrong place, and the union check passed it.
+     */
+    const value = o.value as Record<string, unknown> | undefined;
+    if (o.kind === 'scalar' && typeof o.key === 'string'
+        && value?.kind === 'number' && typeof value.unit === 'string') {
+      const fits = suffixFits(o.key, value.unit);
+      if (fits === false) {
+        add(ctx, 'UNIT_WRONG_QUANTITY', 'error',
+          `"${value.unit}" is not a unit of ${FIELD_QUANTITY[o.key]}; "${o.key}" takes ` +
+          suffixesFor(FIELD_QUANTITY[o.key]!).map((u) => `"${u}"`).join(', '),
+          undefined, value.unit.length);
+        return;
+      }
+      if (fits == null && !KNOWN_UNITS.has(value.unit) && !seen.has(value.unit)) {
+        seen.add(value.unit);
+        add(ctx, 'UNIT_UNKNOWN', 'error',
+          `"${value.unit}" is not a unit this language knows. Units are ` +
+          'case-sensitive -- "kA" not "KA", "ms" not "msec"',
+          undefined, value.unit.length);
+      }
+      return;
+    }
+
     if (o.kind === 'number' && typeof o.unit === 'string' && !KNOWN_UNITS.has(o.unit)) {
       if (!seen.has(o.unit)) {
         seen.add(o.unit);
         add(ctx, 'UNIT_UNKNOWN', 'error',
-          `"${o.unit}" is not a unit this language knows; the value was read as though ` +
-          'it carried none. Units are case-sensitive -- "kA" not "KA", "ms" not "msec"',
+          `"${o.unit}" is not a unit this language knows. Units are case-sensitive ` +
+          '-- "kA" not "KA", "ms" not "msec"',
           undefined, o.unit.length);
       }
       return;
     }
-    for (const value of Object.values(o)) walk(value);
+    for (const v of Object.values(o)) walk(v);
   };
 
   walk(ctx.doc?.items ?? []);

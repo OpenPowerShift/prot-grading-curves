@@ -333,9 +333,8 @@ export interface Annotation {
 export interface Study {
   meta: Record<string, string | number | boolean>;
   voltages: Map<string, VoltageLevel>;
-  frequency_Hz?: number;
-  base_MVA?: number;
-  grounding?: string;
+  /** Study MVA base, for the pickup-plausibility check. */
+  base_S?: number;
   /**
    * Whether zero sequence crosses a pair of levels, keyed on the
    * unordered pair. Declared, because a delta blocks it and a
@@ -444,9 +443,7 @@ export function buildStudy(doc: Document): Study {
         }
         break;
       case 'system':
-        study.frequency_Hz = item.frequency_Hz;
-        study.base_MVA = item.base_MVA;
-        study.grounding = item.grounding;
+        study.base_S = item.base_S;
     for (const link of item.zero_sequence ?? []) {
       study.zeroSequence.set(levelPairKey(link.from, link.to), link.link);
     }

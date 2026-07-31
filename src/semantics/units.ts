@@ -153,3 +153,64 @@ export function readRatio(v: unknown): number | undefined {
   const n = rawNumber(v);
   return Number.isFinite(n) ? n : undefined;
 }
+
+/* ------------------------------------------------------------------ */
+/* What each field is a quantity of                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The physical quantity each key carries.
+ *
+ * No key names its own unit any more -- `I`, not `I_A`; `t`, not
+ * `t_s` -- so the unit is always the author's to write and always
+ * checked against what the field actually is. Checking against the
+ * union of every suffix caught a misspelling but not a category error:
+ * `I_pickup = 5 ms` was a real suffix in the wrong place and passed.
+ *
+ * One table, so the parser, the validator and the editor's completion
+ * list cannot drift apart about what `t_delay` takes.
+ */
+export const FIELD_QUANTITY: Readonly<Record<string, Quantity>> = {
+  /* Currents. */
+  I: 'current', I1: 'current', I2: 'current', I0: 'current',
+  residual: 'current', I_min: 'current', I_max: 'current',
+  I_pickup: 'current', I_base: 'current',
+  at_I: 'current', at_I1: 'current', at_I2: 'current', at_I0: 'current',
+  at_residual: 'current', rating_I: 'current',
+
+  /* Times. */
+  t: 'time', t_delay: 'time', t_reset: 'time', at_t: 'time',
+  margin: 'time', margin_target: 'time',
+  time_min: 'time', time_max: 'time',
+
+  /* Voltages. */
+  V: 'voltage', rating_V: 'voltage',
+
+  /* Bounds on the current axis. */
+  current_min: 'current', current_max: 'current',
+};
+
+/** Suffixes acceptable for one quantity, for a diagnostic that lists them. */
+export function suffixesFor(quantity: Quantity): string[] {
+  switch (quantity) {
+    case 'current':
+      return [...Object.keys(CURRENT_A), ...PER_UNIT_SUFFIXES,
+        ...SECONDARY_SUFFIXES, ...PRIMARY_SUFFIXES];
+    case 'time': return Object.keys(TIME_S);
+    case 'voltage': return Object.keys(VOLTAGE_KV);
+    default: return [];
+  }
+}
+
+/**
+ * Is this suffix acceptable for this field?
+ *
+ * `null` for a field the table does not cover -- a unitless one like
+ * `tms`, or a page cosmetic in pixels -- where there is nothing to
+ * check against.
+ */
+export function suffixFits(field: string, unit: string): boolean | null {
+  const quantity = FIELD_QUANTITY[field];
+  if (quantity == null) return null;
+  return suffixesFor(quantity).includes(unit);
+}

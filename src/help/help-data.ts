@@ -179,7 +179,7 @@ export const CURVE_HELP: Record<string, string> = (() => {
   for (const [ns, table] of Object.entries(CURVES)) {
     for (const [family, c] of Object.entries(table)) {
       const constants =
-        c.form === 'linear' ? `t = ${c.a} - ${c.b} * M`
+        c.form === 'ri' ? `t = tms / (${c.a} - ${c.b} / M)`
         : c.form === 'log'  ? `t = ${c.a} - ${c.b} * ln(M)`
         : `k=${c.k}, c=${c.c}, alpha=${c.alpha}`;
       out[`${ns}.${family}`] = `${c.name} (${constants}).`;
@@ -209,8 +209,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   meta:        ['project', 'study', 'engineer', 'date', 'standard', 'margin'],
   system:      ['voltages', 'zero_sequence', 'base_S', 'I_base', 'I_units'],
   'system.voltages': ['V', 'description'],
-  faults:      ['I', 'I_min', 'I_max', 'residual', 'I0', 'I2', 'type', 'voltage',
-               'description'],
+  faults:      ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type',
+               'voltage', 'description'],
   times:       ['t', 'description'],
   scenario:    ['type', 'description', 'level'],
   'scenario.level': ['I', 'I1', 'I2', 'I0', 'residual', 'share'],

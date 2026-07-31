@@ -176,6 +176,9 @@ typecheck, lint and both builds; all twelve examples parse and render.
 
 === Outstanding, most serious first
 
+Reconciled again 2026-07-31 after closing items 2--5 of the previous
+list. Both remaining entries want a decision, not work.
+
 . *Cross-voltage curve placement contradicts the report.* An element's
   curve crosses voltage levels by the turns ratio, but a scenario's
   per-level figures deliberately need not agree with that ratio, and
@@ -190,35 +193,20 @@ condition that declares both levels, place curves by that condition's
 own ratio rather than by kV. Plot and report then agree by
 construction. *Needs a decision* -- it moves every cross-voltage sheet.
 
-. *`abb.ri` operates in exactly 0.000 s above M ~ 4.3.* The linear form
-  `t = 5.8 - 1.35*M` is almost certainly a transcription error
-  (published ABB RI is hyperbolic), and `curves.ts` clamps the negative
-  result to zero rather than refusing -- 0 s being the same unplottable
-  condition `ZERO_DELAY_NOT_PLOTTABLE` already rejects.
-
-. *The pass/fail verdict is untested.* Corrupting the per-row `pass`
-  comparison in `grades.ts` by a factor of two leaves all tests green.
-  The physics is well covered; the verdict computed from it is not.
-
-. *Keys that still name a unit.* The rename covered every physical
-  quantity. It did **not** cover the page cosmetics -- `margins_mm`,
-  `size_px`, `width_px`, `line_width_px`, `label_size_px`,
-  `tick_size_px`, `label_offset_px`, `font_size_px` -- nor
-  `tolerance_pct`. That was an implementation judgement (one unit each,
-  no ambiguity to resolve), not a decision the user made, and it is a
-  visible exception to "no key carries its own unit". *Needs a
-  decision*: finish the job, or write the exception into the spec.
+. *Keys that still name a unit.* The 0.2.0 rename covered every
+  physical quantity. It did **not** cover the page cosmetics --
+  `margins_mm`, `size_px`, `width_px`, `line_width_px`,
+  `label_size_px`, `tick_size_px`, `label_offset_px`, `font_size_px`
+  -- nor `tolerance_pct`. That was an implementation judgement (one
+  unit each, no ambiguity to resolve), not a decision the user made,
+  and it is a visible exception to "no key carries its own unit".
+  *Needs a decision*: finish the job, or write the exception into the
+  spec.
 
 . *Range sweep does nothing for sequence elements* but still prints a
   range-check table implying it ran.
 
-. *Every parser error is reported twice* (`parser.ts` aliases the
-  lex-error array and then spreads both).
-
 . *Twelve diagnostic codes carry no source location* and report at 1:1.
-
-. *`faults` cannot declare `I1`*, so the one-vocabulary claim has a
-  hole in it.
 
 . *`linting-rules.adoc` states 13 rules as processor behaviour*; two
   are implemented. Five codes named in the spec are never emitted;
@@ -227,3 +215,25 @@ construction. *Needs a decision* -- it moves every cross-voltage sheet.
 . *`svg.ts` decomposition.* Not 3,722 lines but one 2,874-line function
   holding ~40 closures. Split in this order or the captures merely
   move: sheet model, legend, annotations, frame.
+
+=== Closed 2026-07-31
+
+* *`abb.ri` operated in 0.000 s above `M ~ 4.3`.* The row carried RD's
+  constants in a linear form. Replaced with the published hyperbola,
+  which has no zero crossing. Separately, a characteristic that runs
+  out of definition (RD above `M ~ 73.4`) now reports no operation
+  rather than clamping to zero -- zero being the fastest answer
+  available, asserted exactly where the curve stops saying anything.
+* *The pass/fail verdict was thinly tested.* The boundary was the real
+  hole: swapping `>=` for `>` in the margin comparison changed no
+  test's outcome, though a study graded to sit exactly on its declared
+  minimum is what `solve` produces. `tests/unit/verdict.spec.ts` pins
+  the boundary, both directions, the absent-requirement case and the
+  printed verdict; all three mutations tried against it now fail.
+* *Every parser error was reported twice.* `Parser` was handed the
+  lexer's array and assigned it to `this.errors`, so the two names were
+  one object and `parse` spread both. Copied in instead.
+* *`faults` could not declare `I1`*, while the unknown-key list already
+  named it as accepted -- so a declared `I1` warned about nothing and
+  was discarded. Wired through the parser, AST, model and condition
+  resolution.

@@ -36,7 +36,7 @@ plot but do not block grading computation.
 * *A curve with `kind = sub_kind = "fuse"` and only one of
   `min_melt`/`total_clear` is declared.* The renderer warns
   suggesting the user also declare the missing pair.
-* *Mixing `abb.ri` / `abb.rd` (linear / logarithmic) curves in the
+* *Mixing `abb.ri` / `abb.rd` (hyperbolic / logarithmic) curves in the
   same grading pair with IDMT curves.* *Warning* -- the operate-
   time math is not aligned; the engineer should verify the
   coordination intent.

@@ -290,19 +290,29 @@ trustworthy than the GE electromechanical emulation.
 
 ==== ABB -- Relion 615/620/630 platform (modern)
 
-Modern ABB Relion 615/620/630 series. ABB RI / RD types are
-formulated as `t = a + b * (I / I_p)` (RI, linear) or
-`t = a - b * ln(I / I_p)` (RD, logarithmic), not in IDMT form; they
-are *separate* from the IEC 60255-151 set. The linter warns on
+Modern ABB Relion 615/620/630 series. ABB RI / RD types are not in
+IDMT form and are *separate* from the IEC 60255-151 set: RI is
+hyperbolic in the multiple, RD logarithmic. The linter warns on
 mixing RI/RD with IDMT in the same grading pair.
 
-[cols="1,1,1,1,1,2", options="header"]
+[cols="1,1,3,2", options="header"]
 |===
-| Identifier | form      | constants                          | Source
+| Identifier | form      | characteristic                        | Source
 
-| `abb.ri`   | linear    | `t = 5.8 - 1.35 * (I/I_p)`         | Relion 615 IM, RI-type
-| `abb.rd`   | logarith. | `t = a + b * ln(I/I_p)`            | Relion 615 IM, RD-type
+| `abb.ri`   | hyperbolic  | `t = TMS / (0.339 - 0.236 / M)`     | ABB RI (ASEA) inverse-time
+| `abb.rd`   | logarithmic | `t = TMS * (5.8 - 1.35 * ln M)`     | Relion 615 IM, RD-type
 |===
+
+`abb.ri` decays from `9.71 * TMS` at pickup towards an asymptote of
+`2.95 * TMS`; it has no zero crossing and is defined for all `M > 1`.
+
+`abb.rd` reaches zero at `M = exp(5.8 / 1.35) ~ 73.4` and is undefined
+above it. A processor MUST NOT report an operate time there. Reporting
+`0 s` -- the fastest answer available -- would assert instantaneous
+operation where the characteristic has simply run out, and would
+flatter every margin computed against it; the reference implementation
+treats the element as not operating, which draws no curve and grades
+as `NO_OPERATION`.
 
 [NOTE]
 ====
@@ -323,10 +333,12 @@ The table is normative as written; a future revision should confirm
 the intended orientation against the SEL-451 instruction manual
 before any study relies on this curve.
 
-*`abb.rd`* gives its form as `t = a + b * ln(I/I_p)` but tabulates
-no constants, while the surrounding prose writes `t = a - b * ln(...)`.
-Processors implement it as `t = a - b * ln(M)` with `a = 5.8`,
-`b = 1.35`, matching both the prose and the `abb.ri` row.
+*`abb.ri`* was tabulated in 0.1.0 as `t = 5.8 - 1.35 * M`, which is
+RD's constants in a linear form. It crosses zero at `M = 4.3`, so every
+fault above about four times pickup read as cleared instantaneously.
+The row now carries the published RI hyperbola. Any study graded
+against `abb.ri` under 0.1.0 must be re-run: its margins were computed
+against an operate time of zero.
 ====
 
 === CTI computation

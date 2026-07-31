@@ -198,3 +198,31 @@ describe('shipped examples', () => {
 function repoRoot(): string {
   return (globalThis as { process?: { cwd(): string } }).process!.cwd();
 }
+
+describe('reporting each error once', () => {
+  /*
+   * `Parser` used to be handed the lexer's own error array and assign
+   * it straight to `this.errors`, so the two names referred to one
+   * object; `parse` then spread both. Every lexical error appeared
+   * twice, and a reader has no way to tell a genuinely repeated
+   * complaint from a doubled one.
+   */
+  const duplicates = (src: string): string[] => {
+    const counts = new Map<string, number>();
+    for (const e of parse(src).errors) {
+      const key = `${e.code}@${e.offset}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts].filter(([, n]) => n > 1).map(([k]) => k);
+  };
+
+  it('does not double a lexical error', () => {
+    /* An unterminated string: two errors, each once. */
+    expect(duplicates('meta { project = "x ;')).toEqual([]);
+  });
+
+  it('does not double errors in a file with several kinds at once', () => {
+    expect(duplicates('meta { project = "x ; }\nrelay R { element 51 { curve = @ } }\n'))
+      .toEqual([]);
+  });
+});

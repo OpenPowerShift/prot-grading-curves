@@ -62,18 +62,34 @@ export function tTripDefinite(I: number, I_pu: number, t_delay_s: number): numbe
   return I >= I_pu ? t_delay_s : Infinity;
 }
 
-/** ABB RI-type, linear in the multiple: `t = a - b * M`. */
-export function tTripLinear(M: number, a: number, b: number, tms: number): number {
+/**
+ * ABB RI-type: `t = tms / (a - b / M)`, hyperbolic in the multiple.
+ *
+ * Unlike the IDMT and RD forms this has no zero crossing -- it decays
+ * from `tms / (a - b)` at pickup towards an asymptote of `tms / a`, so
+ * it stays positive however large the fault.
+ */
+export function tTripRI(M: number, a: number, b: number, tms: number): number {
   if (!Number.isFinite(M) || M <= 1) return Infinity;
-  const t = a - b * M;
-  return t > 0 ? tms * t : 0;
+  const denom = a - b / M;
+  return denom > 0 ? tms / denom : Infinity;
 }
 
-/** ABB RD-type, logarithmic in the multiple: `t = a - b * ln(M)`. */
+/**
+ * ABB RD-type, logarithmic in the multiple: `t = a - b * ln(M)`.
+ *
+ * The published form runs out of definition at `M = exp(a/b)` -- for
+ * the RD constants, `M ~ 73` -- above which it yields a negative time.
+ * Beyond that the characteristic says nothing, and `Infinity` is how
+ * this module spells that: the curve stops being drawn and grading
+ * reports no operation. Clamping to `0` instead would assert
+ * instantaneous operation, which is the one answer that is certainly
+ * wrong and the one that flatters every margin computed from it.
+ */
 export function tTripLog(M: number, a: number, b: number, tms: number): number {
   if (!Number.isFinite(M) || M <= 1) return Infinity;
   const t = a - b * Math.log(M);
-  return t > 0 ? tms * t : 0;
+  return t > 0 ? tms * t : Infinity;
 }
 
 /**
@@ -157,7 +173,7 @@ export function tTripStage(stage: Stage, I_total: number): number {
   }
 
   const c = producer.constants;
-  if (c.form === 'linear') return tTripLinear(M, c.a ?? 0, c.b ?? 0, tms);
+  if (c.form === 'ri') return tTripRI(M, c.a ?? 0, c.b ?? 0, tms);
   if (c.form === 'log') return tTripLog(M, c.a ?? 0, c.b ?? 0, tms);
   return tTripIDMT(M, { k: c.k, c: c.c, alpha: c.alpha, G_D: c.G_D }, tms);
 }
@@ -190,7 +206,7 @@ export function tmsBracket(stage: Stage, I_total: number): number | undefined {
     t = tTripIDMT(M, { k: producer.k, c: producer.c, alpha: producer.alpha }, 1);
   } else {
     const c = producer.constants;
-    t = c.form === 'linear' ? tTripLinear(M, c.a ?? 0, c.b ?? 0, 1)
+    t = c.form === 'ri' ? tTripRI(M, c.a ?? 0, c.b ?? 0, 1)
       : c.form === 'log' ? tTripLog(M, c.a ?? 0, c.b ?? 0, 1)
       : tTripIDMT(M, { k: c.k, c: c.c, alpha: c.alpha, G_D: c.G_D }, 1);
   }
@@ -208,7 +224,7 @@ export function isTmsAdjustable(stage: Stage): boolean {
 
 export function curveParamsFromId(id: string): IecParams | undefined {
   const c = constantsFromId(id);
-  if (!c || c.form === 'linear' || c.form === 'log') return undefined;
+  if (!c || c.form === 'ri' || c.form === 'log') return undefined;
   return { k: c.k, c: c.c, alpha: c.alpha, G_D: c.G_D };
 }
 

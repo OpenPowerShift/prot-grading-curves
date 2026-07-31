@@ -82,6 +82,7 @@ export function resolveCondition(
       voltage_kV: fault.voltage_kV,
       currents: {
         phase: fault.I_A,
+        I1: fault.I1_A,
         I2: fault.I2_A,
         I0: fault.I0_A,
         residual: fault.earth_A,

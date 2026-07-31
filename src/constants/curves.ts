@@ -15,7 +15,7 @@
  *
  *   t_reset(M) = TMS * [ t_r / (1 - M^2) ]           for M < 1
  *
- * ABB RI / RD are *not* IDMT: they carry `form: 'linear'` /
+ * ABB RI / RD are *not* IDMT: they carry `form: 'ri'` /
  * `form: 'log'` and are evaluated by their own closed forms
  * (see `src/semantics/curves.ts`).
  *
@@ -28,7 +28,7 @@
  * on such a curve is a validation error.
  */
 
-export type CurveForm = 'idmt' | 'linear' | 'log';
+export type CurveForm = 'idmt' | 'ri' | 'log';
 
 export interface CurveConstants {
   /** family name as written after the namespace (e.g. "si", "ur.vi") */
@@ -147,7 +147,11 @@ const ge: CurveTable = {
 /* ------------------------------------------------------------------ */
 
 const abb: CurveTable = {
-  ri: { family: 'ri', name: 'ABB RI-type (linear)',      form: 'linear', a: 5.8, b: 1.35, k: 0, c: 0, alpha: 0, t_r: null, ref: 'Relion 615 IM, RI-type' },
+  /* RI is hyperbolic: `t = tms / (0.339 - 0.236/M)`. It falls from
+   * ~9.7*tms at pickup towards an asymptote of ~2.95*tms, so it never
+   * reaches zero. It previously carried RD's constants in a linear
+   * form and so operated in 0.000 s above M ~ 4.3. */
+  ri: { family: 'ri', name: 'ABB RI-type (inverse)',     form: 'ri',  a: 0.339, b: 0.236, k: 0, c: 0, alpha: 0, t_r: null, ref: 'ABB RI (ASEA) inverse-time characteristic' },
   rd: { family: 'rd', name: 'ABB RD-type (logarithmic)', form: 'log',    a: 5.8, b: 1.35, k: 0, c: 0, alpha: 0, t_r: null, ref: 'Relion 615 IM, RD-type' },
 };
 

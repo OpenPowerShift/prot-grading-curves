@@ -15,6 +15,8 @@
 import { describe, expect, it } from 'vitest';
 import { FAULT_TYPES, isFaultType, quantityIsAbsent, ratioFor } from '@tc/constants/sequence';
 import { conversionFactor, resolveCurrent } from '@tc/semantics/quantity';
+import { resolveCondition } from '@tc/semantics/condition';
+import { process, renderStudy } from '@tc/index';
 
 const ROOT3 = Math.sqrt(3);
 
@@ -135,5 +137,52 @@ describe('conversion between quantities', () => {
 
   it('refuses when the type cannot supply the ratio', () => {
     expect(conversionFactor('phase', 'I2', { phase: 390 }, 'two_phase_earth')).toBeNull();
+  });
+});
+
+describe('a fault declares I1 like every other component', () => {
+  /*
+   * `faults` parsed `I2`, `I0` and `residual` but not `I1` -- while the
+   * unknown-key list already named `I1` as accepted, so writing it
+   * warned about nothing and stored nothing. A study could declare a
+   * positive-sequence current, see no complaint, and get a sheet drawn
+   * from a value the tool had thrown away. Scenario levels and points
+   * had taken `I1` all along, so this was the one place the shared
+   * current vocabulary had a hole in it.
+   */
+  const study = (members: string) => process(`
+    system { voltages { "HV" { V = 33 kV; } } }
+    faults { "F" { I = 900 A; ${members} voltage = "HV"; } }
+    relay R { voltage = "HV"; element 51 { curve = iec.si; I_pickup = 100 A; tms = 0.1; } }
+    view { voltage = "HV"; quantity = I1; condition = "F";
+           current_min = 10 A; current_max = 40 kA; }
+  `);
+
+  it('stores it, without a warning', () => {
+    const r = study('I1 = 450 A;');
+    expect(r.parseErrors).toHaveLength(0);
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+    expect(r.study!.faults.get('F')!.I1_A).toBe(450);
+  });
+
+  it('resolves it as the condition\'s I1', () => {
+    const r = study('I1 = 450 A;');
+    expect(resolveCondition(r.study!, 'F')!.currents.I1).toBe(450);
+  });
+
+  it('uses it as the conversion factor for the sheet', () => {
+    /* 900 A phase against a declared 450 A of I1 is a ratio of 2, so a
+     * phase curve sits at half its own current on an I1 axis -- a
+     * figure no fault type would have derived. */
+    const svg = renderStudy(study('I1 = 450 A;'), { theme: 'light' });
+    expect(svg).toContain('R:51: phase drawn on the I1 axis, x0.5');
+  });
+
+  it('still refuses the sheet when nothing supplies I1', () => {
+    /* Without a declared I1 and without a type to derive one from,
+     * there is no factor, and the curve is suppressed rather than
+     * placed somewhere plausible. */
+    const svg = renderStudy(study(''), { theme: 'light' });
+    expect(svg).not.toContain('data-curve="R:51"');
   });
 });

@@ -250,6 +250,34 @@
                                 block whose every field changes a
                                 number, is a typo and is refused.
 
+| 2026-07-31 | 0.2.0-draft | *Correction -- `abb.ri`.* The RI row
+                              carried RD's constants in a linear form,
+                              `t = 5.8 - 1.35 * M`, which crosses zero
+                              at `M = 4.3`. Every fault above about four
+                              times pickup was reported as cleared in
+                              0.000 s, so any margin graded against an
+                              `abb.ri` element was computed from the
+                              fastest answer available rather than from
+                              the curve.
+
+                              * `abb.ri` is now the published hyperbola,
+                                `t = TMS / (0.339 - 0.236 / M)`, which
+                                has no zero crossing.
+                              * `abb.rd` keeps `5.8` / `1.35`, which
+                                were always its own constants, and is
+                                stated to be undefined above
+                                `M ~ 73.4` rather than clamped to zero
+                                there.
+                              * A processor MUST NOT report `0 s` where
+                                a characteristic has run out of
+                                definition.
+                              * `faults` accepts `I1`, which the
+                                reserved-word list already named and the
+                                grammar did not; a declared `I1` was
+                                accepted silently and discarded.
+                              * Lexical errors are no longer reported
+                                twice.
+
 | 2026-07-30 | 0.1.0-draft | *Conditions on the drawing.* A `scenario`
                               drove grading but drew nothing, so a
                               margin report could cite a condition that

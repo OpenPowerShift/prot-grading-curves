@@ -348,9 +348,16 @@ class Parser {
     'KW', // top-level keyword starts
   ];
 
-  constructor(tokens: Token[], errors: ParseError[]) {
+  /**
+   * Lexer errors are *copied in*, not aliased. Assigning the caller's
+   * array here made `parser.errors` and the lexer's array the same
+   * object, so `parse` spreading both reported every error twice --
+   * and a `.tc` file with one stray brace listed the same complaint
+   * two lines running.
+   */
+  constructor(tokens: Token[], lexErrors: readonly ParseError[] = []) {
     this.tokens = tokens;
-    this.errors = errors;
+    this.errors.push(...lexErrors);
   }
 
   private peek(off = 0): Token {
@@ -928,6 +935,7 @@ class Parser {
             case 'I_max':    f.max_A = this.parseNumberWithUnit_A(); break;
             case 'residual':  f.earth_A = this.parseNumberWithUnit_A(); break;
             case 'I0':     f.I0_A = this.parseNumberWithUnit_A(); break;
+            case 'I1':     f.I1_A = this.parseNumberWithUnit_A(); break;
             case 'I2':     f.I2_A = this.parseNumberWithUnit_A(); break;
             case 'voltage':  {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
@@ -2358,7 +2366,7 @@ export function parse(source: string): ParseResult {
   const doc = parser.parseDocument();
   return {
     document: doc,
-    errors: [...lexErrors, ...parser.errors, ...structuralErrors(tokens)]
+    errors: [...parser.errors, ...structuralErrors(tokens)]
       .sort((a, b) => a.offset - b.offset),
   };
 }

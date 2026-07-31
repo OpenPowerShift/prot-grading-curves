@@ -14,7 +14,7 @@ import {
   tTripIDMT,
   tTripDefinite,
   tTripFlex,
-  tTripLinear,
+  tTripRI,
   tTripLog,
   tReset,
   curveParamsFromId,
@@ -131,18 +131,46 @@ describe('non-IDMT forms', () => {
     expect(tTripDefinite(3199, 3200, 0.05)).toBe(Infinity);
   });
 
-  it('ABB RI is linear in the multiple', () => {
-    // t = 5.8 - 1.35 * M
-    expect(tTripLinear(2, 5.8, 1.35, 1)).toBeCloseTo(3.1, 6);
-    expect(tTripLinear(4, 5.8, 1.35, 1)).toBeCloseTo(0.4, 6);
-    // clamps at zero rather than going negative
-    expect(tTripLinear(10, 5.8, 1.35, 1)).toBe(0);
+  it('ABB RI is hyperbolic in the multiple', () => {
+    // t = 1 / (0.339 - 0.236 / M)
+    expect(tTripRI(2, 0.339, 0.236, 1)).toBeCloseTo(4.5249, 4);
+    expect(tTripRI(5, 0.339, 0.236, 1)).toBeCloseTo(3.4270, 4);
+  });
+
+  it('ABB RI decays towards an asymptote, never to zero', () => {
+    /*
+     * The regression this replaces: RI carried RD's constants in a
+     * linear form, `t = 5.8 - 1.35 M`, which crosses zero at M = 4.3
+     * and was clamped there. Every fault above four times pickup
+     * therefore read as cleared in 0.000 s -- the fastest answer
+     * available, asserted where the curve had simply run out.
+     */
+    const asymptote = 1 / 0.339;
+    for (const M of [5, 10, 50, 1000]) {
+      const t = tTripRI(M, 0.339, 0.236, 1);
+      expect(t).toBeGreaterThan(asymptote);
+    }
+    expect(tTripRI(1e6, 0.339, 0.236, 1)).toBeCloseTo(asymptote, 4);
+    /* Monotonically decreasing, so the curve slopes the right way. */
+    expect(tTripRI(10, 0.339, 0.236, 1)).toBeLessThan(tTripRI(5, 0.339, 0.236, 1));
+  });
+
+  it('scales with tms', () => {
+    expect(tTripRI(3, 0.339, 0.236, 0.5)).toBeCloseTo(tTripRI(3, 0.339, 0.236, 1) / 2, 6);
   });
 
   it('ABB RD is logarithmic in the multiple', () => {
     // t = 5.8 - 1.35 * ln(M)
     expect(tTripLog(Math.E, 5.8, 1.35, 1)).toBeCloseTo(5.8 - 1.35, 6);
     expect(tTripLog(10, 5.8, 1.35, 1)).toBeCloseTo(5.8 - 1.35 * Math.LN10, 6);
+  });
+
+  it('RD says nothing past its zero crossing rather than claiming 0 s', () => {
+    /* exp(5.8 / 1.35) ~ 73.4, beyond which the published form is
+     * negative. Infinity draws no curve and grades as no operation;
+     * zero would have claimed instantaneous clearance. */
+    expect(tTripLog(73, 5.8, 1.35, 1)).toBeGreaterThan(0);
+    expect(tTripLog(74, 5.8, 1.35, 1)).toBe(Infinity);
   });
 
   it('reset time follows t_r / (1 - M^2) below pickup', () => {

@@ -70,6 +70,7 @@ export interface FaultDecl extends BaseNode {
   I_A: number;
   min_A?: number;
   max_A?: number;
+  I1_A?: number;
   earth_A?: number;
   I0_A?: number;
   I2_A?: number;

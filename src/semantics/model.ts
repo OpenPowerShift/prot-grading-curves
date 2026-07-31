@@ -63,6 +63,7 @@ export interface Fault {
   /** Range endpoints; both default to `I_A` (spec: _CTI computation_). */
   min_A: number;
   max_A: number;
+  I1_A?: number;
   earth_A?: number;
   I0_A?: number;
   I2_A?: number;
@@ -526,6 +527,7 @@ export function buildStudy(doc: Document): Study {
         I_A: f.I_A,
         min_A: f.min_A ?? f.I_A,
         max_A: f.max_A ?? f.I_A,
+        I1_A: f.I1_A,
         earth_A: f.earth_A,
         I0_A: f.I0_A,
         I2_A: f.I2_A,

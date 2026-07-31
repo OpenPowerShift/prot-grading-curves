@@ -79,9 +79,10 @@ fault-member    ::= "type"    "=" fault-type-keyword ";"
                   | "I"        "=" number current-unit ";"
                   | "I_min"      "=" number current-unit ";"
                   | "I_max"      "=" number current-unit ";"
-                  | "residual"    "=" number current-unit ";"
-                  | "I0"       "=" number current-unit ";"
+                  | "I1"       "=" number current-unit ";"
                   | "I2"       "=" number current-unit ";"
+                  | "I0"       "=" number current-unit ";"
+                  | "residual"    "=" number current-unit ";"
                   | "voltage"    "=" voltage-ref
                   | "description" "=" string ";" ;
 ----

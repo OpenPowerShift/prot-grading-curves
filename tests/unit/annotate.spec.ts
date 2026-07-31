@@ -203,7 +203,7 @@ view { voltage = "HV"; stages = "individual"; current_min = 10 A; current_max = 
 
   it('still works when neither side has stages', () => {
     const simple = STAGED.replace(
-      /stages \{[\s\S]*?\n    \}\n  \}/,
+      /stages \{[\s\S]*?\n {4}\}\n {2}\}/,
       'curve = definite; I_pickup = 75 A; t_delay = 0.10 s; }',
     );
     const { svg } = parseAndRender(simple, { theme: 'light' });

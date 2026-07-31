@@ -262,9 +262,11 @@ view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
 `;
 
   it('moves the margin when at_I_A moves', () => {
+    /* The margin arrow specifically -- `stroke-width="1.4"` -- not the
+     * first vertical line in the document, which is a gridline. */
     const at = (a: string): number => Number(
       parseAndRender(BASE + a, { theme: 'light' }).svg
-        .match(/<line x1="([\d.]+)" y1="[\d.]+" x2="\1"/)![1]);
+        .match(/<line x1="([\d.]+)" y1="[\d.]+" x2="\1" y2="[\d.]+" stroke="[^"]*" stroke-width="1\.4"\/>/)![1]);
     const near = at('annotate { primary = R_A:51; backup = R_B:51; at_I_A = 2 kA; label = "m"; }');
     const far = at('annotate { primary = R_A:51; backup = R_B:51; at_I_A = 20 kA; label = "m"; }');
     expect(far).toBeGreaterThan(near + 100);

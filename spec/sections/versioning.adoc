@@ -30,5 +30,5 @@ version unchanged.
 | Version | Planned features
 
 | 0.1.x    | Core language: IEC/IEEE curves, multi-stage elements, `combine`, `solve` (text), cross-voltage grading, devices, `page`/theme, SVG/PNG/PDF export.
-| 0.2.0    | Interactive curve dragging in the playground (reverse-solve `tms`/`I_pickup`/`t_delay` from visual position, write back to source); `solve { free = ["tms", "I_pu"]; }` two-variable Newton; `safety_factor` solver strategy; directional element logic; per-element `style` override.
+| 0.2.0    | Interactive curve dragging in the playground (reverse-solve `tms`/`I_pickup`/`t_delay` from visual position, write back to source); `solve { free = ["tms", "I_pickup"]; }` two-variable Newton; `safety_factor` solver strategy; directional element logic; per-element `style` override.
 |===

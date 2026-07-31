@@ -42,17 +42,19 @@ meta-stmt       ::= identifier "=" value ";" ;
 [source,ebnf]
 ----
 system-block    ::= "system" "{" { system-assignment } "}" ;
+(* `frequency_Hz` and `grounding` were removed at 0.2.0: both were
+   parsed, stored and read by nothing, and `zero_sequence` declares
+   what `grounding` was reaching for. *)
 system-assignment ::=
-      "frequency_Hz"   "=" number "Hz" ";"
-    | "base_MVA"       "=" number power-unit ";"
-    | "grounding"      "=" string ";"
-    | "I_base_A"       "=" number current-unit ";"
+      "base_S"         "=" number power-unit ";"
+    | "I_base"         "=" number current-unit ";"
     | "I_units"        "=" pickup-units-keyword ";"
-    | voltages-block ;
+    | voltages-block
+    | zero-sequence-block ;
 
 voltages-block  ::= "voltages" "{" { voltage-asg } "}" ;
 voltage-asg     ::= string "{" { voltage-member } "}" ;
-voltage-member  ::= "kV"         "=" number voltage-unit ";"
+voltage-member  ::= "V"          "=" number voltage-unit ";"
                   | "description" "=" string ";" ;
 voltage-ref     ::= string ;
 ----
@@ -74,12 +76,12 @@ primary-ampere value at that level.
 faults-block    ::= "faults" "{" { fault-asg } "}" ;
 fault-asg       ::= string "{" { fault-member } "}" ;
 fault-member    ::= "type"    "=" fault-type-keyword ";"
-                  | "I_A"        "=" number current-unit ";"
-                  | "min_A"      "=" number current-unit ";"
-                  | "max_A"      "=" number current-unit ";"
-                  | "earth_A"    "=" number current-unit ";"
-                  | "I0_A"       "=" number current-unit ";"
-                  | "I2_A"       "=" number current-unit ";"
+                  | "I"        "=" number current-unit ";"
+                  | "I_min"      "=" number current-unit ";"
+                  | "I_max"      "=" number current-unit ";"
+                  | "residual"    "=" number current-unit ";"
+                  | "I0"       "=" number current-unit ";"
+                  | "I2"       "=" number current-unit ";"
                   | "voltage"    "=" voltage-ref
                   | "description" "=" string ";" ;
 ----
@@ -101,7 +103,7 @@ voltage level, a second being a second at every level.
 ----
 times-block     ::= "times" "{" { time-asg } "}" ;
 time-asg        ::= string "{" { time-member } "}" ;
-time-member     ::= "t_s"         "=" number time-unit ";"
+time-member     ::= "t"         "=" number time-unit ";"
                   | "description" "=" string ";" ;
 ----
 
@@ -127,12 +129,12 @@ axis-quantity   ::= "any"        # every curve on one current axis (default)
                   | measured-quantity ;
 measured-quantity ::= "phase" | "I1" | "I2" | "3I2" | "I0" | "3I0" ;
 
-level-member    ::= "I_A"     "=" number current-unit ";"   # phase
-                  | "I1_A"    "=" number current-unit ";"
-                  | "I2_A"    "=" number current-unit ";"
-                  | "I0_A"    "=" number current-unit ";"   # component
-                  | "earth_A" "=" number current-unit ";" ; # residual 3*I0
-scenario-share  ::= "sees" identifier "{" "current_pct" "=" number ";" "}" ;
+level-member    ::= "I"     "=" number current-unit ";"   # phase
+                  | "I1"    "=" number current-unit ";"
+                  | "I2"    "=" number current-unit ";"
+                  | "I0"    "=" number current-unit ";"   # component
+                  | "residual" "=" number current-unit ";" ; # residual 3*I0
+scenario-share  ::= "sees" identifier "{" "share" "=" number ";" "}" ;
 
 relay-block     ::= "relay" identifier "{" { relay-member } "}" ;
 relay-member   ::= relay-scalar ";"
@@ -242,10 +244,10 @@ formula-member  ::= "k"     "=" number time-unit ";"
 flex_points-asg ::= "flex_points" "=" "[" flex-pt { "," flex-pt } "]" ";" ;
 flex-pt         ::= "(" number current-unit "," number time-unit ")" ;
 
-pickup-asg      ::= "I_pu"  "=" number current-unit ";" ;
+pickup-asg      ::= "I_pickup" "=" number current-unit ";" ;
 pickup_units-asg ::= "I_units" "=" pickup-units-keyword ";" ;
 pickup-units-keyword ::= "primary" | "secondary" ;
-current_pct-asg ::= "current_pct" "="
+current_pct-asg ::= "share" "="
                   number "%" ";" ;
 tms-asg         ::= "tms"       "=" number ";" ;
 t_delay-asg     ::= "t_delay"   "=" number time-unit ";" ;
@@ -283,8 +285,8 @@ grade-block     ::= "grade" "{" { grade-member } "}" ;
 grade-member    ::= "primary"   "=" ref ";"
                   | "backup"    "=" ref ";"
                   | "fault"     "=" fault-ref ";"
-                  | "CTI_min_s" "=" number time-unit ";"
-                  | "margin_s"  "=" number time-unit ";"
+                  | "margin" "=" number time-unit ";"
+                  | "margin_target" "=" number time-unit ";"
                   | "tolerance_pct" "=" number ";"
                   | "comment"   "=" string ";"
                   | solve-block ;
@@ -294,7 +296,7 @@ solve-member    ::= "strategy" "=" solve-strategy-keyword ";"
                   | "tolerance_pct" "=" number ";"
                   | "free" "=" "[" free-list "]" ";" ;
 free-list       ::= solve-free { "," solve-free } ;
-solve-free      ::= "tms" | "t_delay" | "I_pu" ;
+solve-free      ::= "tms" | "t_delay" | "I_pickup" ;
 solve-strategy-keyword ::= "tight"  # minimum tms meeting the margin
                          | "loose"  # tms rounded up to the standard step
                          | "safety_factor" ;  # multiplied by safety factor
@@ -331,7 +333,7 @@ annotate-block  ::= "annotate" "{" { annotate-member } "}" ;
 annotate-member ::= "on_curve" "=" ref ";"          (* point form *)
                   | "primary"  "=" ref ";"          (* margin form *)
                   | "backup"   "=" ref ";"
-                  | "at_I_A"   "=" number current-unit ";"
+                  | "at_I"   "=" number current-unit ";"
                   | condition-asg
                   | "label"    "=" string  ";"
                   | "style"    "=" annotation-style ";"
@@ -344,13 +346,13 @@ point-id        ::= string | identifier ;
 (* A point declares its current exactly as a `fault` does, so one
    vocabulary covers every current in the language; the sheet takes
    whichever component its axis is drawn in. *)
-point-member    ::= "I_A"     "=" number current-unit ";"   # phase
-                  | "I1_A"    "=" number current-unit ";"
-                  | "I2_A"    "=" number current-unit ";"
-                  | "I0_A"    "=" number current-unit ";"   # component
-                  | "earth_A" "=" number current-unit ";"   # residual 3*I0
+point-member    ::= "I"     "=" number current-unit ";"   # phase
+                  | "I1"    "=" number current-unit ";"
+                  | "I2"    "=" number current-unit ";"
+                  | "I0"    "=" number current-unit ";"   # component
+                  | "residual" "=" number current-unit ";"   # residual 3*I0
                   | "type"    "=" fault-type-keyword ";"
-                  | "t_s"     "=" number time-unit ";"
+                  | "t"     "=" number time-unit ";"
                   | condition-asg
                   | "voltage" "=" voltage-ref ";"
                   | "label"   "=" string ";"
@@ -407,9 +409,9 @@ device-member   ::= "kind"      "=" device-kind-keyword ";"
                   | "voltage"   "=" voltage-ref ";"
                   | "maker"     "=" string ";"
                   | "model"     "=" string ";"
-                  | "rating_A"  "=" number current-unit ";"
-                  | "rating_kV" "=" number voltage-unit ";"
-                  | "rating_MVA" "=" number power-unit ";"
+                  | "rating_I"  "=" number current-unit ";"
+                  | "rating_V" "=" number voltage-unit ";"
+                  | "rating_S" "=" number power-unit ";"
                   | "comment"   "=" string ";"
                   | "description" "=" string ";"
                   | "reference" "=" string ";"

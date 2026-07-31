@@ -52,7 +52,7 @@ token, `67N` must not be read as the number `67` followed by the
 identifier `N`; a digit-leading identifier absorbs any letters that
 follow it immediately, with no intervening whitespace.
 
-The whitespace rule is what keeps `I_pu = 480 A` unambiguous: the
+The whitespace rule is what keeps `I_pickup = 480 A` unambiguous: the
 space separates the value from its unit, so `480 A` is a number and
 a suffix, while `67N` is one identifier.
 ====
@@ -80,23 +80,28 @@ renderer's title block and the `[meta.*]` footer macros read, are
 `margin`. Any other key is carried through and available to a
 `[meta.<key>]` macro.
 
-*Inside `system`* -- voltages, frequency_Hz, base_MVA, grounding,
-I_base_A, I_units
+*Inside `system`* -- voltages, zero_sequence, base_S, I_base, I_units
 
-*Inside `system.voltages.<level>`* -- kV, description
+*Inside `system.voltages.<level>`* -- V, description
 
-*Inside `faults.<name>`* -- I_A, min_A, max_A, earth_A, I0_A, I2_A,
-voltage, description
+*Inside `faults.<name>`* -- I, I_min, I_max, I1, I2, I0, residual,
+type, voltage, description
+
+*Inside `times.<name>`* -- t, description
+
+*Inside `scenario`* -- type, description, level, sees
+
+*Inside `scenario.level.<level>`* -- I, I1, I2, I0, residual
 
 *Inside `element` / `stage`* -- name, function, measures, curve, formula,
-flex_points, I_pu, I_units, current_pct, tms, t_delay, t_reset,
+flex_points, I_pickup, I_units, share, tms, t_delay, t_reset,
 char_angle, reset, directional, direction, stages, stage, comment
 
 *Inside `relay`* -- name, voltage, ct_ratio, direction, faults,
 maker, model, comment, description, reference
 
-*Inside `grade`* -- primary, backup, fault, scenario, CTI_min_s,
-margin_s, tolerance_pct, upstream, upstream_to, comment, solve
+*Inside `grade`* -- primary, backup, fault, scenario, margin,
+margin_target, tolerance_pct, upstream, upstream_to, comment, solve
 
 *Inside `annotate`* -- on_curve, at_I_A, primary, backup, fault,
 label, style, color
@@ -163,11 +168,11 @@ solid, dashed, dotted
 *Device kinds* -- fuse, recloser, cable, transformer_damage,
 motor_startup, breaker
 
-*Inside `point`* -- I_A, t_s, label, voltage, color, shape,
-description
+*Inside `point`* -- I, I1, I2, I0, residual, type, t, fault, scenario,
+label, voltage, color, shape, coords, description
 
 *Meta keys* -- project, study, engineer, date, revision, standard,
-CTI_min_s, margin_s, curve_set
+margin, curve_set
 
 *Vertical alignments* (in page block) -- top, center, bottom
 

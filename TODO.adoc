@@ -1,17 +1,17 @@
-* [ ] Format button for source
+* [x] Format button for source
 * [ ] Lines disappear. 
 * [ ] Text seems a bit small and elements are concatenated in curve section of plot.
 * [ ] Want to snap a bit less (say 24 px) and can remove the "Hover to snap" text and instructions at the top (perhaps a dialog with a help icon instead).
-* [ ] Check_upstream option for "grade" directive.
-* [ ] Export to PDF and page.
-* [ ] Directives for revision under meta.
+* [x] Check_upstream option for "grade" directive.
+* [x] Export to PDF and page.
+* [x] Directives for revision under meta.
 * [ ] More and better examples.
-* [ ] Why do we have frequency_Hz and grounding information under system?
-* [ ] Should include relay information (maker and model in legend)
+* [x] Why do we have frequency_Hz and grounding information under system?
+* [x] Should include relay information (maker and model in legend)
 * [ ] Do we need CTI_min_s under meta?
-* [ ] Points for transformer/inrush
+* [x] Points for transformer/inrush
 * [ ] Move plot and buttons into the top section to give more diagram space.
 * [ ] Coordinate clicker should follow mouse closer and disappear  when outside of the curve diagram
 * [ ] Capitalise IDMT, IEC
 * [ ] grade directive the whole relay and fault type e.g. phase
-* [ ] Option to show secondary values in curve display. Or option for secondary values as inputs (global and per relay).
+* [x] Option to show secondary values in curve display. Or option for secondary values as inputs (global and per relay).

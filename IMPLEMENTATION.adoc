@@ -147,3 +147,83 @@ include::impl/sections/risks.adoc[]
 
 include::impl/sections/open-questions.adoc[]
 
+
+[[current-state]]
+== Current state and outstanding work
+
+Reconciled 2026-07-31 against the tree at `e1fb906`. 657 tests, clean
+typecheck, lint and both builds; all twelve examples parse and render.
+
+=== Landed since the 0.1.0 plan
+
+* *Sequence currents.* Each element grades against the current it
+  measures (`quantity.ts`); `scenario` blocks declare a condition per
+  level so nothing is referred across a delta; `zero_sequence` is
+  declared rather than assumed.
+* *Conditions on the drawing.* Scenarios draw their own rules;
+  `annotate` and `point` reference conditions; `times` declares
+  required clearances as horizontal rules.
+* *Sheets.* Several named `view` blocks per study, each with its own
+  title; `--view` / `default = true` select one without the playground.
+* *Margins.* Time margins (vertical) and current margins (horizontal,
+  as a percentage) to a curve, a condition or a marked point; stage
+  references (`R_850:46/energ`).
+* *Units everywhere* (0.2.0, breaking). No key naming a physical
+  quantity carries its unit; every old spelling is refused with its
+  replacement. See the revision history.
+* *Help.* `?` completions everywhere; a docked help panel that
+  resolves dotted identifiers such as `iec.si`.
+
+=== Outstanding, most serious first
+
+. *Cross-voltage curve placement contradicts the report.* An element's
+  curve crosses voltage levels by the turns ratio, but a scenario's
+  per-level figures deliberately need not agree with that ratio, and
+  `survivesVoltageReferral` returns `true` for `phase` unconditionally
+  -- though phase current is `I1+I2+I0` and does not refer by the
+  ratio behind a delta under an unbalanced fault. On example 12 the
+  drawing says the LV ACB never operates while the report says it
+  clears in 1.63 s and passes.
++
+Proposed fix, and it needs no new syntax: where a sheet names a
+condition that declares both levels, place curves by that condition's
+own ratio rather than by kV. Plot and report then agree by
+construction. *Needs a decision* -- it moves every cross-voltage sheet.
+
+. *`abb.ri` operates in exactly 0.000 s above M ~ 4.3.* The linear form
+  `t = 5.8 - 1.35*M` is almost certainly a transcription error
+  (published ABB RI is hyperbolic), and `curves.ts` clamps the negative
+  result to zero rather than refusing -- 0 s being the same unplottable
+  condition `ZERO_DELAY_NOT_PLOTTABLE` already rejects.
+
+. *The pass/fail verdict is untested.* Corrupting the per-row `pass`
+  comparison in `grades.ts` by a factor of two leaves all tests green.
+  The physics is well covered; the verdict computed from it is not.
+
+. *Keys that still name a unit.* The rename covered every physical
+  quantity. It did **not** cover the page cosmetics -- `margins_mm`,
+  `size_px`, `width_px`, `line_width_px`, `label_size_px`,
+  `tick_size_px`, `label_offset_px`, `font_size_px` -- nor
+  `tolerance_pct`. That was an implementation judgement (one unit each,
+  no ambiguity to resolve), not a decision the user made, and it is a
+  visible exception to "no key carries its own unit". *Needs a
+  decision*: finish the job, or write the exception into the spec.
+
+. *Range sweep does nothing for sequence elements* but still prints a
+  range-check table implying it ran.
+
+. *Every parser error is reported twice* (`parser.ts` aliases the
+  lex-error array and then spreads both).
+
+. *Twelve diagnostic codes carry no source location* and report at 1:1.
+
+. *`faults` cannot declare `I1`*, so the one-vocabulary claim has a
+  hole in it.
+
+. *`linting-rules.adoc` states 13 rules as processor behaviour*; two
+  are implemented. Five codes named in the spec are never emitted;
+  around forty implemented codes appear nowhere in it.
+
+. *`svg.ts` decomposition.* Not 3,722 lines but one 2,874-line function
+  holding ~40 closures. Split in this order or the captures merely
+  move: sheet model, legend, annotations, frame.

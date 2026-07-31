@@ -82,12 +82,12 @@ grade {
 
 At `I_f = 4850 A` (`F_FDR2_max` on `FDR_2`, voltage `LV`):
 
-* `R_FDR_2:51` (IEC Standard Inverse, `I_pu = 480 A`, `tms = 0.25`)
+* `R_FDR_2:51` (IEC Standard Inverse, `I_pickup = 480 A`, `tms = 0.25`)
   sits on `LV` with the fault, so it measures `4850 A`:
   `M = 10.104`, `t_p = 0.739 s`.
 * Target `t_b_target = 0.739 + 0.30 = 1.039 s`.
 * `R_TRF_INC:51` sits on `HV`, so it measures
-  `4850 * 11 / 33 = 1616.7 A` against its own `I_pu = 720 A`:
+  `4850 * 11 / 33 = 1616.7 A` against its own `I_pickup = 720 A`:
   `M = 2.2454`. IEC standard inverse with `c = 0`, so
   `bracket = 0.14 / (2.2454^0.02 - 1) = 0.14 / 0.016309 = 8.584`,
   and `TMS_b = 1.039 / 8.584 = 0.1211`.

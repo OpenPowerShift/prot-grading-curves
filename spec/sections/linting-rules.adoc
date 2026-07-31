@@ -4,7 +4,7 @@ The processor emits a *warning*, not an error, on the following
 situations. Warnings appear in the margin report and on the rendered
 plot but do not block grading computation.
 
-* *Unit confusion.* `I_pu = 1.2` (no `A` or `xIn` suffix) in a
+* *Unit confusion.* `I_pickup = 1.2` (no `A` or `xIn` suffix) in a
   curve-bearing element. *Warning*.
 * *Bare curve names.* `curve = si;` -- resolved via the disambiguation
   table, but flagged so the engineer chooses IEC vs ANSI explicitly.

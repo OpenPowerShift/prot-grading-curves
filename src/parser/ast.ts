@@ -299,8 +299,20 @@ export interface AnnotateBlock extends BaseNode {
   type: 'annotate';
   /** Point form: the curve being marked. */
   on_curve?: Ref;
-  /** Current at which to place the annotation, in primary amps. */
+  /**
+   * Current at which to place the annotation, in primary amps.
+   *
+   * Read at `voltage` -- the level named below, or the view's. Without
+   * a level a bare figure was taken in *each* referenced element's own
+   * frame, so one number meant two different currents across a
+   * transformer and the drawn margin contradicted the report.
+   */
   at_I_A?: number;
+  /**
+   * Level `at_I_A` is measured at. Defaults to the view's, which is
+   * the axis the number was read off.
+   */
+  voltage?: string;
   /**
    * Time at which to measure a *current* margin, in seconds.
    *
@@ -521,6 +533,15 @@ export interface PageLegend extends BaseNode {
    * stays primary.
    */
   currents?: LegendCurrents;
+  /**
+   * Draw the `Notes` block at the foot of the panel. Defaults to true.
+   *
+   * The notes are how a sheet accounts for what it left out, so they
+   * are on by default -- but a drawing being issued to someone who
+   * does not need the workings can turn them off, and get the space
+   * back for the curves.
+   */
+  notes?: boolean;
 }
 
 /** Spellings of {@link PageLegend.currents}. */

@@ -1018,7 +1018,27 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (annotation.condition) {
       return conditionCurrentAt(annotation.condition, voltage, quantity);
     }
-    return Number.isFinite(annotation.at_I_A) ? annotation.at_I_A! : null;
+    if (!Number.isFinite(annotation.at_I_A)) return null;
+
+    /*
+     * A bare current needs a level, exactly as a fault's does.
+     *
+     * It used to be handed to each side unchanged, so on a margin
+     * spanning a transformer the same number was read once at 11 kV and
+     * once at 33 kV -- two different currents -- and the annotation
+     * reported 667 ms against a true margin of 1.639 s. That is the
+     * very contradiction this code was fixed for once already, for the
+     * `fault` form; the bare figure kept it.
+     *
+     * The default is the view's level: `at_I_A` is a number read off
+     * the axis in front of you.
+     */
+    const fromLevel = annotation.voltage ?? viewLevelName;
+    const fromKv = fromLevel ? voltageKvs.get(fromLevel) : V_view_kV;
+    const toKv = voltage ? study.voltages.get(voltage)?.kV : undefined;
+    if (fromKv == null || toKv == null || fromKv === toKv) return annotation.at_I_A!;
+    if (!survivesVoltageReferral(quantity, study, fromLevel, voltage)) return null;
+    return annotation.at_I_A! * (fromKv / toKv);
   };
 
   /** Operate time of a device at a current, by role. */
@@ -2587,16 +2607,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * characteristics; the caveats are what they come back for.
      */
     const BULLET_INDENT = 9;
+    const notesWrapped = axisNotes.map(
+      (note) => wrapText(note, width - BULLET_INDENT, FONT_DETAIL - 1));
+    /*
+     * Height the notes will take, reserved *before* the conditions
+     * block is anchored to the foot of the plot.
+     *
+     * Emitting them after an already-anchored block ran them off the
+     * bottom of the page: the anchor put the conditions flush with the
+     * plot, leaving nothing beneath. Counted first, the conditions move
+     * up and the notes land in the space that opens.
+     */
+    const showNotes = opts.page?.legend?.notes !== false && density !== 'minimal';
+    const notesHeight = axisNotes.length === 0 || !showNotes
+      ? 0
+      : 10 + LINE_HEADING
+        + notesWrapped.reduce((n, w) => n + w.length, 0) * (LINE_DETAIL - 2);
+
     const emitNotes = (): void => {
-      if (axisNotes.length === 0) return;
+      if (axisNotes.length === 0 || !showNotes) return;
       cursorY += 10;
       lines.push(
         `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
         `font-weight="600" class="tc-legend" fill="${legendInk}">Notes</text>`,
       );
       cursorY += LINE_HEADING;
-      for (const note of axisNotes) {
-        const wrapped = wrapText(note, width - BULLET_INDENT, FONT_DETAIL - 1);
+      for (const wrapped of notesWrapped) {
         for (const [i, line] of wrapped.entries()) {
           const x = originX + (i === 0 ? 0 : BULLET_INDENT);
           const text = i === 0 ? `• ${line}` : line;
@@ -2807,7 +2843,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
       let faultsY = cursorY + FONT_HEADING;
       if (anchorFaultsToPlotBottom) {
-        const wanted = topMargin + plotH - (faultLineCount * LINE_LABEL) - LINE_HEADING + FONT_HEADING;
+        const wanted = topMargin + plotH - (faultLineCount * LINE_LABEL)
+          - LINE_HEADING + FONT_HEADING - notesHeight;
         faultsY = Math.max(wanted, cursorY + 12);
       }
 

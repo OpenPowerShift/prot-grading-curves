@@ -1010,6 +1010,35 @@ A legend too tall for its space sheds detail rather than running off
 the page: make and model first, then settings, then names only, and
 finally `+N more not shown`.
 
+==== Notes, and getting the space back
+
+The panel ends with a `Notes` block: what the sheet left out and why --
+a curve the condition suppresses, a marker whose component this axis is
+not drawn in, a scenario with nothing to say at this level. It sits at
+the foot because the list of characteristics is what a reader wants
+first; the caveats are what they come back for.
+
+It takes its space from the panel, pushing the conditions up rather
+than running off the page. On a crowded sheet it is dropped along with
+the other detail as the legend tightens, and it can be turned off
+outright:
+
+[source,tc]
+----
+page { legend = { notes = false; }; }
+----
+
+If the panel is still short of room, in the order that costs least:
+
+. `legend { style = "inside" }` floats it over the plot, or
+  `style = "direct"` drops it and labels each curve in place -- either
+  returns about a third of the sheet's width.
+. `page { stretch = true; }` reclaims the band reserved below the axis.
+. `margins_mm = 4`, or `0` to fill the sheet.
+. Split the study across two `view` blocks; each sheet then carries
+  only the curves and notes that belong to it, which is usually the
+  real fix when one panel is trying to explain two stories.
+
 ==== Settings in secondary amps
 
 A study is written in primary amps because that is what the fault study

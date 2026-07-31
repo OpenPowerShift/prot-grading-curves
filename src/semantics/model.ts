@@ -316,6 +316,8 @@ export interface Annotation {
   at_t_s?: number;
   /** A marked point the current margin is measured to, by id. */
   pointRef?: string;
+  /** Level `at_I_A` is measured at; defaults to the view's. */
+  voltage?: string;
   label?: string;
   style: 'leader' | 'pin' | 'tag';
   color?: string;
@@ -617,6 +619,7 @@ export function buildStudy(doc: Document): Study {
             at_I_A: item.at_I_A,
             at_t_s: item.at_t_s,
             pointRef: item.pointRef,
+            voltage: item.voltage,
             label: item.label,
             style: item.style ?? 'leader',
             color: item.color,

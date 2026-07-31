@@ -1432,6 +1432,13 @@ if (kwName === 'flex_points') {
               if (tok) a.pointRef = unquote(tok.image);
             }
             break;
+          case 'voltage':
+            {
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) a.voltage = unquote(tok.image);
+            }
+            break;
           /* Margin form: the pair whose separation is being labelled. */
           case 'primary':
             a.primary = this.parseRef();
@@ -2176,6 +2183,7 @@ function applyPageSubBlock(
         swatch: str('swatch') as 'line' | 'box' | 'circle' | undefined,
         title: str('title'),
         currents: str('currents') as import('./ast.js').LegendCurrents | undefined,
+        notes: bool('notes'),
       };
       break;
     case 'axes':

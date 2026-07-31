@@ -214,7 +214,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'faults', 'times'],
   /* `page` sub-blocks, so asking inside one lists what it accepts
    * rather than repeating the page's own fields. */
-  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents'],
+  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents',
+               'notes'],
   axes:        ['color', 'grid_color', 'label_color', 'label_size_px', 'tick_size_px',
                'frame', 'mirror'],
   curves:      ['palette', 'line_width_px', 'auto_color'],

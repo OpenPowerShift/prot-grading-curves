@@ -936,3 +936,62 @@ view { voltage = hv; }
     expect(render()).not.toContain('tc-legend-snap');
   });
 });
+
+/* ---------------------------------------------------------------- */
+
+describe('the Notes block at the foot of the panel', () => {
+  /*
+   * Set immediately under the legend title the notes pushed the curves
+   * down the page and read as preamble, when what a reader wants first
+   * is the list of characteristics; the caveats are what they come
+   * back for.
+   */
+  const STUDY = `
+system { voltages { hv { kV = 33; } } }
+faults { "F_3ph" { I_A = 9 kA; I2_A = 0 A; voltage = hv; } }
+relay R {
+  voltage = hv; ct_ratio = 250/1;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pu = 400 A; tms = 0.2; }
+  element 46 { function = "neg_seq"; measures = I2; curve = definite; I_pu = 200 A; t_delay = 0.4 s; }
+}
+view { voltage = hv; quantity = phase; condition = "F_3ph"; }
+`;
+
+  const svg = parseAndRender(STUDY, { theme: 'light' }).svg;
+  const yOf = (re: RegExp): number => Number(svg.match(re)![1]);
+
+  it('gives the notes their own heading', () => {
+    expect(svg).toContain('>Notes</text>');
+  });
+
+  it('puts them below the curve entries, not above', () => {
+    const curveY = yOf(/<text x="[\d.]+" y="([\d.]+)"[^>]*>R:51</);
+    const notesY = yOf(/<text x="[\d.]+" y="([\d.]+)"[^>]*>Notes</);
+    expect(notesY).toBeGreaterThan(curveY);
+  });
+
+  it('keeps them on the sheet, pushing the conditions up to make room', () => {
+    /*
+     * Emitted after an already-anchored conditions block they ran off
+     * the bottom of the page: the anchor put the conditions flush with
+     * the plot, leaving nothing beneath.
+     */
+    const plot = svg.match(/data-plot="([^"]+)"/)![1].split(',').map(Number);
+    const bottom = plot[1] + plot[3];
+    const noteYs = [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)"[^>]*font-style="italic"[^>]*>/g)]
+      .map((m) => Number(m[1]));
+    expect(noteYs.length).toBeGreaterThan(0);
+    for (const y of noteYs) expect(y).toBeLessThanOrEqual(bottom + 2);
+  });
+
+  it('can be turned off, giving the space back', () => {
+    const hidden = parseAndRender(
+      `${STUDY}\npage { legend = { notes = false; }; }`, { theme: 'light' },
+    ).svg;
+    expect(hidden).not.toContain('>Notes</text>');
+    /* The findings go with it -- they are the block's content. */
+    expect(hidden).not.toContain('carries no I2');
+    /* The curves and their settings stay. */
+    expect(hidden).toContain('>R:51</text>');
+  });
+});

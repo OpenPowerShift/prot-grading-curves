@@ -21,8 +21,8 @@ import {
 
 const STUDY = `
 meta { project = "Northgate — 11 kV"; }
-system { voltages { "MV" { kV = 11.0; } } }
-relay R { voltage = "MV"; element 51 { curve = iec.si; I_pu = 5 A_sec; tms = 0.2; } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
+relay R { voltage = "MV"; element 51 { curve = iec.si; I_pickup = 5 A_sec; tms = 0.2; } }
 `;
 
 describe('encoding', () => {

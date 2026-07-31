@@ -8,11 +8,11 @@ semantic error.
   relay.* Duplicate-element double-trip. *Error*.
 . *A `grade` or `combine` referencing a relay or element that does
   not exist.* *Error* with the missing id quoted.
-. *`I_pu` not strictly positive.* *Error*.
+. *`I_pickup` not strictly positive.* *Error*.
 . *`tms` outside* `0.025 <= tms <= 1.5` for IEC curves, *or*
   `0.5 <= tms <= 15` for ANSI curves. *Error* with the valid range
   in the message.
-. *`at_I_A` below `I_pu`* for the anchored curve. *Warning*.
+. *`at_I` below `I_pickup`* for the anchored curve. *Warning*.
 . *`flex_points` not monotone in `I`* (after sorting). *Error*.
 . *`flex_points` with fewer than 2 entries.* *Error*.
 . *A declared curve name not in the table.* *Error* with a
@@ -48,24 +48,24 @@ semantic error.
 . *A `grade` block without a `fault` field.* *Warning*
   (`FAULT_OPTIONAL_NO_GRADE_CHECK`); the block renders but no
   margin is computed.
-. *A `grade` block with both `margin_s` and `CTI_min_s` declared
+. *A `grade` block with both `margin_target` and `margin` declared
   where `margin_s < CTI_min_s`.* *Error* (the design target asks for
   less margin at the declared fault current than the engineering
   constraint allows). The engineer's expectation must be consistent.
-. *A `grade` block with a `solve` block but neither `margin_s` nor
-  `CTI_min_s`. The solver has no target at the declared fault.* *Error*.
+. *A `grade` block with a `solve` block but neither `margin_target` nor
+  `margin`. The solver has no target at the declared fault.* *Error*.
 . *A `solve` block with `strategy = "loose"` and `tolerance_pct`
   outside `[0, 50]`.* *Error*.
-. *A `grade` block with `margin_s` declared but no `solve`
+. *A `grade` block with `margin_target` declared but no `solve`
   block.* *Warning* (`MARGIN_NO_SOLVE`) -- the
   margin is reported as a target only; the engineer should either
-  add a solve directive or change `margin_s` to `CTI_min_s`.
+  add a solve directive or change `margin_target` to `margin`.
 . *A `curve` identifier on the right side of `=` whose namespace
   part (`X.Y`) does not resolve to a row in
   `src/constants/curves.ts`.* *Error* with the closest edit-distance
   suggestion (Levenshtein <= 2).
-. *`current_pct` outside the range `(0, 100]`.* *Error*.
-. *`current_pct` declared on an element with `function = "phase_oc"`
+. *`share` outside the range `(0, 100]`.* *Error*.
+. *`share` declared on an element with `function = "phase_oc"`
   but using an inverse-time curve while `direction = "forward"`
   but the relay participates in an `envelope_min` combine whose
   sources span multiple CT ratios that differ by more than 5:1.*
@@ -96,7 +96,7 @@ semantic error.
   `grade` whose partner relay has a different voltage.* *Warning*
   (`RELAY_VOLTAGE_UNSPECIFIED`); the processor defaults to `LV`
   for the unspecified side but warns the user.
-. *An element's `I_pu` in primary amps below 5% of the relay's
+. *An element's `I_pickup` in primary amps below 5% of the relay's
   voltage base (computed as `base_MVA / V_kV / sqrt(3)`).*
   *Warning* (`PICKUP_TOO_LOW_FOR_VOLTAGE`); this is often a
   unit error (`I_pu = 720 A` instead of `I_pu = 7.20 kA`).
@@ -126,9 +126,9 @@ semantic error.
   to "?" -- the user should remove `[of]` for single-page output.
 . *A `relay` without `ct_ratio` when any element declares
   `I_units = "secondary"`.* *Warning* (`CT_RATIO_UNSPECIFIED`).
-. *A `fault` with only `I_A` declared (no `min_A` / `max_A`).*
-  *Info* (`FAULT_SINGLE_POINT`); `min_A` and `max_A` default to
-  `I_A`.
+. *A `fault` with only `I` declared (no `I_min` / `I_max`).*
+  *Info* (`FAULT_SINGLE_POINT`); `I_min` and `I_max` default to
+  `I`.
 . *An `annotate` on a device whose voltage level differs from
   the plot's axis mode.* *Warning* (`ANNOTATE_VOLTAGE_MISMATCH`).
 . *A `solve` block on a multi-stage backup whose controlling
@@ -192,7 +192,7 @@ Applies to `annotate` and `point`, which may name a condition rather
 than state a current; see <<semantics,Semantics>> _Condition references
 on `annotate` and `point`_.
 
-`POINT_CURRENT_AND_CONDITION`:: A `point` declares both `I_A` and a
+`POINT_CURRENT_AND_CONDITION`:: A `point` declares both `I` and a
 named condition. They are alternatives: a precedence rule would leave
 the losing figure sitting in the source looking as though it did
 something.

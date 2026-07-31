@@ -17,15 +17,14 @@ meta {
 
 system {
     voltages {
-        "HV" { kV = 115.0; }
-        "LV" { kV =  12.47; }
+        "HV" { V  = 115.0 kV; }
+        "LV" { V  =  12.47 kV; }
     }
-    frequency_Hz = 60;
 }
 
 faults {
-    "LV 3ph" { I_A =  5500 A; voltage = "LV"; }
-    "HV 3ph" { I_A = 12000 A; voltage = "HV"; }
+    "LV 3ph" { I   =  5500 A; voltage = "LV"; }
+    "HV 3ph" { I   = 12000 A; voltage = "HV"; }
 }
 
 relay R_FDR {
@@ -36,7 +35,7 @@ relay R_FDR {
 
     element 51 {
         curve = ansi.mi;
-        I_pu  = 480 A;
+        I_pickup = 480 A;
         tms   = 0.50;
     }
 }
@@ -49,7 +48,7 @@ relay R_INC {
 
     element 51 {
         curve = iec.vi;
-        I_pu  = 600 A;
+        I_pickup = 600 A;
         tms   = 0.35;
     }
 }
@@ -58,7 +57,7 @@ grade {
     primary  = R_FDR:51;
     backup   = R_INC:51;
     fault    = "LV 3ph";
-    margin_s = 0.35;
+    margin_target = 0.35 s;
 }
 
 page {

@@ -103,8 +103,8 @@ describe('which quantities survive a voltage referral', () => {
 /* ---------------------------------------------------------------- */
 
 const SYSTEM = `
-system { voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } } }
-relay R_FDR { voltage = "LV"; element 51 { function = "phase_oc"; curve = iec.si; I_pu = 300 A; tms = 0.1; } }
+system { voltages { "HV" { V  = 33 kV; } "LV" { V  = 0.48 kV; } } }
+relay R_FDR { voltage = "LV"; element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 300 A; tms = 0.1; } }
 `;
 
 function report(extra: string) {
@@ -125,9 +125,9 @@ function report(extra: string) {
 describe('grading against the measured current', () => {
   it('grades an earth-fault element off the residual, not the phase current', () => {
     const r = report(`
-      faults { "F" { I_A = 6 kA; I0_A = 800 A; voltage = "LV"; } }
-      relay R_INC { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 20 A; tms = 0.15; } }
-      grade { primary = R_FDR:51; backup = R_INC:51G; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; I0   = 800 A; voltage = "LV"; } }
+      relay R_INC { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 20 A; tms = 0.15; } }
+      grade { primary = R_FDR:51; backup = R_INC:51G; fault = "F"; margin    = 0.3 s; }
     `);
     /* 3 x 800 A, where the phase figure would have been 6000 A. */
     expect(r.rows[0].I_backup_A).toBe(2400);
@@ -135,18 +135,18 @@ describe('grading against the measured current', () => {
 
   it('grades a negative-sequence element off I2', () => {
     const r = report(`
-      faults { "F" { I_A = 6 kA; I2_A = 2 kA; voltage = "LV"; } }
-      relay R_INC { voltage = "LV"; element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.4 s; } }
-      grade { primary = R_FDR:51; backup = R_INC:46; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; I2   = 2 kA; voltage = "LV"; } }
+      relay R_INC { voltage = "LV"; element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.4 s; } }
+      grade { primary = R_FDR:51; backup = R_INC:46; fault = "F"; margin    = 0.3 s; }
     `);
     expect(r.rows[0].I_backup_A).toBe(2000);
   });
 
   it('errors rather than falling back when the component is not declared', () => {
     const r = report(`
-      faults { "F" { I_A = 6 kA; voltage = "LV"; } }
-      relay R_INC { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 20 A; tms = 0.15; } }
-      grade { primary = R_FDR:51; backup = R_INC:51G; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; voltage = "LV"; } }
+      relay R_INC { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 20 A; tms = 0.15; } }
+      grade { primary = R_FDR:51; backup = R_INC:51G; fault = "F"; margin    = 0.3 s; }
     `);
     expect(r.codes).toContain('SEQUENCE_DATA_MISSING');
     expect(r.rows).toHaveLength(0);
@@ -159,9 +159,9 @@ describe('grading against the measured current', () => {
      * backs up an LV earth fault.
      */
     const r = report(`
-      faults { "F" { I_A = 6 kA; I0_A = 800 A; voltage = "LV"; } }
-      relay R_HV { voltage = "HV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 20 A; tms = 0.15; } }
-      grade { primary = R_FDR:51; backup = R_HV:51G; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; I0   = 800 A; voltage = "LV"; } }
+      relay R_HV { voltage = "HV"; element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 20 A; tms = 0.15; } }
+      grade { primary = R_FDR:51; backup = R_HV:51G; fault = "F"; margin    = 0.3 s; }
     `);
     expect(r.codes).toContain('SEQUENCE_ACROSS_LEVELS');
     expect(r.rows).toHaveLength(0);
@@ -169,18 +169,18 @@ describe('grading against the measured current', () => {
 
   it('does refer negative sequence across a transformer, by the turns ratio', () => {
     const r = report(`
-      faults { "F" { I_A = 6 kA; I2_A = 2 kA; voltage = "LV"; } }
-      relay R_HV { voltage = "HV"; element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 20 A; t_delay = 0.4 s; } }
-      grade { primary = R_FDR:51; backup = R_HV:46; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; I2   = 2 kA; voltage = "LV"; } }
+      relay R_HV { voltage = "HV"; element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 20 A; t_delay = 0.4 s; } }
+      grade { primary = R_FDR:51; backup = R_HV:46; fault = "F"; margin    = 0.3 s; }
     `);
     expect(r.rows[0].I_backup_A).toBeCloseTo(2000 * (0.48 / 33), 6);
   });
 
   it('says so when the two sides measure different currents', () => {
     const r = report(`
-      faults { "F" { I_A = 6 kA; I2_A = 2 kA; voltage = "LV"; } }
-      relay R_INC { voltage = "LV"; element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.4 s; } }
-      grade { primary = R_FDR:51; backup = R_INC:46; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; I2   = 2 kA; voltage = "LV"; } }
+      relay R_INC { voltage = "LV"; element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.4 s; } }
+      grade { primary = R_FDR:51; backup = R_INC:46; fault = "F"; margin    = 0.3 s; }
     `);
     const mixed = r.diagnostics.find((d) => d.code === 'GRADE_MIXED_QUANTITY');
     expect(mixed?.severity).toBe('warning');
@@ -190,14 +190,14 @@ describe('grading against the measured current', () => {
 describe('validation', () => {
   it('requires the quantity on a negative-sequence element', () => {
     const r = report(`
-      relay R_INC { voltage = "LV"; element 46 { function = "neg_seq"; curve = definite; I_pu = 75 A; t_delay = 0.4 s; } }
+      relay R_INC { voltage = "LV"; element 46 { function = "neg_seq"; curve = definite; I_pickup = 75 A; t_delay = 0.4 s; } }
     `);
     expect(r.codes).toContain('MEASURES_REQUIRED');
   });
 
   it('rejects a spelling it does not know', () => {
     const r = report(`
-      relay R_INC { voltage = "LV"; element 51 { measures = "I7"; curve = iec.si; I_pu = 75 A; tms = 0.2; } }
+      relay R_INC { voltage = "LV"; element 51 { measures = "I7"; curve = iec.si; I_pickup = 75 A; tms = 0.2; } }
     `);
     expect(r.codes).toContain('MEASURES_UNKNOWN');
   });
@@ -208,8 +208,8 @@ describe('validation', () => {
         voltage = "LV";
         element 50 {
           stages {
-            stage a { measures = "phase"; curve = definite; I_pu = 1 kA; t_delay = 0.1 s; }
-            stage b { measures = "I2";    curve = definite; I_pu = 1 kA; t_delay = 0.2 s; }
+            stage a { measures = "phase"; curve = definite; I_pickup = 1 kA; t_delay = 0.1 s; }
+            stage b { measures = "I2";    curve = definite; I_pickup = 1 kA; t_delay = 0.2 s; }
           }
         }
       }
@@ -224,11 +224,11 @@ describe('validation', () => {
      * routinely share settings -- were reported as identical.
      */
     const r = report(`
-      faults { "F" { I_A = 6 kA; voltage = "LV"; } }
+      faults { "F" { I   = 6 kA; voltage = "LV"; } }
       relay R_INC {
         voltage = "LV";
-        element 51  { function = "phase_oc";    curve = iec.si; I_pu = 100 A; tms = 0.2; }
-        element 51G { function = "earth_fault"; curve = iec.si; I_pu = 100 A; tms = 0.2; }
+        element 51  { function = "phase_oc";    curve = iec.si; I_pickup = 100 A; tms = 0.2; }
+        element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 100 A; tms = 0.2; }
       }
     `);
     expect(r.codes).not.toContain('DUPLICATE_ELEMENT');
@@ -238,8 +238,8 @@ describe('validation', () => {
     const r = report(`
       relay R_INC {
         voltage = "LV";
-        element 51  { function = "phase_oc"; curve = iec.si; I_pu = 100 A; tms = 0.2; }
-        element 51X { function = "phase_oc"; curve = iec.si; I_pu = 100 A; tms = 0.2; }
+        element 51  { function = "phase_oc"; curve = iec.si; I_pickup = 100 A; tms = 0.2; }
+        element 51X { function = "phase_oc"; curve = iec.si; I_pickup = 100 A; tms = 0.2; }
       }
     `);
     expect(r.codes).toContain('DUPLICATE_ELEMENT');
@@ -255,9 +255,9 @@ describe('letter-suffixed element references', () => {
      * suffixed device number was affected: 51G, 67N, 51X, 50BF.
      */
     const result = process(SYSTEM + `
-      faults { "F" { I_A = 6 kA; I0_A = 800 A; voltage = "LV"; } }
-      relay R_INC { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 20 A; tms = 0.15; } }
-      grade { primary = R_FDR:51; backup = R_INC:51G; fault = "F"; CTI_min_s = 0.3; }
+      faults { "F" { I   = 6 kA; I0   = 800 A; voltage = "LV"; } }
+      relay R_INC { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 20 A; tms = 0.15; } }
+      grade { primary = R_FDR:51; backup = R_INC:51G; fault = "F"; margin    = 0.3 s; }
     `);
     const grade = result.document!.items.find((i) => i.type === 'grade') as { backup?: { elementId?: string } };
     expect(grade.backup?.elementId).toBe('51G');

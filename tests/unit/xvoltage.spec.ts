@@ -13,16 +13,16 @@ import { faultCurrentAt, levelKv, projectCurrent } from '@tc/semantics/xvoltage'
 const TWO_LEVEL = `
 system {
     voltages {
-        "HV" { kV = 33.0; }
-        "LV" { kV = 11.0; }
+        "HV" { V  = 33.0 kV; }
+        "LV" { V  = 11.0 kV; }
     }
 }
 faults {
-    "F_lv" { I_A = 6400 A; voltage = "LV"; }
-    "F_hv" { I_A = 18400 A; voltage = "HV"; }
+    "F_lv" { I   = 6400 A; voltage = "LV"; }
+    "F_hv" { I   = 18400 A; voltage = "HV"; }
 }
-relay R_HV { voltage = "HV"; element 51 { curve = iec.si; I_pu = 720 A; tms = 0.3; } }
-relay R_LV { voltage = "LV"; element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; } }
+relay R_HV { voltage = "HV"; element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.3; } }
+relay R_LV { voltage = "LV"; element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25; } }
 `;
 
 const study = buildStudy(parse(TWO_LEVEL).document!);
@@ -87,8 +87,8 @@ describe('faultCurrentAt', () => {
 
   it('projects each endpoint of a declared range', () => {
     const ranged = buildStudy(parse(`
-      system { voltages { "HV" { kV = 33.0; } "LV" { kV = 11.0; } } }
-      faults { "F" { I_A = 6000 A; min_A = 3000 A; max_A = 9000 A; voltage = "LV"; } }
+      system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 11.0 kV; } } }
+      faults { "F" { I   = 6000 A; I_min = 3000 A; I_max = 9000 A; voltage = "LV"; } }
     `).document!);
     const f = ranged.faults.get('F')!;
     expect(faultCurrentAt(ranged, f, 'HV', 'min').I_A).toBeCloseTo(1000, 6);
@@ -99,8 +99,8 @@ describe('faultCurrentAt', () => {
 describe('voltage defaults', () => {
   it('places a relay on the only level when it declares none', () => {
     const single = buildStudy(parse(`
-      system { voltages { "MV" { kV = 11.0; } } }
-      relay R { element 51 { curve = iec.si; I_pu = 400 A; tms = 0.3; } }
+      system { voltages { "MV" { V  = 11.0 kV; } } }
+      relay R { element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; } }
     `).document!);
     const relay = single.relays.get('R')!;
     expect(relay.voltage).toBe('MV');
@@ -109,8 +109,8 @@ describe('voltage defaults', () => {
 
   it('leaves the level unset when the study declares several', () => {
     const many = buildStudy(parse(`
-      system { voltages { "HV" { kV = 33.0; } "LV" { kV = 11.0; } } }
-      relay R { element 51 { curve = iec.si; I_pu = 400 A; tms = 0.3; } }
+      system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 11.0 kV; } } }
+      relay R { element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; } }
     `).document!);
     expect(many.relays.get('R')!.voltage).toBeUndefined();
   });

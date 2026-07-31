@@ -139,16 +139,16 @@ describe('comment syntax', () => {
 describe('number literals', () => {
   it('accepts the group separator', () => {
     // spec _Numbers_: 18_430 is identical to 18430
-    const study = process('faults { "F" { I_A = 18_430 A; } }').study!;
+    const study = process('faults { "F" { I   = 18_430 A; } }').study!;
     expect(study.faults.get('F')!.I_A).toBe(18430);
   });
 
   it('folds every current suffix', () => {
     const study = process(`
       faults {
-        "a" { I_A = 6.4 kA; }
-        "b" { I_A = 6400 A; }
-        "c" { I_A = 6400000 mA; }
+        "a" { I   = 6.4 kA; }
+        "b" { I   = 6400 A; }
+        "c" { I   = 6400000 mA; }
       }
     `).study!;
     expect(study.faults.get('a')!.I_A).toBeCloseTo(6400, 6);
@@ -159,8 +159,8 @@ describe('number literals', () => {
   it('folds every time suffix', () => {
     const study = process(`
       relay R {
-        element 50 { curve = definite; I_pu = 100 A; t_delay = 250 ms; }
-        element 51 { curve = definite; I_pu = 100 A; t_delay = 0.25 s; }
+        element 50 { curve = definite; I_pickup = 100 A; t_delay = 250 ms; }
+        element 51 { curve = definite; I_pickup = 100 A; t_delay = 0.25 s; }
       }
     `).study!;
     const [a, b] = study.relays.get('R')!.elements;

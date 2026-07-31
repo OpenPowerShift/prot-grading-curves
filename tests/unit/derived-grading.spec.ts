@@ -13,13 +13,13 @@ import { process, parseAndRender } from '@tc/index';
 
 /* Declares only its phase current, plus the type that fixes I2. */
 const STUDY = `
-system { voltages { "HV" { kV = 33; } } }
-faults { "2ph min" { I_A = 390 A; type = two_phase; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "2ph min" { I   = 390 A; type = two_phase; voltage = "HV"; } }
 relay A { voltage = "HV"; ct_ratio = 250/1;
-  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.10 s; } }
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.10 s; } }
 relay B { voltage = "HV"; ct_ratio = 250/1;
-  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.45 s; } }
-grade { primary = A:46; backup = B:46; fault = "2ph min"; CTI_min_s = 0.30; }
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.45 s; } }
+grade { primary = A:46; backup = B:46; fault = "2ph min"; margin    = 0.30 s; }
 view { voltage = "HV"; quantity = I2; condition = "2ph min";
        current_min = 10 A; current_max = 40 kA; }
 `;
@@ -57,7 +57,7 @@ describe('a component derived from the fault type', () => {
   });
 
   it('says nothing of the sort when the component is declared', () => {
-    const declared = process(STUDY.replace('type = two_phase;', 'I2_A = 225 A;'));
+    const declared = process(STUDY.replace('type = two_phase;', 'I2 = 225 A;'));
     expect(declared.reports[0].diagnostics.map((d) => d.code))
       .not.toContain('MARGIN_FROM_DERIVED_COMPONENT');
     expect(declared.reports[0].pass).toBe(true);

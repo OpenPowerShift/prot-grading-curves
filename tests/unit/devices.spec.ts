@@ -12,22 +12,22 @@ import { process, parseAndRender } from '@tc/index';
 import { tTripFlex } from '@tc/semantics/curves';
 
 const FUSE_STUDY = `
-system { voltages { "MV" { kV = 11.0; } } }
-faults { "F_spur" { I_A = 900 A; } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
+faults { "F_spur" { I   = 900 A; } }
 
 device "fuse_100T" {
     kind        = "fuse";
     maker       = "Mersen";
     model       = "100T";
-    rating_A    = 100 A;
+    rating_I    = 100 A;
     min_melt    = [(200 A, 60 s), (600 A, 0.60 s), (3000 A, 0.016 s)];
     total_clear = [(200 A, 105 s), (600 A, 1.00 s), (3000 A, 0.028 s)];
 }
 
 relay R_FEEDER { voltage = "MV"; ct_ratio = 400/5;
-  element 51 { curve = iec.vi; I_pu = 200 A; tms = 0.35; } }
+  element 51 { curve = iec.vi; I_pickup = 200 A; tms = 0.35; } }
 
-grade { primary = fuse_100T; backup = R_FEEDER:51; fault = "F_spur"; CTI_min_s = 0.15; }
+grade { primary = fuse_100T; backup = R_FEEDER:51; fault = "F_spur"; margin    = 0.15 s; }
 `;
 
 describe('fuse devices', () => {
@@ -109,7 +109,7 @@ describe('fuse devices', () => {
 describe('other device kinds', () => {
   it('dashes a damage curve, which is a limit rather than an operating curve', () => {
     const { svg } = parseAndRender(`
-      system { voltages { "MV" { kV = 11.0; } } }
+      system { voltages { "MV" { V  = 11.0 kV; } } }
       device "cable" { kind = "cable"; flex_points = [(300 A, 100 s), (3000 A, 1 s)]; }
     `, { theme: 'light' });
     expect(svg).toMatch(/stroke-dasharray="9 5"/);
@@ -117,7 +117,7 @@ describe('other device kinds', () => {
 
   it('draws a breaker as a flat clearing time', () => {
     const { svg } = parseAndRender(`
-      system { voltages { "MV" { kV = 11.0; } } }
+      system { voltages { "MV" { V  = 11.0 kV; } } }
       device "cb" { kind = "breaker"; t_delay = 0.06 s; }
     `, { theme: 'light' });
     expect(svg).toContain('data-curve="cb"');
@@ -127,15 +127,15 @@ describe('other device kinds', () => {
 
 describe('a device sits on a voltage level', () => {
   const study = (deviceVoltage: string): string => `
-system { voltages { "HV" { kV = 33; } "LV" { kV = 11; } } }
-faults { "F_hv" { I_A = 6 kA; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } "LV" { V  = 11 kV; } } }
+faults { "F_hv" { I   = 6 kA; voltage = "HV"; } }
 device "spur_fuse" {
-  kind = fuse; ${deviceVoltage} rating_A = 100 A;
+  kind = fuse; ${deviceVoltage} rating_I = 100 A;
   min_melt    = [(200 A, 10 s), (2 kA, 0.05 s)];
   total_clear = [(200 A, 20 s), (2 kA, 0.10 s)];
 }
-relay R_HV { voltage = "HV"; element 51 { function = "phase_oc"; curve = iec.si; I_pu = 200 A; tms = 0.3; } }
-grade { primary = "spur_fuse"; backup = R_HV:51; fault = "F_hv"; CTI_min_s = 0.3; }
+relay R_HV { voltage = "HV"; element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 200 A; tms = 0.3; } }
+grade { primary = "spur_fuse"; backup = R_HV:51; fault = "F_hv"; margin    = 0.3 s; }
 view { voltage = "HV"; current_min = 10 A; current_max = 30 kA; }
 `;
 

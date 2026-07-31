@@ -213,6 +213,43 @@
                               not. Implementations must adopt the
                               corrected values.
 
+| 2026-07-31 | 0.2.0-draft | *Breaking -- no key carries its own unit.*
+                              A key naming its unit said it twice when
+                              the value carried a suffix and left it
+                              ambiguous when it did not, and invited a
+                              phase current to be written where the
+                              abscissa was a sequence component.
+
+                              * `I_A` -> `I`, `I1_A`/`I2_A`/`I0_A` ->
+                                `I1`/`I2`/`I0`, `earth_A` ->
+                                `residual`, `min_A`/`max_A` ->
+                                `I_min`/`I_max`, `kV` -> `V`,
+                                `t_s` -> `t`, `I_pu` -> `I_pickup`,
+                                `current_pct` -> `share`,
+                                `CTI_min_s` -> `margin`, `margin_s` ->
+                                `margin_target`, `I_base_A` ->
+                                `I_base`, `base_MVA` -> `base_S`,
+                                `rating_A`/`rating_kV`/`rating_MVA` ->
+                                `rating_I`/`rating_V`/`rating_S`, and
+                                the `at_*` forms to match.
+                              * Every old spelling is still recognised,
+                                so it is refused with its replacement
+                                (`RENAMED_KEY`) rather than looking
+                                like a typo.
+                              * A suffix is checked against the
+                                quantity the field takes, not merely
+                                against the union of all suffixes:
+                                `I_pickup = 5 ms` is refused.
+                              * `frequency_Hz` and `grounding` removed;
+                                both were parsed, stored and read by
+                                nothing, and `zero_sequence` declares
+                                what `grounding` was reaching for.
+                              * An unknown key warns rather than
+                                erroring, so the sheet still draws; a
+                                word the language knows nowhere, in a
+                                block whose every field changes a
+                                number, is a typo and is refused.
+
 | 2026-07-30 | 0.1.0-draft | *Conditions on the drawing.* A `scenario`
                               drove grading but drew nothing, so a
                               margin report could cite a condition that

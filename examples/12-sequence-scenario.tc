@@ -44,16 +44,14 @@ meta {
     engineer  = "A. Cooper";
     date      = "2026-07-30";
     revision  = "A";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 system {
     voltages {
-        "HV" { kV = 33.0;  description = "33 kV, delta winding"; }
-        "LV" { kV = 0.48;  description = "480 V, star, earthed"; }
+        "HV" { V  = 33.0 kV;  description = "33 kV, delta winding"; }
+        "LV" { V  = 0.48 kV;  description = "480 V, star, earthed"; }
     }
-    frequency_Hz = 50;
-    grounding    = "low_impedance";
 
     # Whether zero sequence reaches the other level depends on the
     # windings, so the study says. This transformer is delta on the HV
@@ -89,8 +87,8 @@ scenario "LV earth fault" {
     type        = single_phase_earth;
     description = "Single phase to earth at 0.48 kV, system normal";
 
-    level "LV" { I_A = 460 A;  I1_A = 153.3 A; I2_A = 153.3 A; I0_A = 153.3 A; }
-    level "HV" { I_A = 3.86 A; I1_A = 2.23 A;  I2_A = 2.23 A;  I0_A = 0 A;     }
+    level "LV" { I   = 460 A;  I1   = 153.3 A; I2   = 153.3 A; I0   = 153.3 A; }
+    level "HV" { I   = 3.86 A; I1   = 2.23 A;  I2   = 2.23 A;  I0   = 0 A;     }
 }
 
 # A second condition for the phase elements: a solid three-phase fault
@@ -99,8 +97,8 @@ scenario "LV three-phase fault" {
     type        = three_phase;
     description = "Balanced 3ph at 0.48 kV";
 
-    level "LV" { I_A = 520 A; I1_A = 520 A; I2_A = 0 A; I0_A = 0 A; }
-    level "HV" { I_A = 7.6 A; I1_A = 7.6 A; I2_A = 0 A; I0_A = 0 A; }
+    level "LV" { I   = 520 A; I1   = 520 A; I2   = 0 A; I0   = 0 A; }
+    level "HV" { I   = 7.6 A; I1   = 7.6 A; I2   = 0 A; I0   = 0 A; }
 }
 
 # ---- Nothing else is needed to mark them. -----------------------------
@@ -127,7 +125,7 @@ relay R_ACB {
         name     = "Phase OC";
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 300 A;
+        I_pickup = 300 A;
         tms      = 0.10;
     }
 }
@@ -144,7 +142,7 @@ relay R_850 {
         name     = "Phase TOC (51)";
         function = "phase_oc";              # measures phase current
         curve    = iec.si;
-        I_pu     = 4.2 A;
+        I_pickup = 4.2 A;
         tms      = 0.20;
     }
 
@@ -152,7 +150,7 @@ relay R_850 {
         name     = "Ground TOC (51G)";
         function = "earth_fault";           # measures residual 3*I0
         curve    = iec.si;
-        I_pu     = 0.8 A;
+        I_pickup = 0.8 A;
         tms      = 0.15;
     }
 
@@ -161,7 +159,7 @@ relay R_850 {
         function = "neg_seq";
         measures = "I2";                    # this IED is scaled in I2
         curve    = definite;
-        I_pu     = 1.5 A;
+        I_pickup = 1.5 A;
         t_delay  = 2.00 s;      # slower than the ACB's 1.63 s at this fault
     }
 }
@@ -181,7 +179,7 @@ relay R_FDR {
         function = "neg_seq";
         measures = I2;                      # unquoted spelling works too
         curve    = definite;
-        I_pu     = 1.5 A;
+        I_pickup = 1.5 A;
         t_delay  = 2.60 s;                  # 0.6 s above the 850
     }
 }
@@ -191,7 +189,7 @@ grade {
     primary   = R_850:46;
     backup    = R_FDR:46;
     scenario  = "LV earth fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     comment   = "both measure I2, so this is a like-for-like margin";
 }
 
@@ -200,7 +198,7 @@ grade {
     primary   = R_ACB:51;
     backup    = R_850:46;
     scenario  = "LV earth fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     comment   = "I2 backup for an LV earth fault the HV residual cannot see";
 }
 
@@ -211,7 +209,7 @@ grade {
     primary   = R_ACB:51;
     backup    = R_850:51G;
     scenario  = "LV earth fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     comment   = "blind to this fault -- zero sequence stays in the delta";
 }
 
@@ -220,7 +218,7 @@ grade {
     primary   = R_ACB:51;
     backup    = R_850:51;
     scenario  = "LV three-phase fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 # ---- Putting the margin on the drawing. --------------------------------
@@ -259,7 +257,7 @@ annotate {
 point "850 negative-sequence trip" {
     scenario = "LV earth fault";
     voltage  = "HV";
-    t_s      = 2.00 s;
+    t        = 2.00 s;
     label    = "850 46 operates";
     shape    = square;
 }

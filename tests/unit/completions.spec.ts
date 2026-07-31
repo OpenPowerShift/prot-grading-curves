@@ -68,11 +68,11 @@ describe('finding the block the cursor is in', () => {
     ['stage', 'relay R {\n element 51 {\n  stages {\n   stage main {\n    ‸\n   }\n  }\n }\n}\n', 'tms'],
     ['device', 'device "spur_fuse_50T" {\n  ‸\n}\n', 'min_melt'],
     ['scenario', 'scenario "system normal" {\n  ‸\n}\n', 'level'],
-    ['scenario level', 'scenario "s" {\n level "HV" {\n  ‸\n }\n}\n', 'I2_A'],
+    ['scenario level', 'scenario "s" {\n level "HV" {\n  ‸\n }\n}\n', 'I2'],
     ['point', 'point "inrush" {\n  ‸\n}\n', 'scenario'],
     ['annotate', 'annotate {\n  ‸\n}\n', 'on_curve'],
-    ['fault entry', 'faults {\n "F" {\n  ‸\n }\n}\n', 'I_A'],
-    ['voltage level', 'system {\n voltages {\n  "HV" {\n   ‸\n  }\n }\n}\n', 'kV'],
+    ['fault entry', 'faults {\n "F" {\n  ‸\n }\n}\n', 'I'],
+    ['voltage level', 'system {\n voltages {\n  "HV" {\n   ‸\n  }\n }\n}\n', 'V'],
     ['grade', 'grade {\n  ‸\n}\n', 'scenario'],
     ['solve', 'grade {\n solve {\n  ‸\n }\n}\n', 'strategy'],
     ['page', 'page {\n  ‸\n}\n', 'orientation'],
@@ -96,7 +96,7 @@ describe('finding the block the cursor is in', () => {
     /* Inside `solve`, the grade's own fields are the wrong answer. */
     const inSolve = offer('grade {\n solve {\n  ‸\n }\n}\n');
     expect(inSolve).toContain('strategy');
-    expect(inSolve).not.toContain('CTI_min_s');
+    expect(inSolve).not.toContain('margin');
   });
 });
 
@@ -124,12 +124,12 @@ describe('offering the values a field accepts', () => {
   });
 
   const WITH_CONDITIONS = `system {
-  voltages { "HV" { kV = 33; } }
+  voltages { "HV" { V  = 33 kV; } }
 }
 faults {
-  "F_max" { I_A = 6 kA; voltage = "HV"; }
+  "F_max" { I   = 6 kA; voltage = "HV"; }
 }
-scenario "system normal" { level "HV" { I_A = 900 A; } }
+scenario "system normal" { level "HV" { I   = 900 A; } }
 `;
 
   it('names the declared conditions, faults and scenarios alike', () => {

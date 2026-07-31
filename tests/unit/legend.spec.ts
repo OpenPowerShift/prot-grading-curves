@@ -12,21 +12,21 @@ import { parseAndRender } from '@tc/index';
 
 const BASE = `
 meta { project = "Legend"; }
-system { voltages { hv { kV = 33; } lv { kV = 11; } } }
+system { voltages { hv { V  = 33 kV; } lv { V  = 11 kV; } } }
 faults {
-  "F_lv" { I_A = 6 kA; voltage = lv; }
-  "F_hv" { I_A = 18 kA; voltage = hv; }
+  "F_lv" { I   = 6 kA; voltage = lv; }
+  "F_hv" { I   = 18 kA; voltage = hv; }
 }
 relay R_INC {
   voltage = hv;
-  element 51 { curve = iec.si; I_pu = 720 A; tms = 0.3; }
+  element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.3; }
 }
 relay R_FDR {
   voltage = lv;
-  element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; }
-  element 50 { curve = definite; I_pu = 3.2 kA; t_delay = 50 ms; }
+  element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25; }
+  element 50 { curve = definite; I_pickup = 3.2 kA; t_delay = 50 ms; }
 }
-point "P" { I_A = 5 kA; t_s = 0.1 s; voltage = hv; label = "inrush"; }
+point "P" { I   = 5 kA; t   = 0.1 s; voltage = hv; label = "inrush"; }
 view { voltage = hv; }
 `;
 
@@ -173,12 +173,12 @@ describe('suppressing the legend', () => {
 describe('fault descriptions', () => {
   const src = `
 meta { project = "Desc"; }
-system { voltages { hv { kV = 11; } } }
+system { voltages { hv { V  = 11 kV; } } }
 faults {
-  "F_bus" { I_A = 9 kA; voltage = hv; description = "switchboard bus fault, three phase"; }
-  "F_spur" { I_A = 2 kA; voltage = hv; }
+  "F_bus" { I   = 9 kA; voltage = hv; description = "switchboard bus fault, three phase"; }
+  "F_spur" { I   = 2 kA; voltage = hv; }
 }
-relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
+relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
 view { voltage = hv; }
 `;
 
@@ -211,42 +211,42 @@ describe('a crowded sheet', () => {
   /** Nine characteristics and seven described faults, as a real study has. */
   const CROWDED = `
 meta { project = "Crowded"; }
-system { voltages { "HV" { kV = 33.0; } "LV" { kV = 0.48; } } }
+system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 0.48 kV; } } }
 faults {
-  "RMU 33 kV 3ph max" { I_A = 31.37 kA; voltage = "HV"; description = "Max 3ph at 33 kV RMU-BESS"; }
-  "RMU 33 kV 3ph min" { I_A = 16.33 kA; voltage = "HV"; description = "Min 3ph at 33 kV RMU-BESS"; }
-  "RMU 33 kV 1ph max" { I_A = 2.95 kA; voltage = "HV"; description = "Max 1ph-earth at 33 kV RMU-BESS"; }
-  "F_2ph_min_HV" { I_A = 390 A; voltage = "HV"; description = "Min 2ph fault seen by the relay"; }
-  "F_ACB_inst_HV" { I_A = 65.5 A; voltage = "HV"; description = "ACB inst threshold referred to 33 kV"; }
-  "F_INV_max" { I_A = 0.46 kA; voltage = "LV"; description = "Max 3ph at 0.48 kV inverter"; }
-  "F_INV_min" { I_A = 0.45 kA; voltage = "LV"; description = "Min 3ph at 0.48 kV inverter"; }
+  "RMU 33 kV 3ph max" { I   = 31.37 kA; voltage = "HV"; description = "Max 3ph at 33 kV RMU-BESS"; }
+  "RMU 33 kV 3ph min" { I   = 16.33 kA; voltage = "HV"; description = "Min 3ph at 33 kV RMU-BESS"; }
+  "RMU 33 kV 1ph max" { I   = 2.95 kA; voltage = "HV"; description = "Max 1ph-earth at 33 kV RMU-BESS"; }
+  "F_2ph_min_HV" { I   = 390 A; voltage = "HV"; description = "Min 2ph fault seen by the relay"; }
+  "F_ACB_inst_HV" { I   = 65.5 A; voltage = "HV"; description = "ACB inst threshold referred to 33 kV"; }
+  "F_INV_max" { I   = 0.46 kA; voltage = "LV"; description = "Max 3ph at 0.48 kV inverter"; }
+  "F_INV_min" { I   = 0.45 kA; voltage = "LV"; description = "Min 3ph at 0.48 kV inverter"; }
 }
 relay R_RMU_850 {
   name = "BESS HV Relay (GE Multilin 850)"; maker = "GE Multilin"; model = "850";
   voltage = "HV"; ct_ratio = 250/1;
-  element 51  { name = "Phase TOC (51)"; curve = iec.si; I_pu = 105 A; tms = 0.10; }
-  element 51G { name = "Ground TOC (51G)"; curve = iec.si; I_pu = 20 A; tms = 0.15; }
-  element 50G { name = "Ground IOC (50G)"; curve = definite; I_pu = 100 A; t_delay = 0 s; }
+  element 51  { name = "Phase TOC (51)"; curve = iec.si; I_pickup = 105 A; tms = 0.10; }
+  element 51G { name = "Ground TOC (51G)"; curve = iec.si; I_pickup = 20 A; tms = 0.15; }
+  element 50G { name = "Ground IOC (50G)"; curve = definite; I_pickup = 100 A; t_delay = 0 s; }
   element 50 {
     name = "Phase IOC (50)";
     stages {
-      stage main  { curve = definite; I_pu = 147 A; t_delay = 0 s; }
-      stage energ { curve = definite; I_pu = 255 A; t_delay = 0 s; }
+      stage main  { curve = definite; I_pickup = 147 A; t_delay = 0 s; }
+      stage energ { curve = definite; I_pickup = 255 A; t_delay = 0 s; }
     }
   }
   element 46 {
     name = "Negative Sequence IOC (46)";
     stages {
-      stage main  { curve = definite; I_pu = 75 A; t_delay = 0.10 s; }
-      stage energ { curve = definite; I_pu = 75 A; t_delay = 0.35 s; }
+      stage main  { curve = definite; I_pickup = 75 A; t_delay = 0.10 s; }
+      stage energ { curve = definite; I_pickup = 75 A; t_delay = 0.35 s; }
     }
   }
 }
 relay R_FDR {
   name = "33 kV BESS Feeder (SEL-751)"; voltage = "HV"; ct_ratio = 250/1;
-  element 46 { name = "Neg Seq backup (46)"; curve = definite; I_pu = 75 A; t_delay = 0.45 s; }
+  element 46 { name = "Neg Seq backup (46)"; curve = definite; I_pickup = 75 A; t_delay = 0.45 s; }
 }
-point "TX_inrush" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "BESS Tx inrush"; }
+point "TX_inrush" { I   = 212 A; t   = 0.12 s; voltage = "HV"; label = "BESS Tx inrush"; }
 view { voltage = "HV"; stages = "individual"; }
 `;
 
@@ -287,12 +287,12 @@ view { voltage = "HV"; stages = "individual"; }
 
 describe('cross-voltage fault entries', () => {
   const CROSS = `
-system { voltages { "HV" { kV = 33.0; } "LV" { kV = 0.48; } } }
+system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 0.48 kV; } } }
 faults {
-  "F_INV_max" { I_A = 0.46 kA; voltage = "LV"; }
-  "F_HV_max"  { I_A = 31.4 kA; voltage = "HV"; }
+  "F_INV_max" { I   = 0.46 kA; voltage = "LV"; }
+  "F_HV_max"  { I   = 31.4 kA; voltage = "HV"; }
 }
-relay R { voltage = "HV"; element 51 { curve = iec.si; I_pu = 105 A; tms = 0.1; } }
+relay R { voltage = "HV"; element 51 { curve = iec.si; I_pickup = 105 A; tms = 0.1; } }
 view { voltage = "HV"; }
 `;
 
@@ -331,8 +331,8 @@ view { voltage = "HV"; }
 describe('zero definite delay', () => {
   it('warns rather than silently dropping the stage', () => {
     const { result } = parseAndRender(`
-system { voltages { hv { kV = 11; } } }
-relay R { voltage = hv; element 50 { curve = definite; I_pu = 3 kA; t_delay = 0 s; } }
+system { voltages { hv { V  = 11 kV; } } }
+relay R { voltage = hv; element 50 { curve = definite; I_pickup = 3 kA; t_delay = 0 s; } }
 `, { theme: 'light' });
 
     const warning = result.diagnostics.find((d) => d.code === 'ZERO_DELAY_NOT_PLOTTABLE');
@@ -344,13 +344,13 @@ relay R { voltage = hv; element 50 { curve = definite; I_pu = 3 kA; t_delay = 0 
 describe('faults follow the view', () => {
   const THREE = `
 meta { project = "Zoom"; }
-system { voltages { hv { kV = 11; } } }
+system { voltages { hv { V  = 11 kV; } } }
 faults {
-  "F_low"  { I_A = 200 A; voltage = hv; }
-  "F_mid"  { I_A = 3 kA;  voltage = hv; }
-  "F_high" { I_A = 20 kA; voltage = hv; }
+  "F_low"  { I   = 200 A; voltage = hv; }
+  "F_mid"  { I   = 3 kA;  voltage = hv; }
+  "F_high" { I   = 20 kA; voltage = hv; }
 }
-relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
+relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
 `;
 
   const at = (bounds: string): string =>
@@ -423,11 +423,11 @@ describe('a compact legend keeps the settings', () => {
    * model, settings, voltage -- and the settings is the *middle* one.
    */
   function crowdedSingleStage(): string {
-    let src = 'system { voltages { hv { kV = 11; } } }\n'
-      + 'faults { "F" { I_A = 9 kA; voltage = hv; } }\n';
+    let src = 'system { voltages { hv { V  = 11 kV; } } }\n'
+      + 'faults { "F" { I   = 9 kA; voltage = hv; } }\n';
     for (let i = 1; i <= 10; i++) {
       src += `relay R${i} { voltage = hv; maker = "Maker${i}"; model = "Model${i}"; `
-        + `element 51 { curve = iec.si; I_pu = ${100 * i} A; tms = 0.${i}; } }\n`;
+        + `element 51 { curve = iec.si; I_pickup = ${100 * i} A; tms = 0.${i}; } }\n`;
     }
     return src + 'view { voltage = hv; }\n';
   }
@@ -463,16 +463,16 @@ describe('a compact legend keeps the settings', () => {
 
 describe('view { quantity } chooses the abscissa', () => {
   const STUDY = `
-system { voltages { hv { kV = 33; } } }
+system { voltages { hv { V  = 33 kV; } } }
 faults {
-  "F_3ph"   { I_A = 9 kA; I2_A = 0 A;     I0_A = 0 A;     voltage = hv; }
-  "F_earth" { I_A = 3 kA; I2_A = 1000 A;  I0_A = 1000 A;  voltage = hv; }
+  "F_3ph"   { I   = 9 kA; I2   = 0 A;     I0   = 0 A;     voltage = hv; }
+  "F_earth" { I   = 3 kA; I2   = 1000 A;  I0   = 1000 A;  voltage = hv; }
 }
 relay R {
   voltage = hv; ct_ratio = 250/1;
-  element 51  { function = "phase_oc";    curve = iec.si; I_pu = 400 A; tms = 0.2; }
-  element 51G { function = "earth_fault"; curve = iec.si; I_pu = 100 A; tms = 0.15; }
-  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 200 A; t_delay = 0.4 s; }
+  element 51  { function = "phase_oc";    curve = iec.si; I_pickup = 400 A; tms = 0.2; }
+  element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 100 A; tms = 0.15; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pickup = 200 A; t_delay = 0.4 s; }
 }
 `;
 
@@ -557,17 +557,17 @@ relay R {
 
 describe('a sheet drawn for a condition', () => {
   const STUDY = `
-system { voltages { hv { kV = 33; } } }
+system { voltages { hv { V  = 33 kV; } } }
 faults {
-  "F_3ph" { I_A = 9 kA;  type = three_phase;       voltage = hv; }
-  "F_2ph" { I_A = 390 A; type = two_phase;         voltage = hv; }
-  "F_1ph" { I_A = 2 kA;  type = single_phase_earth; voltage = hv; }
+  "F_3ph" { I   = 9 kA;  type = three_phase;       voltage = hv; }
+  "F_2ph" { I   = 390 A; type = two_phase;         voltage = hv; }
+  "F_1ph" { I   = 2 kA;  type = single_phase_earth; voltage = hv; }
 }
 relay R {
   voltage = hv;
-  element 51  { function = "phase_oc";    curve = definite; I_pu = 100 A; t_delay = 1 s; }
-  element 51G { function = "earth_fault"; curve = definite; I_pu = 50 A;  t_delay = 2 s; }
-  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 60 A; t_delay = 3 s; }
+  element 51  { function = "phase_oc";    curve = definite; I_pickup = 100 A; t_delay = 1 s; }
+  element 51G { function = "earth_fault"; curve = definite; I_pickup = 50 A;  t_delay = 2 s; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pickup = 60 A; t_delay = 3 s; }
 }
 `;
 
@@ -667,13 +667,13 @@ relay R {
 describe('zero sequence across levels is declared, not assumed', () => {
   const study = (zeroSequence: string): ReturnType<typeof parseAndRender> => parseAndRender(`
 system {
-  voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } }
+  voltages { "HV" { V  = 33 kV; } "LV" { V  = 0.48 kV; } }
   ${zeroSequence}
 }
-faults { "F" { I_A = 6 kA; I0_A = 800 A; voltage = "LV"; } }
-relay R_LV { voltage = "LV"; element 51 { function = "phase_oc"; curve = iec.si; I_pu = 300 A; tms = 0.1; } }
-relay R_HV { voltage = "HV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 20 A; tms = 0.15; } }
-grade { primary = R_LV:51; backup = R_HV:51G; fault = "F"; CTI_min_s = 0.3; }
+faults { "F" { I   = 6 kA; I0   = 800 A; voltage = "LV"; } }
+relay R_LV { voltage = "LV"; element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 300 A; tms = 0.1; } }
+relay R_HV { voltage = "HV"; element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 20 A; tms = 0.15; } }
+grade { primary = R_LV:51; backup = R_HV:51G; fault = "F"; margin    = 0.3 s; }
 `, { theme: 'light' });
 
   const codes = (r: ReturnType<typeof parseAndRender>): string[] =>
@@ -710,12 +710,12 @@ grade { primary = R_LV:51; backup = R_HV:51G; fault = "F"; CTI_min_s = 0.3; }
 
 describe('annotations use the quantity their element measures', () => {
   const STUDY = `
-system { voltages { hv { kV = 33; } } }
-faults { "F_1ph" { I_A = 3 kA; type = single_phase_earth; voltage = hv; } }
+system { voltages { hv { V  = 33 kV; } } }
+faults { "F_1ph" { I   = 3 kA; type = single_phase_earth; voltage = hv; } }
 relay R {
   voltage = hv;
-  element 51G { function = "earth_fault"; curve = definite; I_pu = 100 A; t_delay = 1.5 s; }
-  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 100 A; t_delay = 2.5 s; }
+  element 51G { function = "earth_fault"; curve = definite; I_pickup = 100 A; t_delay = 1.5 s; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pickup = 100 A; t_delay = 2.5 s; }
 }
 annotate { on_curve = R:51G; fault = "F_1ph"; style = tag; label = "earth";  coords = true; }
 annotate { on_curve = R:46;  fault = "F_1ph"; style = tag; label = "negseq"; coords = true; }
@@ -774,17 +774,17 @@ describe('a declared zero suppresses rather than converts', () => {
    */
   const STUDY = `
 system {
-  voltages { "HV" { kV = 33; } }
+  voltages { "HV" { V  = 33 kV; } }
   zero_sequence { "HV" to "HV" = blocked; }
 }
 faults {
-  "F" { type = single_phase_earth; I_A = 3.9 A; I2_A = 2.2 A; I0_A = 0 A; voltage = "HV"; }
+  "F" { type = single_phase_earth; I   = 3.9 A; I2   = 2.2 A; I0   = 0 A; voltage = "HV"; }
 }
 relay R {
   voltage = "HV";
-  element 51  { function = "phase_oc";    curve = definite; I_pu = 1 A; t_delay = 1 s; }
-  element 51G { function = "earth_fault"; curve = definite; I_pu = 1 A; t_delay = 2 s; }
-  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pu = 1 A; t_delay = 3 s; }
+  element 51  { function = "phase_oc";    curve = definite; I_pickup = 1 A; t_delay = 1 s; }
+  element 51G { function = "earth_fault"; curve = definite; I_pickup = 1 A; t_delay = 2 s; }
+  element 46  { function = "neg_seq"; measures = I2; curve = definite; I_pickup = 1 A; t_delay = 3 s; }
 }
 view { voltage = "HV"; quantity = I2; condition = "F"; current_min = 0.1 A; current_max = 100 A; }
 `;
@@ -828,16 +828,16 @@ describe('quoting pickups in secondary amps', () => {
    * settings sheet.
    */
   const STUDY = (legend: string) => `
-system { voltages { "HV" { kV = 33; } } }
-faults { "F" { I_A = 6 kA; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "F" { I   = 6 kA; voltage = "HV"; } }
 relay R_CT {
   voltage = "HV"; ct_ratio = 600/5;
-  element 51 { curve = iec.si; I_pu = 720 A; tms = 0.3; }
-  element 50 { curve = definite; I_pu = 4.8 kA; t_delay = 50 ms; }
+  element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.3; }
+  element 50 { curve = definite; I_pickup = 4.8 kA; t_delay = 50 ms; }
 }
 relay R_BARE {
   voltage = "HV";
-  element 51 { curve = iec.si; I_pu = 300 A; tms = 0.2; }
+  element 51 { curve = iec.si; I_pickup = 300 A; tms = 0.2; }
 }
 page { ${legend} }
 view { voltage = "HV"; }
@@ -907,11 +907,11 @@ describe('the legend follows the highlighted curve', () => {
    * the work the highlight exists to save.
    */
   const STUDY = `
-system { voltages { hv { kV = 33; } } }
+system { voltages { hv { V  = 33 kV; } } }
 relay R {
   voltage = hv;
-  element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; }
-  element 50 { curve = definite; I_pu = 3 kA; t_delay = 50 ms; }
+  element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; }
+  element 50 { curve = definite; I_pickup = 3 kA; t_delay = 50 ms; }
 }
 view { voltage = hv; }
 `;
@@ -947,12 +947,12 @@ describe('the Notes block at the foot of the panel', () => {
    * back for.
    */
   const STUDY = `
-system { voltages { hv { kV = 33; } } }
-faults { "F_3ph" { I_A = 9 kA; I2_A = 0 A; voltage = hv; } }
+system { voltages { hv { V  = 33 kV; } } }
+faults { "F_3ph" { I   = 9 kA; I2   = 0 A; voltage = hv; } }
 relay R {
   voltage = hv; ct_ratio = 250/1;
-  element 51 { function = "phase_oc"; curve = iec.si; I_pu = 400 A; tms = 0.2; }
-  element 46 { function = "neg_seq"; measures = I2; curve = definite; I_pu = 200 A; t_delay = 0.4 s; }
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A; tms = 0.2; }
+  element 46 { function = "neg_seq"; measures = I2; curve = definite; I_pickup = 200 A; t_delay = 0.4 s; }
 }
 view { voltage = hv; quantity = phase; condition = "F_3ph"; }
 `;

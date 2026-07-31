@@ -17,31 +17,31 @@ import { parseAndRender, process } from '@tc/index';
 
 const SYSTEM = `
 system {
-    voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } }
+    voltages { "HV" { V  = 33 kV; } "LV" { V  = 0.48 kV; } }
     zero_sequence { "HV" to "LV" = blocked; }
 }
 
 scenario "system normal" {
     type = single_phase_earth;
     description = "Phase-earth at the LV board";
-    level "LV" { I_A = 460 A; I2_A = 153 A; I0_A = 153 A; }
-    level "HV" { I_A = 3.9 A; I2_A = 2.2 A;  I0_A = 0 A;  }
+    level "LV" { I   = 460 A; I2   = 153 A; I0   = 153 A; }
+    level "HV" { I   = 3.9 A; I2   = 2.2 A;  I0   = 0 A;  }
 }
 
 scenario "one tx out" {
     type = single_phase_earth;
-    level "LV" { I_A = 700 A; I2_A = 233 A; I0_A = 233 A; }
-    level "HV" { I_A = 2.6 A; I2_A = 1.5 A; I0_A = 0 A;   }
+    level "LV" { I   = 700 A; I2   = 233 A; I0   = 233 A; }
+    level "HV" { I   = 2.6 A; I2   = 1.5 A; I0   = 0 A;   }
 }
 
 relay R_ACB {
     voltage = "LV";
-    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 200 A; tms = 0.10; }
+    element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 200 A; tms = 0.10; }
 }
 relay R_HV {
     voltage = "HV"; ct_ratio = 250/1;
-    element 51  { function = "phase_oc";    curve = iec.si; I_pu = 2.0 A; tms = 0.20; }
-    element 51G { function = "earth_fault"; curve = iec.si; I_pu = 0.8 A; tms = 0.15; }
+    element 51  { function = "phase_oc";    curve = iec.si; I_pickup = 2.0 A; tms = 0.20; }
+    element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 0.8 A; tms = 0.15; }
 }
 `;
 
@@ -117,9 +117,9 @@ describe('a scenario on the plot', () => {
     expect(render('')).toContain('>Conditions<');
     /* Faults alone keep the narrower word. */
     const faultsOnly = parseAndRender(
-      'system { voltages { "HV" { kV = 33; } } }\n'
-      + 'faults { "F" { I_A = 9 kA; voltage = "HV"; } }\n'
-      + 'relay R { voltage = "HV"; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }\n'
+      'system { voltages { "HV" { V  = 33 kV; } } }\n'
+      + 'faults { "F" { I   = 9 kA; voltage = "HV"; } }\n'
+      + 'relay R { voltage = "HV"; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; } }\n'
       + 'view { voltage = "HV"; }',
       { theme: 'light' },
     ).svg;
@@ -134,10 +134,10 @@ describe('a scenario on the plot', () => {
      * reader to assume it was not relevant.
      */
     const svg = parseAndRender(
-      'system { voltages { "HV" { kV = 33; } "MV" { kV = 11; } "LV" { kV = 0.48; } } }\n'
+      'system { voltages { "HV" { V  = 33 kV; } "MV" { V  = 11 kV; } "LV" { V  = 0.48 kV; } } }\n'
       /* Declared on two levels, neither of them the one drawn. */
-      + 'scenario "upstream" { level "HV" { I_A = 900 A; } level "MV" { I_A = 2.7 kA; } }\n'
-      + 'relay R { voltage = "LV"; element 51 { curve = iec.si; I_pu = 200 A; tms = 0.1; } }\n'
+      + 'scenario "upstream" { level "HV" { I   = 900 A; } level "MV" { I   = 2.7 kA; } }\n'
+      + 'relay R { voltage = "LV"; element 51 { curve = iec.si; I_pickup = 200 A; tms = 0.1; } }\n'
       + 'view { voltage = "LV"; current_min = 50 A; current_max = 5 kA; }',
       { theme: 'light' },
     ).svg;
@@ -156,9 +156,9 @@ describe('a scenario on the plot', () => {
      * above -- there the choice would be a guess.
      */
     const svg = parseAndRender(
-      'system { voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } } }\n'
-      + 'scenario "HV bus" { level "HV" { I_A = 12 A; } }\n'
-      + 'relay R { voltage = "LV"; element 51 { curve = iec.si; I_pu = 200 A; tms = 0.1; } }\n'
+      'system { voltages { "HV" { V  = 33 kV; } "LV" { V  = 0.48 kV; } } }\n'
+      + 'scenario "HV bus" { level "HV" { I   = 12 A; } }\n'
+      + 'relay R { voltage = "LV"; element 51 { curve = iec.si; I_pickup = 200 A; tms = 0.1; } }\n'
       + 'view { voltage = "LV"; current_min = 50 A; current_max = 5 kA; }',
       { theme: 'light' },
     ).svg;
@@ -232,9 +232,9 @@ describe('an element whose current cannot reach the sheet', () => {
     /* Nothing crosses, so nothing is blocked: an LV 51G on an LV
      * residual sheet is exactly where it belongs. */
     const svg = parseAndRender(
-      'system { voltages { "LV" { kV = 0.48; } } }\n'
-      + 'scenario "earth" { type = single_phase_earth; level "LV" { I_A = 460 A; I0_A = 153 A; } }\n'
-      + 'relay R { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pu = 100 A; tms = 0.1; } }\n'
+      'system { voltages { "LV" { V  = 0.48 kV; } } }\n'
+      + 'scenario "earth" { type = single_phase_earth; level "LV" { I   = 460 A; I0   = 153 A; } }\n'
+      + 'relay R { voltage = "LV"; element 51G { function = "earth_fault"; curve = iec.si; I_pickup = 100 A; tms = 0.1; } }\n'
       + 'view { voltage = "LV"; quantity = 3I0; condition = "earth"; current_min = 10 A; current_max = 5 kA; }',
       { theme: 'light' },
     ).svg;
@@ -244,13 +244,13 @@ describe('an element whose current cannot reach the sheet', () => {
 
 describe('a point that names a condition', () => {
   it('stands at that condition\'s current', () => {
-    const svg = render('point "clears" { scenario = "system normal"; t_s = 0.06; voltage = "LV"; }');
+    const svg = render('point "clears" { scenario = "system normal"; t   = 0.06 s; voltage = "LV"; }');
     expect(points(svg)).toEqual([['clears', 460, 0.06]]);
   });
 
   it('draws one marker per condition named, at the same time', () => {
     const svg = render(
-      'point "withstand" { scenarios = ["system normal", "one tx out"]; t_s = 2; voltage = "LV"; }',
+      'point "withstand" { scenarios = ["system normal", "one tx out"]; t   = 2 s; voltage = "LV"; }',
     );
     expect(points(svg)).toEqual([
       ['withstand · system normal', 460, 2],
@@ -260,8 +260,8 @@ describe('a point that names a condition', () => {
 
   it('takes a fault as readily as a scenario', () => {
     const svg = render(
-      'faults { "F_lv" { I_A = 1200 A; voltage = "LV"; } }\n'
-      + 'point "damage" { fault = "F_lv"; t_s = 3; voltage = "LV"; }',
+      'faults { "F_lv" { I   = 1200 A; voltage = "LV"; } }\n'
+      + 'point "damage" { fault = "F_lv"; t   = 3 s; voltage = "LV"; }',
     );
     expect(points(svg)).toContainEqual(['damage', 1200, 3]);
   });
@@ -270,8 +270,8 @@ describe('a point that names a condition', () => {
     /* An HV fault marked on an LV sheet: 3.9 A at 33 kV is 268 A at
      * 0.48 kV by ampere-turns. */
     const svg = render(
-      'faults { "F_hv" { I_A = 3.9 A; voltage = "HV"; } }\n'
-      + 'point "seen at HV" { fault = "F_hv"; t_s = 1; voltage = "HV"; }',
+      'faults { "F_hv" { I   = 3.9 A; voltage = "HV"; } }\n'
+      + 'point "seen at HV" { fault = "F_hv"; t   = 1 s; voltage = "HV"; }',
     );
     const [, I] = points(svg).find(([n]) => n === 'seen at HV')!;
     expect(I).toBeCloseTo(3.9 * 33 / 0.48, 3);
@@ -290,7 +290,7 @@ describe('a point that names a condition', () => {
        * residual 3*I0. Declared as a phase current it would not be a
        * residual point at all, and the sheet would decline it for the
        * duller reason that it carries no 3I0. */
-      'point "LV residual" { earth_A = 400 A; t_s = 1; voltage = "LV"; }',
+      'point "LV residual" { residual = 400 A; t   = 1 s; voltage = "LV"; }',
       'view { voltage = "HV"; quantity = 3I0; current_min = 0.1 A; current_max = 500 A; }',
     );
     expect(points(svg)).toHaveLength(0);
@@ -298,13 +298,13 @@ describe('a point that names a condition', () => {
   });
 
   it('rejects declaring both a current and a condition', () => {
-    const codes = errors('point "both" { I_A = 100 A; scenario = "system normal"; t_s = 1; }')
+    const codes = errors('point "both" { I   = 100 A; scenario = "system normal"; t   = 1 s; }')
       .map((d) => d.code);
     expect(codes).toContain('POINT_CURRENT_AND_CONDITION');
   });
 
   it('rejects a condition that is neither a fault nor a scenario', () => {
-    const found = errors('point "p" { scenario = "system abnormal"; t_s = 1; }');
+    const found = errors('point "p" { scenario = "system abnormal"; t   = 1 s; }');
     expect(found.map((d) => d.code)).toContain('UNRESOLVED_REFERENCE');
     /* Near-miss spelling gets a suggestion. */
     expect(found.map((d) => d.message).join(' ')).toContain('did you mean');
@@ -317,10 +317,10 @@ describe('a point that names a condition', () => {
      * to fall back on that would not be a guess.
      */
     const found = process(
-      'system { voltages { "HV" { kV = 33; } "MV" { kV = 11; } "LV" { kV = 0.48; } } }\n'
-      + 'scenario "upstream" { level "HV" { I_A = 900 A; } level "MV" { I_A = 2.7 kA; } }\n'
-      + 'relay R { voltage = "LV"; element 51 { curve = iec.si; I_pu = 200 A; tms = 0.1; } }\n'
-      + 'point "p" { scenario = "upstream"; t_s = 1; voltage = "LV"; }\n'
+      'system { voltages { "HV" { V  = 33 kV; } "MV" { V  = 11 kV; } "LV" { V  = 0.48 kV; } } }\n'
+      + 'scenario "upstream" { level "HV" { I   = 900 A; } level "MV" { I   = 2.7 kA; } }\n'
+      + 'relay R { voltage = "LV"; element 51 { curve = iec.si; I_pickup = 200 A; tms = 0.1; } }\n'
+      + 'point "p" { scenario = "upstream"; t   = 1 s; voltage = "LV"; }\n'
       + 'view { voltage = "LV"; }',
     ).diagnostics.filter((d) => d.severity === 'error');
 
@@ -329,12 +329,12 @@ describe('a point that names a condition', () => {
   });
 
   it('accepts a scenario that does declare that level', () => {
-    expect(errors('point "p" { scenario = "system normal"; t_s = 1; voltage = "HV"; }'))
+    expect(errors('point "p" { scenario = "system normal"; t   = 1 s; voltage = "HV"; }'))
       .toHaveLength(0);
   });
 
   it('still requires a current from one source or the other', () => {
-    const codes = errors('point "bare" { t_s = 1; }').map((d) => d.code);
+    const codes = errors('point "bare" { t   = 1 s; }').map((d) => d.code);
     expect(codes).toContain('POINT_CURRENT_INVALID');
   });
 });
@@ -357,7 +357,7 @@ describe('an annotation that names conditions', () => {
      * which is what makes this agree with `grades.ts` exactly.
      */
     const source = `${SYSTEM}\nannotate { ${PAIR} scenario = "system normal"; label = "CTI"; }\n`
-      + `grade { ${PAIR} scenario = "system normal"; CTI_min_s = 0.3; }\n${VIEW_LV}`;
+      + `grade { ${PAIR} scenario = "system normal"; margin    = 0.3 s; }\n${VIEW_LV}`;
     const result = process(source);
     const row = result.reports[0].rows.find((r) => r.at === 'I')!;
     const { svg } = parseAndRender(source, { theme: 'light' });
@@ -400,10 +400,10 @@ describe('a point declares its current as a fault does', () => {
    * tool asking the reader to keep its books.
    */
   const STUDY = (points: string, quantity: string) => `
-system { voltages { "HV" { kV = 33; } } }
+system { voltages { "HV" { V  = 33 kV; } } }
 relay R {
   voltage = "HV"; ct_ratio = 250/1;
-  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.1 s; }
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.1 s; }
 }
 ${points}
 view { voltage = "HV"; quantity = ${quantity}; current_min = 1 A; current_max = 40 kA; }
@@ -414,9 +414,9 @@ view { voltage = "HV"; quantity = ${quantity}; current_min = 1 A; current_max = 
       .matchAll(/data-point="([^"]+)" data-current="([\d.]+)"/g)]
       .map((m) => [m[1], Number(m[2])]);
 
-  const P_I2 = 'point "ext" { I2_A = 49 A; t_s = 0.1 s; voltage = "HV"; label = "ext"; }';
-  const P_PHASE = 'point "inrush" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "inrush"; }';
-  const P_TYPED = 'point "2ph" { I_A = 390 A; type = two_phase; t_s = 0.2 s; voltage = "HV"; label = "2ph"; }';
+  const P_I2 = 'point "ext" { I2   = 49 A; t   = 0.1 s; voltage = "HV"; label = "ext"; }';
+  const P_PHASE = 'point "inrush" { I   = 212 A; t   = 0.12 s; voltage = "HV"; label = "inrush"; }';
+  const P_TYPED = 'point "2ph" { I   = 390 A; type = two_phase; t   = 0.2 s; voltage = "HV"; label = "2ph"; }';
 
   it('takes the component the axis is drawn in', () => {
     expect(drawn(P_I2, 'I2')).toEqual([['ext', 49]]);
@@ -464,7 +464,7 @@ view { voltage = "HV"; quantity = ${quantity}; current_min = 1 A; current_max = 
   });
 
   it('still requires some current, or a condition to take one from', () => {
-    const codes = process(STUDY('point "bare" { t_s = 1 s; }', 'phase'))
+    const codes = process(STUDY('point "bare" { t   = 1 s; }', 'phase'))
       .diagnostics.filter((d) => d.severity === 'error').map((d) => d.code);
     expect(codes).toContain('POINT_CURRENT_INVALID');
   });

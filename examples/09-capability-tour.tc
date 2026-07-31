@@ -19,35 +19,33 @@ meta {
     date      = "2026-07-28";
     revision  = "C";
     standard  = ["IEC_60255_151"];
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 # ---- system: named voltage levels. Turns ratios are derived from
 #      these, so no transformer block is needed. ----------------------
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV incomer"; }
-        "LV" { kV = 11.0; description = "11 kV board"; }
+        "HV" { V  = 33.0 kV; description = "33 kV incomer"; }
+        "LV" { V  = 11.0 kV; description = "11 kV board"; }
     }
-    frequency_Hz = 50;
-    base_MVA     = 25.0;
-    grounding    = "low_impedance";
+    base_S       = 25.0 MVA;
 }
 
 # ---- faults: a single point, or a range with min_A / max_A that the
 #      CTI constraint sweeps across. ---------------------------------
 faults {
-    "LV max" { I_A = 6.40 kA; min_A = 4.0 kA; max_A = 8.0 kA; voltage = "LV"; }
-    "LV min" { I_A = 1.50 kA; voltage = "LV"; }
-    "HV max" { I_A = 18.4 kA; voltage = "HV"; }
+    "LV max" { I   = 6.40 kA; I_min = 4.0 kA; I_max = 8.0 kA; voltage = "LV"; }
+    "LV min" { I   = 1.50 kA; voltage = "LV"; }
+    "HV max" { I   = 18.4 kA; voltage = "HV"; }
 }
 
 # ---- point: a marked (I, t) the curves must respect. ---------------
 # `\n` in any label breaks the line, so a marked point can carry its
 # justification without crowding the plot.
 point "TX1_inrush" {
-    I_A     = 5250 A;
-    t_s     = 0.10 s;
+    I       = 5250 A;
+    t       = 0.10 s;
     voltage = "HV";
     label   = "TX1 inrush\n12 x FLC, 100 ms";
     shape   = "cross";
@@ -65,7 +63,7 @@ device "spur_fuse_50T" {
     voltage     = "LV";
     maker       = "Mersen";
     model       = "50T";
-    rating_A    = 50 A;
+    rating_I    = 50 A;
     min_melt    = [(100 A, 60 s), (300 A, 0.85 s), (1500 A, 0.022 s)];
     total_clear = [(100 A, 105 s), (300 A, 1.40 s), (1500 A, 0.038 s)];
 }
@@ -80,7 +78,7 @@ relay R_INC {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 720 A;
+        I_pickup = 720 A;
         tms      = 0.30;
         reset    = "instant";
     }
@@ -97,8 +95,8 @@ relay R_FDR {
     element 51 {
         function = "phase_oc";
         stages {
-            stage main { curve = iec.vi;   I_pu = 480 A;  tms = 0.25; }
-            stage inst { curve = definite; I_pu = 3200 A; t_delay = 0.05 s; }
+            stage main { curve = iec.vi;   I_pickup = 480 A;  tms = 0.25; }
+            stage inst { curve = definite; I_pickup = 3200 A; t_delay = 0.05 s; }
         }
     }
 
@@ -106,7 +104,7 @@ relay R_FDR {
     element 51X {
         function = "phase_oc";
         formula  = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
-        I_pu     = 900 A;
+        I_pickup = 900 A;
         tms      = 0.20;
     }
 }
@@ -116,7 +114,7 @@ grade {
     primary   = R_FDR:51;
     backup    = R_INC:51;
     fault     = "LV max";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     upstream  = true;
 }
 
@@ -131,7 +129,7 @@ annotate {
 # ---- annotate: point form marks one curve at one current. ----------
 annotate {
     on_curve = R_INC:51;
-    at_I_A   = 18.4 kA;
+    at_I     = 18.4 kA;
     label    = "HV max fault";
     style    = "leader";
 }

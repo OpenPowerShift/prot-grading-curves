@@ -13,9 +13,9 @@ import { combineTimes, tTripCombine } from '@tc/semantics/combine';
 import { tTripStage } from '@tc/semantics/curves';
 
 const MULTISTAGE = `
-system { voltages { "MV" { kV = 11.0; } } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
 
-faults { "F_bus" { I_A = 6000 A; } }
+faults { "F_bus" { I   = 6000 A; } }
 
 relay R_TGT {
     voltage  = "MV";
@@ -26,12 +26,12 @@ relay R_TGT {
         stages {
             stage main {
                 curve = iec.si;
-                I_pu  = 400 A;
+                I_pickup = 400 A;
                 tms   = 0.35;
             }
             stage inst {
                 curve   = definite;
-                I_pu    = 4500 A;
+                I_pickup = 4500 A;
                 t_delay = 0.08 s;
             }
         }
@@ -54,7 +54,7 @@ describe('stage resolution', () => {
 
   it('names the implicit stage of a shorthand element "main"', () => {
     const short = buildStudy(parse(`
-      relay R { element 51 { curve = iec.si; I_pu = 100 A; tms = 0.1; } }
+      relay R { element 51 { curve = iec.si; I_pickup = 100 A; tms = 0.1; } }
     `).document!);
     expect(short.relays.get('R')!.elements[0].staged).toBe(false);
     expect(short.relays.get('R')!.elements[0].stages[0].id).toBe('main');
@@ -114,9 +114,9 @@ describe('combine operators', () => {
 
   it('evaluates a declared combine against its sources', () => {
     const src = `
-      system { voltages { "MV" { kV = 11.0; } } }
-      relay R_A { voltage = "MV"; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.20; } }
-      relay R_B { voltage = "MV"; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.50; } }
+      system { voltages { "MV" { V  = 11.0 kV; } } }
+      relay R_A { voltage = "MV"; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.20; } }
+      relay R_B { voltage = "MV"; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.50; } }
       combine {
           name    = "A_OR_B";
           sources = [R_A:51, R_B:51];
@@ -140,10 +140,10 @@ describe('current_pct current share', () => {
     // spec _Current-share factor_: I_eff = I_total * current_pct / 100
     const src = `
       relay R {
-        element 51 { curve = iec.si; I_pu = 400 A; tms = 0.30; current_pct = 50; }
+        element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.30; share       = 50 %; }
       }
       relay R2 {
-        element 51 { curve = iec.si; I_pu = 400 A; tms = 0.30; }
+        element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.30; }
       }
     `;
     const s = buildStudy(parse(src).document!);
@@ -163,7 +163,7 @@ describe('secondary-amp pickups', () => {
     const src = `
       relay R {
         ct_ratio = 600/5;
-        element 51 { curve = iec.si; I_pu = 4 A; I_units = "secondary"; tms = 0.30; }
+        element 51 { curve = iec.si; I_pickup = 4 A; I_units = "secondary"; tms = 0.30; }
       }
     `;
     const s = buildStudy(parse(src).document!);
@@ -176,7 +176,7 @@ describe('secondary-amp pickups', () => {
     const src = `
       relay R {
         ct_ratio = 600/5;
-        element 51 { curve = iec.si; I_pu = 480 A; I_units = "primary"; tms = 0.30; }
+        element 51 { curve = iec.si; I_pickup = 480 A; I_units = "primary"; tms = 0.30; }
       }
     `;
     const s = buildStudy(parse(src).document!);

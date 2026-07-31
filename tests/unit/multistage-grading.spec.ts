@@ -12,22 +12,22 @@ import { process } from '@tc/index';
 import { controllingStage, tTripElement } from '@tc/semantics/stages';
 
 const STAGED = `
-system { voltages { "MV" { kV = 11.0; } } }
-faults { "F_low" { I_A = 2000 A; } "F_high" { I_A = 9000 A; } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
+faults { "F_low" { I   = 2000 A; } "F_high" { I   = 9000 A; } }
 
 relay R_DN { voltage = "MV"; ct_ratio = 300/5;
-  element 51 { curve = iec.si; I_pu = 200 A; tms = 0.10; } }
+  element 51 { curve = iec.si; I_pickup = 200 A; tms = 0.10; } }
 
 relay R_UP { voltage = "MV"; ct_ratio = 600/5;
   element 51 {
     stages {
-      stage main { curve = iec.si;   I_pu = 500 A;  tms = 0.30; }
-      stage inst { curve = definite; I_pu = 8000 A; t_delay = 0.10 s; }
+      stage main { curve = iec.si;   I_pickup = 500 A;  tms = 0.30; }
+      stage inst { curve = definite; I_pickup = 8000 A; t_delay = 0.10 s; }
     }
   } }
 
-grade { primary = R_DN:51; backup = R_UP:51; fault = "F_low";  CTI_min_s = 0.30; }
-grade { primary = R_DN:51; backup = R_UP:51; fault = "F_high"; CTI_min_s = 0.30; }
+grade { primary = R_DN:51; backup = R_UP:51; fault = "F_low";  margin    = 0.30 s; }
+grade { primary = R_DN:51; backup = R_UP:51; fault = "F_high"; margin    = 0.30 s; }
 `;
 
 describe('grading a multi-stage element', () => {
@@ -73,7 +73,7 @@ describe('grading a multi-stage element', () => {
     const swapped = STAGED
       .replace('primary = R_DN:51; backup = R_UP:51; fault = "F_low"',
                'primary = R_UP:51; backup = R_DN:51; fault = "F_low"')
-      .replace('grade { primary = R_DN:51; backup = R_UP:51; fault = "F_high"; CTI_min_s = 0.30; }', '');
+      .replace('grade { primary = R_DN:51; backup = R_UP:51; fault = "F_high"; margin    = 0.30 s; }', '');
     const r = process(swapped);
     expect(r.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(Number.isFinite(r.reports[0].rows[0].t_primary_s)).toBe(true);
@@ -88,12 +88,12 @@ describe('duplicate grade detection', () => {
 
   it('still rejects the same pair at the same fault twice', () => {
     const repeated = `
-      system { voltages { "MV" { kV = 11.0; } } }
-      faults { "F" { I_A = 2000 A; } }
-      relay A { voltage = "MV"; element 51 { curve = iec.si; I_pu = 200 A; tms = 0.1; } }
-      relay B { voltage = "MV"; element 51 { curve = iec.si; I_pu = 500 A; tms = 0.3; } }
-      grade { primary = A:51; backup = B:51; fault = "F"; CTI_min_s = 0.3; }
-      grade { primary = A:51; backup = B:51; fault = "F"; CTI_min_s = 0.4; }
+      system { voltages { "MV" { V  = 11.0 kV; } } }
+      faults { "F" { I   = 2000 A; } }
+      relay A { voltage = "MV"; element 51 { curve = iec.si; I_pickup = 200 A; tms = 0.1; } }
+      relay B { voltage = "MV"; element 51 { curve = iec.si; I_pickup = 500 A; tms = 0.3; } }
+      grade { primary = A:51; backup = B:51; fault = "F"; margin    = 0.3 s; }
+      grade { primary = A:51; backup = B:51; fault = "F"; margin    = 0.4 s; }
     `;
     expect(process(repeated).diagnostics.map((d) => d.code)).toContain('DUPLICATE_GRADE');
   });

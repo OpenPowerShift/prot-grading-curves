@@ -63,15 +63,15 @@ backup `tms` to hit a *target* margin of `0.30 s` at the
 [source,tc]
 ----
 faults {
-    "F_FDR2_max" { I_A = 4850 A; voltage = "LV"; }
-    "F_FDR2_min" { I_A = 1900 A; voltage = "LV"; }
+    "F_FDR2_max" { I   = 4850 A; voltage = "LV"; }
+    "F_FDR2_min" { I   = 1900 A; voltage = "LV"; }
 }
 
 grade {
     primary    = R_FDR_2:51;
     backup     = R_TRF_INC:51;
     fault      = "F_FDR2_max";
-    margin_s   = 0.30;
+    margin_target = 0.30 s;
 
     solve {
         strategy       = "tight";

@@ -781,7 +781,7 @@ function resolveStage(
 
   const I_units =
     (readString(pick('I_units')) as 'primary' | 'secondary' | undefined) ?? study.I_units;
-  const pickup = amps(pick('I_pu'));
+  const pickup = amps(pick('I_pickup'));
   const I_pu_declared = Number.isFinite(pickup.value) ? pickup.value : undefined;
 
   /*
@@ -805,7 +805,7 @@ function resolveStage(
   const tmsRaw = rawNumber(pick('tms'));
   const tDelay = seconds(pick('t_delay'));
   const tReset = seconds(pick('t_reset'));
-  const currentPct = rawNumber(pick('current_pct'));
+  const currentPct = rawNumber(pick('share'));
   const charAngle = rawNumber(pick('char_angle'));
 
   return {

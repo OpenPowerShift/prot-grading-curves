@@ -38,8 +38,8 @@ describe('repeated keys', () => {
     expect(errors(`
       element 50 {
         stages {
-          stage a { I_pu = 1 A; }
-          stage b { I_pu = 2 A; }
+          stage a { I_pickup = 1 A; }
+          stage b { I_pickup = 2 A; }
         }
       }
     `)).toHaveLength(0);
@@ -48,8 +48,8 @@ describe('repeated keys', () => {
   it('allows a key repeated across faults', () => {
     expect(errors(`
       faults {
-        "A" { I_A = 1 kA; voltage = "hv"; }
-        "B" { I_A = 2 kA; voltage = "hv"; }
+        "A" { I   = 1 kA; voltage = "hv"; }
+        "B" { I   = 2 kA; voltage = "hv"; }
       }
     `)).toHaveLength(0);
   });
@@ -57,13 +57,13 @@ describe('repeated keys', () => {
 
 describe('empty assignments', () => {
   it('rejects a value left off before the semicolon', () => {
-    const found = errors('point P { I_A = 100 A; shape = ; }', 'MISSING_VALUE');
+    const found = errors('point P { I   = 100 A; shape = ; }', 'MISSING_VALUE');
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain('shape');
   });
 
   it('rejects one left off at the end of a block', () => {
-    expect(errors('point P { I_A = 100 A; shape = }', 'MISSING_VALUE')).toHaveLength(1);
+    expect(errors('point P { I   = 100 A; shape = }', 'MISSING_VALUE')).toHaveLength(1);
   });
 
   it('rejects one left off at the end of the file', () => {
@@ -76,7 +76,7 @@ describe('empty assignments', () => {
   });
 
   it('leaves complete assignments alone', () => {
-    expect(errors('point P { I_A = 100 A; t_s = 1 s; shape = "cross"; }')).toHaveLength(0);
+    expect(errors('point P { I   = 100 A; t   = 1 s; shape = "cross"; }')).toHaveLength(0);
   });
 });
 

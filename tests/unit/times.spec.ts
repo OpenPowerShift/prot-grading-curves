@@ -14,18 +14,18 @@ import { parseAndRender, process } from '@tc/index';
 import { LabelPlacer, type Rect } from '@tc/renderer/labels';
 
 const STUDY = `
-system { voltages { "HV" { kV = 33; } } }
-faults { "Bus max" { I_A = 9 kA; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "Bus max" { I   = 9 kA; voltage = "HV"; } }
 
 times {
-    "Arc flash limit"     { t_s = 200 ms; description = "PPE category boundary"; }
-    "Grid code clearance" { t_s = 430 ms; }
-    "Bus zone backup"     { t_s = 2 s; }
+    "Arc flash limit"     { t   = 200 ms; description = "PPE category boundary"; }
+    "Grid code clearance" { t   = 430 ms; }
+    "Bus zone backup"     { t   = 2 s; }
 }
 
 relay R {
   voltage = "HV"; ct_ratio = 250/1;
-  element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; }
+  element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; }
 }
 view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
 `;
@@ -62,7 +62,7 @@ describe('declaring required times', () => {
   });
 
   it('rejects a time with no place on a logarithmic axis', () => {
-    const codes = process(STUDY.replace('t_s = 200 ms;', 't_s = 0 s;'))
+    const codes = process(STUDY.replace('t   = 200 ms;', 't = 0 s;'))
       .diagnostics.map((d) => d.code);
     expect(codes).toContain('TIME_INVALID');
   });
@@ -134,7 +134,7 @@ describe('drawing them', () => {
      * requirement pulls the top of the axis up to reach it.
      */
     const far = parseAndRender(
-      STUDY.replace('"Bus zone backup"     { t_s = 2 s; }', '"Long withstand" { t_s = 4000 s; }'),
+      STUDY.replace('"Bus zone backup"     { t   = 2 s; }', '"Long withstand" { t   = 4000 s; }'),
       { theme: 'light' },
     ).svg;
     expect(rules(far).map(([n]) => n)).toContain('Long withstand');

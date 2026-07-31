@@ -13,17 +13,17 @@ import { process, parseAndRender } from '@tc/index';
 
 /** LV feeder graded against an HV incomer, so the two see different currents. */
 const CROSS_VOLTAGE = `
-system { voltages { "HV" { kV = 33.0; } "LV" { kV = 11.0; } } }
+system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 11.0 kV; } } }
 faults {
-  "F_max" { I_A = 6.40 kA; voltage = "LV"; }
-  "F_min" { I_A = 2.50 kA; voltage = "LV"; }
+  "F_max" { I   = 6.40 kA; voltage = "LV"; }
+  "F_min" { I   = 2.50 kA; voltage = "LV"; }
 }
 relay R_FDR { voltage = "LV"; ct_ratio = 400/5;
-  element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; } }
+  element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25; } }
 relay R_INC { voltage = "HV"; ct_ratio = 600/5;
-  element 51 { curve = iec.si; I_pu = 720 A; tms = 0.30; } }
+  element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.30; } }
 
-grade { primary = R_FDR:51; backup = R_INC:51; fault = "F_max"; CTI_min_s = 0.30; }
+grade { primary = R_FDR:51; backup = R_INC:51; fault = "F_max"; margin    = 0.30 s; }
 
 annotate { primary = R_FDR:51; backup = R_INC:51; fault = "F_max"; label = "CTI"; }
 view { voltage = "HV"; }
@@ -83,11 +83,11 @@ describe('margin annotations', () => {
 
 describe('point annotations', () => {
   const POINT = `
-    system { voltages { "MV" { kV = 11.0; } } }
-    faults { "F" { I_A = 4000 A; } }
+    system { voltages { "MV" { V  = 11.0 kV; } } }
+    faults { "F" { I   = 4000 A; } }
     relay R { voltage = "MV"; ct_ratio = 600/5;
-      element 51 { curve = iec.si; I_pu = 400 A; tms = 0.3; } }
-    annotate { on_curve = R:51; at_I_A = 4000 A; label = "Bus fault"; style = "leader"; }
+      element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; } }
+    annotate { on_curve = R:51; at_I   = 4000 A; label = "Bus fault"; style = "leader"; }
   `;
 
   it('resolves as a point annotation', () => {
@@ -128,21 +128,21 @@ describe('a margin annotation on a multi-stage element', () => {
    * two curves the reader can see.
    */
   const STAGED = `
-system { voltages { "HV" { kV = 33; } } }
-faults { "F" { I_A = 900 A; I2_A = 900 A; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "F" { I   = 900 A; I2   = 900 A; voltage = "HV"; } }
 relay R_P {
   voltage = "HV"; ct_ratio = 250/1;
   element 46 {
     function = "neg_seq"; measures = "I2";
     stages {
-      stage main  { curve = definite; I_pu = 75 A; t_delay = 0.10 s; }
-      stage energ { curve = definite; I_pu = 75 A; t_delay = 0.35 s; }
+      stage main  { curve = definite; I_pickup = 75 A; t_delay = 0.10 s; }
+      stage energ { curve = definite; I_pickup = 75 A; t_delay = 0.35 s; }
     }
   }
 }
 relay R_B {
   voltage = "HV"; ct_ratio = 250/1;
-  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.45 s; }
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.45 s; }
 }
 annotate { primary = R_P:46; backup = R_B:46; fault = "F"; label = "CTI"; }
 view { voltage = "HV"; stages = "individual"; current_min = 10 A; current_max = 40 kA;
@@ -204,7 +204,7 @@ view { voltage = "HV"; stages = "individual"; current_min = 10 A; current_max = 
   it('still works when neither side has stages', () => {
     const simple = STAGED.replace(
       /stages \{[\s\S]*?\n    \}\n  \}/,
-      'curve = definite; I_pu = 75 A; t_delay = 0.10 s; }',
+      'curve = definite; I_pickup = 75 A; t_delay = 0.10 s; }',
     );
     const { svg } = parseAndRender(simple, { theme: 'light' });
     expect(svg).toContain('CTI 350 ms');
@@ -222,14 +222,14 @@ describe('current margins, measured horizontally', () => {
    * you are.
    */
   const STUDY = (annotations: string) => `
-system { voltages { "HV" { kV = 33; } } }
-faults { "2ph min" { I_A = 390 A; type = two_phase; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "2ph min" { I   = 390 A; type = two_phase; voltage = "HV"; } }
 relay R {
   voltage = "HV"; ct_ratio = 250/1;
-  element 50 { function = "phase_oc"; curve = definite; I_pu = 255 A; t_delay = 20 ms; }
-  element 51 { function = "phase_oc"; curve = iec.si; I_pu = 400 A; tms = 0.15; }
+  element 50 { function = "phase_oc"; curve = definite; I_pickup = 255 A; t_delay = 20 ms; }
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A; tms = 0.15; }
 }
-point "TX inrush" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "inrush"; }
+point "TX inrush" { I   = 212 A; t   = 0.12 s; voltage = "HV"; label = "inrush"; }
 ${annotations}
 view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
        time_min = 10 ms; time_max = 10 s; }
@@ -240,19 +240,19 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
 
   it('measures to a declared fault level', () => {
     /* A 255 A pickup against a 390 A fault: (390 - 255) / 255. */
-    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
     expect(svg).toContain('m +52.9%');
   });
 
   it('measures to a marked point, and signs it', () => {
     /* The inrush is *below* the pickup, so the margin is negative --
      * which is the fact the drawing is there to show. */
-    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; point = "TX inrush"; label = "m"; }');
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; point = "TX inrush"; label = "m"; }');
     expect(svg).toContain('m -16.9%');
   });
 
   it('measures between two characteristics', () => {
-    const svg = drawn('annotate { primary = R:50; backup = R:51; at_t_s = 1 s; label = "m"; }');
+    const svg = drawn('annotate { primary = R:50; backup = R:51; at_t   = 1 s; label = "m"; }');
     expect(svg).toMatch(/m [+-][\d.]+%/);
   });
 
@@ -263,35 +263,35 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
      * read is the *smallest* that achieves the time, which is the
      * pickup -- and that is what makes the 52.9% above exact.
      */
-    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
     expect(svg).toContain('m +52.9%');
   });
 
   it('draws a horizontal span with arrowheads', () => {
-    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
     const arrow = svg.match(/<line x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="\2" stroke="[^"]*" stroke-width="1\.4"\/>/);
     expect(arrow).not.toBeNull();
     expect(Number(arrow![3])).not.toBeCloseTo(Number(arrow![1]), 1);
   });
 
   it('keeps its label off its own arrow', () => {
-    const svg = drawn('annotate { primary = R:50; at_t_s = 20 ms; fault = "2ph min"; label = "m"; }');
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
     const arrowY = Number(svg.match(/<line x1="[\d.]+" y1="([\d.]+)" x2="[\d.]+" y2="\1" stroke="[^"]*" stroke-width="1\.4"\/>/)![1]);
     const labelY = Number(svg.match(/<text x="[\d.-]+" y="([\d.-]+)"[^>]*>m [+-]/)![1]);
     expect(Math.abs(labelY - arrowY)).toBeGreaterThan(6);
   });
 
   it('is skipped, not crashed, when the far end resolves to nothing', () => {
-    expect(() => drawn('annotate { primary = R:50; at_t_s = 20 ms; point = "nonesuch"; }')).not.toThrow();
+    expect(() => drawn('annotate { primary = R:50; at_t   = 20 ms; point = "nonesuch"; }')).not.toThrow();
   });
 });
 
 describe('saying where an annotation goes', () => {
   const BASE = `
-system { voltages { "HV" { kV = 33; } } }
-faults { "F" { I_A = 9 kA; voltage = "HV"; } }
-relay R_A { voltage = "HV"; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.15; } }
-relay R_B { voltage = "HV"; element 51 { curve = iec.si; I_pu = 700 A; tms = 0.30; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "F" { I   = 9 kA; voltage = "HV"; } }
+relay R_A { voltage = "HV"; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.15; } }
+relay R_B { voltage = "HV"; element 51 { curve = iec.si; I_pickup = 700 A; tms = 0.30; } }
 view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
 `;
 
@@ -301,8 +301,8 @@ view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
     const at = (a: string): number => Number(
       parseAndRender(BASE + a, { theme: 'light' }).svg
         .match(/<line x1="([\d.]+)" y1="[\d.]+" x2="\1" y2="[\d.]+" stroke="[^"]*" stroke-width="1\.4"\/>/)![1]);
-    const near = at('annotate { primary = R_A:51; backup = R_B:51; at_I_A = 2 kA; label = "m"; }');
-    const far = at('annotate { primary = R_A:51; backup = R_B:51; at_I_A = 20 kA; label = "m"; }');
+    const near = at('annotate { primary = R_A:51; backup = R_B:51; at_I   = 2 kA; label = "m"; }');
+    const far = at('annotate { primary = R_A:51; backup = R_B:51; at_I   = 20 kA; label = "m"; }');
     expect(far).toBeGreaterThan(near + 100);
   });
 
@@ -312,7 +312,7 @@ view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
      * that already named one did nothing and gave no reason.
      */
     const codes = process(
-      `${BASE}annotate { primary = R_A:51; backup = R_B:51; fault = "F"; at_I_A = 2 kA; }`,
+      `${BASE}annotate { primary = R_A:51; backup = R_B:51; fault = "F"; at_I   = 2 kA; }`,
     ).diagnostics.filter((d) => d.severity === 'error').map((d) => d.code);
     expect(codes).toContain('ANNOTATE_CURRENT_AND_CONDITION');
   });
@@ -324,12 +324,12 @@ view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
      * margin contradicted the report: 667 ms against 1.639 s.
      */
     const cross = `
-system { voltages { "HV" { kV = 33; } "LV" { kV = 11; } } }
-faults { "F" { I_A = 6.4 kA; voltage = "LV"; } }
-relay R_FDR { voltage = "LV"; ct_ratio = 400/5; element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; } }
-relay R_INC { voltage = "HV"; ct_ratio = 600/5; element 51 { curve = iec.si; I_pu = 720 A; tms = 0.30; } }
-grade { primary = R_FDR:51; backup = R_INC:51; fault = "F"; CTI_min_s = 0.3; }
-annotate { primary = R_FDR:51; backup = R_INC:51; at_I_A = 6.4 kA; voltage = "LV"; label = "CTI"; }
+system { voltages { "HV" { V  = 33 kV; } "LV" { V  = 11 kV; } } }
+faults { "F" { I   = 6.4 kA; voltage = "LV"; } }
+relay R_FDR { voltage = "LV"; ct_ratio = 400/5; element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25; } }
+relay R_INC { voltage = "HV"; ct_ratio = 600/5; element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.30; } }
+grade { primary = R_FDR:51; backup = R_INC:51; fault = "F"; margin    = 0.3 s; }
+annotate { primary = R_FDR:51; backup = R_INC:51; at_I   = 6.4 kA; voltage = "LV"; label = "CTI"; }
 view { voltage = "HV"; }
 `;
     const reported = process(cross).reports[0].rows.find((r) => r.at === 'I')!.margin_s;

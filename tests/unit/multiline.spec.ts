@@ -14,11 +14,11 @@ import { parseAndRender } from '@tc/index';
 
 const BASE = `
 meta { project = "Multiline"; }
-system { voltages { hv { kV = 11; } } }
-faults { "F" { I_A = 4 kA; voltage = hv; } }
+system { voltages { hv { V  = 11 kV; } } }
+faults { "F" { I   = 4 kA; voltage = hv; } }
 relay R {
   voltage = hv;
-  element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; }
+  element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; }
 }
 `;
 
@@ -28,13 +28,13 @@ function render(extra: string): string {
 
 describe('escape sequences', () => {
   it('turns \\n in a string into a real newline at parse time', () => {
-    const doc = parse('point P { I_A = 100 A; t_s = 1 s; label = "one\\ntwo"; }').document!;
+    const doc = parse('point P { I   = 100 A; t   = 1 s; label = "one\\ntwo"; }').document!;
     const point = doc.items.find((i) => i.type === 'point') as { label?: string };
     expect(point.label).toBe('one\ntwo');
   });
 
   it('still handles the other escapes the spec lists', () => {
-    const doc = parse('point P { I_A = 100 A; t_s = 1 s; label = "a\\tb \\"q\\" c"; }').document!;
+    const doc = parse('point P { I   = 100 A; t   = 1 s; label = "a\\tb \\"q\\" c"; }').document!;
     const point = doc.items.find((i) => i.type === 'point') as { label?: string };
     expect(point.label).toBe('a\tb "q" c');
   });
@@ -42,7 +42,7 @@ describe('escape sequences', () => {
 
 describe('point labels', () => {
   it('splits a two-line label into tspans', () => {
-    const svg = render('point P { I_A = 2 kA; t_s = 0.3 s; label = "Inrush\\n12 x FLC"; }');
+    const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "Inrush\\n12 x FLC"; }');
     expect(svg).toContain('<tspan');
     expect(svg).toContain('>Inrush</tspan>');
     expect(svg).toContain('>12 x FLC</tspan>');
@@ -53,13 +53,13 @@ describe('point labels', () => {
   });
 
   it('leaves a single-line label as plain text', () => {
-    const svg = render('point P { I_A = 2 kA; t_s = 0.3 s; label = "Inrush"; }');
+    const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "Inrush"; }');
     expect(svg).toContain('>Inrush</text>');
     expect(svg).not.toContain('<tspan');
   });
 
   it('gives every line the same x, so the block stays aligned', () => {
-    const svg = render('point P { I_A = 2 kA; t_s = 0.3 s; label = "One\\nTwo\\nThree"; }');
+    const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "One\\nTwo\\nThree"; }');
     /* Scoped to the marker's own group: the legend entry wraps too. */
     const group = svg.match(/<g class="tc-point"[\s\S]*?<\/g>/)![0];
     const xs = [...group.matchAll(/<tspan x="([-\d.]+)"/g)].map((m) => m[1]);
@@ -68,7 +68,7 @@ describe('point labels', () => {
   });
 
   it('centres the block on the marker, so a second line does not shove it down', () => {
-    const svg = render('point P { I_A = 2 kA; t_s = 0.3 s; label = "One\\nTwo"; }');
+    const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "One\\nTwo"; }');
     const group = svg.match(/<g class="tc-point"[\s\S]*?<\/g>/)![0];
     const dys = [...group.matchAll(/<tspan x="[-\d.]+" dy="([-\d.]+)"/g)].map((m) => Number(m[1]));
     expect(dys).toHaveLength(2);
@@ -84,7 +84,7 @@ describe('annotation labels', () => {
     const svg = render(`
       relay R2 {
         voltage = hv;
-        element 51 { curve = iec.si; I_pu = 200 A; tms = 0.4; }
+        element 51 { curve = iec.si; I_pickup = 200 A; tms = 0.4; }
       }
       annotate {
         primary = R:51;
@@ -102,7 +102,7 @@ describe('annotation labels', () => {
     const svg = render(`
       annotate {
         on_curve = R:51;
-        at_I_A = 4 kA;
+        at_I   = 4 kA;
         style = leader;
         label = "Fault level\\nreviewed 2026";
       }

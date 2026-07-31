@@ -311,15 +311,15 @@ relay's `voltage` (using `system.voltages`).
 
 A `grade` block may carry *zero or more* of:
 
-* `CTI_min_s` -- minimum acceptable margin (a *constraint*);
-* `margin_s` -- *exact* design margin at the declared fault (a
+* `margin` -- minimum acceptable margin (a *constraint*);
+* `margin_target` -- *exact* design margin at the declared fault (a
   *target*);
-* `tolerance_pct` (default 0) -- allowance above `margin_s` for the
+* `tolerance_pct` (default 0) -- allowance above `margin_target` for the
   solver.
 
 When the `solve` block is present, the engineer has declared that the
 tool should *compute* the free variables (default: `tms`) such that
-the grading margin matches `margin_s` (or `CTI_min_s` if `margin_s`
+the grading margin matches `margin_target` (or `margin` if `margin_target`
 is omitted) at the declared `fault`. See
 <<semantics,Semantics>> _Solver -- automatic grading_.
 
@@ -451,7 +451,7 @@ device "ferraz_abc_100a" {
     kind        = "fuse";
     maker       = "Ferraz Shawmut";
     model       = "ABC";
-    rating_A    = 100 A;
+    rating_I    = 100 A;
     min_melt    = [(130 A, 1000 s), (200 A, 100 s),
                    (500 A, 1.0 s), (1000 A, 0.05 s),
                    (2000 A, 0.005 s)];
@@ -493,7 +493,7 @@ grade {
     primary   = fuse_load:abc_min_melt;     // NOT a device-ref (see below)
     backup    = R_TRF_INC:51;
     fault     = "F_load_max";                // named fault reference
-    margin_s  = 0.15;
+    margin_target = 0.15 s;
 }
 ----
 
@@ -507,7 +507,7 @@ grade {
     primary   = ferraz_abc_100a;            // device-ref (no colon)
     backup    = R_TRF_INC:51;               // relay-ref (with colon)
     fault     = "F_load_max";               // named fault reference
-    margin_s  = 0.15;
+    margin_target = 0.15 s;
 }
 ----
 
@@ -730,7 +730,7 @@ direct label, the hover readout.
 ----
 relay R_INC {
     name = "Incomer 11 kV, panel 3";
-    element 51 { name = "Phase OC (main)"; curve = iec.si; I_pu = 600 A; tms = 0.3; }
+    element 51 { name = "Phase OC (main)"; curve = iec.si; I_pickup = 600 A; tms = 0.3; }
 }
 ----
 

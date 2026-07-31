@@ -10,10 +10,10 @@ import { parseAndRender, sheetSize } from '@tc/index';
 
 const BASE = `
 meta { project = "Page options"; engineer = "A. Cooper"; }
-system { voltages { "MV" { kV = 11.0; } } }
-faults { "F" { I_A = 4000 A; } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
+faults { "F" { I   = 4000 A; } }
 relay R { voltage = "MV"; ct_ratio = 600/5;
-  element 51 { curve = iec.si; I_pu = 400 A; tms = 0.3; } }
+  element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; } }
 `;
 
 const render = (page: string): string =>
@@ -157,15 +157,15 @@ describe('page { stretch }', () => {
      * title.
      */
     const oneRow = `
-      faults { "A" { I_A = 200 A; voltage = hv; } "B" { I_A = 9 kA; voltage = hv; } }
+      faults { "A" { I   = 200 A; voltage = hv; } "B" { I   = 9 kA; voltage = hv; } }
       page { size = "A4"; orientation = "portrait"; stretch = true; }
     `;
     const manyRows = `
       faults {
-        "F_alpha_one" { I_A = 3000 A; voltage = hv; }
-        "F_alpha_two" { I_A = 3100 A; voltage = hv; }
-        "F_alpha_three" { I_A = 3200 A; voltage = hv; }
-        "F_alpha_four" { I_A = 3300 A; voltage = hv; }
+        "F_alpha_one" { I   = 3000 A; voltage = hv; }
+        "F_alpha_two" { I   = 3100 A; voltage = hv; }
+        "F_alpha_three" { I   = 3200 A; voltage = hv; }
+        "F_alpha_four" { I   = 3300 A; voltage = hv; }
       }
       page { size = "A4"; orientation = "portrait"; stretch = true; }
     `;

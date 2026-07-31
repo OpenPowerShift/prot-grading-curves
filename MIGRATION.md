@@ -93,7 +93,15 @@ The misplaced-vs-mistyped rule: a word `KEYWORDS` knows is in the wrong
 block and warns; a word it does not know anywhere is a typo and, in a
 block whose every field changes a number, errors.
 
-Next, in order:
+Done: parser, model boundary, all 12 examples, all test fixtures,
+spec, guide, revision history. 641 tests green.
+
+Left:
+- `snippets.ts` still emits the old vocabulary.
+- Hover panel on the right-hand side; missing entries (`grade > upstream`).
+- Broadsound file rewritten in the final syntax.
+
+Original order, for reference:
 1. AST/model internal field names (`I_A` -> `I` etc.) through
    `model.ts`, `grades.ts`, `svg.ts`, `condition.ts`, `quantity.ts`.
 4. Examples (12), spec, guide.

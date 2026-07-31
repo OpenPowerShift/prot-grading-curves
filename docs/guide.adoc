@@ -44,20 +44,19 @@ meta {
     project   = "Riverside 33/11 kV";
     engineer  = "A. Cooper";
     date      = "2026-07-30";
-    CTI_min_s = 0.30;              # default grading interval
+    margin    = 0.30 s;              # default grading interval
 }
 
 system {
     voltages {
-        "HV" { kV = 33.0; }
-        "LV" { kV = 11.0; }
+        "HV" { V  = 33.0 kV; }
+        "LV" { V  = 11.0 kV; }
     }
-    frequency_Hz = 50;
 }
 
 faults {
-    "F_lv_max" { I_A = 6400 A;  voltage = "LV"; }
-    "F_hv_max" { I_A = 18400 A; voltage = "HV"; }
+    "F_lv_max" { I   = 6400 A;  voltage = "LV"; }
+    "F_hv_max" { I   = 18400 A; voltage = "HV"; }
 }
 
 relay R_FDR {
@@ -68,7 +67,7 @@ relay R_FDR {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;         # IEC standard inverse
-        I_pu     = 480 A;
+        I_pickup = 480 A;
         tms      = 0.30;
     }
 }
@@ -80,7 +79,7 @@ relay R_INC {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 720 A;
+        I_pickup = 720 A;
         tms      = 0.175;
     }
 }
@@ -89,7 +88,7 @@ grade {
     primary   = R_FDR:51;          # must clear first
     backup    = R_INC:51;
     fault     = "F_lv_max";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 view { voltage = "HV"; }           # draw everything in the 33 kV frame
@@ -116,6 +115,28 @@ tc-curves render study.tc --pdf -o study.pdf
 * **Units are required** wherever the field is not unit-free. A bare
   number in a unit-bearing field is a parse error.
 
+=== No key carries its own unit
+
+Every field takes the unit from you, and checks it:
+
+[source,tc]
+----
+system { voltages { "HV" { V = 33 kV; } } }
+faults  { "Bus max" { I = 6.4 kA; voltage = "HV"; } }
+relay R { element 51 { I_pickup = 480 A; tms = 0.3; t_delay = 60 ms; } }
+grade   { primary = R:51; backup = R_INC:51; margin = 0.3 s; }
+----
+
+`I` is phase current, `I1` / `I2` / `I0` the components, `residual`
+the `3*I0` stated directly; `V` a voltage, `t` a time. The same
+vocabulary in a `fault`, a `scenario` level, a `point` and an
+`annotate`, so one current is written one way everywhere.
+
+Keys used to name their own unit -- `I_A`, `t_s`, `kV`, `CTI_min_s` --
+which said it twice when the value carried a suffix and left it
+ambiguous when it did not. The old spellings are still recognised, so
+each is refused with its replacement rather than looking like a typo.
+
 === Units
 
 [cols="1,3", options="header"]
@@ -134,9 +155,9 @@ tc-curves render study.tc --pdf -o study.pdf
 
 [source,tc]
 ----
-element 51 { I_pu = 5.0 A_sec; }         # x ct_ratio -> 600 A primary
-element 51 { I_pu = 600 A; }             # same, stated as primary
-element 51 { I_pu = 5.0 A; I_units = "secondary"; }   # older spelling
+element 51 { I_pickup = 5.0 A_sec; }         # x ct_ratio -> 600 A primary
+element 51 { I_pickup = 600 A; }             # same, stated as primary
+element 51 { I_pickup = 5.0 A; I_units = "secondary"; }   # older spelling
 ----
 
 `A_pri` exists so one primary figure can sit inside an element
@@ -199,7 +220,7 @@ meta {
     date      = "2026-07-30";
     revision  = "B";
     reference = "DOC-1234";
-    CTI_min_s = 0.30;          # default for grade blocks that omit it
+    margin    = 0.30 s;          # default for grade blocks that omit it
 }
 ----
 
@@ -209,12 +230,10 @@ meta {
 ----
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV switchboard"; }
-        "LV" { kV = 11.0; }
+        "HV" { V  = 33.0 kV; description = "33 kV switchboard"; }
+        "LV" { V  = 11.0 kV; }
     }
-    frequency_Hz = 50;
-    base_MVA     = 25;
-    grounding    = "low_impedance";
+    base_S       = 25 MVA;
     I_units      = "primary";      # study-wide default for pickups
 }
 ----
@@ -230,27 +249,27 @@ One current at one level:
 ----
 faults {
     "F_lv_max" {
-        I_A         = 6400 A;
-        min_A       = 4000 A;      # sweep the CTI check across a range
-        max_A       = 8000 A;
+        I           = 6400 A;
+        I_min       = 4000 A;      # sweep the CTI check across a range
+        I_max       = 8000 A;
         voltage     = "LV";
         description = "Busbar 3ph, system normal";
     }
     "F_lv_earth" {
-        I_A     = 6400 A;
-        I0_A    = 800 A;           # zero-sequence component
-        I2_A    = 800 A;           # negative-sequence component
-        earth_A = 2400 A;          # residual 3*I0, if you prefer
+        I       = 6400 A;
+        I0      = 800 A;           # zero-sequence component
+        I2      = 800 A;           # negative-sequence component
+        residual = 2400 A;          # residual 3*I0, if you prefer
         voltage = "LV";
     }
 }
 ----
 
-`I_A` is the *phase* current. `I0_A` is the component `I0`; `earth_A`
+`I` is the *phase* current. `I0` is the component `I0`; `residual`
 is the residual `3*I0` stated directly. Declare either -- the processor
 derives the other, and errors if you declare both inconsistently.
 
-If only `I_A` is given, `min_A` and `max_A` default to it.
+If only `I` is given, `I_min` and `I_max` default to it.
 
 === times
 
@@ -260,9 +279,9 @@ answer to a `fault`:
 [source,tc]
 ----
 times {
-    "Arc flash limit"     { t_s = 200 ms; description = "PPE category boundary"; }
-    "Grid code clearance" { t_s = 430 ms; }
-    "Bus zone backup"     { t_s = 2 s; }
+    "Arc flash limit"     { t   = 200 ms; description = "PPE category boundary"; }
+    "Grid code clearance" { t   = 430 ms; }
+    "Bus zone backup"     { t   = 2 s; }
 }
 ----
 
@@ -301,14 +320,14 @@ relay R_FDR {
         name     = "Phase OC";
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 320 A;
+        I_pickup = 320 A;
         tms      = 0.12;
         reset    = "instant";
     }
 
     element 50 {
         curve   = definite;
-        I_pu    = 9 kA;
+        I_pickup = 9 kA;
         t_delay = 60 ms;           # not 0 -- see the warning below
     }
 }
@@ -330,8 +349,8 @@ the pointwise minimum -- what the relay actually does:
 element 50 {
     function = "phase_oc";
     stages {
-        stage main  { curve = definite; I_pu = 147 A; t_delay = 40 ms; }
-        stage energ { curve = definite; I_pu = 255 A; t_delay = 20 ms; }
+        stage main  { curve = definite; I_pickup = 147 A; t_delay = 40 ms; }
+        stage energ { curve = definite; I_pickup = 255 A; t_delay = 20 ms; }
     }
 }
 ----
@@ -360,17 +379,17 @@ Plus three non-catalogue forms:
 
 [source,tc]
 ----
-element 51 { curve = definite; I_pu = 3 kA; t_delay = 100 ms; }
+element 51 { curve = definite; I_pickup = 3 kA; t_delay = 100 ms; }
 
 element 51 {                                    # your own constants
     formula = { k = 4.0; c = 0.10; alpha = 0.50; };
-    I_pu = 500 A; tms = 0.2;
+    I_pickup = 500 A; tms = 0.2;
 }
 
 element 51 {                                    # a published point table
     flex_points = [(240 A, 50.0 s), (600 A, 5.0 s),
                    (1200 A, 1.0 s), (5000 A, 0.20 s)];
-    I_pu = 240 A; tms = 1.0;
+    I_pickup = 240 A; tms = 1.0;
 }
 ----
 
@@ -431,19 +450,19 @@ scenario "LV earth fault" {
     description = "Single phase to earth at 0.48 kV";
 
     # star side: the components are equal for a phase-earth fault
-    level "LV" { I_A = 460 A; I1_A = 153 A; I2_A = 153 A; I0_A = 153 A; }
+    level "LV" { I   = 460 A; I1   = 153 A; I2   = 153 A; I0   = 153 A; }
 
     # delta side: no zero sequence gets through
-    level "HV" { I_A = 3.9 A; I1_A = 2.2 A; I2_A = 2.2 A;  I0_A = 0 A;  }
+    level "HV" { I   = 3.9 A; I1   = 2.2 A; I2   = 2.2 A;  I0   = 0 A;  }
 
-    sees R_FDR { current_pct = 50; }   # parallel paths: half the current
+    sees R_FDR { share       = 50 %; }   # parallel paths: half the current
 }
 
 grade {
     primary   = R_ACB:51;
     backup    = R_850:46;              # I2 backup
     scenario  = "LV earth fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 ----
 
@@ -507,7 +526,7 @@ device "spur_fuse_50T" {
     kind        = fuse;
     maker       = "Mersen";
     model       = "50T";
-    rating_A    = 50 A;
+    rating_I    = 50 A;
     min_melt    = [(100 A, 100 s), (1 kA, 0.05 s)];
     total_clear = [(100 A, 200 s), (1 kA, 0.10 s)];
 }
@@ -525,15 +544,15 @@ Give it a `voltage` if the study spans more than one level. A published
 fuse curve is in the amps of the winding it sits on, so without a level
 its points are taken as already being in the view frame -- and on a
 cross-voltage sheet the band is drawn out by the turns ratio. This is
-not `rating_kV`, which is the fuse's own insulation rating:
+not `rating_V`, which is the fuse's own insulation rating:
 
 [source,tc]
 ----
 device "spur_fuse_50T" {
     kind      = fuse;
     voltage   = "LV";        # the level it sits on
-    rating_kV = 12 kV;       # its insulation rating -- a different thing
-    rating_A  = 50 A;
+    rating_V  = 12 kV;       # its insulation rating -- a different thing
+    rating_I  = 50 A;
 }
 ----
 
@@ -545,8 +564,8 @@ grade {
     primary       = R_FDR:51;      # must clear first
     backup        = R_INC:51;
     fault         = "F_lv_max";    # or scenario = "..."
-    CTI_min_s     = 0.30;          # constraint: minimum acceptable
-    margin_s      = 0.35;          # target: exact design margin
+    margin        = 0.30 s;          # constraint: minimum acceptable
+    margin_target = 0.35 s;          # target: exact design margin
     tolerance_pct = 5;
     upstream      = true;          # also sweep above the declared fault
     upstream_to   = 20 kA;         # ceiling for that sweep
@@ -554,7 +573,7 @@ grade {
 }
 ----
 
-`CTI_min_s` is a floor to satisfy; `margin_s` is a value to hit. Each
+`margin` is a floor to satisfy; `margin_target` is a value to hit. Each
 side is evaluated at the current *it* sees: a fault on one side of a
 transformer is referred to the other by the turns ratio, per relay.
 
@@ -571,7 +590,7 @@ grade {
     primary = R_FDR:51;
     backup  = R_INC:51;
     fault   = "F_lv_max";
-    margin_s = 0.35;
+    margin_target = 0.35 s;
     solve { strategy = "tight"; free = [tms]; }
 }
 ----
@@ -605,8 +624,8 @@ a margin the reader should not have to measure:
 [source,tc]
 ----
 point "TX1_inrush" {
-    I_A     = 5250 A;
-    t_s     = 0.10 s;
+    I       = 5250 A;
+    t       = 0.10 s;
     voltage = "HV";
     label   = "TX1 inrush\n12 x FLC, 100 ms";   # \n breaks the line
     shape   = "cross";
@@ -622,7 +641,7 @@ annotate {                          # margin between two curves
 
 annotate {                          # a single curve at one current
     on_curve = R_INC:51;
-    at_I_A   = 18.4 kA;
+    at_I     = 18.4 kA;
     style    = leader;              # leader | pin | tag
     label    = "HV max fault";
 }
@@ -630,17 +649,17 @@ annotate {                          # a single curve at one current
 
 ==== A point declares its current as a fault does
 
-One vocabulary for every current in the language. `I_A` is phase
-current, `I2_A` negative sequence, `I0_A` the zero-sequence component,
-`earth_A` the residual `3*I0` -- the same keys a `fault` and a
+One vocabulary for every current in the language. `I` is phase
+current, `I2` negative sequence, `I0` the zero-sequence component,
+`residual` the residual `3*I0` -- the same keys a `fault` and a
 `scenario` level use. The sheet then takes whichever component its axis
 is drawn in:
 
 [source,tc]
 ----
-point "ext fault I2" { I2_A = 49 A;  t_s = 0.10 s; voltage = "HV"; }
-point "TX inrush"    { I_A  = 212 A; t_s = 0.12 s; voltage = "HV"; }
-point "2ph min"      { I_A  = 390 A; type = two_phase; t_s = 0.2 s; }
+point "ext fault I2" { I2   = 49 A;  t   = 0.10 s; voltage = "HV"; }
+point "TX inrush"    { I    = 212 A; t   = 0.12 s; voltage = "HV"; }
+point "2ph min"      { I    = 390 A; type = two_phase; t   = 0.2 s; }
 ----
 
 `type` supplies the ratios, so the last of those is placed on an `I2`
@@ -648,7 +667,7 @@ sheet at `390/sqrt(3)` without anything else being declared.
 
 A marker whose component the sheet is not drawn in is left off and named
 in the legend, with the key that would fix it. Nothing changes for a
-point declaring `I_A` on a phase axis -- which is the default -- so
+point declaring `I` on a phase axis -- which is the default -- so
 existing studies are untouched.
 
 ==== Saying where, when the axis is not phase current
@@ -659,13 +678,13 @@ current:
 
 [source,tc]
 ----
-annotate { primary = R_850:46; backup = R_SEL:46; at_I2_A = 225 A; }
-annotate { primary = R_850:46; backup = R_SEL:46; at_I_A = 390 A; type = two_phase; }
+annotate { primary = R_850:46; backup = R_SEL:46; at_I2   = 225 A; }
+annotate { primary = R_850:46; backup = R_SEL:46; at_I   = 390 A; type = two_phase; }
 ----
 
 Both put the arrow in the same place on an `I2` sheet: the first names
 the component, the second gives the phase current and lets the type
-derive it. `at_I_A` still means phase current, so nothing written
+derive it. `at_I` still means phase current, so nothing written
 before this moves.
 
 `voltage` names the level the figure is read at, defaulting to the
@@ -683,7 +702,7 @@ what the relay trips at. Add a stage to mean just that stage:
 
 [source,tc]
 ----
-annotate { primary = R_850:46/energ; backup = R_SEL:46; at_I2_A = 225 A; }
+annotate { primary = R_850:46/energ; backup = R_SEL:46; at_I2   = 225 A; }
 ----
 
 which is what a study whose stages are alternatives under different
@@ -709,26 +728,26 @@ are:
 annotate {                          # curve to curve
     primary = R_FDR:51;
     backup  = R_INC:51;
-    at_t_s  = 1 s;
+    at_t    = 1 s;
     label   = "Current margin";
 }
 
 annotate {                          # curve to a fault level
     primary = R_RMU:50;
-    at_t_s  = 20 ms;
+    at_t    = 20 ms;
     fault   = "2ph min";
     label   = "below min 2ph";      # -> "below min 2ph +52.9%"
 }
 
 annotate {                          # curve to a marked point
     primary = R_RMU:50;
-    at_t_s  = 20 ms;
+    at_t    = 20 ms;
     point   = "TX inrush";
     label   = "above inrush";       # -> "above inrush -16.9%"
 }
 ----
 
-`at_t_s` is what makes it a current margin. The far end is another
+`at_t` is what makes it a current margin. The far end is another
 characteristic (`backup`), a declared condition (`fault` / `scenario`),
 or a marked point (`point`) -- a pickup is as often quoted against a
 fault level or an inrush peak as against another relay. The percentage
@@ -737,7 +756,7 @@ axis before they are compared, so the figure is the one the drawn arrow
 spans.
 
 A current is read as *the smallest current whose operate time is at or
-below* `at_t_s`. On an inverse curve that is the point where it crosses;
+below* `at_t`. On an inverse curve that is the point where it crosses;
 on a definite-time stage, which is flat, it is the pickup -- which is
 the answer meant.
 
@@ -751,9 +770,9 @@ belongs to:
 [source,tc]
 ----
 point "ACB clears" {
-    scenario = "system normal";      # instead of I_A
+    scenario = "system normal";      # instead of I
     voltage  = "HV";
-    t_s      = 2.00 s;
+    t        = 2.00 s;
 }
 
 annotate {
@@ -815,7 +834,7 @@ kind of fault it is. Declare the type and the tool knows the ratios:
 [source,tc]
 ----
 faults {
-    "F_2ph" { I_A = 390 A; type = two_phase; voltage = "HV"; }
+    "F_2ph" { I   = 390 A; type = two_phase; voltage = "HV"; }
 }
 ----
 
@@ -827,9 +846,9 @@ current, and with `Z1 = Z2`:
 |===
 | Type | `I1` | `I2` | `I0` | residual `3I0`
 
-| `three_phase` | `I_A` | 0 | 0 | 0
-| `two_phase` | `I_A/√3` | `I_A/√3` | 0 | 0
-| `single_phase_earth` | `I_A/3` | `I_A/3` | `I_A/3` | `I_A`
+| `three_phase` | `I` | 0 | 0 | 0
+| `two_phase` | `I/√3` | `I/√3` | 0 | 0
+| `single_phase_earth` | `I/3` | `I/3` | `I/3` | `I`
 | `two_phase_earth` | -- | -- | -- | --
 |===
 
@@ -896,7 +915,7 @@ passes it. The tool cannot know, so the study says:
 [source,tc]
 ----
 system {
-    voltages { "HV" { kV = 33; } "LV" { kV = 0.48; } }
+    voltages { "HV" { V  = 33 kV; } "LV" { V  = 0.48 kV; } }
 
     zero_sequence {
         "HV" to "LV" = blocked;      # delta winding
@@ -1153,11 +1172,11 @@ that relay's own winding.
 | `CT_RATIO_MISSING` | error | A secondary-side pickup with no `ct_ratio` to convert it.
 | `DUPLICATE_KEY` | error | A key assigned twice in one block.
 | `MISSING_VALUE` | error | An `=` with no value after it.
-| `MARGIN_BELOW_CTI` | error | A declared `margin_s` is below the `CTI_min_s` floor.
+| `MARGIN_BELOW_CTI` | error | A declared `margin_target` is below the `margin` floor.
 | `ZERO_DELAY_NOT_PLOTTABLE` | warning | `t_delay = 0 s`; the stage cannot be drawn on a log axis.
 | `GRADE_MIXED_QUANTITY` | warning | The two sides of a grade measure different currents. Legitimate, but stated.
 | `RELAY_VOLTAGE_UNSPECIFIED` | warning | A relay has no `voltage` in a study with several levels.
-| `FAULT_SINGLE_POINT` | info | Only `I_A` given, so `min_A` and `max_A` default to it.
+| `FAULT_SINGLE_POINT` | info | Only `I` given, so `I_min` and `I_max` default to it.
 |===
 
 == Writing a study from scratch
@@ -1185,7 +1204,10 @@ A checklist, in the order that avoids rework:
 
 === Common mistakes
 
-* Omitting units. `I_pu = 480` is an error; write `480 A`.
+* Omitting units. No key names its own unit, so the unit is always
+  yours to write: `I_pickup = 480 A`, `V = 33 kV`, `margin = 0.3 s`.
+  A suffix is checked against the quantity the field takes, so
+  `I_pickup = 5 ms` is refused as well as `I_pickup = 4 KA`.
 * Using `t_delay = 0 s` for an instantaneous element. It will not
   appear on the plot.
 * Grading with `primary` and `backup` the wrong way round. The primary

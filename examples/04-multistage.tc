@@ -16,14 +16,13 @@ meta {
 
 system {
     voltages {
-        "MV" { kV = 11.0; }
+        "MV" { V  = 11.0 kV; }
     }
-    frequency_Hz = 50;
 }
 
 faults {
-    "Bus fault"   { I_A = 6000 A; }
-    "Remote fault"   { I_A = 1200 A; }
+    "Bus fault"   { I   = 6000 A; }
+    "Remote fault"   { I   = 1200 A; }
 }
 
 relay R_TGT {
@@ -35,12 +34,12 @@ relay R_TGT {
         stages {
             stage main {
                 curve = iec.si;
-                I_pu  = 400 A;
+                I_pickup = 400 A;
                 tms   = 0.35;
             }
             stage inst {
                 curve   = definite;
-                I_pu    = 4500 A;
+                I_pickup = 4500 A;
                 t_delay = 0.08 s;
             }
         }

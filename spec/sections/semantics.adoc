@@ -17,7 +17,7 @@ without a level its points are taken as already being in the view
 frame: on a cross-voltage sheet the band is drawn out by the ratio, and
 the device is graded in the wrong winding's amps.
 
-`voltage` is not `rating_kV`. The latter is the equipment's own
+`voltage` is not `rating_V`. The latter is the equipment's own
 insulation rating and has no bearing on where the curve is drawn.
 
 A device with no `voltage` behaves as before -- unreferred -- so a
@@ -27,7 +27,7 @@ single-voltage study needs no change.
 
 At one fault the phase current and the sequence components are fixed
 multiples of one another, decided by the kind of fault. Ratios are
-against the condition's *own* declared phase current `I_A` -- a
+against the condition's *own* declared phase current `I` -- a
 phase-phase fault's phase current is its own value, not a fraction of a
 three-phase figure -- with `Z1 = Z2` and fault impedance neglected.
 
@@ -35,9 +35,9 @@ three-phase figure -- with `Z1 = Z2` and fault impedance neglected.
 |===
 | `type` | `I1` | `I2` | `I0` | residual `3*I0`
 
-| `three_phase`        | `I_A`    | 0        | 0        | 0
-| `two_phase`          | `I_A/√3` | `I_A/√3` | 0        | 0
-| `single_phase_earth` | `I_A/3`  | `I_A/3`  | `I_A/3`  | `I_A`
+| `three_phase`        | `I`    | 0        | 0        | 0
+| `two_phase`          | `I/√3` | `I/√3` | 0        | 0
+| `single_phase_earth` | `I/3`  | `I/3`  | `I/3`  | `I`
 | `two_phase_earth`    | --       | --       | --       | --
 |===
 
@@ -75,7 +75,7 @@ that does not. A `neg_seq` element that does not declare `measures` is
 an *Error* (`MEASURES_REQUIRED`).
 
 For any element measuring other than phase current, the fault data
-must declare the relevant component (`I0_A`, `earth_A`, or `I2_A` in
+must declare the relevant component (`I0`, `residual`, or `I2` in
 the `faults` block). If it does not, the pair is *not graded* and an
 *Error* `SEQUENCE_DATA_MISSING` is raised.
 
@@ -87,11 +87,11 @@ margin for a comparison that was never made -- a wrong number that
 looks right, which is the failure mode this rule exists to prevent.
 
 Earlier drafts of this section specified a *Warning*
-`MISSING_SEQUENCE_DATA` and a fallback to `I_A`. That rule is
+`MISSING_SEQUENCE_DATA` and a fallback to `I`. That rule is
 withdrawn.
 ====
 
-`I0_A` is the zero-sequence component `I0`. `earth_A` is the residual
+`I0` is the zero-sequence component `I0`. `residual` is the residual
 `3*I0` declared directly, for studies that report the residual rather
 than the component; the two are interchangeable, and the processor
 derives whichever is not given.
@@ -181,7 +181,7 @@ range covers IEEE/IEC standards and vendor extensions), and `c >= 0`.
 `flex_points` is a list of `(I_A, t_s)` pairs with at least two
 entries. The processor
 
-* sorts by `I_A`,
+* sorts by `I`,
 * absorbs `tms` linearly: `t_use(I) = t_table(I) * tms`,
 * interpolates *log-log* between adjacent points (linear in
   `(log10(I), log10(t))` space; this matches IEC 60255-151 for
@@ -333,11 +333,11 @@ Processors implement it as `t = a - b * ln(M)` with `a = 5.8`,
 
 For each `grade { primary = R_p:e_p; backup = R_b:e_b;
 fault = "F"; ... }` block, the processor computes the margin at
-the named fault's current `I_f`. If the fault declares `min_A` and
-`max_A`, the constraint check sweeps across that range; if only
-`I_A` is declared, `min_A` and `max_A` default to `I_A` (a single
-point). If `CTI_min_s` is declared as a constraint, the check is
-applied at `I_A`, `min_A`, and `max_A`:
+the named fault's current `I_f`. If the fault declares `I_min` and
+`I_max`, the constraint check sweeps across that range; if only
+`I` is declared, `I_min` and `I_max` default to `I` (a single
+point). If `margin` is declared as a constraint, the check is
+applied at `I`, `I_min`, and `I_max`:
 
 [source]
 ----
@@ -372,7 +372,7 @@ grade {
     primary     = R_FDR_1:51;
     backup      = R_TRF_INC:51;
     fault       = "F_FDR1_max";
-    CTI_min_s   = 0.30;
+    margin      = 0.30 s;
 
     upstream    = true;          // sweep above the declared fault
     // upstream_to = 25 kA;      // explicit ceiling (optional)
@@ -383,7 +383,7 @@ grade {
 fault current up to a ceiling, evaluating the margin at each sample
 exactly as at a declared point, and reports the *tightest* margin
 found together with the current at which it occurs. Samples
-participate in the `CTI_min_s` verdict, so a pair that inverts
+participate in the `margin` verdict, so a pair that inverts
 anywhere in the swept band fails the grade.
 
 The ceiling is, in order of precedence:
@@ -439,14 +439,14 @@ range, I want at least this margin" (constraint).
 
 [NOTE]
 ====
-Both `margin_s` and the `solve` target are *single-point*: they are
+Both `margin_target` and the `solve` target are *single-point*: they are
 defined at exactly one fault current (the `fault` keyword). The
 margin at *other* currents in the range is not directly controlled by
-this field, only reported. Use `CTI_min_s` for a continuous
+this field, only reported. Use `margin` for a continuous
 constraint across the whole range.
 ====
 
-A `grade` block's `margin_s` is treated as a *report target* at the
+A `grade` block's `margin_target` is treated as a *report target* at the
 declared fault current: the margin report includes a row showing
 achieved margin vs target. Without `solve`, a sub-target margin is a
 flag (informational) -- the engineer is *not* asking the tool to
@@ -462,15 +462,15 @@ of each combination:
 
 | absent | absent | absent | Informational report; no constraint.
 | present | absent | absent | Pass/fail grading check across the bus-fault range.
-| present | present | absent | `margin_s` reported as a target; `CTI_min_s` enforced as a constraint at every fault current.
-| absent | present | absent | `margin_s` reported as a target at `fault`; no constraint. *Warning* (`SOMETHING-IS-MISSING`: margin_s declared without an action).
-| any | present | present | `solve` adjusts free variables to hit `margin_s` (within `tolerance_pct`); `CTI_min_s` continues to act as a floor.
+| present | present | absent | `margin_target` reported as a target; `margin` enforced as a constraint at every fault current.
+| absent | present | absent | `margin_target` reported as a target at `fault`; no constraint. *Warning* (`SOMETHING-IS-MISSING`: margin_s declared without an action).
+| any | present | present | `solve` adjusts free variables to hit `margin_target` (within `tolerance_pct`); `margin` continues to act as a floor.
 |===
 
 [NOTE]
 ====
 The row labelled "absent, present, absent" warns because a
-`margin_s` declared alone is ambiguous between (a) "I want exactly
+`margin_target` declared alone is ambiguous between (a) "I want exactly
 this margin" (intent: solve) and (b) "I want to know what this
 margin is" (intent: compare-margin-only). The default behaviour is
 (b); the engineer can override by adding `solve { ... }`.
@@ -480,7 +480,7 @@ margin is" (intent: compare-margin-only). The default behaviour is
 
 The `solve` block inside `grade` declares that the *processor* should
 *compute* the free variables (`tms`, optionally also `t_delay` or
-`I_pu`) such that the grading constraint matches the design target.
+`I_pickup`) such that the grading constraint matches the design target.
 
 [source,tc]
 ----
@@ -488,7 +488,7 @@ grade {
     primary   = R_FDR_1:51;
     backup    = R_TRF_INC:51;
     fault     = "F_FDR1_max";       // a named fault from faults { ... }
-    margin_s  = 0.30;                // design target
+    margin_target = 0.30 s;                // design target
 
     solve {
         strategy       = "tight";    // minimum tms that meets the margin
@@ -634,7 +634,7 @@ grade {
     primary        = R_FDR_1:51;
     backup         = R_TRF_INC:51;
     fault          = "F_FDR1_max";
-    margin_s       = 0.30;
+    margin_target  = 0.30 s;
     tolerance_pct  = 5;
 
     solve {
@@ -646,14 +646,14 @@ grade {
 ----
 
 The solver stage order: first adjust `tms` (linearly), then adjust
-`I_pu` (within pickup-discrimination bounds, dispose the smallest
-free `I_pu` that also meets the margin). The set is solved
+`I_pickup` (within pickup-discrimination bounds, dispose the smallest
+free `I_pickup` that also meets the margin). The set is solved
 simultaneously with a Newton iteration if more than one variable is
 free; with a single variable it's a closed-form solution.
 
-==== Solver with `I_pu` as free variable
+==== Solver with `I_pickup` as free variable
 
-When `I_pu` is in `free`, the solver adjusts the backup's pickup
+When `I_pickup` is in `free`, the solver adjusts the backup's pickup
 current such that `M_backup = I_f_at_backup / I_pu_backup` produces
 the required operate time. Since `I_pu_backup` appears in the
 denominator of `M_backup`, decreasing `I_pu_backup` increases
@@ -680,13 +680,13 @@ stage-level constraints).
 
 The playground renders the TCC on a log-log canvas. In v0.2 the
 engineer may *drag a curve* with the pointer; the tool
-reverse-solves the free variable (`tms` by default, or `I_pu` /
+reverse-solves the free variable (`tms` by default, or `I_pickup` /
 `t_delay` depending on which segment the drag grips) from the new
 visual position and *writes the computed value back into the
 source text*, preserving formatting and comments.
 
 Conceptually the drag is a *visual solver*: instead of declaring
-`margin_s` and `solve { ... }` in the source, the engineer
+`margin_target` and `solve { ... }` in the source, the engineer
 manipulates the curve directly and the tool runs the same
 closed-form / Newton machinery to find the parameter that places
 the curve at the pointer's `(I, t)` coordinate.
@@ -696,7 +696,7 @@ Rules (planned for v0.2):
 * Dragging the IDMT body of an inverse-time curve adjusts `tms`
   (single free variable, closed-form from the dragged point).
 * Dragging the pickup knee (the left end of the curve) adjusts
-  `I_pu`.
+  `I_pickup`.
 * Dragging a definite-time stage adjusts `t_delay`.
 * A multi-stage element's composite curve is dragged by gripping
   the *controlling stage* at the dragged current (same selection
@@ -735,8 +735,8 @@ and lets the processor work out the ratio automatically.
 ----
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV incomer side"; }
-        "LV" { kV = 11.0; description = "11 kV feeder side"; }
+        "HV" { V  = 33.0 kV; description = "33 kV incomer side"; }
+        "LV" { V  = 11.0 kV; description = "11 kV feeder side"; }
     }
 }
 ----
@@ -771,8 +771,8 @@ primary-ampere value of the fault *as seen from that level*:
 [source,tc]
 ----
 faults {
-    "F1_lv_3000" { I_A = 3000 A; voltage = "LV"; }
-    "F2_hv_max"  { I_A = 18400 A; voltage = "HV"; }
+    "F1_lv_3000" { I   = 3000 A; voltage = "LV"; }
+    "F2_hv_max"  { I   = 18400 A; voltage = "HV"; }
 }
 ----
 
@@ -793,7 +793,7 @@ grade {
     primary   = R_FDR_110:51;     // LV (11 kV)
     backup    = R_INC_330:51;     // HV (33 kV)
     fault     = "F2_hv_max";      // 18.4 kA at HV side
-    margin_s  = 0.30;
+    margin_target = 0.30 s;
 }
 ----
 
@@ -880,7 +880,7 @@ so each pick-up lands on `M = 1` regardless of voltage.
 By default, *all* elements in a study declare
 `voltage = "some_name"`; the relay-internal `I_units` field
 (`primary` / `secondary`) is separate and toggles the units the
-user types in for `I_pu` only. The processor does *not* require
+user types in for `I_pickup` only. The processor does *not* require
 `voltage = ...` to be omitted on every relay for a single-voltage
 study -- it is required for each relay but the level name is
 freely chosen (e.g. `LV` for all relays in a 11 kV study).
@@ -894,10 +894,10 @@ multiples.
 
 ==== Voltage / pick-up self-check
 
-The processor checks each `I_pu` declared in *primary amps*
+The processor checks each `I_pickup` declared in *primary amps*
 against the typical equipment current for the declared voltage:
 
-* If `I_pu < 5% * (base_MVA / kV / sqrt(3))` (i.e. `I_pu` is
+* If `I_pu < 5% * (base_MVA / kV / sqrt(3))` (i.e. `I_pickup` is
   implausibly low for that voltage base), the
   `PICKUP_TOO_LOW_FOR_VOLTAGE` warning fires -- usually a unit
   error (`720 A` instead of `7.20 kA`).
@@ -920,9 +920,9 @@ against the typical equipment current for the declared voltage:
 
 ==== Annotations on devices
 
-`annotate { on_curve = <device-ref>; at_I_A = <A>; ... }` places
+`annotate { on_curve = <device-ref>; at_I   = <A> A; ... }` places
 the annotation at the device's TCC at the declared current. The
-`at_I_A` value is interpreted in the *device's own* amps (the
+`at_I` value is interpreted in the *device's own* amps (the
 `flex_points` table's units); no voltage-level conversion is
 applied. If the device is on a different voltage level than the
 plot's axis mode, the renderer emits a *Warning*
@@ -1015,7 +1015,7 @@ equivalent; each takes one name or a list):
   measures in *its own* frame, exactly as _CTI computation_ specifies,
   so an annotated figure agrees with the report for the same pair and
   condition.
-* A `point` declaring both `I_A` and a condition is an *Error*
+* A `point` declaring both `I` and a condition is an *Error*
   (`POINT_CURRENT_AND_CONDITION`). A condition that is neither a
   declared fault nor a declared scenario is an *Error*
   (`UNRESOLVED_REFERENCE`). A scenario silent about the level a mark
@@ -1064,15 +1064,15 @@ cases:
 * *Parallel transformers* -- two transformers in parallel, inrush
   and through-fault scenarios handled similarly.
 
-Optional parameter `current_pct` declares what fraction of the total
+Optional parameter `share` declares what fraction of the total
 fault current the relay sees, expressed as a percentage of `100`:
 
 [source,tc]
 ----
 element 51 {
     curve        = iec.si;
-    I_pu         = 600 A;
-    current_pct  = 50;       // this relay sees 50% of I_total
+    I_pickup     = 600 A;
+    share        = 50 %;       // this relay sees 50% of I_total
     tms          = 0.30;
 }
 ----
@@ -1089,16 +1089,16 @@ M     = I_eff / I_pu
 (Defaults to `100`, equivalent to `100 %`. Constraint: `0 <
 current_pct <= 100`.)
 
-`current_pct` is *optional*: a relay that sees the full fault current
+`share` is *optional*: a relay that sees the full fault current
 *does not* declare it. The processor supplies the default of `100`.
 
 Two adjacent relays on parallel feeders should declare complementary
-`current_pct` values (`50` and `50`) so that the per-relay envelope
+`share` values (`50` and `50`) so that the per-relay envelope
 shows the operating time of each relay individually; the system-level
 response time of the parallel pair (the fastest clearance) is the
 *pointwise minimum* of the two per-relay TCCs.
 
-`current_pct` is also valid on `stage` blocks, applied per-stage, so
+`share` is also valid on `stage` blocks, applied per-stage, so
 that a composite element can declare one stage that sees half and
 another that sees all (e.g. an instantaneous stage does not see the
 parallel division because it is bolted-fault only).
@@ -1123,7 +1123,7 @@ addition to `src/constants/curves.ts` -- *not* a grammar change.
 ----
 element 51 {
     formula      = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
-    I_pu         = 600 A;
+    I_pickup     = 600 A;
     tms          = 0.30;
 }
 ----
@@ -1179,7 +1179,7 @@ needed.
 ----
 device "ferraz_abc_100a" {
     kind        = "fuse";
-    rating_A    = 100 A;
+    rating_I    = 100 A;
     min_melt    = [(150 A, 100 s), (300 A, 1.5 s), (1000 A, 0.05 s)];
     total_clear = [(150 A, 60 s), (300 A, 0.6 s), (1000 A, 0.02 s)];
 }
@@ -1201,7 +1201,7 @@ grade {
     primary   = ferraz_abc_100a;           // fuse total-clear (from band)
     backup    = R_TRF_INC:51;              // upstream relay
     fault     = "F_FDR1_max";
-    margin_s  = 0.15;                      // typical fuse-relay CTI
+    margin_target = 0.15 s;                      // typical fuse-relay CTI
 }
 ----
 
@@ -1218,12 +1218,12 @@ A cable or transformer damage block declares a single
 Margin is reported as the *time* between the operating relay's TCC
 and the damage curve at every fault current in the bus range; the
 grade must keep the relay's curve *below* the damage curve, with
-a `margin_s` below the damage curve.
+a `margin_target` below the damage curve.
 
 `transformer_damage` curves are computed against the transformer's
 rated current `I_FLA = MVA / (sqrt(3) * kV)`. The user may declare
-either `flex_points` directly, or supply `rating_MVA` and
-`rating_kV` and let the processor generate default points per
+either `flex_points` directly, or supply `rating_S` and
+`rating_V` and let the processor generate default points per
 IEEE C57.91.6 / IEC 60076-5.
 
 === Recloser / motor / breaker semantics
@@ -1235,7 +1235,7 @@ the renderer may show the discrete fast/slow steps.
 `motor_startup` devices are a *trip-protector* envelope: the OC
 relay must NOT trip during a normal motor start, so the start curve
 is drawn on the TCC as a *non-trip envelope* and the relay's TCC
-must sit *above* it. The grade's `margin_s` is the time gap above
+must sit *above* it. The grade's `margin_target` is the time gap above
 the start curve.
 
 `breaker` devices declare their clearing time as a single definite
@@ -1635,8 +1635,8 @@ about one operating condition that the curves must respect.
 [source,tc]
 ----
 point "TX1_inrush" {
-    I_A     = 5250 A;                     // 12 x FLC for a 25 MVA, 33 kV unit
-    t_s     = 0.10 s;
+    I       = 5250 A;                     // 12 x FLC for a 25 MVA, 33 kV unit
+    t       = 0.10 s;
     voltage = "HV";
     label   = "TX1 inrush (12 x FLC)";
     shape   = "cross";                    // circle | square | diamond | triangle | cross | x
@@ -1671,13 +1671,13 @@ primary); a point is a single marked coordinate. Use `device` with
 `annotate` has two forms, distinguished by which references it
 carries.
 
-*Point form* -- `on_curve` with `at_I_A` -- places a label on one
+*Point form* -- `on_curve` with `at_I` -- places a label on one
 curve at one current:
 
 `(at_I_A, t) = (at_I_A, t_trip(R, at_I_A))`.
 
 *Margin form* -- `primary` and `backup`, with a `fault` or an
-`at_I_A` -- draws the vertical separation between two curves and
+`at_I` -- draws the vertical separation between two curves and
 labels it with the elapsed time:
 
 [source,tc]
@@ -1709,14 +1709,14 @@ override is optional in v1).
 
 ==== Input units -- primary vs secondary
 
-`I_pu` is *primary amps* by default. To type the relay's `1.2 * CT`
+`I_pickup` is *primary amps* by default. To type the relay's `1.2 * CT`
 pick-up directly in the relay's own frame, declare `I_units` on the
 element:
 
 [source]
 ----
 element 51 {
-    I_pu        = 4  A;
+    I_pickup    = 4  A;
     I_units     = "secondary";          // or "primary" (default)
     curve       = iec.si;
     tms         = 0.30;

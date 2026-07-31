@@ -20,30 +20,29 @@ meta {
     engineer  = "A. Cooper";
     date      = "2026-07-28";
     standard  = ["IEC_60255_151", "IEEE_C57.109"];
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV incomer"; }
-        "LV" { kV = 11.0; description = "11 kV feeders"; }
+        "HV" { V  = 33.0 kV; description = "33 kV incomer"; }
+        "LV" { V  = 11.0 kV; description = "11 kV feeders"; }
     }
-    frequency_Hz = 50;
-    base_MVA     = 25.0;
+    base_S       = 25.0 MVA;
 }
 
 faults {
-    "LV max" { I_A = 6.40 kA; voltage = "LV"; }
-    "LV min" { I_A = 2.50 kA; voltage = "LV"; }
-    "HV max" { I_A = 18.4 kA; voltage = "HV"; }
+    "LV max" { I   = 6.40 kA; voltage = "LV"; }
+    "LV min" { I   = 2.50 kA; voltage = "LV"; }
+    "HV max" { I   = 18.4 kA; voltage = "HV"; }
 }
 
 # ---- transformer characteristic points -------------------------------
 #      25 MVA at 33 kV  ->  I_FLC = 25e6 / (sqrt(3) x 33e3) = 437 A
 #      Inrush is conventionally 12 x FLC held for 0.1 s.
 point "TX1_inrush" {
-    I_A     = 5250 A;
-    t_s     = 0.10 s;
+    I       = 5250 A;
+    t       = 0.10 s;
     voltage = "HV";
     label   = "TX1 inrush — 12 x FLC";
     shape   = "cross";
@@ -52,8 +51,8 @@ point "TX1_inrush" {
 
 #      IEEE C57.109 category II through-fault: 2 s at 25 x FLC.
 point "TX1_damage" {
-    I_A     = 10900 A;
-    t_s     = 2.0 s;
+    I       = 10900 A;
+    t       = 2.0 s;
     voltage = "HV";
     label   = "TX1 through-fault limit";
     shape   = "triangle";
@@ -69,7 +68,7 @@ relay R_TRF_HV {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 720 A;
+        I_pickup = 720 A;
         tms      = 0.30;
     }
 }
@@ -83,13 +82,13 @@ relay R_FDR_LV {
     element 51 {
         function = "phase_oc";
         curve    = iec.vi;
-        I_pu     = 480 A;
+        I_pickup = 480 A;
         tms      = 0.25;
     }
     element 50 {
         function = "phase_oc";
         curve    = definite;
-        I_pu     = 3200 A;
+        I_pickup = 3200 A;
         t_delay  = 0.05 s;
     }
 }
@@ -98,7 +97,7 @@ grade {
     primary   = R_FDR_LV:51;
     backup    = R_TRF_HV:51;
     fault     = "LV max";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     upstream  = true;          # verify the margin holds above the fault too
 }
 

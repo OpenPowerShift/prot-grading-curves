@@ -77,7 +77,7 @@ device, grade, annotate, combine, view, page, point, notes
 *Inside `meta`* -- open-ended. The conventional keys, which the
 renderer's title block and the `[meta.*]` footer macros read, are
 `project`, `study`, `engineer`, `date`, `revision`, `standard`, and
-`CTI_min_s`. Any other key is carried through and available to a
+`margin`. Any other key is carried through and available to a
 `[meta.<key>]` macro.
 
 *Inside `system`* -- voltages, frequency_Hz, base_MVA, grounding,
@@ -220,7 +220,7 @@ but is *encouraged* for clarity. The linter warns on unit omissions.
 | `tms`            | _none_
 | `t_delay`        | `s`
 | `t_reset`        | `s`
-| `CTI_min_s`      | `s`
+| `margin`      | `s`
 | Flex curve times | `s`
 | Char-angle       | `deg`
 |===

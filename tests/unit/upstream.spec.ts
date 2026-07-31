@@ -13,17 +13,17 @@ import { formatGradeReport } from '@tc/semantics/grades';
 
 /** SI primary, EI backup: fine at 3 kA, inverted well above it. */
 const CONVERGING = `
-system { voltages { "MV" { kV = 11.0; } } }
-faults { "F_bus" { I_A = 3000 A; } "F_max" { I_A = 20000 A; } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
+faults { "F_bus" { I   = 3000 A; } "F_max" { I   = 20000 A; } }
 relay R_DN { voltage = "MV"; ct_ratio = 400/5;
-  element 51 { curve = iec.si; I_pu = 300 A; tms = 0.20; } }
+  element 51 { curve = iec.si; I_pickup = 300 A; tms = 0.20; } }
 relay R_UP { voltage = "MV"; ct_ratio = 600/5;
-  element 51 { curve = iec.ei; I_pu = 500 A; tms = 0.40; } }
+  element 51 { curve = iec.ei; I_pickup = 500 A; tms = 0.40; } }
 grade {
   primary   = R_DN:51;
   backup    = R_UP:51;
   fault     = "F_bus";
-  CTI_min_s = 0.30;
+  margin    = 0.30 s;
   upstream  = true;
 }
 `;
@@ -83,21 +83,21 @@ describe('upstream sweep', () => {
   });
 
   it('warns when swept without a constraint to judge against', () => {
-    const noCti = CONVERGING.replace('  CTI_min_s = 0.30;\n', '');
+    const noCti = CONVERGING.replace('  margin    = 0.30 s;\n', '');
     const codes = process(noCti).diagnostics.map((d) => d.code);
     expect(codes).toContain('UPSTREAM_WITHOUT_CTI');
   });
 
   it('carries cross-voltage pairs through the sweep in each own frame', () => {
     const crossVoltage = `
-      system { voltages { "HV" { kV = 33.0; } "LV" { kV = 11.0; } } }
-      faults { "F" { I_A = 6400 A; voltage = "LV"; } }
+      system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 11.0 kV; } } }
+      faults { "F" { I   = 6400 A; voltage = "LV"; } }
       relay R_FDR { voltage = "LV"; ct_ratio = 400/5;
-        element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; } }
+        element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25; } }
       relay R_INC { voltage = "HV"; ct_ratio = 600/5;
-        element 51 { curve = iec.si; I_pu = 720 A; tms = 0.30; } }
+        element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.30; } }
       grade { primary = R_FDR:51; backup = R_INC:51; fault = "F";
-              CTI_min_s = 0.30; upstream = true; }
+              margin    = 0.30 s; upstream = true; }
     `;
     for (const row of process(crossVoltage).reports[0].rows) {
       expect(row.I_backup_A).toBeCloseTo(row.I_f_A * 11 / 33, 6);

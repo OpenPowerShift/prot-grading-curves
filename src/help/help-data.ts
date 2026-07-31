@@ -50,23 +50,21 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   notes:       M('top', 'Free-form notes attached to the document.', 'notes { revision = "draft"; }'),
 
   // system
-  frequency_Hz:M('system', 'System nominal frequency in Hz.', 'frequency_Hz = 50;'),
-  base_MVA:    M('system', 'System MVA base for per-unit conversions.', 'base_MVA = 25.0;'),
-  grounding:   M('system', 'How the system is grounded.', 'grounding = "low_impedance";'),
-  I_base_A:    M('system', 'Per-unit base current for the whole study.', 'I_base_A = 5000;'),
+  base_S:    M('system', 'System MVA base for per-unit conversions.', 'base_MVA = 25.0;'),
+  I_base:    M('system', 'Per-unit base current for the whole study.', 'I_base_A = 5000;'),
   I_units:     M('system', 'Default current-units for the study ("primary" or "secondary").', 'I_units = "primary";'),
 
   // system.voltages
-  kV:          M('voltages', 'Numerical voltage in kV (single value, no qualifier).', 'kV = 33.0;'),
+  V:          M('voltages', 'Numerical voltage in kV (single value, no qualifier).', 'kV = 33.0;'),
   description: M('voltages', 'Free-text description.', 'description = "33 kV side";'),
 
   // faults
-  I_A:         M('faults', 'Fault current at the named fault, in amperes.', 'I_A = 6400 A;'),
-  min_A:       M('faults', 'Minimum fault current for this entry (lower bound of a fault range).', 'min_A = 1500 A;'),
-  max_A:       M('faults', 'Maximum fault current for this entry.', 'max_A = 6400 A;'),
-  earth_A:     M('faults', 'Earth-fault current component (residual 3I0).', 'earth_A = 4500 A;'),
-  I0_A:        M('faults', 'Zero-sequence current component.', 'I0_A = 4500 A;'),
-  I2_A:        M('faults', 'Negative-sequence current component.', 'I2_A = 1500 A;'),
+  I:         M('faults', 'Fault current at the named fault, in amperes.', 'I_A = 6400 A;'),
+  I_min:       M('faults', 'Minimum fault current for this entry (lower bound of a fault range).', 'min_A = 1500 A;'),
+  I_max:       M('faults', 'Maximum fault current for this entry.', 'max_A = 6400 A;'),
+  residual:     M('faults', 'Earth-fault current component (residual 3I0).', 'earth_A = 4500 A;'),
+  I0:        M('faults', 'Zero-sequence current component.', 'I0_A = 4500 A;'),
+  I2:        M('faults', 'Negative-sequence current component.', 'I2_A = 1500 A;'),
   fault_voltage: M('faults', 'Voltage level name that this fault is declared at (must exist in system.voltages).', 'voltage = "LV";'),
 
   // relay
@@ -83,9 +81,9 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   curve:       M('element', 'Curve family identifier, e.g. iec.si, ansi.mi, or "definite".', 'curve = iec.si;'),
   formula:     M('element', 'Custom IDMT formula: k [s], c [s], alpha.', 'formula = { k = 0.14 s; c = 0; alpha = 0.02; }'),
   flex_points: M('element', 'Piecewise (I, t) pairs for a flex curve.', 'flex_points = [(100 A, 10 s), (1 kA, 0.1 s)];'),
-  I_pu:        M('element', 'Pickup current in amps (default unit) or multiples.', 'I_pu = 480 A;'),
+  I_pickup:        M('element', 'Pickup current in amps (default unit) or multiples.', 'I_pu = 480 A;'),
   element_I_units: M('element', "Element's per-element current-units override.", 'I_units = "secondary";'),
-  current_pct: M('element', 'Fraction (0..100) of total fault current the relay sees (parallel feeders).', 'current_pct = 50;'),
+  share: M('element', 'Fraction (0..100) of total fault current the relay sees (parallel feeders).', 'current_pct = 50;'),
   tms:         M('element', 'Time Multiplier Setting -- scales an IDMT curve uniformly.', 'tms = 0.30;'),
   t_delay:     M('element', 'Definite-time delay in seconds.', 't_delay = 0.10 s;'),
   char_angle:  M('element', 'Characteristic angle in degrees.', 'char_angle = 60 deg;'),
@@ -98,9 +96,9 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
 
   // device
   kind:        M('device', 'Device kind: fuse, recloser, cable, transformer_damage, motor_startup, breaker.', 'kind = "fuse";'),
-  rating_A:    M('device', 'Device rated current (fuse/breaker/motor).', 'rating_A = 100 A;'),
-  rating_kV:   M('device', 'Device rated voltage in kilovolts.', 'rating_kV = 11;'),
-  rating_MVA:  M('device', 'Device rated power (transformer/recloser).', 'rating_MVA = 25;'),
+  rating_I:    M('device', 'Device rated current (fuse/breaker/motor).', 'rating_A = 100 A;'),
+  rating_V:   M('device', 'Device rated voltage in kilovolts.', 'rating_kV = 11;'),
+  rating_S:  M('device', 'Device rated power (transformer/recloser).', 'rating_MVA = 25;'),
   min_melt:    M('device', 'Fuse band: minimum-melt time vs current points.', 'min_melt = [(130 A, 1000 s), ...];'),
   total_clear: M('device', 'Fuse band: total-clear time vs current points.', 'total_clear = [(130 A, 60 s), ...];'),
 
@@ -111,8 +109,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   /* `scenario` as a *field* shares the word with the block it names,
    * and hover is keyed on the bare word, so one entry covers both. */
   scenarios:   M('annotate', 'Several conditions at once: drawn once per condition, each at its own current.', 'scenarios = ["system normal", "one tx out"];'),
-  CTI_min_s:   M('grade', 'Minimum Coordination Time Interval (default project CTI).', 'CTI_min_s = 0.30;'),
-  margin_s:    M('grade', 'Target margin for the grade block.', 'margin_s = 0.30;'),
+  margin:   M('grade', 'Minimum Coordination Time Interval (default project CTI).', 'CTI_min_s = 0.30;'),
+  margin_target:    M('grade', 'Target margin for the grade block.', 'margin_s = 0.30;'),
   tolerance_pct: M('grade', 'Allowed slippage on margin_s for solve (default 0).', 'tolerance_pct = 5;'),
   solve:       M('grade', 'Sub-block: directive to compute tms that hits the target.', 'solve { strategy = "tight"; tolerance_pct = 5; }'),
 
@@ -182,27 +180,26 @@ export const TOP_BLOCK_KEYWORDS = [
  * suffix). For the autocomplete we don't disambiguate by scope.
  */
 export const BLOCK_FIELDS: Record<string, string[]> = {
-  meta:        ['project', 'study', 'engineer', 'date', 'standard', 'CTI_min_s'],
-  system:      ['voltages', 'zero_sequence', 'frequency_Hz', 'base_MVA', 'grounding',
-               'I_base_A', 'I_units'],
-  'system.voltages': ['kV', 'description'],
-  faults:      ['I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 'type', 'voltage',
+  meta:        ['project', 'study', 'engineer', 'date', 'standard', 'margin'],
+  system:      ['voltages', 'zero_sequence', 'base_S', 'I_base', 'I_units'],
+  'system.voltages': ['V', 'description'],
+  faults:      ['I', 'I_min', 'I_max', 'residual', 'I0', 'I2', 'type', 'voltage',
                'description'],
-  times:       ['t_s', 'description'],
+  times:       ['t', 'description'],
   scenario:    ['type', 'description', 'level'],
-  'scenario.level': ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'current_pct'],
+  'scenario.level': ['I', 'I1', 'I2', 'I0', 'residual', 'share'],
   relay:       ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults',
                'comment', 'description', 'reference'],
   element:     ['name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-               'I_pu', 'I_units', 'current_pct', 'tms', 't_delay', 't_reset',
+               'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
                'char_angle', 'reset', 'directional', 'stages', 'comment'],
-  stage:       ['function', 'measures', 'curve', 'formula', 'flex_points', 'I_pu',
-               'I_units', 'current_pct', 'tms', 't_delay', 'char_angle', 'reset',
+  stage:       ['function', 'measures', 'curve', 'formula', 'flex_points', 'I_pickup',
+               'I_units', 'share', 'tms', 't_delay', 'char_angle', 'reset',
                'directional', 'comment'],
-  device:      ['kind', 'voltage', 'maker', 'model', 'rating_A', 'rating_kV', 'rating_MVA',
+  device:      ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S',
                'flex_points', 'min_melt', 'total_clear', 't_delay',
                'comment', 'description', 'reference'],
-  grade:       ['primary', 'backup', 'fault', 'scenario', 'CTI_min_s', 'margin_s',
+  grade:       ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target',
                'tolerance_pct', 'upstream', 'upstream_to_A', 'solve', 'comment'],
   solve:       ['strategy', 'tolerance_pct', 'free'],
   view:        ['name', 'default', 'voltage', 'axis', 'quantity', 'condition',
@@ -226,11 +223,11 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   combined:    ['name', 'sources', 'as', 'color', 'style', 'label'],
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */
-  annotate:    ['on_curve', 'at_I_A', 'at_I1_A', 'at_I2_A', 'at_I0_A', 'at_earth_A',
-               'type', 'at_t_s', 'voltage', 'primary', 'backup', 'point',
+  annotate:    ['on_curve', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual',
+               'type', 'at_t', 'voltage', 'primary', 'backup', 'point',
                'fault', 'faults', 'scenario', 'scenarios',
                'label', 'style', 'color', 'coords'],
-  point:       ['I_A', 'I1_A', 'I2_A', 'I0_A', 'earth_A', 'type', 't_s',
+  point:       ['I', 'I1', 'I2', 'I0', 'residual', 'type', 't',
                'fault', 'faults', 'scenario', 'scenarios', 'voltage',
                'label', 'shape', 'color', 'coords', 'description'],
   notes:       ['engineer', 'date', 'revision'],
@@ -446,7 +443,7 @@ export const FIELD_UNITS: Record<string, ValueChoice[]> = {
     V('xIn', 'multiple of the relay nominal current'),
   ],
   __time: [V('s', 'seconds'), V('ms', 'milliseconds'), V('min', 'minutes')],
-  __voltage: [V('kV', 'kilovolts'), V('V', 'volts'), V('MV', 'megavolts')],
+  __voltage: [V('V', 'kilovolts'), V('V', 'volts'), V('MV', 'megavolts')],
   __power: [V('MVA', 'megavolt-amperes'), V('kVA', 'kilovolt-amperes'), V('MW', 'megawatts')],
   __angle: [V('deg', 'degrees')],
 };

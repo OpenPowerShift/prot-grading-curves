@@ -13,7 +13,7 @@ import { process } from '@tc/index';
 
 const errorsIn = (body: string): string[] => {
   const src = `
-system { voltages { "HV" { kV = 33; } } }
+system { voltages { "HV" { V  = 33 kV; } } }
 relay R { voltage = "HV"; element 51 { curve = iec.si; ${body} } }
 view { voltage = "HV"; }
 `;
@@ -29,20 +29,20 @@ describe('a misspelt setting', () => {
      * -- a margin out by ten, reported as a clean pass or fail with
      * nothing to show anything had gone wrong.
      */
-    expect(errorsIn('I_pu = 400 A; tsm = 0.1;')).toContain('UNKNOWN_SETTING');
+    expect(errorsIn('I_pickup = 400 A; tsm = 0.1;')).toContain('UNKNOWN_SETTING');
   });
 
   it('catches the wrong case too', () => {
-    expect(errorsIn('I_pu = 400 A; TMS = 0.1;')).toContain('UNKNOWN_SETTING');
+    expect(errorsIn('I_pickup = 400 A; TMS = 0.1;')).toContain('UNKNOWN_SETTING');
   });
 
   it('leaves every real setting alone', () => {
     for (const body of [
-      'I_pu = 400 A; tms = 0.1;',
-      'I_pu = 400 A; tms = 0.1; comment = "note";',
-      'function = "phase_oc"; measures = "phase"; I_pu = 400 A; tms = 0.1;',
-      'I_pu = 400 A; tms = 0.1; reset = "instant"; directional = true;',
-      'I_pu = 400 A; tms = 0.1; name = "Phase OC"; t_reset = 0.1 s;',
+      'I_pickup = 400 A; tms = 0.1;',
+      'I_pickup = 400 A; tms = 0.1; comment = "note";',
+      'function = "phase_oc"; measures = "phase"; I_pickup = 400 A; tms = 0.1;',
+      'I_pickup = 400 A; tms = 0.1; reset = "instant"; directional = true;',
+      'I_pickup = 400 A; tms = 0.1; name = "Phase OC"; t_reset = 0.1 s;',
     ]) {
       expect(errorsIn(body), body).toEqual([]);
     }
@@ -59,17 +59,18 @@ describe('a unit the language does not know', () => {
      * nothing did.
      */
     expect(errorsIn('I_pu = 4 KA; tms = 0.1;')).toContain('UNIT_UNKNOWN');
-    expect(errorsIn('I_pu = 400 A; tms = 0.1; t_delay = 60 msec;')).toContain('UNIT_UNKNOWN');
+    expect(errorsIn('I_pickup = 400 A; tms = 0.1; t_delay = 60 msec;'))
+      .toContain('UNIT_WRONG_QUANTITY');
   });
 
   it('names the suffix and says the case matters', () => {
-    const src = `system { voltages { "HV" { kV = 33; } } }
-relay R { voltage = "HV"; element 51 { curve = definite; I_pu = 4 KA; t_delay = 20 ms; } }
+    const src = `system { voltages { "HV" { V  = 33 kV; } } }
+relay R { voltage = "HV"; element 51 { curve = definite; I_pickup = 4 KA A; t_delay = 20 ms; } }
 view { voltage = "HV"; }`;
     const found = [...process(src).parseErrors, ...process(src).diagnostics]
-      .find((e) => e.code === 'UNIT_UNKNOWN');
+      .find((e) => e.code === 'UNIT_WRONG_QUANTITY');
     expect(found?.message).toContain('"KA"');
-    expect(found?.message).toContain('case-sensitive');
+    expect(found?.message).toContain('I_pickup');
   });
 
   it('accepts every spelling the language does define', () => {
@@ -78,9 +79,9 @@ view { voltage = "HV"; }`;
       'I_pu = 400 mA; tms = 0.1;',
       'I_pu = 5 A_sec; tms = 0.1;',
       'I_pu = 2 pu; tms = 0.1;',
-      'I_pu = 400 A; tms = 0.1; t_delay = 60 ms;',
-      'I_pu = 400 A; tms = 0.1; t_delay = 1 min;',
-      'I_pu = 400 A; tms = 0.1; char_angle = 60 deg;',
+      'I_pickup = 400 A; tms = 0.1; t_delay = 60 ms;',
+      'I_pickup = 400 A; tms = 0.1; t_delay = 1 min;',
+      'I_pickup = 400 A; tms = 0.1; char_angle = 60 deg;',
     ]) {
       expect(errorsIn(body), body).not.toContain('UNIT_UNKNOWN');
     }

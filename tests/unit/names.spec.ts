@@ -11,19 +11,19 @@ import { describe, expect, it } from 'vitest';
 import { process, parseAndRender } from '@tc/index';
 
 const NAMED = `
-system { voltages { hv { kV = 11; } } }
-faults { "F" { I_A = 4 kA; voltage = hv; } }
+system { voltages { hv { V  = 11 kV; } } }
+faults { "F" { I   = 4 kA; voltage = hv; } }
 relay R_INC {
   voltage = hv;
   name    = "Incomer 11 kV, panel 3";
   maker   = "ABB";
   model   = "REF615";
-  element 51 { name = "Phase OC (main)"; curve = iec.si; I_pu = 600 A; tms = 0.3; }
-  element 50 { curve = definite; I_pu = 3 kA; t_delay = 60 ms; }
+  element 51 { name = "Phase OC (main)"; curve = iec.si; I_pickup = 600 A; tms = 0.3; }
+  element 50 { curve = definite; I_pickup = 3 kA; t_delay = 60 ms; }
 }
 relay R_FDR {
   voltage = hv;
-  element 51 { curve = iec.si; I_pu = 300 A; tms = 0.12; }
+  element 51 { curve = iec.si; I_pickup = 300 A; tms = 0.12; }
 }
 `;
 
@@ -81,7 +81,7 @@ describe('references are unaffected by naming', () => {
         primary   = R_FDR:51;
         backup    = R_INC:51;
         fault     = "F";
-        CTI_min_s = 0.30;
+        margin    = 0.30 s;
       }
     `;
     const result = process(src);
@@ -92,7 +92,7 @@ describe('references are unaffected by naming', () => {
 
   it('annotates a named curve by identifier', () => {
     const src = NAMED + `
-      annotate { on_curve = R_INC:51; at_I_A = 4 kA; label = "checked"; }
+      annotate { on_curve = R_INC:51; at_I   = 4 kA; label = "checked"; }
     `;
     const { svg, result } = parseAndRender(src, { theme: 'light' });
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);

@@ -18,18 +18,17 @@ meta {
     project   = "Plant 11 kV — settings in secondary amps";
     engineer  = "B. Singh";
     date      = "2026-07-28";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 system {
-    voltages { "MV" { kV = 11.0; } }
-    frequency_Hz = 50;
-    base_MVA     = 10.0;
+    voltages { "MV" { V  = 11.0 kV; } }
+    base_S       = 10.0 MVA;
 }
 
 faults {
-    "Bus fault"  { I_A = 7.5 kA; min_A = 4.0 kA; max_A = 9.0 kA; }
-    "Remote fault"  { I_A = 1.8 kA; }
+    "Bus fault"  { I   = 7.5 kA; I_min = 4.0 kA; I_max = 9.0 kA; }
+    "Remote fault"  { I   = 1.8 kA; }
 }
 
 relay R_INCOMER {
@@ -41,7 +40,7 @@ relay R_INCOMER {
     element 51 {
         function = "phase_oc";
         curve    = sel.c1;            # SEL C1 == IEC standard inverse
-        I_pu     = 5.0 A;             # settings-sheet value -> 600 A primary
+        I_pickup = 5.0 A;             # settings-sheet value -> 600 A primary
         I_units  = "secondary";
         tms      = 0.45;
     }
@@ -56,14 +55,14 @@ relay R_FEEDER {
     element 51 {
         function = "phase_oc";
         curve    = sel.c1;
-        I_pu     = 4.0 A;             # -> 240 A primary
+        I_pickup = 4.0 A;             # -> 240 A primary
         I_units  = "secondary";
         tms      = 0.15;
     }
     element 50 {
         function = "phase_oc";
         curve    = definite;
-        I_pu     = 40 A;              # -> 2400 A primary
+        I_pickup = 40 A;              # -> 2400 A primary
         I_units  = "secondary";
         t_delay  = 0.08 s;
     }
@@ -73,7 +72,7 @@ grade {
     primary   = R_FEEDER:51;
     backup    = R_INCOMER:51;
     fault     = "Bus fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     upstream  = true;
 }
 

@@ -21,16 +21,15 @@ meta {
 }
 
 system {
-    voltages { "LV" { kV = 11.0; } }
-    frequency_Hz = 50;
-    base_MVA = 25.0;
+    voltages { "LV" { V  = 11.0 kV; } }
+    base_S   = 25.0 MVA;
 }
 
 faults {
-    "F_FDR1_max"     { I_A = 6.40 kA; voltage = "LV"; }
-    "F_FDR1_min"     { I_A = 2.50 kA; voltage = "LV"; }
-    "F_FDR1_earth_max" { I_A = 3.20 kA; voltage = "LV"; }
-    "F_FDR1_earth_min" { I_A = 1.40 kA; voltage = "LV"; }
+    "F_FDR1_max"     { I   = 6.40 kA; voltage = "LV"; }
+    "F_FDR1_min"     { I   = 2.50 kA; voltage = "LV"; }
+    "F_FDR1_earth_max" { I   = 3.20 kA; voltage = "LV"; }
+    "F_FDR1_earth_min" { I   = 1.40 kA; voltage = "LV"; }
 }
 
 relay R_FDR_1 {
@@ -39,9 +38,9 @@ relay R_FDR_1 {
     voltage = "LV";
     ct_ratio = 600/5;
     faults  = ["F_FDR1_max", "F_FDR1_min"];
-    element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25;
+    element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25;
                  reset = "instant"; }
-    element 51N { curve = iec.ei; I_pu = 96 A; tms = 0.20;
+    element 51N { curve = iec.ei; I_pickup = 96 A; tms = 0.20;
                   reset = "instant"; }
 }
 
@@ -107,8 +106,8 @@ grade {
     primary   = R_FDR_1:51;
     backup    = R_FDR_1:51N;       // self-grading sanity check
     fault     = "F_FDR1_max";
-    CTI_min_s = 0.30;
-    margin_s  = 0.30;
+    margin    = 0.30 s;
+    margin_target = 0.30 s;
 }
 ----
 
@@ -154,20 +153,19 @@ numeric `voltage_kV`. Just names.
 ----
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV side"; }
-        "LV" { kV = 11.0; description = "11 kV side"; }
+        "HV" { V  = 33.0 kV; description = "33 kV side"; }
+        "LV" { V  = 11.0 kV; description = "11 kV side"; }
     }
-    frequency_Hz = 50;
-    base_MVA     = 25.0;
+    base_S       = 25.0 MVA;
 }
 
 faults {
     // each fault is at a named level; the current is a
     // primary-ampere value as seen from that level
-    "F_11_max"  { I_A = 9.40 kA; voltage = "LV"; }
-    "F_11_min"  { I_A = 4.50 kA; voltage = "LV"; }
-    "F_33_max"  { I_A = 17.20 kA; voltage = "HV"; }
-    "F_33_min"  { I_A = 6.70 kA; voltage = "HV"; }
+    "F_11_max"  { I   = 9.40 kA; voltage = "LV"; }
+    "F_11_min"  { I   = 4.50 kA; voltage = "LV"; }
+    "F_33_max"  { I   = 17.20 kA; voltage = "HV"; }
+    "F_33_min"  { I   = 6.70 kA; voltage = "HV"; }
 }
 
 relay R_INC_330 {
@@ -178,7 +176,7 @@ relay R_INC_330 {
     faults        = ["F_33_max", "F_33_min"];
     element 51 {
         curve        = iec.si;
-        I_pu         = 600 A;         // 600 A on 33 kV side
+        I_pickup     = 600 A;         // 600 A on 33 kV side
         tms          = 0.40;
     }
 }
@@ -191,7 +189,7 @@ relay R_FDR_110 {
     faults        = ["F_11_max", "F_11_min"];
     element 51 {
         curve        = iec.vi;
-        I_pu         = 480 A;
+        I_pickup     = 480 A;
         tms          = 0.25;
     }
 }
@@ -200,7 +198,7 @@ grade {
     primary   = R_FDR_110:51;        // 11 kV side (trips first)
     backup    = R_INC_330:51;         // 33 kV side (backup)
     fault     = "F_11_max";          // LV-side fault
-    margin_s  = 0.30;
+    margin_target = 0.30 s;
 
     solve {
         strategy       = "tight";
@@ -264,18 +262,18 @@ relay R_330_11_INC {
         stages {
             stage lo_set {
                 curve      = iec.si;
-                I_pu       = 720 A;
+                I_pickup   = 720 A;
                 tms        = 0.30;
                 reset      = "instant";
             }
             stage hi_set {
                 curve      = definite;
-                I_pu       = 4800 A;
+                I_pickup   = 4800 A;
                 t_delay    = 0.00 s;
             }
             stage dmt_hi_delayed {
                 curve      = definite;
-                I_pu       = 2400 A;
+                I_pickup   = 2400 A;
                 t_delay    = 0.30 s;
             }
         }
@@ -286,7 +284,7 @@ relay R_330_11_INC {
 element 67N {
     function     = "earth_fault";
     curve        = ansi.e;
-    I_pu         = 120 A;
+    I_pickup     = 120 A;
     tms          = 0.40;
     directional  = true;
     char_angle   = -45 deg;
@@ -355,13 +353,13 @@ operate time, and *both* the fuse and the relay curves must be
 
 [source,tc]
 ----
-device "ferraz_abc_100a"    { kind = "fuse"; rating_A = 100 A;
+device "ferraz_abc_100a"    { kind = "fuse"; rating_I = 100 A;
                               min_melt    = [(150 A, 100 s), (300 A, 1.5 s),
                                              (1000 A, 0.05 s)];
                               total_clear = [(150 A, 60 s), (300 A, 0.6 s),
                                              (1000 A, 0.02 s)]; }
 
-device "urd_4_0_aepr_no7"   { kind = "cable"; rating_A = 350 A;
+device "urd_4_0_aepr_no7"   { kind = "cable"; rating_I = 350 A;
                               flex_points =
                               [(350 A, 1000 s), (1500 A, 30 s),
                                (5000 A, 1.0 s)]; }
@@ -370,7 +368,7 @@ relay R_FEEDER {
     maker    = "ABB"; model = "REL_615";
     voltage  = "LV";
     ct_ratio = 250/5;
-    element 51 { curve = iec.vi; I_pu = 300 A; tms = 0.25;
+    element 51 { curve = iec.vi; I_pickup = 300 A; tms = 0.25;
                 reset = "instant"; }
 }
 
@@ -378,14 +376,14 @@ grade {
     primary   = ferraz_abc_100a;          // fuse total-clear (from band)
     backup    = R_FEEDER:51;
     fault     = "F_FEEDER_max";
-    margin_s  = 0.15;                      // 0.15 s fuse-relay CTI
+    margin_target = 0.15 s;                      // 0.15 s fuse-relay CTI
 }
 
 grade {
     primary   = R_FEEDER:51;               // relay must trip FIRST (protects cable)
     backup    = urd_4_0_aepr_no7;          // cable damage threshold (constraint)
     fault     = "F_FEEDER_max";
-    margin_s  = 0.30;                      // relay must be 0.30 s FASTER than damage
+    margin_target = 0.30 s;                      // relay must be 0.30 s FASTER than damage
 }
 ----
 

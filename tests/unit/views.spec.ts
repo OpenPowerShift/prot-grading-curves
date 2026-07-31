@@ -19,16 +19,16 @@ import { viewLabel } from '@tc/semantics/condition';
 
 const STUDY = `
 meta { project = "Two sheets"; }
-system { voltages { "HV" { kV = 33; } } }
-faults { "3ph min" { I_A = 450 A; type = three_phase; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33 kV; } } }
+faults { "3ph min" { I   = 450 A; type = three_phase; voltage = "HV"; } }
 scenario "1ph min" {
   type = single_phase_earth;
-  level "HV" { I_A = 260 A; I1_A = 150 A; I2_A = 150 A; I0_A = 0 A; }
+  level "HV" { I   = 260 A; I1   = 150 A; I2   = 150 A; I0   = 0 A; }
 }
 relay R {
   voltage = "HV"; ct_ratio = 250/1;
-  element 51 { function = "phase_oc"; curve = iec.si; I_pu = 105 A; tms = 0.1; }
-  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pu = 75 A; t_delay = 0.1 s; }
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 105 A; tms = 0.1; }
+  element 46 { function = "neg_seq"; measures = "I2"; curve = definite; I_pickup = 75 A; t_delay = 0.1 s; }
 }
 
 view "Phase grading" {
@@ -69,8 +69,8 @@ describe('declaring several views', () => {
   });
 
   it('leaves a study with one unnamed view exactly as it was', () => {
-    const one = process('system { voltages { hv { kV = 11; } } }\n'
-      + 'relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 100 A; tms = 0.1; } }\n'
+    const one = process('system { voltages { hv { V  = 11 kV; } } }\n'
+      + 'relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 100 A; tms = 0.1; } }\n'
       + 'view { voltage = hv; }');
     expect(one.study!.views).toHaveLength(1);
     expect(one.study!.view).toBe(one.study!.views[0]);
@@ -135,8 +135,8 @@ describe('a sheet titles itself', () => {
   });
 
   it('falls back to the page title when the sheet declares none', () => {
-    const plain = process('system { voltages { hv { kV = 11; } } }\n'
-      + 'relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 100 A; tms = 0.1; } }\n'
+    const plain = process('system { voltages { hv { V  = 11 kV; } } }\n'
+      + 'relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 100 A; tms = 0.1; } }\n'
       + 'view { voltage = hv; }\npage { title = { text = "From the page"; }; }');
     expect(renderStudy(plain, { theme: 'light' })).toContain('From the page');
   });

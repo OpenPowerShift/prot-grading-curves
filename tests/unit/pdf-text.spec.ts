@@ -39,22 +39,22 @@ function unprintable(svg: string): Array<{ ch: string; text: string }> {
 /** A study exercising every legend section a sheet can carry. */
 const STUDY = `
 meta { project = "Broadsound Solar Farm & BESS"; }
-system { voltages { "HV" { kV = 33.0; } "LV" { kV = 0.48; } } }
+system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 0.48 kV; } } }
 faults {
-  "F_INV_max" { I_A = 0.46 kA; voltage = "LV"; description = "Max 3ph at the inverter"; }
-  "F_HV_max"  { I_A = 31.4 kA; voltage = "HV"; }
+  "F_INV_max" { I   = 0.46 kA; voltage = "LV"; description = "Max 3ph at the inverter"; }
+  "F_HV_max"  { I   = 31.4 kA; voltage = "HV"; }
 }
 device "spur_fuse" {
-  kind = fuse; maker = "Mersen"; model = "100T"; rating_A = 100 A;
+  kind = fuse; maker = "Mersen"; model = "100T"; rating_I = 100 A;
   min_melt    = [(200 A, 10 s), (2 kA, 0.05 s)];
   total_clear = [(200 A, 20 s), (2 kA, 0.10 s)];
 }
 relay R {
   voltage = "HV"; ct_ratio = 250/1;
   name = "BESS HV Relay (GE Multilin 850)";
-  element 51 { name = "Phase TOC (51)"; curve = iec.si; I_pu = 105 A; tms = 0.1; }
+  element 51 { name = "Phase TOC (51)"; curve = iec.si; I_pickup = 105 A; tms = 0.1; }
 }
-point "P" { I_A = 212 A; t_s = 0.12 s; voltage = "HV"; label = "Inrush"; coords = true; }
+point "P" { I   = 212 A; t   = 0.12 s; voltage = "HV"; label = "Inrush"; coords = true; }
 view { voltage = "HV"; }
 `;
 

@@ -25,33 +25,33 @@ import { tTripIDMT, curveParamsFromId } from '@tc/semantics/curves';
 const SOLVER_CASE = `
 system {
     voltages {
-        "HV" { kV = 33.0; }
-        "LV" { kV = 11.0; }
+        "HV" { V  = 33.0 kV; }
+        "LV" { V  = 11.0 kV; }
     }
 }
 
 faults {
-    "F_FDR2_max" { I_A = 4850 A; voltage = "LV"; }
-    "F_FDR2_min" { I_A = 1900 A; voltage = "LV"; }
+    "F_FDR2_max" { I   = 4850 A; voltage = "LV"; }
+    "F_FDR2_min" { I   = 1900 A; voltage = "LV"; }
 }
 
 relay R_TRF_INC {
     voltage  = "HV";
     ct_ratio = 600/5;
-    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 720 A; tms = 0.45; }
+    element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 720 A; tms = 0.45; }
 }
 
 relay R_FDR_2 {
     voltage  = "LV";
     ct_ratio = 400/5;
-    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 480 A; tms = 0.25; }
+    element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 480 A; tms = 0.25; }
 }
 
 grade {
     primary    = R_FDR_2:51;
     backup     = R_TRF_INC:51;
     fault      = "F_FDR2_max";
-    margin_s   = 0.30;
+    margin_target = 0.30 s;
 
     solve {
         strategy       = "tight";
@@ -118,7 +118,7 @@ describe('closed-form solution keeps the additive c term', () => {
    * ANSI/IEEE curve.
    */
   const ANSI_CASE = SOLVER_CASE
-    .replace('curve = iec.si; I_pu = 720 A; tms = 0.45;', 'curve = ansi.vi; I_pu = 720 A; tms = 2.0;')
+    .replace('curve = iec.si; I_pickup = 720 A; tms = 0.45;', 'curve = ansi.vi; I_pickup = 720 A; tms = 2.0;')
     .replace('strategy       = "tight";', 'strategy       = "loose";');
 
   it('is not the naive k-only rearrangement', () => {
@@ -197,7 +197,7 @@ describe('rounding strategies', () => {
 describe('solver edge cases', () => {
   it('reports an unsatisfiable target instead of erroring out', () => {
     // A margin no setting in [0.025, 1.5] can deliver.
-    const impossible = SOLVER_CASE.replace('margin_s   = 0.30;', 'margin_s   = 600;');
+    const impossible = SOLVER_CASE.replace('margin_target = 0.30 s;', 'margin_target = 600 s;');
     const report = process(impossible).reports[0];
 
     expect(report.solve!.ok).toBe(false);
@@ -208,8 +208,8 @@ describe('solver edge cases', () => {
 
   it('declines to adjust a definite-time controlling stage', () => {
     const definiteBackup = SOLVER_CASE.replace(
-      'element 51 { function = "phase_oc"; curve = iec.si; I_pu = 720 A; tms = 0.45; }',
-      'element 50 { function = "phase_oc"; curve = definite; I_pu = 720 A; t_delay = 0.8 s; }',
+      'element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 720 A; tms = 0.45; }',
+      'element 50 { function = "phase_oc"; curve = definite; I_pickup = 720 A; t_delay = 0.8 s; }',
     ).replace('backup     = R_TRF_INC:51;', 'backup     = R_TRF_INC:50;');
 
     const report = process(definiteBackup).reports[0];

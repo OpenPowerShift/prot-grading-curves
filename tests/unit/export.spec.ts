@@ -18,13 +18,13 @@ import { toExportableSvg } from '@tc/export/exportable-svg';
 
 const STUDY = `
 meta { project = "Export check"; }
-system { voltages { "HV" { kV = 33.0; } "LV" { kV = 11.0; } } }
-faults { "F1" { I_A = 6.4 kA; voltage = "LV"; } }
-point "inrush" { I_A = 5250 A; t_s = 0.1 s; voltage = "HV"; label = "Inrush"; }
+system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 11.0 kV; } } }
+faults { "F1" { I   = 6.4 kA; voltage = "LV"; } }
+point "inrush" { I   = 5250 A; t   = 0.1 s; voltage = "HV"; label = "Inrush"; }
 relay R_INC { voltage = "HV"; maker = "ABB"; model = "REF615"; ct_ratio = 600/5;
-  element 51 { curve = iec.si; I_pu = 720 A; tms = 0.30; } }
+  element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.30; } }
 relay R_FDR { voltage = "LV"; ct_ratio = 400/5;
-  element 51 { curve = iec.vi; I_pu = 480 A; tms = 0.25; } }
+  element 51 { curve = iec.vi; I_pickup = 480 A; tms = 0.25; } }
 page { size = "A4"; theme = "light"; border = true;
        title = { text = "Export check"; subtitle = "Self-contained SVG"; }; }
 view { voltage = "HV"; }

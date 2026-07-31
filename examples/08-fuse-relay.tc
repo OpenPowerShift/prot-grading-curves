@@ -19,17 +19,16 @@ meta {
     project   = "Spur fuse coordination";
     engineer  = "B. Singh";
     date      = "2026-07-28";
-    CTI_min_s = 0.15;              # typical fuse-relay CTI
+    margin    = 0.15 s;              # typical fuse-relay CTI
 }
 
 system {
-    voltages { "MV" { kV = 11.0; } }
-    frequency_Hz = 50;
+    voltages { "MV" { V  = 11.0 kV; } }
 }
 
 faults {
-    "Spur fault" { I_A = 900 A; }
-    "Bus fault"  { I_A = 4200 A; }
+    "Spur fault" { I   = 900 A; }
+    "Bus fault"  { I   = 4200 A; }
 }
 
 device "fuse_100T" {
@@ -37,7 +36,7 @@ device "fuse_100T" {
     kind        = "fuse";
     maker       = "Mersen";
     model       = "100T";
-    rating_A    = 100 A;
+    rating_I    = 100 A;
 
     min_melt    = [(200 A, 60 s), (300 A, 9.0 s), (600 A, 0.60 s),
                    (1200 A, 0.10 s), (3000 A, 0.016 s)];
@@ -54,7 +53,7 @@ relay R_FEEDER {
     element 51 {
         function = "phase_oc";
         curve    = iec.vi;
-        I_pu     = 200 A;
+        I_pickup = 200 A;
         tms      = 0.35;
     }
 }
@@ -63,7 +62,7 @@ grade {
     primary   = fuse_100T;         # fuse clears first
     backup    = R_FEEDER:51;
     fault     = "Spur fault";
-    CTI_min_s = 0.15;
+    margin    = 0.15 s;
 }
 
 page {

@@ -6,13 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { parseAndRender } from '@tc/index';
 
 const BASE = `
-system { voltages { "MV" { kV = 11.0; } } }
+system { voltages { "MV" { V  = 11.0 kV; } } }
 faults {
-  "F_a" { I_A = 1.0 kA; } "F_b" { I_A = 1.1 kA; }
-  "F_c" { I_A = 3.0 kA; } "F_d" { I_A = 8.0 kA; }
+  "F_a" { I   = 1.0 kA; } "F_b" { I   = 1.1 kA; }
+  "F_c" { I   = 3.0 kA; } "F_d" { I   = 8.0 kA; }
 }
 relay R { voltage = "MV"; ct_ratio = 600/5;
-  element 51 { curve = iec.si; I_pu = 400 A; tms = 0.3; } }
+  element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; } }
 `;
 
 const render = (page: string): string =>

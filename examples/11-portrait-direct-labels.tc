@@ -37,21 +37,19 @@ meta {
     engineer  = "A. Cooper";
     date      = "2026-07-29";
     revision  = "A";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 system {
     voltages {
-        "MV" { kV = 11.0; description = "11 kV switchboard"; }
+        "MV" { V  = 11.0 kV; description = "11 kV switchboard"; }
     }
-    frequency_Hz = 50;
-    grounding    = "low_impedance";
 }
 
 faults {
-    "Bus fault"  { I_A = 13_500 A; voltage = "MV"; description = "switchboard bus fault"; }
-    "Feeder fault"  { I_A =  7_200 A; voltage = "MV"; description = "feeder fault"; }
-    "Spur fault" { I_A =  2_400 A; voltage = "MV"; description = "spur fault"; }
+    "Bus fault"  { I   = 13_500 A; voltage = "MV"; description = "switchboard bus fault"; }
+    "Feeder fault"  { I   =  7_200 A; voltage = "MV"; description = "feeder fault"; }
+    "Spur fault" { I   =  2_400 A; voltage = "MV"; description = "spur fault"; }
 }
 
 # ---- Incomer: slowest, backs up everything downstream. -------------
@@ -65,7 +63,7 @@ relay R_INC {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 900 A;
+        I_pickup = 900 A;
         tms      = 0.35;
     }
 }
@@ -81,7 +79,7 @@ relay R_BUS {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 640 A;
+        I_pickup = 640 A;
         tms      = 0.22;
     }
 }
@@ -97,14 +95,14 @@ relay R_FDR {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 320 A;
+        I_pickup = 320 A;
         tms      = 0.12;
     }
 
     element 50 {
         name    = "Inst";
         curve   = definite;
-        I_pu    = 9 kA;
+        I_pickup = 9 kA;
         t_delay = 60 ms;
     }
 }
@@ -113,7 +111,7 @@ grade {
     primary   = R_FDR:51;
     backup    = R_BUS:51;
     fault     = "Feeder fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     comment   = "feeder graded against the bus section";
 }
 
@@ -121,7 +119,7 @@ grade {
     primary   = R_BUS:51;
     backup    = R_INC:51;
     fault     = "Bus fault";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
     comment   = "bus section graded against the incomer";
 }
 
@@ -133,8 +131,8 @@ annotate {
 }
 
 point "MOTOR_START" {
-    I_A     = 1_800 A;
-    t_s     = 8.0 s;
+    I       = 1_800 A;
+    t       = 8.0 s;
     voltage = "MV";
     label   = "Largest motor start\n6 x FLC for 8 s";
     shape   = "triangle";

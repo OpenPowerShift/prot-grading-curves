@@ -208,9 +208,9 @@ describe('a point caption sitting on a curve', () => {
    * the marker, at the same height -- printed along the line.
    */
   const ON_A_SHELF = `
-system { voltages { hv { kV = 11; } } }
-relay R { voltage = hv; element 50 { curve = definite; I_pu = 400 A; t_delay = 0.5 s; } }
-point "P" { I_A = 3000 A; t_s = 0.5 s; voltage = hv; label = "clears in 500 ms"; }
+system { voltages { hv { V  = 11 kV; } } }
+relay R { voltage = hv; element 50 { curve = definite; I_pickup = 400 A; t_delay = 0.5 s; } }
+point "P" { I   = 3000 A; t   = 0.5 s; voltage = hv; label = "clears in 500 ms"; }
 view { voltage = hv; current_min = 100 A; current_max = 30 kA; time_min = 10 ms; time_max = 100 s; }
 `;
 
@@ -287,14 +287,14 @@ view { voltage = hv; current_min = 100 A; current_max = 30 kA; time_min = 10 ms;
 
 describe('the renderer, on a study whose points are piled up', () => {
   const CROWDED = `
-system { voltages { hv { kV = 11; } } }
-faults { "F" { I_A = 9 kA; voltage = hv; } }
-relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
-point "A" { I_A = 2000 A; t_s = 1.00 s; voltage = hv; label = "Alpha point"; }
-point "B" { I_A = 2050 A; t_s = 1.02 s; voltage = hv; label = "Bravo point"; }
-point "C" { I_A = 2100 A; t_s = 0.99 s; voltage = hv; label = "Charlie point"; }
-point "D" { I_A = 1980 A; t_s = 1.01 s; voltage = hv; label = "Delta point"; }
-point "E" { I_A = 2020 A; t_s = 0.98 s; voltage = hv; label = "Echo point"; }
+system { voltages { hv { V  = 11 kV; } } }
+faults { "F" { I   = 9 kA; voltage = hv; } }
+relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
+point "A" { I   = 2000 A; t   = 1.00 s; voltage = hv; label = "Alpha point"; }
+point "B" { I   = 2050 A; t   = 1.02 s; voltage = hv; label = "Bravo point"; }
+point "C" { I   = 2100 A; t   = 0.99 s; voltage = hv; label = "Charlie point"; }
+point "D" { I   = 1980 A; t   = 1.01 s; voltage = hv; label = "Delta point"; }
+point "E" { I   = 2020 A; t   = 0.98 s; voltage = hv; label = "Echo point"; }
 view { voltage = hv; current_min = 100 A; current_max = 30 kA; }
 `;
 
@@ -355,14 +355,14 @@ describe('a point caption and an annotation at the same spot', () => {
    * this one; it cannot move this one clear of the last.
    */
   const COLLIDING = `
-system { voltages { hv { kV = 11; } } }
-faults { "F" { I_A = 4 kA; voltage = hv; } }
-relay R { voltage = hv; element 51 { curve = iec.si; I_pu = 400 A; tms = 0.2; } }
+system { voltages { hv { V  = 11 kV; } } }
+faults { "F" { I   = 4 kA; voltage = hv; } }
+relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
 
 # A marked point sitting exactly where the annotation wants to be.
-point "P" { I_A = 4000 A; t_s = 0.30 s; voltage = hv; label = "inrush limit"; }
+point "P" { I   = 4000 A; t   = 0.30 s; voltage = hv; label = "inrush limit"; }
 
-annotate { on_curve = R:51; at_I_A = 4000 A; label = "bus fault"; style = "leader"; }
+annotate { on_curve = R:51; at_I   = 4000 A; label = "bus fault"; style = "leader"; }
 view { voltage = hv; current_min = 100 A; current_max = 30 kA; }
 `;
 

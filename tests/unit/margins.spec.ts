@@ -20,20 +20,19 @@ const RIVERSIDE = `
 meta {
     project   = "Riverside 33/11";
     study     = "OC grading";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV side"; }
-        "LV" { kV = 11.0; description = "11 kV side"; }
+        "HV" { V  = 33.0 kV; description = "33 kV side"; }
+        "LV" { V  = 11.0 kV; description = "11 kV side"; }
     }
-    frequency_Hz = 50;
 }
 
 faults {
-    "F_FDR1_max" { I_A = 6.40 kA; voltage = "LV"; }
-    "F_FDR1_min" { I_A = 2.50 kA; voltage = "LV"; }
+    "F_FDR1_max" { I   = 6.40 kA; voltage = "LV"; }
+    "F_FDR1_min" { I   = 2.50 kA; voltage = "LV"; }
 }
 
 relay R_TRF_INC {
@@ -42,7 +41,7 @@ relay R_TRF_INC {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 720 A;
+        I_pickup = 720 A;
         tms      = 0.30;
         reset    = "instant";
     }
@@ -54,7 +53,7 @@ relay R_FDR_1 {
     element 51 {
         function = "phase_oc";
         curve    = iec.vi;
-        I_pu     = 480 A;
+        I_pickup = 480 A;
         tms      = 0.25;
         reset    = "instant";
     }
@@ -64,7 +63,7 @@ grade {
     primary   = R_FDR_1:51;
     backup    = R_TRF_INC:51;
     fault     = "F_FDR1_max";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 `;
 
@@ -173,8 +172,8 @@ describe('worked grading case', () => {
 
 describe('CTI_min_s constraint sweeps the declared fault range', () => {
   const WITH_RANGE = RIVERSIDE.replace(
-    '"F_FDR1_max" { I_A = 6.40 kA; voltage = "LV"; }',
-    '"F_FDR1_max" { I_A = 6.40 kA; min_A = 2.50 kA; max_A = 8.00 kA; voltage = "LV"; }',
+    '"F_FDR1_max" { I   = 6.40 kA; voltage = "LV"; }',
+    '"F_FDR1_max" { I   = 6.40 kA; I_min = 2.50 kA; I_max = 8.00 kA; voltage = "LV"; }',
   );
 
   it('evaluates a row at I_A, min_A and max_A', () => {
@@ -204,8 +203,8 @@ describe('CTI_min_s constraint sweeps the declared fault range', () => {
     const withCti = (value: number): boolean | undefined => {
       // anchor on the grade block -- meta carries an identical line
       const src = WITH_RANGE.replace(
-        '    fault     = "F_FDR1_max";\n    CTI_min_s = 0.30;',
-        `    fault     = "F_FDR1_max";\n    CTI_min_s = ${value.toFixed(3)};`,
+        '    fault     = "F_FDR1_max";\n    margin    = 0.30 s;',
+        `    fault     = "F_FDR1_max";\n    margin    = ${value.toFixed(3)} s;`,
       );
       expect(src, 'the CTI substitution did not apply').not.toEqual(WITH_RANGE);
       return process(src).reports[0].pass;

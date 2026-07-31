@@ -16,14 +16,13 @@ meta {
 
 system {
     voltages {
-        "HV" { kV = 33.0; }
-        "LV" { kV = 11.0; }
+        "HV" { V  = 33.0 kV; }
+        "LV" { V  = 11.0 kV; }
     }
-    frequency_Hz = 50;
 }
 
 faults {
-    "F1_lv_max"  { I_A = 6400 A; voltage = "LV"; }
+    "F1_lv_max"  { I   = 6400 A; voltage = "LV"; }
 }
 
 relay R_FDR_110 {
@@ -32,7 +31,7 @@ relay R_FDR_110 {
     element 51 {
         function = "phase_oc";
         curve    = iec.si;
-        I_pu     = 480 A;
+        I_pickup = 480 A;
         tms      = 0.30;
     }
 }

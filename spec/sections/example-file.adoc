@@ -16,27 +16,25 @@ meta {
     engineer      = "A. Cooper";
     date          = "2026-03-14";
     standard      = ["IEC_60255_151", "IEEE_C37_112"];
-    CTI_min_s     = 0.30;          # numerical relays (IEEE 242-2001 §15.3)
+    margin        = 0.30 s;          # numerical relays (IEEE 242-2001 §15.3)
 }
 
 system {
     voltages {
-        "HV" { kV = 33.0; description = "33 kV side"; }
-        "LV" { kV = 11.0; description = "11 kV side"; }
+        "HV" { V  = 33.0 kV; description = "33 kV side"; }
+        "LV" { V  = 11.0 kV; description = "11 kV side"; }
     }
-    frequency_Hz  = 50;
-    base_MVA      = 25.0;
-    grounding     = "low_impedance";
+    base_S        = 25.0 MVA;
 }
 
 // ---- fault-level data  (kA primary, IEC 60909) -------------------------
 //      Each fault is at a named voltage level (its primary-ampere
 //      value is the figure of merit on that level's side).
 faults {
-    "F_INC_max"  { I_A = 18.43 kA; voltage = "HV"; }
-    "F_INC_min"  { I_A =  7.20 kA; voltage = "HV"; }
-    "F_FDR1_max" { I_A =  6.40 kA; voltage = "LV"; }
-    "F_FDR1_min" { I_A =  2.50 kA; voltage = "LV"; }
+    "F_INC_max"  { I   = 18.43 kA; voltage = "HV"; }
+    "F_INC_min"  { I   =  7.20 kA; voltage = "HV"; }
+    "F_FDR1_max" { I   =  6.40 kA; voltage = "LV"; }
+    "F_FDR1_min" { I   =  2.50 kA; voltage = "LV"; }
 }
 
 // ---- relays: one block per IED location --------------------------------
@@ -52,7 +50,7 @@ relay R_TRF_INC {
     element 51 {
         function     = "phase_oc";
         curve        = iec.si;
-        I_pu     = 720  A;               // primary amps on the HV side
+        I_pickup = 720  A;               // primary amps on the HV side
         tms          = 0.30;
         reset        = "instant";
         directional  = false;
@@ -62,7 +60,7 @@ relay R_TRF_INC {
     element 67N {
         function     = "earth_fault";
         curve        = ansi.ei;
-        I_pu     =  120 A;
+        I_pickup =  120 A;
         tms          = 2.40;             # ANSI time dial: 0.5 .. 15
         char_angle   = -45 deg;
         reset        = "dependent";
@@ -73,7 +71,7 @@ relay R_TRF_INC {
     element 50 {
         function     = "phase_oc";
         curve        = definite;
-        I_pu     = 4800 A;
+        I_pickup = 4800 A;
         t_delay      = 0.00 s;
     }
 
@@ -81,7 +79,7 @@ relay R_TRF_INC {
     element 51X {
         function     = "phase_oc";
         formula      = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
-        I_pu     = 600 A;
+        I_pickup = 600 A;
         tms          = 0.30;
         reset        = "instant";
     }
@@ -91,7 +89,7 @@ relay R_TRF_INC {
         function     = "phase_oc";
         flex_points  = [(240 A, 50.0 s), (600 A, 5.0 s),
                         (1200 A, 1.0 s), (5000 A, 0.20 s)];
-        I_pu     = 200 A;
+        I_pickup = 200 A;
         tms          = 1.00;
     }
 }
@@ -104,9 +102,9 @@ relay R_FDR_1 {
     faults       = ["F_FDR1_max", "F_FDR1_min"];
 
     element 50 { function = "phase_oc"; curve = definite;
-                 I_pu = 3200 A; t_delay = 0.05 s; }
+                 I_pickup = 3200 A; t_delay = 0.05 s; }
     element 51 { function = "phase_oc"; curve = iec.vi;
-                 I_pu = 480 A; tms = 0.25; reset = "instant"; }
+                 I_pickup = 480 A; tms = 0.25; reset = "instant"; }
 }
 
 // ---- grading pairs: upstream is the backup; downstream is the primary -
@@ -119,7 +117,7 @@ grade {
     primary   = R_FDR_1:51;                 // LV side -- trips first
     backup    = R_TRF_INC:51;               // HV side -- backup
     fault     = "F_FDR1_max";               // LV-side fault current
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 
 // ---- annotations on the plot ------------------------------------------
@@ -128,7 +126,7 @@ grade {
 
 annotate {
     on_curve   = R_TRF_INC:51;
-    at_I_A     = 18430;                     // F_INC_max
+    at_I       = 18430 A;                     // F_INC_max
     label      = "I_kmax 18.43 kA";
     style      = "leader";
 }

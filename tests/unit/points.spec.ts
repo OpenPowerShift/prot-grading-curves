@@ -11,19 +11,19 @@ import { process, parseAndRender } from '@tc/index';
 import { tTripElement } from '@tc/semantics/stages';
 
 const INRUSH = `
-system { voltages { "HV" { kV = 33.0; } "LV" { kV = 11.0; } } base_MVA = 25.0; }
-faults { "F_hv" { I_A = 8000 A; voltage = "HV"; } }
+system { voltages { "HV" { V  = 33.0 kV; } "LV" { V  = 11.0 kV; } } base_S   = 25.0 MVA; }
+faults { "F_hv" { I   = 8000 A; voltage = "HV"; } }
 
 point "TX1_inrush" {
-    I_A     = 5250 A;
-    t_s     = 0.10 s;
+    I       = 5250 A;
+    t       = 0.10 s;
     voltage = "HV";
     label   = "TX1 inrush (12 x FLC)";
     shape   = "cross";
 }
 
 relay R_INC { voltage = "HV"; ct_ratio = 600/5;
-  element 51 { curve = iec.si; I_pu = 720 A; tms = 0.30; } }
+  element 51 { curve = iec.si; I_pickup = 720 A; tms = 0.30; } }
 `;
 
 describe('point blocks', () => {
@@ -46,7 +46,7 @@ describe('point blocks', () => {
 
   it('folds unit suffixes on both axes', () => {
     const study = process(`
-      point "p" { I_A = 5.25 kA; t_s = 100 ms; }
+      point "p" { I   = 5.25 kA; t   = 100 ms; }
     `).study!;
     expect(study.points[0].I_A).toBeCloseTo(5250, 6);
     expect(study.points[0].t_s).toBeCloseTo(0.1, 9);
@@ -69,17 +69,17 @@ describe('point blocks', () => {
   });
 
   it('rejects a non-positive coordinate', () => {
-    const codes = process('point "p" { I_A = 0 A; t_s = 0.1 s; }').diagnostics.map((d) => d.code);
+    const codes = process('point "p" { I   = 0 A; t   = 0.1 s; }').diagnostics.map((d) => d.code);
     expect(codes).toContain('POINT_CURRENT_INVALID');
 
-    const codes2 = process('point "p" { I_A = 100 A; t_s = 0 s; }').diagnostics.map((d) => d.code);
+    const codes2 = process('point "p" { I   = 100 A; t   = 0 s; }').diagnostics.map((d) => d.code);
     expect(codes2).toContain('POINT_TIME_INVALID');
   });
 
   it('rejects an unknown voltage level, with a suggestion', () => {
     const result2 = process(`
-      system { voltages { "HV" { kV = 33.0; } } }
-      point "p" { I_A = 100 A; t_s = 0.1 s; voltage = "HW"; }
+      system { voltages { "HV" { V  = 33.0 kV; } } }
+      point "p" { I   = 100 A; t   = 0.1 s; voltage = "HW"; }
     `);
     const d = result2.diagnostics.find((x) => x.code === 'VOLTAGE_UNKNOWN');
     expect(d?.message).toContain('did you mean "HV"');
@@ -87,8 +87,8 @@ describe('point blocks', () => {
 
   it('rejects a duplicate id', () => {
     const codes = process(`
-      point "p" { I_A = 100 A; t_s = 0.1 s; }
-      point "p" { I_A = 200 A; t_s = 0.2 s; }
+      point "p" { I   = 100 A; t   = 0.1 s; }
+      point "p" { I   = 200 A; t   = 0.2 s; }
     `).diagnostics.map((d) => d.code);
     expect(codes).toContain('DUPLICATE_POINT');
   });

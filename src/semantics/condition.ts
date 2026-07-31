@@ -120,10 +120,6 @@ export function resolveCondition(
   };
 }
 
-/** True when a name is declared as either form. */
-export function isConditionName(study: Study, name: string): boolean {
-  return study.faults.has(name) || study.scenarios.has(name);
-}
 
 /** Every declared condition name, faults first, for `did you mean`. */
 export function conditionNames(study: Study): string[] {

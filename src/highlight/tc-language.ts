@@ -164,5 +164,3 @@ const parser: StreamParser<TcState> = {
 /** The `.tc` language, ready to hand to an `EditorState`. */
 export const tcLanguage = StreamLanguage.define(parser);
 
-/** Convenience alias matching the other editor extensions' naming. */
-export const tcHighlighting = tcLanguage;

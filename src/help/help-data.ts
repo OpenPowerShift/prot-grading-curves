@@ -269,23 +269,6 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   notes:       ['engineer', 'date', 'revision'],
 };
 
-export const SCOPE_OF_TOP_BLOCK: Record<string, keyof typeof BLOCK_FIELDS> = {
-  meta: 'meta',
-  system: 'system',
-  faults: 'faults',
-  times: 'times',
-  relay: 'relay',
-  element: 'element',
-  device: 'device',
-  grade: 'grade',
-  page: 'page',
-  view: 'view',
-  combine: 'combined',
-  annotate: 'annotate',
-  point: 'point',
-  scenario: 'scenario',
-  notes: 'notes',
-};
 
 /* ------------------------------------------------------------------ */
 /* Value catalogues                                                    */

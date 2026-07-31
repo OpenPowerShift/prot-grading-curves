@@ -118,6 +118,25 @@ describe('the offered vocabulary is documented', () => {
   }
 });
 
+describe('the playground offers every example', () => {
+  /*
+   * `src/examples.ts` imports each `.tc` file by name, so a new example
+   * is not in the picker until someone adds a line. Five were written,
+   * validated, tested and documented before anyone noticed they could
+   * not be opened from the app.
+   *
+   * Read as text rather than imported: the module uses Vite's `?raw`
+   * suffix, which only resolves inside a Vite build.
+   */
+  it('imports every file in examples/', () => {
+    const registry = readFileSync(join(repoRoot(), 'src', 'examples.ts'), 'utf8');
+    const missing = readdirSync(join(repoRoot(), 'examples'))
+      .filter((f) => f.endsWith('.tc'))
+      .filter((f) => !registry.includes(f));
+    expect(missing, 'written but not offered in the playground').toEqual([]);
+  });
+});
+
 describe('every example still means something', () => {
   /*
    * Coverage is worthless if the file that provides it does not parse.

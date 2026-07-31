@@ -195,8 +195,3 @@ export const snippetCompletions: Completion[] = SNIPPETS.map((s) =>
     boost: -10, // rank below exact keyword/field matches
   }),
 );
-
-/** Look a snippet up by its prefix. */
-export function snippetFor(prefix: string): SnippetSpec | undefined {
-  return SNIPPETS.find((s) => s.prefix === prefix);
-}

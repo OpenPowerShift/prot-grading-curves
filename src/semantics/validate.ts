@@ -112,11 +112,6 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   return ctx.out.sort((a, b) => a.offset - b.offset || a.code.localeCompare(b.code));
 }
 
-/** Convenience: parse-tree to diagnostics in one call. */
-export function validateDocument(doc: Document, study: Study): Diagnostic[] {
-  return validate(study, doc);
-}
-
 /* ------------------------------------------------------------------ */
 /* Voltage levels                                                      */
 /* ------------------------------------------------------------------ */

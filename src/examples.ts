@@ -21,6 +21,11 @@ import capabilityTour from '../examples/09-capability-tour.tc?raw';
 import cascade from '../examples/10-substation-cascade.tc?raw';
 import portraitDirect from '../examples/11-portrait-direct-labels.tc?raw';
 import sequenceScenario from '../examples/12-sequence-scenario.tc?raw';
+import clearanceTimes from '../examples/13-clearance-times.tc?raw';
+import devices from '../examples/14-devices-and-combine.tc?raw';
+import parallelFeeders from '../examples/15-parallel-feeders.tc?raw';
+import drawingStyle from '../examples/16-drawing-style.tc?raw';
+import sequenceSheets from '../examples/17-sequence-sheets.tc?raw';
 
 export interface Example {
   /** Stable key, also the value in the picker. */
@@ -42,11 +47,12 @@ export const EXAMPLES: ReadonlyArray<Example> = [
   { id: 'cascade', name: 'Four-level cascade (6 curves)', source: cascade },
   { id: 'portrait', name: 'Portrait sheet, direct labels', source: portraitDirect },
   { id: 'sequence', name: 'Sequence currents (scenario)', source: sequenceScenario },
+  { id: 'clearance', name: 'Clearance times (arc flash, grid code)', source: clearanceTimes },
+  { id: 'devices', name: 'Devices, fuses and combined curves', source: devices },
+  { id: 'parallel', name: 'Parallel feeders (share, directional)', source: parallelFeeders },
+  { id: 'style', name: 'House drawing style (every page option)', source: drawingStyle },
+  { id: 'sheets', name: 'Sequence sheets (phase, I2, 3I2, 3I0)', source: sequenceSheets },
   { id: 'tour', name: 'Capability tour (every block)', source: capabilityTour },
 ];
 
 export const DEFAULT_EXAMPLE = EXAMPLES[0];
-
-export function exampleById(id: string | null | undefined): Example | undefined {
-  return EXAMPLES.find((e) => e.id === id);
-}

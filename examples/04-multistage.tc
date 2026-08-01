@@ -16,13 +16,19 @@ meta {
 
 system {
     voltages {
-        "MV" { V  = 11.0 kV; }
+        "MV" {
+            V = 11.0 kV;
+        }
     }
 }
 
 faults {
-    "Bus fault"   { I   = 6000 A; }
-    "Remote fault"   { I   = 1200 A; }
+    "Bus fault"   {
+        I = 6000 A;
+    }
+    "Remote fault"   {
+        I = 1200 A;
+    }
 }
 
 relay R_TGT {
@@ -33,24 +39,26 @@ relay R_TGT {
         function = "phase_oc";
         stages {
             stage main {
-                curve = iec.si;
+                curve    = iec.si;
                 I_pickup = 400 A;
-                tms   = 0.35;
+                tms      = 0.35;
             }
             stage inst {
-                curve   = definite;
+                curve    = definite;
                 I_pickup = 4500 A;
-                t_delay = 0.08 s;
+                t_delay  = 0.08 s;
             }
         }
     }
 }
 
 page {
-    size  = "A4";
+    size = "A4";
     # `column` is the default gutter; stated here so the
     # alternatives (inside / direct / none) have something to read against.
-    legend = { style = "column"; };
+    legend = {
+        style = "column";
+    };
     theme = "light";
     title = "Multi-stage element (composite view)";
 }

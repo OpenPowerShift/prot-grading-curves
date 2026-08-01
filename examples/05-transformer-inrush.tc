@@ -16,25 +16,40 @@
 # conditions and voltage levels included.
 
 meta {
-    project   = "Transformer inrush and damage";
-    engineer  = "A. Cooper";
-    date      = "2026-07-28";
+    project  = "Transformer inrush and damage";
+    engineer = "A. Cooper";
+    date     = "2026-07-28";
     standard  = ["IEC_60255_151", "IEEE_C57.109"];
-    margin    = 0.30 s;
+    margin = 0.30 s;
 }
 
 system {
     voltages {
-        "HV" { V  = 33.0 kV; description = "33 kV incomer"; }
-        "LV" { V  = 11.0 kV; description = "11 kV feeders"; }
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV incomer";
+        }
+        "LV" {
+            V           = 11.0 kV;
+            description = "11 kV feeders";
+        }
     }
-    base_S       = 25.0 MVA;
+    base_S = 25.0 MVA;
 }
 
 faults {
-    "LV max" { I   = 6.40 kA; voltage = "LV"; }
-    "LV min" { I   = 2.50 kA; voltage = "LV"; }
-    "HV max" { I   = 18.4 kA; voltage = "HV"; }
+    "LV max" {
+        I       = 6.40 kA;
+        voltage = "LV";
+    }
+    "LV min" {
+        I       = 2.50 kA;
+        voltage = "LV";
+    }
+    "HV max" {
+        I       = 18.4 kA;
+        voltage = "HV";
+    }
 }
 
 # ---- transformer characteristic points -------------------------------
@@ -46,7 +61,7 @@ point "TX1_inrush" {
     voltage = "HV";
     label   = "TX1 inrush — 12 x FLC";
     shape   = "cross";
-    coords  = true;              # append (current, time) to the label
+    coords  = true; # append (current, time) to the label
 }
 
 #      IEEE C57.109 category II through-fault: 2 s at 25 x FLC.
@@ -94,11 +109,11 @@ relay R_FDR_LV {
 }
 
 grade {
-    primary   = R_FDR_LV:51;
-    backup    = R_TRF_HV:51;
-    fault     = "LV max";
-    margin    = 0.30 s;
-    upstream  = true;          # verify the margin holds above the fault too
+    primary  = R_FDR_LV:51;
+    backup   = R_TRF_HV:51;
+    fault    = "LV max";
+    margin   = 0.30 s;
+    upstream = true; # verify the margin holds above the fault too
 }
 
 # ---- annotate the grading margins on the plot ------------------------
@@ -124,11 +139,13 @@ page {
     orientation = "landscape";
     theme       = "light";
     border      = true;
-    title       = { text     = "25 MVA 33/11 kV — transformer protection";
-                    subtitle = "Inrush, through-fault withstand, and feeder grading"; };
+    title       = {
+        text     = "25 MVA 33/11 kV — transformer protection";
+        subtitle = "Inrush, through-fault withstand, and feeder grading";
+    };
 }
 
 view {
-    voltage      = "HV";
-    current_pad  = 0.25;
+    voltage     = "HV";
+    current_pad = 0.25;
 }

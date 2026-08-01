@@ -39,18 +39,24 @@
 # conditions and voltage levels included.
 
 meta {
-    project   = "Sequence currents";
-    study     = "LV earth fault behind a delta-star transformer";
-    engineer  = "A. Cooper";
-    date      = "2026-07-30";
-    revision  = "A";
-    margin    = 0.30 s;
+    project  = "Sequence currents";
+    study    = "LV earth fault behind a delta-star transformer";
+    engineer = "A. Cooper";
+    date     = "2026-07-30";
+    revision = "A";
+    margin   = 0.30 s;
 }
 
 system {
     voltages {
-        "HV" { V  = 33.0 kV;  description = "33 kV, delta winding"; }
-        "LV" { V  = 0.48 kV;  description = "480 V, star, earthed"; }
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV, delta winding";
+        }
+        "LV" {
+            V           = 0.48 kV;
+            description = "480 V, star, earthed";
+        }
     }
 
     # Whether zero sequence reaches the other level depends on the
@@ -87,8 +93,18 @@ scenario "LV earth fault" {
     type        = single_phase_earth;
     description = "Single phase to earth at 0.48 kV, system normal";
 
-    level "LV" { I   = 460 A;  I1   = 153.3 A; I2   = 153.3 A; I0   = 153.3 A; }
-    level "HV" { I   = 3.86 A; I1   = 2.23 A;  I2   = 2.23 A;  I0   = 0 A;     }
+    level "LV" {
+        I  = 460 A;
+        I1 = 153.3 A;
+        I2 = 153.3 A;
+        I0 = 153.3 A;
+    }
+    level "HV" {
+        I  = 3.86 A;
+        I1 = 2.23 A;
+        I2 = 2.23 A;
+        I0 = 0 A;
+    }
 }
 
 # A second condition for the phase elements: a solid three-phase fault
@@ -97,8 +113,18 @@ scenario "LV three-phase fault" {
     type        = three_phase;
     description = "Balanced 3ph at 0.48 kV";
 
-    level "LV" { I   = 520 A; I1   = 520 A; I2   = 0 A; I0   = 0 A; }
-    level "HV" { I   = 7.6 A; I1   = 7.6 A; I2   = 0 A; I0   = 0 A; }
+    level "LV" {
+        I  = 520 A;
+        I1 = 520 A;
+        I2 = 0 A;
+        I0 = 0 A;
+    }
+    level "HV" {
+        I  = 7.6 A;
+        I1 = 7.6 A;
+        I2 = 0 A;
+        I0 = 0 A;
+    }
 }
 
 # ---- Nothing else is needed to mark them. -----------------------------
@@ -140,7 +166,7 @@ relay R_850 {
 
     element 51 {
         name     = "Phase TOC (51)";
-        function = "phase_oc";              # measures phase current
+        function = "phase_oc"; # measures phase current
         curve    = iec.si;
         I_pickup = 4.2 A;
         tms      = 0.20;
@@ -148,7 +174,7 @@ relay R_850 {
 
     element 51G {
         name     = "Ground TOC (51G)";
-        function = "earth_fault";           # measures residual 3*I0
+        function = "earth_fault"; # measures residual 3*I0
         curve    = iec.si;
         I_pickup = 0.8 A;
         tms      = 0.15;
@@ -157,10 +183,10 @@ relay R_850 {
     element 46 {
         name     = "Negative Sequence (46)";
         function = "neg_seq";
-        measures = "I2";                    # this IED is scaled in I2
+        measures = "I2"; # this IED is scaled in I2
         curve    = definite;
         I_pickup = 1.5 A;
-        t_delay  = 2.00 s;      # slower than the ACB's 1.63 s at this fault
+        t_delay  = 2.00 s; # slower than the ACB's 1.63 s at this fault
     }
 }
 
@@ -177,48 +203,48 @@ relay R_FDR {
     element 46 {
         name     = "Neg Seq backup (46)";
         function = "neg_seq";
-        measures = I2;                      # unquoted spelling works too
+        measures = I2; # unquoted spelling works too
         curve    = definite;
         I_pickup = 1.5 A;
-        t_delay  = 2.60 s;                  # 0.6 s above the 850
+        t_delay  = 2.60 s; # 0.6 s above the 850
     }
 }
 
 # ---- I2 grading: the 850 against the feeder relay. --------------------
 grade {
-    primary   = R_850:46;
-    backup    = R_FDR:46;
-    scenario  = "LV earth fault";
-    margin    = 0.30 s;
-    comment   = "both measure I2, so this is a like-for-like margin";
+    primary  = R_850:46;
+    backup   = R_FDR:46;
+    scenario = "LV earth fault";
+    margin   = 0.30 s;
+    comment  = "both measure I2, so this is a like-for-like margin";
 }
 
 # ---- The negative-sequence element does the backing up. ---------------
 grade {
-    primary   = R_ACB:51;
-    backup    = R_850:46;
-    scenario  = "LV earth fault";
-    margin    = 0.30 s;
-    comment   = "I2 backup for an LV earth fault the HV residual cannot see";
+    primary  = R_ACB:51;
+    backup   = R_850:46;
+    scenario = "LV earth fault";
+    margin   = 0.30 s;
+    comment  = "I2 backup for an LV earth fault the HV residual cannot see";
 }
 
 # ---- The residual element cannot: 3 x 0 = 0 at HV. --------------------
 #      The report says NO_OPERATION, which is the correct physical
 #      answer rather than a margin computed off the wrong current.
 grade {
-    primary   = R_ACB:51;
-    backup    = R_850:51G;
-    scenario  = "LV earth fault";
-    margin    = 0.30 s;
-    comment   = "blind to this fault -- zero sequence stays in the delta";
+    primary  = R_ACB:51;
+    backup   = R_850:51G;
+    scenario = "LV earth fault";
+    margin   = 0.30 s;
+    comment  = "blind to this fault -- zero sequence stays in the delta";
 }
 
 # ---- Phase grading, on the balanced condition. ------------------------
 grade {
-    primary   = R_ACB:51;
-    backup    = R_850:51;
-    scenario  = "LV three-phase fault";
-    margin    = 0.30 s;
+    primary  = R_ACB:51;
+    backup   = R_850:51;
+    scenario = "LV three-phase fault";
+    margin   = 0.30 s;
 }
 
 # ---- Putting the margin on the drawing. --------------------------------
@@ -231,10 +257,10 @@ grade {
 #      `fault = "..."` and `faults = [...]` are all the same key: a
 #      condition, one or several.
 annotate {
-    primary   = R_850:46;
-    backup    = R_FDR:46;
-    scenario  = "LV earth fault";
-    label     = "CTI";
+    primary  = R_850:46;
+    backup   = R_FDR:46;
+    scenario = "LV earth fault";
+    label    = "CTI";
 }
 
 # ---- A marked point at a condition's current. --------------------------
@@ -267,9 +293,13 @@ page {
     orientation = "landscape";
     theme       = "light";
     border      = true;
-    legend      = { title = "Elements"; };
-    title       = { text     = "Sequence currents — what each relay measures";
-                    subtitle = "LV earth fault behind a delta-star transformer"; };
+    legend      = {
+        title = "Elements";
+    };
+    title       = {
+        text     = "Sequence currents — what each relay measures";
+        subtitle = "LV earth fault behind a delta-star transformer";
+    };
 }
 
 # ---- Which current the sheet is drawn against. ------------------------

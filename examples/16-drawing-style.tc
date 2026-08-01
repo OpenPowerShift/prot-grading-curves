@@ -19,22 +19,39 @@ meta {
     engineer = "M. Haugen";
     date     = "2026-08-01";
     revision = "D";
-    client   = "Northern Networks";     # any extra key is carried through
-    drawing  = "NF-TCC-0014";           # and readable by a [meta.*] macro
+    client   = "Northern Networks"; # any extra key is carried through
+    drawing  = "NF-TCC-0014"; # and readable by a [meta.*] macro
     margin   = 0.30 s;
 }
 
 system {
-    voltages { "MV" { V = 11.0 kV; description = "11 kV switchboard"; } }
+    voltages {
+        "MV" {
+            V           = 11.0 kV;
+            description = "11 kV switchboard";
+        }
+    }
 }
 
 faults {
-    "Board max" { I = 12.5 kA; type = three_phase; voltage = "MV"; }
-    "Board min" { I = 3.1 kA;  type = two_phase;   voltage = "MV"; }
+    "Board max" {
+        I       = 12.5 kA;
+        type    = three_phase;
+        voltage = "MV";
+    }
+    "Board min" {
+        I       = 3.1 kA;
+        type    = two_phase;
+        voltage = "MV";
+    }
 }
 
 times {
-    "Switchgear rating" { t = 1 s; at_I = 8 kA; description = "1 s short-time withstand"; }
+    "Switchgear rating" {
+        t           = 1 s;
+        at_I        = 8 kA;
+        description = "1 s short-time withstand";
+    }
 }
 
 relay R_FDR {
@@ -45,10 +62,10 @@ relay R_FDR {
     ct_ratio = 800/5;
 
     element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 960 A;
-        tms      = 0.12;
+        function    = "phase_oc";
+        curve       = iec.si;
+        I_pickup    = 960 A;
+        tms         = 0.12;
         current_max = 12.5 kA;
     }
 }
@@ -61,10 +78,10 @@ relay R_INC {
     ct_ratio = 1600/5;
 
     element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 1.8 kA;
-        tms      = 0.30;
+        function    = "phase_oc";
+        curve       = iec.si;
+        I_pickup    = 1.8 kA;
+        tms         = 0.30;
         current_max = 12.5 kA;
     }
 
@@ -109,31 +126,36 @@ page {
     border      = true;
 
     # Monochrome prints legibly on a plan copier and survives a fax.
-    theme       = "monochrome";
+    theme = "monochrome";
 
-    margins_mm  = { top = 14; right = 12; bottom = 16; left = 18; };
+    margins_mm  = {
+        top    = 14;
+        right  = 12;
+        bottom = 16;
+        left   = 18;
+    };
 
     # Where the identification goes, and what shape the swatch is.
     legend = {
         show     = true;
-        style    = "inside";        # floated over the plot, not a gutter
+        style    = "inside"; # floated over the plot, not a gutter
         position = "top_left";
         title    = "Protection";
         color    = "#222222";
         swatch   = "circle";
-        currents = "both";          # primary and secondary amps
+        currents = "both"; # primary and secondary amps
         notes    = true;
     };
 
     # Axis furniture, kept recessive so the curves carry the eye.
     axes = {
-        color          = "#333333";
-        grid_color     = "#d8d8d8";
-        label_color    = "#444444";
-        label_size_px  = 11;
-        tick_size_px   = 9;
-        frame          = true;
-        mirror         = false;
+        color         = "#333333";
+        grid_color    = "#d8d8d8";
+        label_color   = "#444444";
+        label_size_px = 11;
+        tick_size_px  = 9;
+        frame         = true;
+        mirror        = false;
     };
 
     curves = {
@@ -143,10 +165,10 @@ page {
     };
 
     points = {
-        color    = "#111111";
-        shape    = "circle";
-        size_px  = 9;
-        outline  = true;
+        color   = "#111111";
+        shape   = "circle";
+        size_px = 9;
+        outline = true;
     };
 
     leaders = {
@@ -157,10 +179,23 @@ page {
         label_offset_px = 12;
     };
 
-    faults = { style = "dotted"; color = "#555555"; width_px = 1.2; labels = true; };
-    times  = { style = "dashed"; color = "#333333"; width_px = 1.4; labels = true; };
+    faults = {
+        style    = "dotted";
+        color    = "#555555";
+        width_px = 1.2;
+        labels   = true;
+    };
+    times  = {
+        style    = "dashed";
+        color    = "#333333";
+        width_px = 1.4;
+        labels   = true;
+    };
 
-    scale  = { auto = true; tick_density = "dense"; };
+    scale  = {
+        auto         = true;
+        tick_density = "dense";
+    };
 
     # `[meta.*]`, `[page]` and `[of]` macros are substituted at render.
     title = {
@@ -186,7 +221,7 @@ page {
 view {
     voltage     = "MV";
     quantity    = any;
-    stages      = individual;     # draw each stage, not the composite
+    stages      = individual; # draw each stage, not the composite
     current_min = 200 A;
     current_max = 40 kA;
     time_min    = 20 ms;

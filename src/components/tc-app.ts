@@ -270,6 +270,21 @@ export class TcApp extends LitElement {
       if (stored === 'split' || stored === 'source' || stored === 'plot') this.pane = stored;
     } catch { /* default layout is fine */ }
 
+    /*
+     * `?example=<id>` picks a built-in study. The README's gallery
+     * links use it, so a reader who has just seen a sheet can open the
+     * source that drew it rather than hunting the picker for a name.
+     *
+     * Read before the share link, which is a study in its own right and
+     * should win over a mere selection.
+     */
+    const wanted = new URLSearchParams(window.location.search).get('example');
+    const named = wanted ? EXAMPLES.find((e) => e.id === wanted) : undefined;
+    if (named) {
+      this.exampleId = named.id;
+      this.src = named.source;
+    }
+
     const shared = sourceFromLink();
     if (shared) {
       this.src = shared;

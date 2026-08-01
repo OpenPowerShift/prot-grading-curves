@@ -25,15 +25,33 @@ meta {
 
 system {
     voltages {
-        "HV" { V = 33.0 kV; description = "33 kV incoming"; }
-        "MV" { V = 11.0 kV; description = "11 kV switchboard"; }
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV incoming";
+        }
+        "MV" {
+            V           = 11.0 kV;
+            description = "11 kV switchboard";
+        }
     }
 }
 
 faults {
-    "Board max" { I = 9.4 kA; type = three_phase;        voltage = "MV"; }
-    "Board min" { I = 2.1 kA; type = two_phase;          voltage = "MV"; }
-    "Earth max" { I = 1.6 kA; type = single_phase_earth; voltage = "MV"; }
+    "Board max" {
+        I       = 9.4 kA;
+        type    = three_phase;
+        voltage = "MV";
+    }
+    "Board min" {
+        I       = 2.1 kA;
+        type    = two_phase;
+        voltage = "MV";
+    }
+    "Earth max" {
+        I       = 1.6 kA;
+        type    = single_phase_earth;
+        voltage = "MV";
+    }
 }
 
 # ---- The requirements, as horizontal rules. --------------------------
@@ -85,11 +103,11 @@ relay R_FDR {
     }
 
     element 51G {
-        name     = "Ground TOC";
-        function = "earth_fault";
-        curve    = iec.si;
-        I_pickup = 120 A;
-        tms      = 0.10;
+        name        = "Ground TOC";
+        function    = "earth_fault";
+        curve       = iec.si;
+        I_pickup    = 120 A;
+        tms         = 0.10;
         current_max = 1.6 kA;
     }
 }
@@ -103,11 +121,11 @@ relay R_INC {
     ct_ratio = 300/5;
 
     element 51 {
-        name     = "Phase TOC";
-        function = "phase_oc";
-        curve    = iec.vi;
-        I_pickup = 260 A;
-        tms      = 0.40;
+        name        = "Phase TOC";
+        function    = "phase_oc";
+        curve       = iec.vi;
+        I_pickup    = 260 A;
+        tms         = 0.40;
         current_max = 3.2 kA;
     }
 }
@@ -178,13 +196,25 @@ page {
 
     # Rules are styled independently, so it is never a question which
     # axis a given rule belongs to.
-    faults = { style = "dashed"; labels = true; };
-    times  = { style = "solid"; color = "#1d7a4c"; width_px = 1.6; labels = true; };
+    faults = {
+        style  = "dashed";
+        labels = true;
+    };
+    times  = {
+        style    = "solid";
+        color    = "#1d7a4c";
+        width_px = 1.6;
+        labels   = true;
+    };
 
-    scale  = { tick_density = "sparse"; };
+    scale  = {
+        tick_density = "sparse";
+    };
 
-    title  = { text     = "Kingsford 33/11 kV — clearance times";
-               subtitle = "Feeder and incomer against arc-flash, grid-code and withstand limits"; };
+    title  = {
+        text     = "Kingsford 33/11 kV — clearance times";
+        subtitle = "Feeder and incomer against arc-flash, grid-code and withstand limits";
+    };
 }
 
 view {

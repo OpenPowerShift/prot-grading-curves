@@ -32,24 +32,39 @@
 # conditions and voltage levels included.
 
 meta {
-    project   = "Northgate 11 kV";
-    study     = "Switchboard feeder grading";
-    engineer  = "A. Cooper";
-    date      = "2026-07-29";
-    revision  = "A";
-    margin    = 0.30 s;
+    project  = "Northgate 11 kV";
+    study    = "Switchboard feeder grading";
+    engineer = "A. Cooper";
+    date     = "2026-07-29";
+    revision = "A";
+    margin   = 0.30 s;
 }
 
 system {
     voltages {
-        "MV" { V  = 11.0 kV; description = "11 kV switchboard"; }
+        "MV" {
+            V           = 11.0 kV;
+            description = "11 kV switchboard";
+        }
     }
 }
 
 faults {
-    "Bus fault"  { I   = 13_500 A; voltage = "MV"; description = "switchboard bus fault"; }
-    "Feeder fault"  { I   =  7_200 A; voltage = "MV"; description = "feeder fault"; }
-    "Spur fault" { I   =  2_400 A; voltage = "MV"; description = "spur fault"; }
+    "Bus fault"  {
+        I           = 13_500 A;
+        voltage     = "MV";
+        description = "switchboard bus fault";
+    }
+    "Feeder fault"  {
+        I           = 7_200 A;
+        voltage     = "MV";
+        description = "feeder fault";
+    }
+    "Spur fault" {
+        I           = 2_400 A;
+        voltage     = "MV";
+        description = "spur fault";
+    }
 }
 
 # ---- Incomer: slowest, backs up everything downstream. -------------
@@ -100,27 +115,27 @@ relay R_FDR {
     }
 
     element 50 {
-        name    = "Inst";
-        curve   = definite;
+        name     = "Inst";
+        curve    = definite;
         I_pickup = 9 kA;
-        t_delay = 60 ms;
+        t_delay  = 60 ms;
     }
 }
 
 grade {
-    primary   = R_FDR:51;
-    backup    = R_BUS:51;
-    fault     = "Feeder fault";
-    margin    = 0.30 s;
-    comment   = "feeder graded against the bus section";
+    primary = R_FDR:51;
+    backup  = R_BUS:51;
+    fault   = "Feeder fault";
+    margin  = 0.30 s;
+    comment = "feeder graded against the bus section";
 }
 
 grade {
-    primary   = R_BUS:51;
-    backup    = R_INC:51;
-    fault     = "Bus fault";
-    margin    = 0.30 s;
-    comment   = "bus section graded against the incomer";
+    primary = R_BUS:51;
+    backup  = R_INC:51;
+    fault   = "Bus fault";
+    margin  = 0.30 s;
+    comment = "bus section graded against the incomer";
 }
 
 annotate {
@@ -146,9 +161,13 @@ page {
     border      = true;
     margins_mm  = 4;
     stretch     = true;
-    legend      = { style = "direct"; };
-    title       = { text     = "Northgate 11 kV — feeder grading";
-                    subtitle = "Portrait sheet with direct-labelled characteristics"; };
+    legend      = {
+        style = "direct";
+    };
+    title       = {
+        text     = "Northgate 11 kV — feeder grading";
+        subtitle = "Portrait sheet with direct-labelled characteristics";
+    };
 }
 
 view {

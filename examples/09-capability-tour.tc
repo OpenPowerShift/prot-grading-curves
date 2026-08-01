@@ -13,31 +13,48 @@
 # ---- meta: who, what, when. Open-ended; the title block and the
 #      [meta.*] footer macros read these. ------------------------------
 meta {
-    project   = "Capability tour";
-    study     = "Every block, once";
-    engineer  = "A. Cooper";
-    date      = "2026-07-28";
-    revision  = "C";
+    project  = "Capability tour";
+    study    = "Every block, once";
+    engineer = "A. Cooper";
+    date     = "2026-07-28";
+    revision = "C";
     standard  = ["IEC_60255_151"];
-    margin    = 0.30 s;
+    margin = 0.30 s;
 }
 
 # ---- system: named voltage levels. Turns ratios are derived from
 #      these, so no transformer block is needed. ----------------------
 system {
     voltages {
-        "HV" { V  = 33.0 kV; description = "33 kV incomer"; }
-        "LV" { V  = 11.0 kV; description = "11 kV board"; }
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV incomer";
+        }
+        "LV" {
+            V           = 11.0 kV;
+            description = "11 kV board";
+        }
     }
-    base_S       = 25.0 MVA;
+    base_S = 25.0 MVA;
 }
 
 # ---- faults: a single point, or a range with min_A / max_A that the
 #      CTI constraint sweeps across. ---------------------------------
 faults {
-    "LV max" { I   = 6.40 kA; I_min = 4.0 kA; I_max = 8.0 kA; voltage = "LV"; }
-    "LV min" { I   = 1.50 kA; voltage = "LV"; }
-    "HV max" { I   = 18.4 kA; voltage = "HV"; }
+    "LV max" {
+        I       = 6.40 kA;
+        I_min   = 4.0 kA;
+        I_max   = 8.0 kA;
+        voltage = "LV";
+    }
+    "LV min" {
+        I       = 1.50 kA;
+        voltage = "LV";
+    }
+    "HV max" {
+        I       = 18.4 kA;
+        voltage = "HV";
+    }
 }
 
 # ---- point: a marked (I, t) the curves must respect. ---------------
@@ -59,11 +76,11 @@ point "TX1_inrush" {
 #      ratio. `rating_kV` is a different thing: the fuse's own
 #      insulation rating, not a system level.
 device "spur_fuse_50T" {
-    kind        = "fuse";
-    voltage     = "LV";
-    maker       = "Mersen";
-    model       = "50T";
-    rating_I    = 50 A;
+    kind     = "fuse";
+    voltage  = "LV";
+    maker    = "Mersen";
+    model    = "50T";
+    rating_I = 50 A;
     min_melt    = [(100 A, 60 s), (300 A, 0.85 s), (1500 A, 0.022 s)];
     total_clear = [(100 A, 105 s), (300 A, 1.40 s), (1500 A, 0.038 s)];
 }
@@ -95,15 +112,27 @@ relay R_FDR {
     element 51 {
         function = "phase_oc";
         stages {
-            stage main { curve = iec.vi;   I_pickup = 480 A;  tms = 0.25; }
-            stage inst { curve = definite; I_pickup = 3200 A; t_delay = 0.05 s; }
+            stage main {
+                curve    = iec.vi;
+                I_pickup = 480 A;
+                tms      = 0.25;
+            }
+            stage inst {
+                curve    = definite;
+                I_pickup = 3200 A;
+                t_delay  = 0.05 s;
+            }
         }
     }
 
     # A user-defined characteristic, when no table entry fits.
     element 51X {
         function = "phase_oc";
-        formula  = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
+        formula  = {
+            k     = 4.0 s;
+            c     = 0.10 s;
+            alpha = 0.50
+        };
         I_pickup = 900 A;
         tms      = 0.20;
     }
@@ -111,11 +140,11 @@ relay R_FDR {
 
 # ---- grade: the coordination claim, checked at the fault and above. -
 grade {
-    primary   = R_FDR:51;
-    backup    = R_INC:51;
-    fault     = "LV max";
-    margin    = 0.30 s;
-    upstream  = true;
+    primary  = R_FDR:51;
+    backup   = R_INC:51;
+    fault    = "LV max";
+    margin   = 0.30 s;
+    upstream = true;
 }
 
 # ---- annotate: margin form draws the gap between two curves. -------
@@ -144,19 +173,32 @@ view {
 
 # ---- page: sheet geometry, decoration, and theme. ------------------
 page {
-    size        = "A4";
-    legend      = { position = "bottom_left"; };
+    size = "A4";
+    legend      = {
+        position = "bottom_left";
+    };
     orientation = "landscape";
     theme       = "light";
     border      = true;
 
-    title = { text     = "Capability tour";
-              subtitle = "Every block in the language, once"; };
+    title = {
+        text     = "Capability tour";
+        subtitle = "Every block in the language, once";
+    };
 
-    scale  { tick_density = "normal"; }
-    legend { show = true; title = "Curves"; }
-    axes   { frame = true; }
-    curves { line_width_px = 2; }
+    scale  {
+        tick_density = "normal";
+    }
+    legend {
+        show  = true;
+        title = "Curves";
+    }
+    axes   {
+        frame = true;
+    }
+    curves {
+        line_width_px = 2;
+    }
 }
 
 # ---- notes: editorial commentary carried with the study. -----------

@@ -16,20 +16,35 @@ meta {
     engineer = "A. Cooper";
     date     = "2026-07-26";
     standard = ["IEC_60255_151"];
-    margin    = 0.30 s;
+    margin = 0.30 s;
 }
 
 system {
     voltages {
-        "HV" { V  = 33.0 kV; description = "33 kV side"; }
-        "LV" { V  = 11.0 kV; description = "11 kV side"; }
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV side";
+        }
+        "LV" {
+            V           = 11.0 kV;
+            description = "11 kV side";
+        }
     }
 }
 
 faults {
-    "LV max"  { I   =  6400 A; voltage = "LV"; }
-    "HV max"  { I   = 18400 A; voltage = "HV"; }
-    "LV min"  { I   =  1500 A; voltage = "LV"; }
+    "LV max"  {
+        I       = 6400 A;
+        voltage = "LV";
+    }
+    "HV max"  {
+        I       = 18400 A;
+        voltage = "HV";
+    }
+    "LV min"  {
+        I       = 1500 A;
+        voltage = "LV";
+    }
 }
 
 relay R_FDR_110 {
@@ -67,9 +82,9 @@ relay R_TRF_INC {
 }
 
 grade {
-    primary  = R_FDR_110:51;
-    backup   = R_TRF_INC:51;
-    fault    = "LV max";
+    primary       = R_FDR_110:51;
+    backup        = R_TRF_INC:51;
+    fault         = "LV max";
     margin_target = 0.30 s;
     solve {
         strategy      = "tight";
@@ -85,8 +100,8 @@ page {
 }
 
 view {
-    voltage     = "HV";           # project both LV and HV relays onto the HV frame
-    current_min = 100 A;          # don't show below 100 A on the current axis
+    voltage     = "HV"; # project both LV and HV relays onto the HV frame
+    current_min = 100 A; # don't show below 100 A on the current axis
     current_max = 50 kA;
     time_min    = 0.01 s;
     time_max    = 1000 s;

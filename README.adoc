@@ -23,7 +23,7 @@ grade {
     primary  = R_FDR_1:51;      // 11 kV feeder — trips first
     backup   = R_TRF_INC:51;    // 33 kV incomer — backs it up
     fault    = "F_FDR1_max";
-    margin_s = 0.30;
+    margin_target = 0.30 s;
 
     solve { strategy = "tight"; }
 }
@@ -161,35 +161,35 @@ open.
 ----
 system {
     voltages {
-        "HV" { kV = 33.0; }
-        "LV" { kV = 11.0; }
+        "HV" { V  = 33.0 kV; }
+        "LV" { V  = 11.0 kV; }
     }
 }
 
 faults {
-    "F_FDR1_max" { I_A = 6.40 kA; voltage = "LV"; }
+    "F_FDR1_max" { I   = 6.40 kA; voltage = "LV"; }
 }
 
 relay R_TRF_INC {
     voltage  = "HV";
     ct_ratio = 600/5;
 
-    element 51 { function = "phase_oc"; curve = iec.si; I_pu = 720 A; tms = 0.30; }
+    element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 720 A; tms = 0.30; }
 }
 
 relay R_FDR_1 {
     voltage  = "LV";
     ct_ratio = 400/5;
 
-    element 50 { curve = definite; I_pu = 3200 A; t_delay = 0.05 s; }
-    element 51 { curve = iec.vi;   I_pu =  480 A; tms = 0.25; }
+    element 50 { curve = definite; I_pickup = 3200 A; t_delay = 0.05 s; }
+    element 51 { curve = iec.vi;   I_pickup =  480 A; tms = 0.25; }
 }
 
 grade {
     primary   = R_FDR_1:51;
     backup    = R_TRF_INC:51;
     fault     = "F_FDR1_max";
-    CTI_min_s = 0.30;
+    margin    = 0.30 s;
 }
 ----
 
@@ -210,6 +210,251 @@ The link:spec/spec.adoc[language specification] is the normative reference for
 the grammar, the curve tables, and the grading semantics. Implementation status
 and the resolved spec ambiguities are tracked in
 link:IMPLEMENTATION.adoc[IMPLEMENTATION.adoc].
+
+== Gallery
+
+Five sheets, each drawn by the tool from the source beside it. Every one
+is a file in `examples/` -- the same files the test suite validates, so
+nothing here is a mock-up -- and every one is loaded in the playground
+under `Gallery 1`..`Gallery 5`, so you can change a setting and watch
+the margin move.
+
+=== The smallest study that says anything
+
+Two relays and one fault. This is the whole language in thirty lines:
+declare the levels, declare the relays, say which must clear first and
+by how much.
+
+image::media/minimal.png[Two graded curves and the fault they are checked at,align="center"]
+
+TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=minimal[Gallery 1 — try it]. It is also in the picker, listed as *Gallery 1*.
+
+.Source — `examples/00-minimal.tc`
+[%collapsible]
+====
+[source,tc]
+----
+# Sample 00 — The smallest study that says anything
+#
+# Two relays, one fault, one question: does the feeder clear before the
+# incomer? Everything else in this library is an elaboration of this.
+
+system {
+    voltages {
+        "MV" {
+            V = 11 kV;
+        }
+    }
+}
+
+faults {
+    "Board max" {
+        I       = 6.2 kA;
+        type    = three_phase;
+        voltage = "MV";
+    }
+}
+
+relay R_FDR {
+    voltage  = "MV";
+    ct_ratio = 400/5;
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pickup = 480 A;
+        tms      = 0.10;
+    }
+}
+
+relay R_INC {
+    voltage  = "MV";
+    ct_ratio = 1200/5;
+    element 51 {
+        function = "phase_oc";
+        curve    = iec.si;
+        I_pickup = 960 A;
+        tms      = 0.25;
+    }
+}
+
+grade {
+    primary = R_FDR:51;
+    backup  = R_INC:51;
+    fault   = "Board max";
+    margin  = 0.30 s;
+}
+----
+
+The report it produces:
+
+----
+grade R_FDR:51 / R_INC:51:
+    t_primary       = 0.267 s        (M = 12.92)
+    t_backup        = 0.921 s        (M = 6.46)
+    achieved margin = 0.654 s        -- pass
+    overall         : PASS (worst 0.654 s at 6200 A)
+----
+====
+
+=== A four-level cascade
+
+An incomer, a tie, a feeder, a sub-feeder and a spur fuse, each graded
+against the one behind it. The margin arrows are drawn at the fault
+they were computed at, and the fuse is a shaded band rather than a line
+-- it *may* start to melt at the lower curve and is *guaranteed* clear
+by the upper.
+
+image::media/cascade.png[Six curves cascading, with CTI arrows and a fuse band,align="center"]
+
+TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=cascade[Gallery 2 — try it]. It is also in the picker, listed as *Gallery 2*.
+
+.Source — `examples/10-substation-cascade.tc`
+[%collapsible]
+====
+The distinctive part is one `grade` block per pair, and an `annotate`
+that draws the margin it proved:
+
+[source,tc]
+----
+grade {
+    primary = R_SUB:51;
+    backup  = R_FDR:51;
+    fault   = "Sub max";
+    margin  = 0.30 s;
+}
+
+annotate {
+    primary = R_SUB:51;
+    backup  = R_FDR:51;
+    fault   = "Sub max";
+    label   = "CTI";
+}
+----
+
+Read the whole file for the five relays and the fuse it grades against.
+====
+
+=== Clearance times
+
+A study is judged up and down as well as left to right. An arc-flash
+boundary, a grid-code disconnection time and a transformer withstand
+are drawn as horizontal rules, so the requirement sits beside the
+characteristic that has to meet it. Each curve also stops at the
+largest fault its bus can deliver, rather than running to the frame.
+
+image::media/clearance-times.png[Curves against arc-flash, grid-code and withstand limits,align="center"]
+
+TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=clearance[Gallery 3 — try it]. It is also in the picker, listed as *Gallery 3*.
+
+.Source — `examples/13-clearance-times.tc`
+[%collapsible]
+====
+[source,tc]
+----
+times {
+    "Arc flash boundary" {
+        t           = 500 ms;
+        at_I        = 6 kA;
+        description = "Above this, PPE category rises a level";
+    }
+    "Grid code clearance" { t = 800 ms; at_I = 3 kA; }
+    "Transformer withstand" { t = 4 s; at_I = 1.2 kA; }
+}
+
+element 51 {
+    curve       = iec.vi;
+    I_pickup    = 720 A;
+    tms         = 0.14;
+    current_max = 9.4 kA;      # the board cannot deliver more
+}
+----
+
+`at_I` puts each rule's caption beside the curve the requirement
+actually bites on; the rule spans the whole plot, so the left-hand end
+is only ever a default.
+====
+
+=== Devices from published tables
+
+Not everything on a sheet is a relay setting. A fuse, a cable, a
+transformer's damage limit, a motor start and a breaker's own clearing
+time are all published as tables of (current, time) pairs. `combine`
+then builds synthetic curves from what is already declared -- the
+fastest of a group, the slowest, their sum.
+
+image::media/devices.png[A device library: fuse band, damage curves, motor start and combined envelopes,align="center"]
+
+TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=devices[Gallery 4 — try it]. It is also in the picker, listed as *Gallery 4*.
+
+.Source — `examples/14-devices-and-combine.tc`
+[%collapsible]
+====
+[source,tc]
+----
+device "spur_fuse_100T" {
+    kind        = fuse;
+    voltage     = "LV";
+    rating_I    = 100 A;
+    reference   = "Mersen T-link data sheet, table 2";
+    min_melt    = [(200 A, 10.0 s), (800 A, 0.14 s), (1.6 kA, 0.022 s)];
+    total_clear = [(200 A, 16.0 s), (800 A, 0.26 s), (1.6 kA, 0.045 s)];
+}
+
+combine {
+    name    = "Fastest LV protection";
+    sources = [R_MCC:51, R_BOARD:51];
+    as      = envelope_min;          # or envelope_max, sum, select_first
+    label   = "Fastest LV protection (envelope)";
+}
+----
+
+`reference` records where a table came from. A damage curve transcribed
+from a data sheet three revisions ago is the kind of thing that
+survives unnoticed for years.
+====
+
+=== Sequence currents
+
+A relay does not measure "the fault current". At one unbalanced fault a
+`51` sees phase current, a `51G` sees the residual `3*I0` and a `46`
+sees negative sequence -- three different numbers. Name the condition a
+sheet depicts and every curve is placed on the chosen axis using that
+condition's own declared figures, with the conversion factor stated.
+
+image::media/sequence-sheets.png[The same study drawn against negative-sequence current,align="center"]
+
+TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=sheets[Gallery 5 — try it]. It is also in the picker, listed as *Gallery 5*.
+
+.Source — `examples/17-sequence-sheets.tc`
+[%collapsible]
+====
+[source,tc]
+----
+scenario "Phase-earth at the tee" {
+    type = single_phase_earth;
+    level "HV" { I = 2.4 kA; I1 = 800 A; I2 = 800 A; I0 = 800 A; residual = 2.4 kA; }
+}
+
+element 46 {
+    function = "neg_seq";
+    measures = I2;              # this IED is scaled in I2, not 3*I2
+    curve    = definite;
+    I_pickup = 200 A;
+    t_delay  = 0.60 s;
+}
+
+view "Negative sequence" {
+    voltage   = "HV";
+    quantity  = I2;             # phase, I1, I2, 3I2, I0, 3I0, or any
+    condition = "Phase-earth at the tee";
+}
+----
+
+The legend records each conversion -- `phase drawn on the I2 axis,
+x0.333` -- because a curve's position then rests on the condition
+rather than on the element, and that is the number which makes it
+checkable.
+====
 
 == Project layout
 

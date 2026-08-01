@@ -11,20 +11,30 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Cross-vendor study";
+    project = "Cross-vendor study";
     standard = ["IEEE_C37_112", "IEC_60255_151"];
 }
 
 system {
     voltages {
-        "HV" { V  = 115.0 kV; }
-        "LV" { V  =  12.47 kV; }
+        "HV" {
+            V = 115.0 kV;
+        }
+        "LV" {
+            V = 12.47 kV;
+        }
     }
 }
 
 faults {
-    "LV 3ph" { I   =  5500 A; voltage = "LV"; }
-    "HV 3ph" { I   = 12000 A; voltage = "HV"; }
+    "LV 3ph" {
+        I       = 5500 A;
+        voltage = "LV";
+    }
+    "HV 3ph" {
+        I       = 12000 A;
+        voltage = "HV";
+    }
 }
 
 relay R_FDR {
@@ -34,9 +44,9 @@ relay R_FDR {
     ct_ratio = 1200/5;
 
     element 51 {
-        curve = ansi.mi;
+        curve    = ansi.mi;
         I_pickup = 480 A;
-        tms   = 0.50;
+        tms      = 0.50;
     }
 }
 
@@ -47,16 +57,16 @@ relay R_INC {
     ct_ratio = 1200/5;
 
     element 51 {
-        curve = iec.vi;
+        curve    = iec.vi;
         I_pickup = 600 A;
-        tms   = 0.35;
+        tms      = 0.35;
     }
 }
 
 grade {
-    primary  = R_FDR:51;
-    backup   = R_INC:51;
-    fault    = "LV 3ph";
+    primary       = R_FDR:51;
+    backup        = R_INC:51;
+    fault         = "LV 3ph";
     margin_target = 0.35 s;
 }
 

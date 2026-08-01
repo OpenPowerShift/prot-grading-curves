@@ -28,17 +28,34 @@ meta {
 
 system {
     voltages {
-        "HV" { V = 33.0 kV; description = "33 kV double circuit"; }
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV double circuit";
+        }
     }
-    I_base   = 500 A;
-    I_units  = "primary";
+    I_base  = 500 A;
+    I_units = "primary";
 }
 
 faults {
-    "Load end 3ph"  { I = 7.2 kA; type = three_phase;        voltage = "HV"; }
-    "Load end 2ph"  { I = 6.2 kA; type = two_phase;          voltage = "HV"; }
-    "Load end 2phE" { I = 5.8 kA; type = two_phase_earth;    voltage = "HV";
-                      I2 = 2.1 kA; I0 = 1.4 kA; residual = 4.2 kA; }
+    "Load end 3ph"  {
+        I       = 7.2 kA;
+        type    = three_phase;
+        voltage = "HV";
+    }
+    "Load end 2ph"  {
+        I       = 6.2 kA;
+        type    = two_phase;
+        voltage = "HV";
+    }
+    "Load end 2phE" {
+        I        = 5.8 kA;
+        type     = two_phase_earth;
+        voltage  = "HV";
+        I2       = 2.1 kA;
+        I0       = 1.4 kA;
+        residual = 4.2 kA;
+    }
 }
 
 # ---- The condition, and who carries what. ----------------------------
@@ -49,19 +66,35 @@ scenario "Both circuits in" {
     type        = three_phase;
     description = "Normal running, both feeders closed";
 
-    level "HV" { I = 7.2 kA; I1 = 7.2 kA; I2 = 0 A; I0 = 0 A; }
+    level "HV" {
+        I  = 7.2 kA;
+        I1 = 7.2 kA;
+        I2 = 0 A;
+        I0 = 0 A;
+    }
 
-    sees R_FDR_A { share = 50; }
-    sees R_FDR_B { share = 50; }
+    sees R_FDR_A {
+        share = 50;
+    }
+    sees R_FDR_B {
+        share = 50;
+    }
 }
 
 scenario "One circuit out" {
     type        = three_phase;
     description = "B out for maintenance; A carries the lot";
 
-    level "HV" { I = 6.4 kA; I1 = 6.4 kA; I2 = 0 A; I0 = 0 A; }
+    level "HV" {
+        I  = 6.4 kA;
+        I1 = 6.4 kA;
+        I2 = 0 A;
+        I0 = 0 A;
+    }
 
-    sees R_FDR_A { share = 100; }
+    sees R_FDR_A {
+        share = 100;
+    }
 }
 
 # ---- Feeder A: looks down the line. ----------------------------------
@@ -82,7 +115,7 @@ relay R_FDR_A {
         tms      = 1.0;
 
         # Half the fault current under the normal condition.
-        share    = 50;
+        share = 50;
 
         # A directional element only operates for faults in front of it,
         # which is what stops the healthy feeder tripping for a fault on
@@ -94,8 +127,8 @@ relay R_FDR_A {
         # An induction disc does not reset instantly: it unwinds. On a
         # reclosing scheme that memory decides whether the second shot
         # lands on a partly-run disc.
-        reset    = disk_emulation;
-        t_reset  = 6 s;
+        reset   = disk_emulation;
+        t_reset = 6 s;
     }
 }
 
@@ -132,11 +165,11 @@ relay R_SRC {
     direction = none;
 
     element 51 {
-        name        = "Phase TOC";
-        function    = "phase_oc";
-        curve       = ansi.mi;
-        I_pickup    = 900 A;
-        tms         = 2.0;
+        name     = "Phase TOC";
+        function = "phase_oc";
+        curve    = ansi.mi;
+        I_pickup = 900 A;
+        tms      = 2.0;
 
         # Non-directional: it backs up both circuits, so it must not
         # care which way the current is flowing.
@@ -174,15 +207,15 @@ relay R_BUS {
 #      `tight` lands as close above the target as the dial steps allow;
 #      `loose` leaves headroom; `safety_factor` multiplies the target.
 grade {
-    primary  = R_FDR_A:51;
-    backup   = R_SRC:51;
-    scenario = "Both circuits in";
+    primary       = R_FDR_A:51;
+    backup        = R_SRC:51;
+    scenario      = "Both circuits in";
     margin        = 0.35 s;
     margin_target = 0.40 s;
     comment       = "A carries half; the source relay sees the whole fault";
 
     solve {
-        strategy      = loose;
+        strategy = loose;
         free          = [tms];
         tolerance_pct = 5;
         comment       = "dial the source relay to clear the grading";
@@ -208,17 +241,17 @@ annotate {
 #      `default = true` picks the one the CLI and a fresh playground
 #      open on; the picker offers the rest.
 view "Primary amps" {
-    default     = true;
-    voltage     = "HV";
-    quantity    = phase;
-    condition   = "Both circuits in";
-    title       = "Parallel feeder grading";
-    subtitle    = "Both circuits in service, 50% share each";
-    axis        = "primary";
+    default   = true;
+    voltage   = "HV";
+    quantity  = phase;
+    condition = "Both circuits in";
+    title     = "Parallel feeder grading";
+    subtitle  = "Both circuits in service, 50% share each";
+    axis      = "primary";
 
     # A second time axis down the right-hand edge, for reading a long
     # sheet without tracking back across it.
-    two_axes    = true;
+    two_axes = true;
 
     current_min = 100 A;
     current_max = 30 kA;
@@ -227,15 +260,15 @@ view "Primary amps" {
 }
 
 view "Multiples of pickup" {
-    voltage     = "HV";
-    quantity    = phase;
-    condition   = "One circuit out";
-    title       = "Same study, drawn in multiples";
-    subtitle    = "x pickup rather than amps — how a settings sheet reads";
+    voltage   = "HV";
+    quantity  = phase;
+    condition = "One circuit out";
+    title     = "Same study, drawn in multiples";
+    subtitle  = "x pickup rather than amps — how a settings sheet reads";
 
     # `multiples` draws the abscissa as x-pickup instead of amps, which
     # is how a relay manual states its curves.
-    axis        = "multiples";
+    axis = "multiples";
 
     current_min = 100 A;
     current_max = 30 kA;
@@ -248,11 +281,25 @@ page {
     orientation = "landscape";
     theme       = "light";
     border      = true;
-    legend      = { title = "Feeders"; position = "bottom_right"; swatch = "box"; currents = "both"; };
-    curves      = { palette = "high_contrast"; auto_color = true; };
-    leaders     = { style = "arrow"; color = "#555555"; label_offset_px = 14; };
-    footer      = { left   = "[meta.project]";
-                    center = "[meta.study]";
-                    right  = "Rev [meta.revision] · [meta.date]";
-                    font_size_px = 9; };
+    legend      = {
+        title    = "Feeders";
+        position = "bottom_right";
+        swatch   = "box";
+        currents = "both";
+    };
+    curves      = {
+        palette    = "high_contrast";
+        auto_color = true;
+    };
+    leaders     = {
+        style           = "arrow";
+        color           = "#555555";
+        label_offset_px = 14;
+    };
+    footer      = {
+        left         = "[meta.project]";
+        center       = "[meta.study]";
+        right        = "Rev [meta.revision] · [meta.date]";
+        font_size_px = 9;
+    };
 }

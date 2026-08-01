@@ -16,12 +16,16 @@ meta {
 
 system {
     voltages {
-        "LV" { V  = 0.48 kV; }
+        "LV" {
+            V = 0.48 kV;
+        }
     }
 }
 
 faults {
-    "Bus fault" { I   = 4500 A; }   # bolted fault at end of feeder
+    "Bus fault" {
+        I = 4500 A;
+    } # bolted fault at end of feeder
 }
 
 relay R_FDR_480 {
@@ -29,9 +33,9 @@ relay R_FDR_480 {
     ct_ratio = 600/5;
 
     element 51 {
-        curve = ansi.mi;
+        curve    = ansi.mi;
         I_pickup = 600 A;
-        tms   = 2.00;        # ANSI time dial: 0.5 .. 15
+        tms      = 2.00; # ANSI time dial: 0.5 .. 15
     }
 }
 

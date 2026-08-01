@@ -29,15 +29,29 @@ meta {
 
 system {
     voltages {
-        "MV" { V = 11.0 kV; description = "11 kV incoming"; }
-        "LV" { V = 0.4 kV;  description = "400 V motor board"; }
+        "MV" {
+            V           = 11.0 kV;
+            description = "11 kV incoming";
+        }
+        "LV" {
+            V           = 0.4 kV;
+            description = "400 V motor board";
+        }
     }
     I_base = 1000 A;
 }
 
 faults {
-    "LV board max" { I = 21 kA; type = three_phase; voltage = "LV"; }
-    "LV board min" { I = 8.4 kA; type = two_phase;  voltage = "LV"; }
+    "LV board max" {
+        I       = 21 kA;
+        type    = three_phase;
+        voltage = "LV";
+    }
+    "LV board min" {
+        I       = 8.4 kA;
+        type    = two_phase;
+        voltage = "LV";
+    }
 }
 
 # ---- The published curves. -------------------------------------------
@@ -131,11 +145,11 @@ relay R_MCC {
     ct_ratio  = 2000/5;
 
     element 51 {
-        name     = "Phase TOC";
-        function = "phase_oc";
-        curve    = iec.vi;
-        I_pickup = 1.6 kA;
-        tms      = 0.10;
+        name        = "Phase TOC";
+        function    = "phase_oc";
+        curve       = iec.vi;
+        I_pickup    = 1.6 kA;
+        tms         = 0.10;
         current_max = 21 kA;
     }
 }
@@ -146,19 +160,19 @@ relay R_BOARD {
     ct_ratio = 3000/5;
 
     element 51 {
-        name     = "Phase TOC";
-        function = "phase_oc";
-        curve    = iec.vi;
-        I_pickup = 2.4 kA;
-        tms      = 0.25;
+        name        = "Phase TOC";
+        function    = "phase_oc";
+        curve       = iec.vi;
+        I_pickup    = 2.4 kA;
+        tms         = 0.25;
         current_max = 21 kA;
     }
 
     # An element can carry a table too, when the device it models is
     # not one of the built-in kinds.
     element 49 {
-        name        = "Thermal overload";
-        function    = "thermal";
+        name     = "Thermal overload";
+        function = "thermal";
         flex_points = [(2.6 kA, 900 s), (4 kA, 220 s), (8 kA, 40 s)];
     }
 }
@@ -176,35 +190,35 @@ relay R_BOARD {
 #      annotated.
 
 combine {
-    name    = "Fastest LV protection";
+    name = "Fastest LV protection";
     sources = [R_MCC:51, R_BOARD:51];
-    as      = envelope_min;
-    label   = "Fastest LV protection (envelope)";
-    color   = "#7d3c98";
+    as    = envelope_min;
+    label = "Fastest LV protection (envelope)";
+    color = "#7d3c98";
 }
 
 combine {
-    name    = "Slowest LV protection";
+    name = "Slowest LV protection";
     sources = [R_MCC:51, R_BOARD:51];
-    as      = envelope_max;
-    label   = "Worst case to grade against";
-    color   = "#b7950b";
+    as    = envelope_max;
+    label = "Worst case to grade against";
+    color = "#b7950b";
 }
 
 combine {
-    name    = "Board clear incl. breaker";
+    name = "Board clear incl. breaker";
     sources = [R_BOARD:51, acb_operating];
-    as      = sum;
-    label   = "Relay + ACB total clearing time";
-    color   = "#1a5276";
+    as    = sum;
+    label = "Relay + ACB total clearing time";
+    color = "#1a5276";
 }
 
 combine {
-    name    = "First to operate";
+    name = "First to operate";
     sources = [R_MCC:51, R_BOARD:49];
-    as      = select_first;
-    label   = "Whichever element picks up first";
-    color   = "#117a65";
+    as    = select_first;
+    label = "Whichever element picks up first";
+    color = "#117a65";
 }
 
 # ---- Grading. --------------------------------------------------------
@@ -242,11 +256,24 @@ page {
     orientation = "landscape";
     theme       = "light";
     border      = true;
-    legend      = { title = "Devices and curves"; position = "right"; swatch = "line"; };
-    curves      = { palette = "okabe_ito"; line_width_px = 1.8; };
-    points      = { shape = "triangle"; size_px = 8; outline = true; };
-    title       = { text     = "Halgarth pumping station — device library";
-                    subtitle = "Published tables, synthetic envelopes, and the relays graded against them"; };
+    legend      = {
+        title    = "Devices and curves";
+        position = "right";
+        swatch   = "line";
+    };
+    curves      = {
+        palette       = "okabe_ito";
+        line_width_px = 1.8;
+    };
+    points      = {
+        shape   = "triangle";
+        size_px = 8;
+        outline = true;
+    };
+    title       = {
+        text     = "Halgarth pumping station — device library";
+        subtitle = "Published tables, synthetic envelopes, and the relays graded against them";
+    };
 }
 
 view {

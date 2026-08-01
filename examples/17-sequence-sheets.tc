@@ -29,7 +29,12 @@ meta {
 }
 
 system {
-    voltages { "HV" { V = 33.0 kV; description = "33 kV ring"; } }
+    voltages {
+        "HV" {
+            V           = 33.0 kV;
+            description = "33 kV ring";
+        }
+    }
 }
 
 # ---- Two conditions, both unbalanced. --------------------------------
@@ -39,7 +44,13 @@ scenario "Phase-earth at the tee" {
 
     # I1 = I2 = I0 = If/3 for a solid phase-earth fault; the residual
     # 3*I0 is the whole fault current.
-    level "HV" { I = 2.4 kA; I1 = 800 A; I2 = 800 A; I0 = 800 A; residual = 2.4 kA; }
+    level "HV" {
+        I        = 2.4 kA;
+        I1       = 800 A;
+        I2       = 800 A;
+        I0       = 800 A;
+        residual = 2.4 kA;
+    }
 }
 
 scenario "Phase-phase at the tee" {
@@ -48,11 +59,21 @@ scenario "Phase-phase at the tee" {
 
     # A phase-phase fault carries no zero sequence at all, so the
     # residual sheet has nothing to draw for it — and says so.
-    level "HV" { I = 2.1 kA; I1 = 1.21 kA; I2 = 1.21 kA; I0 = 0 A; residual = 0 A; }
+    level "HV" {
+        I        = 2.1 kA;
+        I1       = 1.21 kA;
+        I2       = 1.21 kA;
+        I0       = 0 A;
+        residual = 0 A;
+    }
 }
 
 faults {
-    "Ring max" { I = 3.6 kA; type = three_phase; voltage = "HV"; }
+    "Ring max" {
+        I       = 3.6 kA;
+        type    = three_phase;
+        voltage = "HV";
+    }
 }
 
 # ---- The tee relay: three elements, three different currents. --------
@@ -66,7 +87,7 @@ relay R_TEE {
 
     element 51 {
         name     = "Phase TOC";
-        function = "phase_oc";      # -> phase current
+        function = "phase_oc"; # -> phase current
         curve    = iec.si;
         I_pickup = 480 A;
         tms      = 0.12;
@@ -74,7 +95,7 @@ relay R_TEE {
 
     element 51G {
         name     = "Ground TOC";
-        function = "earth_fault";   # -> residual 3*I0
+        function = "earth_fault"; # -> residual 3*I0
         curve    = iec.si;
         I_pickup = 240 A;
         tms      = 0.10;
@@ -83,7 +104,7 @@ relay R_TEE {
     element 46 {
         name     = "Negative sequence";
         function = "neg_seq";
-        measures = I2;              # this IED is scaled in I2
+        measures = I2; # this IED is scaled in I2
         curve    = definite;
         I_pickup = 200 A;
         t_delay  = 0.60 s;
@@ -103,7 +124,7 @@ relay R_RING {
     element 46 {
         name     = "Negative sequence backup";
         function = "neg_seq";
-        measures = 3I2;             # scaled in three times I2
+        measures = 3I2; # scaled in three times I2
         curve    = definite;
         I_pickup = 900 A;
         t_delay  = 1.20 s;
@@ -112,7 +133,7 @@ relay R_RING {
     element 51G {
         name     = "Ground backup";
         function = "earth_fault";
-        measures = 3I0;             # residual, stated rather than assumed
+        measures = 3I0; # residual, stated rather than assumed
         curve    = iec.si;
         I_pickup = 400 A;
         tms      = 0.22;
@@ -151,7 +172,7 @@ annotate {
 }
 
 annotate {
-    on_curve = R_TEE:51G;
+    on_curve    = R_TEE:51G;
     at_residual = 2.4 kA;
     label       = "51G sees the whole residual";
     style       = leader;
@@ -185,18 +206,23 @@ annotate {
 #      named, at each one's own figure for the level being shown.
 point "Tee I2" {
     scenarios = ["Phase-earth at the tee", "Phase-phase at the tee"];
-    voltage   = "HV";
-    t         = 0.60 s;
-    label     = "46 operates";
-    shape     = square;
+    voltage = "HV";
+    t       = 0.60 s;
+    label   = "46 operates";
+    shape   = square;
 }
 
 page {
     size        = "A4";
     orientation = "landscape";
     theme       = "light";
-    legend      = { title = "Elements"; position = "top_right"; };
-    curves      = { palette = "ieee"; };
+    legend      = {
+        title    = "Elements";
+        position = "top_right";
+    };
+    curves      = {
+        palette = "ieee";
+    };
 }
 
 # ---- Four sheets of the same study. ----------------------------------

@@ -5,3 +5,4 @@ test-results
 .local
 *.log
 .DS_Store
+coverage-browser/

@@ -36,7 +36,7 @@ export default defineConfig({
        * describe the build rather than the code.
        */
       exclude: ['src/main.ts', 'src/examples.ts', 'src/**/*.d.ts'],
-      reporter: ['text-summary', 'json-summary'],
+      reporter: ['text-summary', 'json-summary', 'json'],
       thresholds: { statements: 95, branches: 85, functions: 95, lines: 95 },
     },
   },

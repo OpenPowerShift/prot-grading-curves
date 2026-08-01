@@ -260,3 +260,44 @@ describe('PNG', () => {
     await expect(exportPng(svg, { width: 800 })).rejects.toBeDefined();
   });
 });
+
+describe('paper travels with the sheet', () => {
+  /*
+   * The renderer states the paper colour on the root element as
+   * `style="background:#1a1a19"` -- which is CSS, and a rasteriser is
+   * free to ignore it, as every one of them does. So a dark sheet
+   * exported to SVG or PNG came out on white paper with white ink: the
+   * legend's curve names, the drawing title and the title block's
+   * values were all invisible, and the sheet looked blank exactly
+   * where it carried its identification.
+   */
+  const sheetIn = (theme: 'light' | 'dark'): string =>
+    parseAndRender(STUDY, { theme }).svg;
+
+  for (const theme of ['light', 'dark'] as const) {
+    it(`paints the ${theme} sheet's own paper`, () => {
+      const out = toExportableSvg(sheetIn(theme));
+      const painted = /<rect[^>]*width="100%"[^>]*fill="([^"]+)"/.exec(out)?.[1];
+      expect(painted, 'no background rect was painted').toBeDefined();
+
+      const declared = /style="[^"]*background:\s*([^;"']+)/.exec(sheetIn(theme))?.[1]?.trim();
+      expect(painted).toBe(declared);
+    });
+  }
+
+  it('gives the two themes different paper', () => {
+    const paper = (t: 'light' | 'dark') =>
+      /<rect[^>]*width="100%"[^>]*fill="([^"]+)"/.exec(toExportableSvg(sheetIn(t)))?.[1];
+    expect(paper('light')).not.toBe(paper('dark'));
+  });
+
+  it('still lets a caller override it', () => {
+    const out = toExportableSvg(sheetIn('dark'), { background: '#ffffff' });
+    expect(/<rect[^>]*width="100%"[^>]*fill="([^"]+)"/.exec(out)?.[1]).toBe('#ffffff');
+  });
+
+  it('exports a dark sheet to PDF without falling back to white', async () => {
+    const bytes = await exportPdf(sheetIn('dark'), { size: 'A4' });
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+  });
+});

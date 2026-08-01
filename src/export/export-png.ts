@@ -36,7 +36,10 @@ const isNode =
  */
 export async function exportPng(svg: string, options: PngOptions = {}): Promise<Uint8Array> {
   const standalone = toExportableSvg(svg, {
-    background: options.background ?? '#ffffff',
+    /* `undefined` so `toExportableSvg` falls back to the sheet's own
+     * paper colour. Forcing white here put a dark theme's white ink on
+     * white paper. */
+    background: options.background ?? undefined,
   });
   return isNode ? renderWithResvg(standalone, options) : renderWithCanvas(standalone, options);
 }

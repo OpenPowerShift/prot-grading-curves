@@ -76,12 +76,28 @@ export function toExportableSvg(svg: string, options: ExportableSvgOptions = {})
 
     out = out.replace(openTag[0], tag);
 
-    if (options.background) {
+    /*
+     * The sheet carries its own paper colour on the root element, as
+     * `style="background:#1a1a19"` -- and that is CSS, which a
+     * rasteriser is free to ignore, and every one of them does. So a
+     * dark sheet exported to SVG or PNG came out on white paper with
+     * white ink: the legend's curve names, the title and the title
+     * block's values were all invisible, and the drawing looked blank
+     * where it mattered most.
+     *
+     * Taking the declared colour as the default means the caller no
+     * longer has to know the theme to export it correctly -- the CLI
+     * never passed one, which is why both its paths were affected.
+     */
+    const declared = /style="[^"]*background:\s*([^;"']+)/.exec(tag)?.[1]?.trim();
+    const background = options.background ?? declared;
+
+    if (background) {
       /* A painted rect beats a `style` background: rasterisers honour
        * geometry far more consistently than root-element CSS. */
       out = out.replace(
         tag,
-        `${tag}\n<rect x="0" y="0" width="100%" height="100%" fill="${escapeAttr(options.background)}"/>`,
+        `${tag}\n<rect x="0" y="0" width="100%" height="100%" fill="${escapeAttr(background)}"/>`,
       );
     }
   }

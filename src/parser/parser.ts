@@ -672,18 +672,18 @@ class Parser {
       switch (k.image) {
         /* The same vocabulary a fault and a scenario level use, so
          * one way of writing a current covers the whole language. */
-        case 'I':     p.I_A = this.parseNumberWithUnit_A(); break;
-        case 'I1':    p.I1_A = this.parseNumberWithUnit_A(); break;
-        case 'I2':    p.I2_A = this.parseNumberWithUnit_A(); break;
-        case 'I0':    p.I0_A = this.parseNumberWithUnit_A(); break;
-        case 'residual': p.earth_A = this.parseNumberWithUnit_A(); break;
+        case 'I':     p.I_A = this.parseNumberWithUnit_A('I'); break;
+        case 'I1':    p.I1_A = this.parseNumberWithUnit_A('I1'); break;
+        case 'I2':    p.I2_A = this.parseNumberWithUnit_A('I2'); break;
+        case 'I0':    p.I0_A = this.parseNumberWithUnit_A('I0'); break;
+        case 'residual': p.earth_A = this.parseNumberWithUnit_A('residual'); break;
         case 'type': {
           const kw = this.matchKeyword(
             'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
           if (kw) p.faultType = kw as import('./ast.js').FaultTypeKeyword;
           break;
         }
-        case 't':   p.t_s = this.parseNumberWithUnit_s(); break;
+        case 't':   p.t_s = this.parseNumberWithUnit_s('t'); break;
         /* The current may come from a named condition instead. */
         case 'fault':
         case 'faults':
@@ -878,11 +878,11 @@ class Parser {
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
           switch (k.image) {
-            case 'I':     level.I_A = this.parseNumberWithUnit_A(); break;
-            case 'I1':    level.I1_A = this.parseNumberWithUnit_A(); break;
-            case 'I2':    level.I2_A = this.parseNumberWithUnit_A(); break;
-            case 'I0':    level.I0_A = this.parseNumberWithUnit_A(); break;
-            case 'residual': level.earth_A = this.parseNumberWithUnit_A(); break;
+            case 'I':     level.I_A = this.parseNumberWithUnit_A('I'); break;
+            case 'I1':    level.I1_A = this.parseNumberWithUnit_A('I1'); break;
+            case 'I2':    level.I2_A = this.parseNumberWithUnit_A('I2'); break;
+            case 'I0':    level.I0_A = this.parseNumberWithUnit_A('I0'); break;
+            case 'residual': level.earth_A = this.parseNumberWithUnit_A('residual'); break;
             default:
               this.parseScalarValue();
               this.noteUnknownKey("a scenario's level", k,
@@ -975,13 +975,13 @@ class Parser {
             /* Fault currents carry an `A` / `kA` suffix; fold it in. */
             case 'type':     f.type = this.parseQuantityValue() as
                                import('./ast.js').FaultTypeKeyword | undefined; break;
-            case 'I':      f.I_A = this.parseNumberWithUnit_A(); break;
-            case 'I_min':    f.min_A = this.parseNumberWithUnit_A(); break;
-            case 'I_max':    f.max_A = this.parseNumberWithUnit_A(); break;
-            case 'residual':  f.earth_A = this.parseNumberWithUnit_A(); break;
-            case 'I0':     f.I0_A = this.parseNumberWithUnit_A(); break;
-            case 'I1':     f.I1_A = this.parseNumberWithUnit_A(); break;
-            case 'I2':     f.I2_A = this.parseNumberWithUnit_A(); break;
+            case 'I':      f.I_A = this.parseNumberWithUnit_A('I'); break;
+            case 'I_min':    f.min_A = this.parseNumberWithUnit_A('I_min'); break;
+            case 'I_max':    f.max_A = this.parseNumberWithUnit_A('I_max'); break;
+            case 'residual':  f.earth_A = this.parseNumberWithUnit_A('residual'); break;
+            case 'I0':     f.I0_A = this.parseNumberWithUnit_A('I0'); break;
+            case 'I1':     f.I1_A = this.parseNumberWithUnit_A('I1'); break;
+            case 'I2':     f.I2_A = this.parseNumberWithUnit_A('I2'); break;
             case 'voltage':  {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
               if (tok) f.voltage = unquote(tok.image);
@@ -1027,8 +1027,8 @@ class Parser {
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
           switch (k.image) {
-            case 't': t.t_s = this.parseNumberWithUnit_s(); break;
-            case 'at_I': t.at_I_A = this.parseNumberWithUnit_A(); break;
+            case 't': t.t_s = this.parseNumberWithUnit_s('t'); break;
+            case 'at_I': t.at_I_A = this.parseNumberWithUnit_A('at_I'); break;
             case 'description': {
               const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
               if (tok) t.description = unquote(tok.image);
@@ -1448,11 +1448,11 @@ if (kwName === 'flex_points') {
           break;
         /* Ratings and delays carry unit suffixes; fold them in. */
         case 'rating_I':
-          d.rating_A = this.parseNumberWithUnit_A();
+          d.rating_A = this.parseNumberWithUnit_A('rating_I');
           this.eat('SEMI');
           break;
         case 'rating_V':
-          d.rating_kV = this.parseNumberWithUnit_kV();
+          d.rating_kV = this.parseNumberWithUnit_kV('rating_V');
           this.eat('SEMI');
           break;
         case 'rating_S':
@@ -1461,7 +1461,7 @@ if (kwName === 'flex_points') {
           this.eat('SEMI');
           break;
         case 't_delay':
-          d.t_delay = this.parseNumberWithUnit_s();
+          d.t_delay = this.parseNumberWithUnit_s('t_delay');
           this.eat('SEMI');
           break;
         case 'flex_points':
@@ -1649,17 +1649,17 @@ if (kwName === 'flex_points') {
             this.eat('SEMI');
             break;
           case 'at_I':
-            a.at_I_A = this.parseNumberWithUnit_A();
+            a.at_I_A = this.parseNumberWithUnit_A('at_I');
             this.eat('SEMI');
             break;
           case 'at_I1':
-            a.at_I1_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+            a.at_I1_A = this.parseNumberWithUnit_A('at_I1'); this.eat('SEMI'); break;
           case 'at_I2':
-            a.at_I2_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+            a.at_I2_A = this.parseNumberWithUnit_A('at_I2'); this.eat('SEMI'); break;
           case 'at_I0':
-            a.at_I0_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+            a.at_I0_A = this.parseNumberWithUnit_A('at_I0'); this.eat('SEMI'); break;
           case 'at_residual':
-            a.at_earth_A = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+            a.at_earth_A = this.parseNumberWithUnit_A('at_residual'); this.eat('SEMI'); break;
           case 'type': {
             const kw = this.matchKeyword(
               'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
@@ -1668,7 +1668,7 @@ if (kwName === 'flex_points') {
             break;
           }
           case 'at_t':
-            a.at_t_s = this.parseNumberWithUnit_s();
+            a.at_t_s = this.parseNumberWithUnit_s('at_t');
             this.eat('SEMI');
             break;
           case 'point':
@@ -1904,13 +1904,13 @@ if (kwName === 'flex_points') {
             }
             break;
           case 'current_min':
-            v.current_min = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+            v.current_min = this.parseNumberWithUnit_A('current_min'); this.eat('SEMI'); break;
           case 'current_max':
-            v.current_max = this.parseNumberWithUnit_A(); this.eat('SEMI'); break;
+            v.current_max = this.parseNumberWithUnit_A('current_max'); this.eat('SEMI'); break;
           case 'time_min':
-            v.time_min = this.parseNumberWithUnit_s(); this.eat('SEMI'); break;
+            v.time_min = this.parseNumberWithUnit_s('time_min'); this.eat('SEMI'); break;
           case 'time_max':
-            v.time_max = this.parseNumberWithUnit_s(); this.eat('SEMI'); break;
+            v.time_max = this.parseNumberWithUnit_s('time_max'); this.eat('SEMI'); break;
           /* Axis padding, in decades, beyond the auto-fitted domain. */
           case 'current_pad':
             v.current_pad = this.parseNumber(); this.eat('SEMI'); break;
@@ -2218,7 +2218,32 @@ if (kwName === 'flex_points') {
 
     /* Only take the next token if it could be a suffix: a bare number
      * is followed by `;`, and eating that would swallow the statement. */
-    if (!this.at('IDENT') && !this.at('KW')) return raw;
+    if (!this.at('IDENT') && !this.at('KW')) {
+      /*
+       * A bare number where the field has a quantity.
+       *
+       * No key names its own unit any more, which was done precisely so
+       * that the author states it -- and nothing made them. The base
+       * unit was assumed in silence, so `t_delay = 50;` on an
+       * instantaneous element meant fifty *seconds* where the author
+       * meant fifty milliseconds, and the sheet drew it without a word.
+       * A thousandfold error on a trip time is not a thing to infer.
+       *
+       * Refused rather than warned about, on the same rule the element
+       * block already follows: in a place where every value changes a
+       * number, a guess is worse than a complaint.
+       */
+      if (field != null && FIELD_QUANTITY[field] != null) {
+        this.errors.push({
+          message: `"${field}" needs a unit; write one of `
+            + suffixesFor(FIELD_QUANTITY[field]!).map((k) => `"${k}"`).join(', ')
+            + ` -- a bare number would be read as ${base}`,
+          line: t.line, column: t.col, offset: t.start, length: t.end - t.start,
+          severity: 'error', code: 'UNIT_MISSING',
+        });
+      }
+      return raw;
+    }
 
     const u = this.tokens[this.pos];
     const factor = factors[u.image];

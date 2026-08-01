@@ -165,3 +165,69 @@ describe('the page block', () => {
     }
   });
 });
+
+describe('a number written without its unit', () => {
+  /*
+   * No key names its own unit -- that was done so the author states it,
+   * and for a while nothing made them. `t_delay = 50;` on an
+   * instantaneous element meant fifty *seconds* where the author meant
+   * fifty milliseconds, and the sheet drew it without a word. A
+   * thousandfold error on a trip time is not a thing to infer.
+   */
+  const RELAY = (body: string) =>
+    `${SYS}relay R { voltage = "MV"; ct_ratio = 400/5; ${body} }`;
+
+  it('is refused on an element field', () => {
+    expect(codesFor(RELAY('element 50 { curve = definite; I_pickup = 4 kA; t_delay = 50; }')))
+      .toContain('UNIT_MISSING');
+  });
+
+  it('is refused on a stage field', () => {
+    expect(codesFor(RELAY(`element 51 { stages {
+      stage m { curve = definite; I_pickup = 400 A; t_delay = 2; } } }`)))
+      .toContain('UNIT_MISSING');
+  });
+
+  it('is refused on a pickup', () => {
+    expect(codesFor(RELAY('element 51 { curve = iec.si; I_pickup = 400; tms = 0.1; }')))
+      .toContain('UNIT_MISSING');
+  });
+
+  it('is refused on a fault current', () => {
+    expect(codesFor(`${SYS}faults { "F" { I = 6000; voltage = "MV"; } }`))
+      .toContain('UNIT_MISSING');
+  });
+
+  it('is refused on a view bound', () => {
+    expect(codesFor(`${SYS}view { voltage = "MV"; current_min = 100; }`))
+      .toContain('UNIT_MISSING');
+  });
+
+  it('names the units the field will take', () => {
+    const d = process(RELAY('element 50 { curve = definite; I_pickup = 4 kA; t_delay = 50; }'))
+      .diagnostics.find((x) => x.code === 'UNIT_MISSING');
+    expect(d?.message).toMatch(/"s"/);
+    expect(d?.message).toMatch(/"ms"/);
+  });
+
+  it('says nothing when the unit is there', () => {
+    expect(codesFor(RELAY('element 50 { curve = definite; I_pickup = 4 kA; t_delay = 50 ms; }')))
+      .not.toContain('UNIT_MISSING');
+  });
+
+  it('says nothing about a field that has no quantity', () => {
+    /* `tms` is a multiplier and `share` a percentage of a figure
+     * already stated; neither has a unit to write. */
+    expect(codesFor(RELAY('element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.1; share = 50; }')))
+      .not.toContain('UNIT_MISSING');
+  });
+
+  it('leaves every shipped example clean', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    for (const f of readdirSync('examples').filter((x) => x.endsWith('.tc'))) {
+      const r = process(readFileSync(`examples/${f}`, 'utf8'));
+      const errs = [...r.parseErrors, ...r.diagnostics].filter((d) => d.severity === 'error');
+      expect(errs.map((e) => e.code), f).toEqual([]);
+    }
+  });
+});

@@ -292,6 +292,38 @@ function memberKeys(host: { members: Array<{ kind: string; key?: string }> }): S
   return out;
 }
 
+/**
+ * A number written without its unit, inside an element or a stage.
+ *
+ * These members are stored as generic scalars and converted by the
+ * model, so they never pass through the parser's unit check -- which
+ * left the worst case of all uncovered: `t_delay = 50;` on an
+ * instantaneous element meant fifty *seconds* where the author meant
+ * fifty milliseconds, and the sheet drew it in silence.
+ *
+ * No key names its own unit, which was done so that the author states
+ * it. This is what makes them.
+ */
+function checkUnitsOn(
+  ctx: Ctx,
+  node: { members: Array<{ kind: string; key?: string; value?: unknown }>; loc?: SourceLocation },
+  what: string,
+): void {
+  for (const member of node.members) {
+    if (member.kind !== 'scalar' || !member.key) continue;
+    const quantity = FIELD_QUANTITY[member.key];
+    if (quantity == null) continue;
+    const value = member.value as { kind?: string; unit?: string } | undefined;
+    if (value?.kind !== 'number' || value.unit != null) continue;
+    add(ctx, 'UNIT_MISSING', 'error',
+      `${what} declares "${member.key}" without a unit; write one of `
+      + suffixesFor(quantity).map((k) => `"${k}"`).join(', ')
+      + ' -- a bare number is read as the base unit, which for a trip time '
+      + 'is the difference between milliseconds and seconds',
+      node.loc);
+  }
+}
+
 function validateElements(ctx: Ctx): void {
   const { study } = ctx;
 
@@ -358,6 +390,12 @@ function validateElements(ctx: Ctx): void {
     }
 
     for (const element of relay.elements) {
+      checkUnitsOn(ctx, element.node, `${relay.id}:${element.id}`);
+      for (const stage of element.stages) {
+        if (stage.node !== element.node) {
+          checkUnitsOn(ctx, stage.node, `${relay.id}:${element.id} stage "${stage.id}"`);
+        }
+      }
       validateElementShape(ctx, element, relay.ct_ratio, relay.id, relay.voltage_kV);
     }
   }

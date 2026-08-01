@@ -16,7 +16,7 @@
  * anywhere, and this fails until you show what it is for.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BLOCK_FIELDS, FIELD_VALUES, TOP_BLOCK_KEYWORDS } from '@tc/help/help-data';
@@ -134,6 +134,48 @@ describe('the playground offers every example', () => {
       .filter((f) => f.endsWith('.tc'))
       .filter((f) => !registry.includes(f));
     expect(missing, 'written but not offered in the playground').toEqual([]);
+  });
+});
+
+describe('the README gallery', () => {
+  /*
+   * The gallery shows five sheets and the source that drew each one.
+   * Pasted source drifts from the file the moment either is edited, and
+   * a README that shows a study the tool would now reject is worse than
+   * one that shows none -- so the blocks are held to be the files,
+   * verbatim. Regenerate rather than hand-edit them.
+   */
+  const readme = readFileSync(join(repoRoot(), 'README.adoc'), 'utf8');
+
+  const pictured = [...readme.matchAll(/\.Source — `(examples\/[\w.-]+)`/g)]
+    .map((m) => m[1]);
+
+  it('shows five studies', () => {
+    expect(pictured).toHaveLength(5);
+  });
+
+  for (const path of pictured) {
+    it(`quotes ${path} in full`, () => {
+      const source = readFileSync(join(repoRoot(), path), 'utf8').trim();
+      expect(readme, `${path} has drifted from the README`).toContain(source);
+    });
+  }
+
+  it('has an image for each', () => {
+    const images = [...readme.matchAll(/image::media\/([\w.-]+\.png)/g)].map((m) => m[1]);
+    expect(images).toHaveLength(5);
+    for (const img of images) {
+      expect(existsSync(join(repoRoot(), 'media', img)), img).toBe(true);
+    }
+  });
+
+  it('links each one into the playground', () => {
+    const links = [...readme.matchAll(/\?example=([\w-]+)\[/g)].map((m) => m[1]);
+    expect(links).toHaveLength(5);
+    const registry = readFileSync(join(repoRoot(), 'src', 'examples.ts'), 'utf8');
+    for (const id of links) {
+      expect(registry, `no example with id "${id}"`).toContain(`id: '${id}'`);
+    }
   });
 });
 

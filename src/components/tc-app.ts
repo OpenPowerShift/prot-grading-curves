@@ -309,7 +309,14 @@ export class TcApp extends LitElement {
       try {
         window.history.replaceState(null, '', urlWithoutStudy());
       } catch { /* a sandboxed frame may refuse; the study still loaded */ }
-    } else {
+    } else if (!named) {
+      /*
+       * The draft is skipped when a link named an example. Following a
+       * link to a particular study and being shown last week's editing
+       * instead is the one outcome that link cannot mean -- and the
+       * draft is not lost, only not restored: it is still in the
+       * browser, and reloading without the parameter brings it back.
+       */
       const draft = loadDraft();
       if (draft) {
         this.src = draft.source;

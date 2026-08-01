@@ -1028,9 +1028,50 @@ render() {
     const lineH = 13;
     const padX = 7;
     const padY = 6;
-    const charW = 6.1;
-    const boxW = Math.max(...lines.map((l) => l.length)) * charW + padX * 2;
-    const boxH = lines.length * lineH + padY * 2 - 2;
+    const fontPx = 11;
+    /*
+     * The sheet sets a monospace stack on the root `<svg>`, so every
+     * glyph is the same width and 0.60 em is that width -- the same
+     * constant the renderer measures its own labels with. It was 6.1
+     * here against a true 6.6, so the box came out 8% narrow and the
+     * text ran out through the right-hand edge. A relay's full name is
+     * fifty characters, which is where that showed.
+     */
+    const charW = fontPx * 0.60;
+
+    /*
+     * Wrapped rather than allowed to set the width: a curve's label is
+     * free text -- maker, model and function -- and one long enough
+     * would otherwise stretch the readout across a third of the plot it
+     * is meant to be read against.
+     */
+    const MAX_CHARS = 34;
+    const wrapped: string[] = [];
+    const bold = new Set<number>();
+    for (const [i, line] of lines.entries()) {
+      const isLabel = i === 0 && snapped && hover.curveLabel != null;
+      if (line.length <= MAX_CHARS) {
+        if (isLabel) bold.add(wrapped.length);
+        wrapped.push(line);
+        continue;
+      }
+      let rest = line;
+      while (rest.length > MAX_CHARS) {
+        /* Break at a space where there is one, so a word is not split. */
+        const cut = rest.lastIndexOf(' ', MAX_CHARS);
+        const at = cut > MAX_CHARS / 2 ? cut : MAX_CHARS;
+        if (isLabel) bold.add(wrapped.length);
+        wrapped.push(rest.slice(0, at).trimEnd());
+        rest = rest.slice(at).trimStart();
+      }
+      if (rest) {
+        if (isLabel) bold.add(wrapped.length);
+        wrapped.push(rest);
+      }
+    }
+
+    const boxW = Math.max(...wrapped.map((l) => l.length)) * charW + padX * 2;
+    const boxH = wrapped.length * lineH + padY * 2 - 2;
 
     // Prefer up-and-right of the point; flip when that would overflow.
     const flipX = px + 14 + boxW > xMin + w;
@@ -1038,11 +1079,12 @@ render() {
     const boxX = flipX ? px - 14 - boxW : px + 14;
     const boxY = flipY ? py + 14 : py - 14 - boxH;
 
-    const text = lines
+    const text = wrapped
       .map((l, i) => {
-        const bold = i === 0 && snapped && hover.curveLabel ? ' font-weight="600"' : '';
+        const weight = bold.has(i) ? ' font-weight="600"' : '';
         return `<text x="${(boxX + padX).toFixed(1)}" y="${(boxY + padY + 9 + i * lineH).toFixed(1)}"` +
-          `${bold} font-size="11" fill="${escapeXmlAttr(this.readoutFg())}">${escapeXmlAttr(l)}</text>`;
+          `${weight} font-size="${fontPx}" fill="${escapeXmlAttr(this.readoutFg())}">` +
+          `${escapeXmlAttr(l)}</text>`;
       })
       .join('');
 

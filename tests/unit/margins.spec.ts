@@ -178,9 +178,38 @@ describe('CTI_min_s constraint sweeps the declared fault range', () => {
 
   it('evaluates a row at I_A, min_A and max_A', () => {
     const report = process(WITH_RANGE).reports[0];
-    expect(report.rows.map((r) => r.at).sort()).toEqual(['I', 'max', 'min']);
-    expect(report.rows.find((r) => r.at === 'min')!.I_f_A).toBeCloseTo(2500, 6);
-    expect(report.rows.find((r) => r.at === 'max')!.I_f_A).toBeCloseTo(8000, 6);
+    const declared = report.rows.filter((r) => r.at !== 'range');
+    expect(declared.map((r) => r.at).sort()).toEqual(['I', 'max', 'min']);
+    expect(declared.find((r) => r.at === 'min')!.I_f_A).toBeCloseTo(2500, 6);
+    expect(declared.find((r) => r.at === 'max')!.I_f_A).toBeCloseTo(8000, 6);
+  });
+
+  it('also sweeps between them, because that is where curves cross', () => {
+    /*
+     * Three points say nothing about what happens between them, and
+     * between them is where two characteristics cross. A fuse and a
+     * relay that grade at both ends of a range can be seconds the wrong
+     * way round in the middle of it.
+     */
+    const report = process(WITH_RANGE).reports[0];
+    const swept = report.rows.filter((r) => r.at === 'range');
+    expect(swept.length).toBeGreaterThan(20);
+
+    /* Every sample inside the declared range, and in order. */
+    for (const row of swept) {
+      expect(row.I_f_A).toBeGreaterThanOrEqual(2500 - 1e-6);
+      expect(row.I_f_A).toBeLessThanOrEqual(8000 + 1e-6);
+    }
+  });
+
+  it('can find its worst point between the declared ones', () => {
+    /* The property the sweep exists for: the tightest margin is not
+     * required to fall on a current anybody wrote down. */
+    const report = process(WITH_RANGE).reports[0];
+    const declaredWorst = Math.min(
+      ...report.rows.filter((r) => r.at !== 'range').map((r) => r.margin_s),
+    );
+    expect(report.min_margin_s).toBeLessThanOrEqual(declaredWorst + 1e-9);
   });
 
   it('reports the worst margin across the range', () => {

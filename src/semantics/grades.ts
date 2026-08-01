@@ -37,7 +37,7 @@ export interface MarginRow {
    * Which point this row evaluates: the declared fault current, the
    * ends of its declared range, or a sample from the upstream sweep.
    */
-  at: 'I' | 'min' | 'max' | 'upstream';
+  at: 'I' | 'min' | 'max' | 'range' | 'upstream';
   /** Fault current as the *primary* measures it, primary amps. */
   I_f_A: number;
   /**
@@ -557,6 +557,29 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   const endpoints: Array<'I' | 'min' | 'max'> =
     fault.min_A === fault.I_A && fault.max_A === fault.I_A ? ['I'] : ['I', 'min', 'max'];
 
+  /*
+   * A declared range is *swept*, not sampled at its ends.
+   *
+   * Three points -- the fault and its two endpoints -- say nothing
+   * about what happens between them, and between them is where two
+   * characteristics cross. A fuse and a relay that grade at 200 A and
+   * at 1.2 kA can be five seconds the wrong way round at 300 A, and
+   * the report said PASS.
+   *
+   * Log-spaced, because the axis is: even spacing in amps would put
+   * almost every sample in the top decade and none where an inverse
+   * curve is steepest.
+   */
+  const RANGE_SAMPLES = 32;
+  const rangeSweep: number[] = [];
+  if (fault.min_A !== fault.max_A && fault.min_A > 0 && fault.max_A > fault.min_A) {
+    const lo = Math.log(fault.min_A);
+    const hi = Math.log(fault.max_A);
+    for (let i = 0; i <= RANGE_SAMPLES; i++) {
+      rangeSweep.push(Math.exp(lo + (i / RANGE_SAMPLES) * (hi - lo)));
+    }
+  }
+
   /* Set where any row's current came from the type's ratios rather
    * than a declared figure; reported once at the end. */
   let derivedAny = false;
@@ -613,6 +636,31 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   }
 
   /*
+   * The interior of the declared range. Reported as `range` rows so the
+   * three declared points stay identifiable in the table.
+   */
+  for (const I_p of rangeSweep) {
+    const I_b = I_p * backupRatio(study, fault, primary.voltage, backup.voltage);
+    const t_p = primary.tAt(I_p);
+    const t_b = backup.tAt(I_b);
+    if (!Number.isFinite(t_p) && !Number.isFinite(t_b)) continue;
+    const row: MarginRow = {
+      at: 'range',
+      I_f_A: I_p,
+      I_backup_A: I_b,
+      t_primary_s: t_p,
+      t_backup_s: t_b,
+      margin_s: t_b - t_p,
+      M_primary: multipleOf(primary, I_p),
+      M_backup: multipleOf(backup, I_b),
+    };
+    if (grade.CTI_min_s != null && Number.isFinite(row.margin_s)) {
+      row.pass = row.margin_s >= grade.CTI_min_s;
+    }
+    report.rows.push(row);
+  }
+
+  /*
    * Upstream sweep.
    *
    * A pair that grades at the declared fault can still fail above it:
@@ -621,6 +669,26 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
    * entirely. Checking only the declared points hides that, so
    * `upstream = true` sweeps from the fault up to the largest current
    * worth examining and reports the worst point found.
+   */
+  /*
+   * Opt-in, for now, and that is a known weakness.
+   *
+   * A reviewer's point stands: a pair that grades at the declared fault
+   * routinely fails above it, the example written to demonstrate that
+   * says "delete the one line and watch the study go green while
+   * remaining wrong", and a check nobody knows to ask for is not much
+   * of a check.
+   *
+   * Turning it on by default was tried and backed out. `upstreamCeiling`
+   * runs to twice the declared fault, so six of the eighteen examples
+   * began failing at currents their own studies say cannot occur --
+   * sample 13 declares a 9.4 kA board maximum and sets `current_max` to
+   * match, and the sweep judged it at 18.8 kA. Reporting a failure at
+   * an impossible fault is its own kind of wrong answer, and a noisier
+   * one than the gap it closes.
+   *
+   * The default should change once the ceiling respects what the study
+   * has already said about the largest current available.
    */
   if (grade.upstream || grade.upstream_to_A != null) {
     const from = faultCurrentAt(study, fault, primary.voltage, 'max').I_A;

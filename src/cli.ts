@@ -41,6 +41,8 @@ interface Options {
   /** Which declared `view` to draw, by name. */
   view?: string;
   quiet: boolean;
+  /** Write the sheet even when the study has errors. */
+  force?: boolean;
 }
 
 const USAGE = `tc-curves -- render protection-relay time-current grading studies
@@ -63,6 +65,7 @@ Options:
       --portrait        PDF portrait orientation (default landscape)
       --landscape       PDF landscape orientation
   -q, --quiet           Suppress the margin report on stdout
+      --force           Write the sheet even when the study has errors
   -h, --help            Show this message
 
 Exit status: 0 clean, 1 validation errors, 2 usage or I/O failure.`;
@@ -81,6 +84,7 @@ export function parseArgs(argv: string[]): Options {
       case '--portrait': opts.orientation = 'portrait'; break;
       case '--landscape': opts.orientation = 'landscape'; break;
       case '-q': case '--quiet': opts.quiet = true; break;
+      case '--force': opts.force = true; break;
       case '-o': case '--output': opts.output = argv[++i]; break;
       case '--width': opts.width = Number(argv[++i]); break;
       case '--scale': opts.scale = Number(argv[++i]); break;
@@ -100,6 +104,12 @@ export function parseArgs(argv: string[]): Options {
     throw new Error(`unknown command "${command}"`);
   }
   return opts;
+}
+
+/** How many error-severity findings a processed study carries. */
+function errorCount(result: ReturnType<typeof processStudy>): number {
+  return [...result.parseErrors, ...result.diagnostics]
+    .filter((d) => d.severity === 'error').length;
 }
 
 function formatDiagnostic(d: Diagnostic, file: string): string {
@@ -202,6 +212,28 @@ export async function main(argv: string[]): Promise<number> {
   /* ---- render ----------------------------------------------------- */
 
   /*
+   * A study with errors does not get drawn.
+   *
+   * It used to: the diagnostics went to stderr, the exit status was 1,
+   * and the sheet was written anyway -- built on whatever the broken
+   * settings defaulted to. A `tsm` typo left the multiplier at 1.0 and
+   * produced a perfectly plausible drawing with nothing on it saying
+   * so, and that file is what gets attached to an email. The exit
+   * status is no protection: nobody reads it, and the file outlives the
+   * shell that produced it.
+   *
+   * `--force` is there for the case where you want to look at what the
+   * broken study draws. It says so on the sheet.
+   */
+  if (hasErrors && !opts.force) {
+    console.error(
+      `tc-curves: ${opts.input} has errors; no sheet written. `
+      + 'Fix them, or pass --force to draw it anyway.',
+    );
+    return 1;
+  }
+
+  /*
    * A PDF is printed and filed, so it is always rendered light,
    * whatever the study's `page { theme }` says. SVG and PNG honour the
    * declared theme -- they may be embedded in a dark document.
@@ -220,9 +252,27 @@ export async function main(argv: string[]): Promise<number> {
     return 2;
   }
 
-  const svg = opts.format === 'pdf'
+  let svg = opts.format === 'pdf'
     ? renderStudy(result, { theme: 'light', ...chosen })
     : renderStudy(result, chosen);
+
+  /*
+   * A forced sheet says so on its face.
+   *
+   * `--force` exists to let someone look at what a broken study draws,
+   * and the moment it is a file it is indistinguishable from a good
+   * one. Stamped, it cannot be issued by accident -- which is the only
+   * reason refusing to write was worth doing.
+   */
+  if (hasErrors && opts.force) {
+    const count = errorCount(result);
+    svg = svg.replace('</svg>',
+      '<g pointer-events="none">'
+      + '<rect x="0" y="0" width="100%" height="26" fill="#c0392b"/>'
+      + '<text x="12" y="18" font-size="13" font-weight="700" fill="#ffffff">'
+      + `DRAWN FROM A STUDY WITH ${count} ERROR${count === 1 ? '' : 'S'} — NOT VALID`
+      + '</text></g></svg>');
+  }
   const outputPath = resolvePath(opts.output ?? defaultOutput(opts.input, opts.format));
 
   try {

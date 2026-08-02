@@ -118,3 +118,42 @@ describe('the verdict the report prints', () => {
     expect(printed(bad)).toBe('FAIL');
   });
 });
+
+describe('a row where nothing operated', () => {
+  /*
+   * A margin only exists where both sides operate. Scoring the absence
+   * of one as a pass produced a report reading `achieved margin =
+   * no-op s -- pass` directly above `overall : FAIL` -- two lines of
+   * one table contradicting each other, which teaches the reader that
+   * the column cannot be trusted.
+   */
+  const noOperation = () => process(`
+    system { voltages { "MV" { V = 11 kV; } } }
+    faults { "F" { I = 600 A; type = three_phase; voltage = "MV"; } }
+    relay R_A { voltage = "MV"; ct_ratio = 400/5;
+      element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A; tms = 0.1; } }
+    relay R_B { voltage = "MV"; ct_ratio = 400/5;
+      element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 40 kA; tms = 0.3; } }
+    grade { primary = R_A:51; backup = R_B:51; fault = "F"; margin = 0.30 s; }
+  `);
+
+  it('is scored neither pass nor fail', () => {
+    expect(noOperation().reports[0].rows[0].pass).toBeUndefined();
+  });
+
+  it('does not print a verdict beside a margin it does not have', () => {
+    const text = formatGradeReport(noOperation().reports[0]);
+    expect(text).toMatch(/achieved margin\s*=\s*no-op/);
+    expect(text).not.toMatch(/no-op s\s+--\s+pass/);
+  });
+
+  it('says why, rather than leaving the row unexplained', () => {
+    const codes = noOperation().reports[0].diagnostics.map((d) => d.code);
+    expect(codes).toContain('NO_OPERATION');
+  });
+
+  it('still scores rows where both sides do operate', () => {
+    const r = verdict(study(0.25, 0.75, '0.25 s'));
+    expect(r.rows[0].pass).toBe(true);
+  });
+});

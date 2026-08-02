@@ -333,7 +333,7 @@ function reportScenarioGrade(
     M_primary: multipleOf(primary, I_p),
     M_backup: multipleOf(backup, I_b),
   };
-  if (grade.CTI_min_s != null) row.pass = row.margin_s >= grade.CTI_min_s;
+  row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
   report.rows.push(row);
 
   report.achieved_margin_s = row.margin_s;
@@ -464,6 +464,26 @@ function multipleOf(side: Side, I_A: number): number | undefined {
 }
 
 /** Build the margin report for one `grade` block. */
+/**
+ * A row's verdict, or `undefined` where there is none to give.
+ *
+ * A margin only exists where both sides operate. Where one does not,
+ * the difference of the two times is not a small margin or a large one
+ * -- there is no margin, and scoring it as a pass produced a report
+ * that read `achieved margin = no-op s -- pass` directly above
+ * `overall : FAIL`. Two lines of one table contradicting each other is
+ * worse than either verdict alone, because it teaches the reader that
+ * the column cannot be trusted.
+ *
+ * `undefined` leaves the row unscored and keeps it out of the overall
+ * verdict; the NO_OPERATION diagnostic is what says why.
+ */
+function verdictFor(margin_s: number, required: number | undefined): boolean | undefined {
+  if (required == null) return undefined;
+  if (!Number.isFinite(margin_s)) return undefined;
+  return margin_s >= required;
+}
+
 export function reportGrade(study: Study, grade: Grade): GradeReport {
   const diagnostics: GradeReport['diagnostics'] = [];
   const primary = sideFor(study, grade.primary, 'primary');
@@ -631,7 +651,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
       M_primary: multipleOf(primary, I_p),
       M_backup: multipleOf(backup, I_b),
     };
-    if (grade.CTI_min_s != null) row.pass = row.margin_s >= grade.CTI_min_s;
+    row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
     report.rows.push(row);
   }
 
@@ -655,7 +675,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
       M_backup: multipleOf(backup, I_b),
     };
     if (grade.CTI_min_s != null && Number.isFinite(row.margin_s)) {
-      row.pass = row.margin_s >= grade.CTI_min_s;
+      row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
     }
     report.rows.push(row);
   }
@@ -714,7 +734,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
           M_primary: multipleOf(primary, I_p),
           M_backup: multipleOf(backup, I_b),
         };
-        if (grade.CTI_min_s != null) row.pass = row.margin_s >= grade.CTI_min_s;
+        row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
         report.rows.push(row);
       }
       report.upstream_to_A = to;
@@ -835,7 +855,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
           row.t_backup_s = backup.tAt(row.I_backup_A);
           row.margin_s = row.t_backup_s - row.t_primary_s;
           row.M_backup = multipleOf(backup, row.I_backup_A);
-          if (grade.CTI_min_s != null) row.pass = row.margin_s >= grade.CTI_min_s;
+          row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
         }
         const after = report.rows.filter((r) => Number.isFinite(r.margin_s));
         if (after.length > 0) {

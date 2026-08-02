@@ -214,3 +214,43 @@ describe('a study that parses but says nothing', () => {
     expect(existsSync(join(dir, 'bare.svg'))).toBe(true);
   });
 });
+
+describe('a study with errors', () => {
+  /*
+   * The sheet used to be written anyway: diagnostics to stderr, exit
+   * status 1, and a plausible drawing built on whatever the broken
+   * settings defaulted to. The exit status is no protection -- nobody
+   * reads it, and the file outlives the shell that made it.
+   */
+  it('is not drawn', async () => {
+    const file = write('bad.tc', BAD_SETTING);
+    const target = join(dir, 'bad.svg');
+    expect(await main(['render', file, '-o', target])).toBe(1);
+    expect(existsSync(target)).toBe(false);
+    expect(err.join('\n')).toMatch(/no sheet written/);
+  });
+
+  it('is drawn on request, and stamped when it is', async () => {
+    const file = write('bad.tc', BAD_SETTING);
+    const target = join(dir, 'forced.svg');
+    expect(await main(['render', file, '-o', target, '--force'])).toBe(1);
+    expect(existsSync(target)).toBe(true);
+    /* Unstamped it would be indistinguishable from a good sheet, which
+     * is the only reason refusing to write was worth doing. */
+    expect(readFileSync(target, 'utf8')).toMatch(/NOT VALID/);
+  });
+
+  it('names how many errors the forced sheet was drawn from', async () => {
+    const file = write('bad.tc', BAD_SETTING);
+    const target = join(dir, 'forced2.svg');
+    await main(['render', file, '-o', target, '--force']);
+    expect(readFileSync(target, 'utf8')).toMatch(/WITH \d+ ERROR/);
+  });
+
+  it('leaves a clean study unstamped', async () => {
+    const file = write('good.tc', GOOD);
+    const target = join(dir, 'good.svg');
+    await main(['render', file, '-o', target]);
+    expect(readFileSync(target, 'utf8')).not.toMatch(/NOT VALID/);
+  });
+});

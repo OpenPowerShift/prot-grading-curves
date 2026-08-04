@@ -35,35 +35,35 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   // top-level
   meta:        M('top', 'Project metadata block (engineer, date, standard, defaults).', 'meta { engineer = "..."; }'),
   system:      M('top', 'Network-level declarations: named voltage levels, zero-sequence continuity between them, and the per-unit base.', 'system { voltages { ... } zero_sequence { "HV" to "LV" = blocked; } }'),
-  faults:      M('top', 'Named fault-current table; each fault has a current and a voltage.', 'faults { "F1" { I_A = 6400 A; voltage = "LV"; } }'),
+  faults:      M('top', 'Named fault-current table; each fault has a current and a voltage.', 'faults { "F1" { I = 6.4 kA; type = three_phase; voltage = "LV"; } }'),
   times:       M('top', 'Named required times, drawn as horizontal rules: the other axis\u2019s answer to a fault. An arc-flash limit, a withstand, a grid-code clearance.', 'times { "Arc flash limit" { t = 200 ms; at_I = 3 kA; } }'),
   relay:       M('top', 'A relay instance with its voltage level and current transformer ratio.', 'relay R_FDR { voltage = "LV"; ct_ratio = 600/5; ... }'),
   element:     M('top', 'A protection function on a relay -- IDMT, instantaneous, etc.', 'element 51 { curve = iec.si; ... }'),
   device:      M('top', 'Auxiliary TCC asset: fuse, cable, transformer damage, recloser, motor.', 'device "ferraz_abc_100a" { kind = fuse; ... }'),
   grade:       M('top', 'A grading pair: primary / backup / fault / margin, optionally solved.', 'grade { primary = R_FDR:51; backup = R_INC:51; ... }'),
   combine:     M('top', 'Synthetic curve -- pointwise min/max/sum of source curves.', 'combine { name = "OR"; sources = [R_FDR:51, R_INC:51]; as = envelope_min; }'),
-  scenario:    M('top', 'One condition with its currents at every level, so nothing is referred across a transformer. As a field on grade, annotate or point, it names one.', 'scenario "LV earth fault" { type = single_phase_earth; level "LV" { I_A = 460 A; I0_A = 153 A; } }'),
-  annotate:    M('top', 'A leader-line annotation on a curve at a specific current, or the margin between two.', 'annotate { on_curve = R_FDR:51; at_I_A = 8 kA; label = "Trip"; }'),
-  point:       M('top', 'A marked (current, time) coordinate. Declares its current as a fault does -- I_A, I2_A, I0_A, earth_A -- or takes it from a named condition.', 'point "inrush" { I_A = 2.4 kA; t_s = 0.1; label = "Inrush"; }'),
+  scenario:    M('top', 'One condition with its currents at every level, so nothing is referred across a transformer. As a field on grade, annotate or point, it names one.', 'scenario "LV earth fault" { type = single_phase_earth; level "LV" { I = 460 A; I0 = 153 A; } }'),
+  annotate:    M('top', 'A leader-line annotation on a curve at a specific current, or the margin between two.', 'annotate { on_curve = R_FDR:51; at_I = 8 kA; label = "Trip"; }'),
+  point:       M('top', 'A marked (current, time) coordinate. Declares its current as a fault does -- I, I2, I0, residual -- or takes it from a named condition.', 'point "inrush" { I = 2.4 kA; t = 100 ms; label = "Inrush"; }'),
   view:        M('top', 'One sheet: voltage frame, axis quantity, the condition depicted, and its own title. A study may declare several.', 'view "I2 grading" { voltage = "HV"; quantity = I2; condition = "1ph min"; }'),
   page:        M('top', 'Page geometry + theme + title. Output page layout.', 'page { size = "A4"; orientation = "landscape"; title = "..."; }'),
   notes:       M('top', 'Free-form notes attached to the document.', 'notes { revision = "draft"; }'),
 
   // system
-  base_S:    M('system', 'System MVA base for per-unit conversions.', 'base_MVA = 25.0;'),
-  I_base:    M('system', 'Per-unit base current for the whole study.', 'I_base_A = 5000;'),
+  base_S:    M('system', 'System MVA base for per-unit conversions.', 'base_S = 25 MVA;'),
+  I_base:    M('system', 'Per-unit base current for the whole study.', 'I_base = 5 kA;'),
   I_units:     M('system', 'Default current-units for the study ("primary" or "secondary").', 'I_units = "primary";'),
 
   // system.voltages
-  V:          M('voltages', 'Numerical voltage in kV (single value, no qualifier).', 'kV = 33.0;'),
+  V:          M('voltages', 'Numerical voltage in kV (single value, no qualifier).', 'V = 33 kV;'),
   description: M('voltages', 'Free-text description.', 'description = "33 kV side";'),
 
   // faults
-  I:         M('faults', 'Fault current at the named fault, in amperes.', 'I_A = 6400 A;'),
-  I_min:       M('faults', 'Minimum fault current for this entry (lower bound of a fault range).', 'min_A = 1500 A;'),
-  I_max:       M('faults', 'Maximum fault current for this entry.', 'max_A = 6400 A;'),
-  I0:        M('faults', 'Zero-sequence current component.', 'I0_A = 4500 A;'),
-  I2:        M('faults', 'Negative-sequence current component.', 'I2_A = 1500 A;'),
+  I:         M('faults', 'Fault current at the named fault, in amperes.', 'I = 6.4 kA;'),
+  I_min:       M('faults', 'Minimum fault current for this entry (lower bound of a fault range).', 'I_min = 1.5 kA;'),
+  I_max:       M('faults', 'Maximum fault current for this entry.', 'I_max = 6.4 kA;'),
+  I0:        M('faults', 'Zero-sequence current component.', 'I0 = 4.5 kA;'),
+  I2:        M('faults', 'Negative-sequence current component.', 'I2 = 1.5 kA;'),
   fault_voltage: M('faults', 'Voltage level name that this fault is declared at (must exist in system.voltages).', 'voltage = "LV";'),
 
   // relay
@@ -94,9 +94,9 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
 
   // device
   kind:        M('device', 'Device kind: fuse, recloser, cable, transformer_damage, motor_startup, breaker.', 'kind = "fuse";'),
-  rating_I:    M('device', 'Device rated current (fuse/breaker/motor).', 'rating_A = 100 A;'),
-  rating_V:   M('device', 'Device rated voltage in kilovolts.', 'rating_kV = 11;'),
-  rating_S:  M('device', 'Device rated power (transformer/recloser).', 'rating_MVA = 25;'),
+  rating_I:    M('device', 'Device rated current (fuse/breaker/motor).', 'rating_I = 100 A;'),
+  rating_V:   M('device', 'Device rated voltage in kilovolts.', 'rating_V = 11 kV;'),
+  rating_S:  M('device', 'Device rated power (transformer/recloser).', 'rating_S = 25 MVA;'),
   min_melt:    M('device', 'Fuse band: minimum-melt time vs current points.', 'min_melt = [(130 A, 1000 s), ...];'),
   total_clear: M('device', 'Fuse band: total-clear time vs current points.', 'total_clear = [(130 A, 60 s), ...];'),
 
@@ -109,7 +109,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   scenarios:   M('annotate', 'Several conditions at once: drawn once per condition, each at its own current.', 'scenarios = ["system normal", "one tx out"];'),
   margin:   M('grade', 'The coordination margin this pair must achieve, as a floor. Was CTI_min_s; the unit is now yours to write.', 'margin = 0.30 s;'),
   margin_target:    M('grade', 'A margin to *hit*, for the solver, as opposed to `margin` which is a floor to satisfy.', 'margin_target = 0.30 s;'),
-  tolerance_pct: M('grade', 'Allowed slippage on margin_s for solve (default 0).', 'tolerance_pct = 5;'),
+  tolerance_pct: M('grade', 'Allowed slippage on margin_target for solve (default 0).', 'tolerance_pct = 5;'),
   solve:       M('grade', 'Sub-block: directive to compute tms that hits the target.', 'solve { strategy = "tight"; tolerance_pct = 5; }'),
 
   // grade -- the sweep
@@ -142,7 +142,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
 
   // solve
   strategy:    M('solve', 'Solver strategy: "tight", "loose", or "safety_factor".', 'strategy = "tight";'),
-  free:        M('solve', 'List of free variables for the solver: tms, t_delay, I_pu.', 'free = ["tms", "I_pickup"];'),
+  free:        M('solve', 'List of free variables for the solver: tms, t_delay, I_pickup.', 'free = ["tms", "I_pickup"];'),
 
   // view
   view_voltage: M('view', 'Voltage frame for the rendered plot. Named level or "<n> kV" or "pickup".', 'voltage = "HV";'),

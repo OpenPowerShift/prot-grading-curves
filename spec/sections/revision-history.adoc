@@ -265,6 +265,21 @@
                                 author from suffixing every cosmetic
                                 value.
 
+| 2026-08-05 | 0.1.0 | *Marks scoped to a sheet.* `faults`, `times`,
+                              `point` and `annotate` take `view` (or
+                              `views`), naming one sheet or a list of
+                              them.
+
+                              A study with a phase sheet and a
+                              negative-sequence sheet carries marks that
+                              mean something on one and nothing on the
+                              other. The alternatives were to draw them
+                              everywhere or to split the study into two
+                              files, and two files drift apart.
+
+                              Absent, the mark belongs to every sheet,
+                              so no existing study changes.
+
 | 2026-07-31 | 0.1.0 | *Sheet controls.* Four additions, none of
                               which changes a computed number; all of
                               them change whether one can be read off

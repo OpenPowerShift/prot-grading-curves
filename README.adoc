@@ -1317,6 +1317,27 @@ annotate {
 # ---- A point drawn for both conditions at once. ----------------------
 #      `scenarios` takes a list; the marker is drawn once per condition
 #      named, at each one's own figure for the level being shown.
+# ---- A mark that belongs to one sheet only. --------------------------
+#      `view` (or `views`, for a list) keeps a mark to the sheets it
+#      means something on. A phase-current inrush figure is meaningless
+#      on the I2 axis; drawn there it invites a reader to compare it
+#      against a curve it has nothing to do with.
+point "Phase inrush" {
+  I = 1.8 kA;
+  t = 100 ms;
+  view = "Phase";
+  label = "Inrush, phase amps";
+  shape = cross;
+}
+
+times {
+  "Earth-fault clearance" {
+    t = 800 ms;
+    at_I = 400 A;
+    views = ["Residual", "Negative sequence"];
+  }
+}
+
 point "Tee I2" {
   scenarios = ["Phase-earth at the tee", "Phase-phase at the tee"];
   voltage = "HV";

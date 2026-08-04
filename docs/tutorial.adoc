@@ -457,6 +457,20 @@ This is where the earlier `function` declarations pay off. On the earth
 sheet the tool knows the `51G` belongs there and the `51` does not, and
 it says so rather than quietly drawing one of them in the wrong place.
 
+=== Marks that belong to one sheet
+
+Once a study has more than one sheet, some of what you have marked
+belongs to only one of them. `faults`, `times`, `point` and `annotate`
+each take a `view`:
+
+[source,tc]
+----
+point "Inrush" { I = 2.4 kA; t = 100 ms; view = "Phase"; }
+times { "Arc flash" { t = 500 ms; views = ["Phase", "Earth"]; } }
+----
+
+One name or a list. Left off, it means every sheet.
+
 == 13. Scenarios: when one number is not enough
 
 Everything so far has used `faults` -- one current, at one voltage

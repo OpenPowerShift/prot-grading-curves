@@ -695,6 +695,12 @@ class Parser {
         }
         case 'label': p.label = this.parseStringOrIdent(); break;
         case 'voltage': p.voltage = this.parseStringOrIdent(); break;
+        case 'view':
+        case 'views': {
+          const names = this.parseNameList();
+          if (names.length > 0) p.views = [...(p.views ?? []), ...names];
+          break;
+        }
         case 'color': p.color = this.parseStringOrIdent(); break;
         case 'description': p.description = this.parseStringOrIdent(); break;
         case 'coords': p.coords = this.parseBool(); break;
@@ -707,7 +713,7 @@ class Parser {
           this.parseScalarValue();
           this.noteUnknownKey('a point', k, ['I', 'I1', 'I2', 'I0', 'residual', 't',
             'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'voltage',
-            'color', 'description', 'coords', 'shape', 'on_curve']);
+            'view', 'views', 'color', 'description', 'coords', 'shape', 'on_curve']);
           break;
       }
       this.eat('SEMI');
@@ -987,13 +993,19 @@ class Parser {
               if (tok) f.voltage = unquote(tok.image);
               break;
             }
+            case 'view':
+            case 'views': {
+              const names = this.parseNameList();
+              if (names.length > 0) f.views = [...(f.views ?? []), ...names];
+              break;
+            }
             case 'description': {
               const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
               if (tok) f.description = unquote(tok.image);
               break;
             }
             default: /* ignore */ this.parseScalarValue();
-              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type', 'voltage', 'description']);
+              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type', 'voltage', 'view', 'views', 'description']);
           }
           this.eat('SEMI');
         }
@@ -1029,6 +1041,12 @@ class Parser {
           switch (k.image) {
             case 't': t.t_s = this.parseNumberWithUnit_s('t'); break;
             case 'at_I': t.at_I_A = this.parseNumberWithUnit_A('at_I'); break;
+            case 'view':
+            case 'views': {
+              const names = this.parseNameList();
+              if (names.length > 0) t.views = [...(t.views ?? []), ...names];
+              break;
+            }
             case 'description': {
               const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
               if (tok) t.description = unquote(tok.image);
@@ -1036,7 +1054,7 @@ class Parser {
             }
             default:
               this.parseScalarValue();
-              this.noteUnknownKey('a time', k, ['t', 'at_I', 'description']);
+              this.noteUnknownKey('a time', k, ['t', 'at_I', 'view', 'views', 'description']);
           }
           this.eat('SEMI');
         }
@@ -1744,6 +1762,13 @@ if (kwName === 'flex_points') {
               }
             }
             break;
+          case 'view':
+          case 'views': {
+            const names = this.parseNameList();
+            if (names.length > 0) a.views = [...(a.views ?? []), ...names];
+            this.eat('SEMI');
+            break;
+          }
           case 'color':
             {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
@@ -1752,7 +1777,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords']);
+            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords', 'view', 'views']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }

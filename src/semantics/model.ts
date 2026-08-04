@@ -55,6 +55,9 @@ export interface VoltageLevel {
 }
 
 export interface Fault {
+  /** Sheets this belongs to, by `view` name. Absent means every sheet. */
+  views?: string[];
+
   name: string;
   /** Fault type, supplying the ratios between quantities. */
   type?: FaultType;
@@ -270,6 +273,9 @@ export interface Grade {
  * judged against rather than a current they are evaluated at.
  */
 export interface RequiredTime {
+  /** Sheets this belongs to, by `view` name. Absent means every sheet. */
+  views?: string[];
+
   name: string;
   t_s: number;
   /** Caption anchor along the rule, in the sheet's own axis current. */
@@ -280,6 +286,9 @@ export interface RequiredTime {
 
 /** A marked (I, t) coordinate -- inrush, motor start, damage point. */
 export interface StudyPoint {
+  /** Sheets this belongs to, by `view` name. Absent means every sheet. */
+  views?: string[];
+
   id: string;
   /**
    * Phase current in primary amps at `voltage`, or `NaN` when
@@ -317,6 +326,9 @@ export interface StudyPoint {
 
 /** A resolved annotation: either a point on a curve, or a margin. */
 export interface Annotation {
+  /** Sheets this belongs to, by `view` name. Absent means every sheet. */
+  views?: string[];
+
   /**
    * `margin` spans the two curves vertically at one current and reports
    * a time; `current_margin` spans them horizontally at one time and
@@ -485,6 +497,7 @@ export function buildStudy(doc: Document): Study {
             name: t.name,
             t_s: t.t_s,
             at_I_A: t.at_I_A,
+            views: t.views,
             description: t.description,
             loc: t.loc,
           });
@@ -549,6 +562,7 @@ export function buildStudy(doc: Document): Study {
         I_A: f.I_A,
         min_A: f.min_A ?? f.I_A,
         max_A: f.max_A ?? f.I_A,
+        views: f.views,
         I1_A: f.I1_A,
         earth_A: f.earth_A,
         I0_A: f.I0_A,
@@ -606,6 +620,7 @@ export function buildStudy(doc: Document): Study {
             const suffix = conditions.length > 1 && condition ? ` · ${condition}` : '';
             study.points.push({
               id: `${item.id}${suffix}`,
+              views: item.views,
               I_A: item.I_A,
               I1_A: item.I1_A,
               I2_A: item.I2_A,
@@ -647,6 +662,7 @@ export function buildStudy(doc: Document): Study {
             at_t_s: item.at_t_s,
             pointRef: item.pointRef,
             voltage: item.voltage,
+            views: item.views,
             at_I1_A: item.at_I1_A,
             at_I2_A: item.at_I2_A,
             at_I0_A: item.at_I0_A,

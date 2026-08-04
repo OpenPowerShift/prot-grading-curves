@@ -59,6 +59,15 @@ export interface SystemBlock extends BaseNode {
 }
 
 export interface FaultDecl extends BaseNode {
+  /**
+   * Sheets this belongs to, by `view` name. Absent means every sheet.
+   *
+   * A study with a phase sheet and a negative-sequence sheet routinely
+   * has marks that mean something on one and nothing on the other, and
+   * before this the only way to keep them apart was two files.
+   */
+  views?: string[];
+
   name: string;
   /**
    * What kind of fault this is. Supplies the ratios between phase
@@ -144,6 +153,15 @@ export interface FaultsBlock extends BaseNode {
  * the one way this is simpler than a fault.
  */
 export interface TimeDecl extends BaseNode {
+  /**
+   * Sheets this belongs to, by `view` name. Absent means every sheet.
+   *
+   * A study with a phase sheet and a negative-sequence sheet routinely
+   * has marks that mean something on one and nothing on the other, and
+   * before this the only way to keep them apart was two files.
+   */
+  views?: string[];
+
   name: string;
   /** The required time, in seconds. */
   t_s: number;
@@ -309,6 +327,15 @@ export interface GradeBlock extends BaseNode {
  *               argument turns on directly onto the chart.
  */
 export interface AnnotateBlock extends BaseNode {
+  /**
+   * Sheets this belongs to, by `view` name. Absent means every sheet.
+   *
+   * A study with a phase sheet and a negative-sequence sheet routinely
+   * has marks that mean something on one and nothing on the other, and
+   * before this the only way to keep them apart was two files.
+   */
+  views?: string[];
+
   type: 'annotate';
   /** Point form: the curve being marked. */
   on_curve?: Ref;
@@ -694,6 +721,15 @@ export interface PageBlock extends BaseNode {
  * to argue about.
  */
 export interface PointBlock extends BaseNode {
+  /**
+   * Sheets this belongs to, by `view` name. Absent means every sheet.
+   *
+   * A study with a phase sheet and a negative-sequence sheet routinely
+   * has marks that mean something on one and nothing on the other, and
+   * before this the only way to keep them apart was two files.
+   */
+  views?: string[];
+
   type: 'point';
   id: string;
   /**

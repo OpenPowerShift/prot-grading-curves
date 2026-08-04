@@ -515,8 +515,27 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * boundary at the bottom. Declaration order made the reader match
    * each entry to a rule by its figure.
    */
+  /**
+   * Whether something scoped to particular sheets belongs on this one.
+   *
+   * A study with a phase sheet and a negative-sequence sheet routinely
+   * carries marks that mean something on one and nothing on the other
+   * -- an inrush point in phase amps, a clearance that applies only to
+   * the earth-fault story. Without a way to say so the only options
+   * were to draw them everywhere or split the study into two files,
+   * and two files drift.
+   *
+   * Absent `view` means every sheet, so nothing written before this
+   * changes.
+   */
+  const onThisSheet = (scoped: { views?: string[] }): boolean => {
+    if (!scoped.views || scoped.views.length === 0) return true;
+    const here = view?.name;
+    return here != null && scoped.views.includes(here);
+  };
+
   const times = [...study.times.values()]
-    .filter((t) => Number.isFinite(t.t_s) && t.t_s > 0)
+    .filter((t) => Number.isFinite(t.t_s) && t.t_s > 0 && onThisSheet(t))
     .sort((a, b) => b.t_s - a.t_s);
   for (const t of times) {
     if (t.t_s * 0.7 < t_lo) t_lo = t.t_s * 0.7;
@@ -535,6 +554,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const fb = item as FaultsBlock;
       for (const f of fb.faults) {
         if (!Number.isFinite(f.I_A)) continue;
+        if (!onThisSheet(f)) continue;
         const V_fault = f.voltage ? voltageKvs.get(f.voltage) : undefined;
 
         /*
@@ -2023,6 +2043,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /** Annotations dropped because their anchor is off the window. */
   const offPlotAnnotations: string[] = [];
 
+
   /*
    * House style for leader lines. The `page { leaders }` block was
    * parsed, validated and offered in completions while being read by
@@ -2307,6 +2328,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   for (const point of study.points) {
     if (!(point.t_s > 0)) continue;
+    if (!onThisSheet(point)) continue;
 
     /*
      * A point either states its current or names a condition that
@@ -2479,6 +2501,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   for (const annotation of study.annotations) {
+    if (!onThisSheet(annotation)) continue;
     const colour = annotation.color ?? th.foreground;
 
     /*

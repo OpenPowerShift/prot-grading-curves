@@ -1183,6 +1183,33 @@ the relay whose panel the reader will have in front of them.
 `"multiples"` -- the last drawing the abscissa in multiples of pickup,
 which is how a relay manual states its curves.
 
+==== Keeping a mark to one sheet
+
+`faults`, `times`, `point` and `annotate` all take a `view`, naming the
+sheet or sheets they belong to. One name or a list:
+
+[source,tc]
+----
+faults {
+    "Board max"  { I = 9.4 kA; voltage = "MV"; }                    # every sheet
+    "Earth max"  { I = 1.6 kA; voltage = "MV"; view  = "Earth"; }   # one sheet
+    "Both ways"  { I = 3.1 kA; voltage = "MV"; views = ["Phase", "Earth"]; }
+}
+
+point "Inrush" { I = 2.4 kA; t = 100 ms; view = "Phase"; }
+
+annotate { on_curve = R:46; at_I = 800 A; label = "I2 only"; view = "I2"; }
+----
+
+A study with a phase sheet and a negative-sequence sheet carries marks
+that mean something on one and nothing on the other -- an inrush figure
+in phase amps, a clearance that applies only to the earth-fault story.
+Without this the choices were to draw them on every sheet or split the
+study into two files, and two files drift apart.
+
+Leaving `view` off means every sheet, so nothing written before this
+changes.
+
 === view -- one per sheet
 
 A study may declare several views. Each is one sheet: a phase sheet and

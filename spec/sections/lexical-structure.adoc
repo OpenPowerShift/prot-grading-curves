@@ -85,9 +85,9 @@ renderer's title block and the `[meta.*]` footer macros read, are
 *Inside `system.voltages.<level>`* -- V, description
 
 *Inside `faults.<name>`* -- I, I_min, I_max, I1, I2, I0, residual,
-type, voltage, description
+type, voltage, view, views, description
 
-*Inside `times.<name>`* -- t, at_I, description
+*Inside `times.<name>`* -- t, at_I, view, views, description
 
 *Inside `scenario`* -- type, description, level, sees
 

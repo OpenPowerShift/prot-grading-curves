@@ -134,6 +134,27 @@ annotate {
   label = "CTI";
 }
 
+# ---- the same argument on the other axis ------------------------------
+#      `at_t` instead of a fault makes it a *current* margin: the gap
+#      left to right at one time, rather than up and down at one
+#      current. It answers "how much current headroom is there", which
+#      is how a withstand limit is argued.
+#
+#      At 2 s the HV relay operates well to the left of the current the
+#      transformer can carry for 2 s, and that separation is the whole
+#      point of the through-fault check.
+#
+#      The figure is the larger current over the smaller, unsigned, and
+#      names the smaller. A signed difference against one nominated end
+#      would give the same gap two different magnitudes depending on
+#      which way round it happened to be written.
+annotate {
+  primary = R_TRF_HV:51;
+  at_t = 2.0 s;
+  point = "TX1_damage";
+  label = "through-fault headroom";
+}
+
 page {
   size = "A4";
   orientation = "landscape";

@@ -238,22 +238,48 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
   const drawn = (annotations: string): string =>
     parseAndRender(STUDY(annotations), { theme: 'light' }).svg;
 
+  /*
+   * Quoted as the larger over the smaller, unsigned, naming the
+   * smaller. A signed difference against the primary gave the same gap
+   * two different magnitudes depending on which end was called the
+   * primary -- +52.9% one way, -34.6% the other -- and put the
+   * direction in a `+`/`-` that is easy to read backwards.
+   */
   it('measures to a declared fault level', () => {
-    /* A 255 A pickup against a 390 A fault: (390 - 255) / 255. */
+    /* A 255 A pickup against a 390 A fault: 390 / 255 = 1.529. */
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
-    expect(svg).toContain('m +52.9%');
+    expect(svg).toContain('m 152.9% of R:50');
   });
 
-  it('measures to a marked point, and signs it', () => {
-    /* The inrush is *below* the pickup, so the margin is negative --
-     * which is the fact the drawing is there to show. */
+  it('names the smaller end, which is what carries the direction', () => {
+    /*
+     * The inrush is *below* the pickup, so here it is the far end that
+     * is the base: the pickup stands at 120.3% of the inrush. Naming
+     * the base is what the sign used to do, and cannot be misread.
+     */
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; point = "TX inrush"; label = "m"; }');
-    expect(svg).toContain('m -16.9%');
+    expect(svg).toContain('m 120.3% of TX inrush');
+  });
+
+  it('gives one gap one figure, whichever end is called the primary', () => {
+    /*
+     * The property the signed form did not have. Swapping the two
+     * references must not change the number, only which one is named.
+     */
+    const one = drawn('annotate { primary = R:50; backup = R:51; at_t   = 1 s; label = "m"; }');
+    const other = drawn('annotate { primary = R:51; backup = R:50; at_t   = 1 s; label = "m"; }');
+    const figure = (svg: string): string => svg.match(/m ([\d.]+)% of/)![1];
+    expect(figure(one)).toBe(figure(other));
   });
 
   it('measures between two characteristics', () => {
     const svg = drawn('annotate { primary = R:50; backup = R:51; at_t   = 1 s; label = "m"; }');
-    expect(svg).toMatch(/m [+-][\d.]+%/);
+    expect(svg).toMatch(/m [\d.]+% of R:5\d/);
+  });
+
+  it('is never below 100%, being a ratio of the larger to the smaller', () => {
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; point = "TX inrush"; label = "m"; }');
+    expect(Number(svg.match(/m ([\d.]+)% of/)![1])).toBeGreaterThanOrEqual(100);
   });
 
   it('takes a definite-time stage at its pickup, not somewhere on its shelf', () => {
@@ -261,10 +287,10 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
      * A flat stage gives the same time at every current above pickup,
      * so an equality solve would land wherever it started. The current
      * read is the *smallest* that achieves the time, which is the
-     * pickup -- and that is what makes the 52.9% above exact.
+     * pickup -- and that is what makes the 152.9% above exact.
      */
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
-    expect(svg).toContain('m +52.9%');
+    expect(svg).toContain('m 152.9% of R:50');
   });
 
   it('draws a horizontal span with arrowheads', () => {
@@ -277,7 +303,7 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
   it('keeps its label off its own arrow', () => {
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
     const arrowY = Number(svg.match(/<line x1="[\d.]+" y1="([\d.]+)" x2="[\d.]+" y2="\1" stroke="[^"]*" stroke-width="1\.4"\/>/)![1]);
-    const labelY = Number(svg.match(/<text x="[\d.-]+" y="([\d.-]+)"[^>]*>m [+-]/)![1]);
+    const labelY = Number(svg.match(/<text x="[\d.-]+" y="([\d.-]+)"[^>]*>m [\d]/)![1]);
     expect(Math.abs(labelY - arrowY)).toBeGreaterThan(6);
   });
 

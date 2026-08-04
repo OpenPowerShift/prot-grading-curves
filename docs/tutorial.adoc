@@ -326,6 +326,26 @@ annotate {
 That draws the arrow between the two curves at the fault, with the
 achieved figure on it.
 
+*The same argument sideways.* Swap the fault for an `at_t` and you get
+a *current* margin -- the gap left to right at one time, which is how
+headroom against a withstand limit or an inrush is argued:
+
+[source,tc]
+----
+annotate {
+    primary = R_INC:51;
+    at_t    = 2 s;
+    point   = "Damage limit";
+    label   = "headroom";
+}
+----
+
+That prints something like `headroom 535.6% of R_INC:51`: the larger
+current over the smaller, unsigned, naming the smaller. The name is
+what tells you which way round it goes, so there is no `+` or `-` to
+read backwards, and the figure is the same whichever end you write
+first.
+
 *A point from the fault study or a data sheet:*
 
 [source,tc]

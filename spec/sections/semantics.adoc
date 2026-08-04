@@ -1709,6 +1709,29 @@ log-log axis equal pixel distances are not equal times, so labelling
 the number is not a convenience: it is the only way to read the gap
 correctly.
 
+*Current-margin form* -- `primary` with `at_t`, and a far end given by
+`backup`, a condition, or `point` -- draws the horizontal separation
+at one time.
+
+Both ends SHALL be referred onto the sheet's abscissa before being
+compared, so that the reported figure is the one the drawn arrow
+spans.
+
+The separation SHALL be reported as the ratio of the *larger* current
+to the *smaller*, expressed as a percentage and unsigned, together
+with the name of the end carrying the smaller current:
+
+[stem]
+++++
+\mathrm{margin} = 100 \times \frac{\max(I_a, I_b)}{\min(I_a, I_b)}\ \%
+++++
+
+The figure is therefore never below `100%`, and is independent of
+which end is declared as the `primary`. Direction is carried by the
+named base rather than by a sign, a signed difference against one
+nominated end being neither symmetric -- one gap yields two magnitudes
+-- nor safe to read quickly on a drawing.
+
 * `style = "leader"` -- adds a leader line plus a label;
 * `style = "pin"` -- adds only a marker;
 * `style = "tag"` -- adds only a label.

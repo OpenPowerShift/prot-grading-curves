@@ -2586,11 +2586,39 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const pxB = xScale.toPx(viewB);
       const py = yScale.toPx(t);
       if (![pxP, pxB, py].every(Number.isFinite)) continue;
-      const pct = ((viewB - viewP) / viewP) * 100;
 
-      const text = annotation.label
-        ? `${annotation.label} ${pct >= 0 ? '+' : ''}${trimZeros(Number(pct.toFixed(1)))}%`
-        : `${pct >= 0 ? '+' : ''}${trimZeros(Number(pct.toFixed(1)))}%`;
+      /*
+       * Quoted as the larger over the smaller, unsigned, with the
+       * smaller named.
+       *
+       * It used to be a signed difference against the primary,
+       * `(B - A) / A`. Two things were wrong with that. The magnitude
+       * depended on which end happened to be called the primary -- the
+       * same gap reads +40% one way and -28.6% the other -- so two
+       * annotations over one pair of curves disagreed about how big it
+       * was. And the sign carried the direction, which is the part a
+       * reader is most likely to take the wrong way round on a sheet
+       * where the arrow already shows it.
+       *
+       * A ratio is symmetric, so there is only one number for a gap.
+       * Naming the base carries the direction in words instead:
+       * "140% of R_FDR:51" is how a current grading is quoted aloud,
+       * and cannot be read backwards.
+       */
+      const larger = Math.max(viewP, viewB);
+      const smaller = Math.min(viewP, viewB);
+      const pct = (larger / smaller) * 100;
+
+      const primaryName = annotation.primary?.text ?? 'the primary';
+      const farName = annotation.backup?.text
+        ?? annotation.pointRef
+        ?? annotation.condition
+        ?? 'the far end';
+      /* The base is whichever end is the smaller current. */
+      const baseName = viewP <= viewB ? primaryName : farName;
+
+      const figure = `${trimZeros(Number(pct.toFixed(1)))}% of ${baseName}`;
+      const text = annotation.label ? `${annotation.label} ${figure}` : figure;
 
       out.push(
         `<line x1="${pxP.toFixed(1)}" y1="${py.toFixed(1)}" x2="${pxB.toFixed(1)}" y2="${py.toFixed(1)}" ` +

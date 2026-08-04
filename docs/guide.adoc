@@ -924,24 +924,43 @@ annotate {                          # curve to a fault level
     primary = R_RMU:50;
     at_t    = 20 ms;
     fault   = "2ph min";
-    label   = "below min 2ph";      # -> "below min 2ph +52.9%"
+    label   = "min 2ph";            # -> "min 2ph 152.9% of R_RMU:50"
 }
 
 annotate {                          # curve to a marked point
     primary = R_RMU:50;
     at_t    = 20 ms;
     point   = "TX inrush";
-    label   = "above inrush";       # -> "above inrush -16.9%"
+    label   = "inrush";             # -> "inrush 120.3% of TX inrush"
 }
 ----
 
 `at_t` is what makes it a current margin. The far end is another
 characteristic (`backup`), a declared condition (`fault` / `scenario`),
 or a marked point (`point`) -- a pickup is as often quoted against a
-fault level or an inrush peak as against another relay. The percentage
-is of the primary's current, and both ends are put on the sheet's own
-axis before they are compared, so the figure is the one the drawn arrow
-spans.
+fault level or an inrush peak as against another relay. Both ends are
+put on the sheet's own axis before they are compared, so the figure is
+the one the drawn arrow spans.
+
+The percentage is *the larger current over the smaller*, unsigned, and
+the smaller one is named. So a 255 A pickup against a 390 A fault reads
+`152.9% of R_RMU:50`, and the same pickup against a 212 A inrush reads
+`120.3% of TX inrush` -- the base changes because the pickup is now the
+larger of the two.
+
+[NOTE]
+====
+This used to be a signed difference against the primary. Two things
+were wrong with it. The magnitude depended on which end you happened to
+call the primary -- one gap read `+52.9%` written one way round and
+`-34.6%` the other -- so two annotations over the same pair disagreed
+about how big it was. And the direction lived in a `+` or `-`, which is
+the easiest thing on a drawing to read backwards.
+
+A ratio is symmetric, so a gap has one figure however you write it; and
+naming the base says the direction in words, which is how a current
+grading is quoted aloud anyway.
+====
 
 A current is read as *the smallest current whose operate time is at or
 below* `at_t`. On an inverse curve that is the point where it crosses;

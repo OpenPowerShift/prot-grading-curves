@@ -843,12 +843,37 @@ the other way round, "what current gives me 300 ms?".
 [source,tc]
 ----
 annotate { on_curve = R_TEE:51G; at_residual = 2.4 kA; label = "51G"; }
-annotate { on_curve = R_RING:46; at_I1       = 800 A;  label = "I1"; }
+annotate { on_curve = R_RING:51P; at_I1      = 800 A;  label = "I1"; }
 annotate { on_curve = R_RING:51G; at_I0      = 800 A;  label = "I0 not 3I0"; }
 annotate { on_curve = R_TEE:51;  at_t        = 300 ms; label = "at 300 ms"; }
 ----
 
 Sample 17 draws all of them across four sheets of one study.
+
+The component you write has to be one the annotated element measures.
+Scalings of the same component are converted for you -- `at_I0` on a
+`3I0` element is multiplied by three -- but *different* components are
+not substituted for each other. Writing `at_I1` beside an element
+scaled in `3I2` is an error (`ANNOTATE_QUANTITY_MISMATCH`), because
+positive sequence is not negative sequence and guessing which you
+meant would put the mark somewhere it does not belong.
+
+An annotation that names a curve must also say where on it to sit:
+give a current, a time, or a condition. Naming none of them is
+`ANNOTATE_NO_POSITION` rather than a mark that quietly never appears.
+
+[WARNING]
+====
+`style = pin` draws a marker and nothing else, so a `label` beside one
+is never shown. That is `ANNOTATE_LABEL_NOT_DRAWN` -- use `leader` or
+`tag` when you want the text.
+====
+
+Where an annotation cannot be placed at all for reasons that depend on
+the sheet -- a curve that never reaches the time asked for, a level the
+condition does not cover -- the sheet says so in its notes, naming the
+mark. That is distinct from the count of annotations that are merely
+*outside the plotted range*, which changes as you zoom.
 
 `voltage` names the level the figure is read at, defaulting to the
 view's. Without it a bare current was taken in *each* referenced

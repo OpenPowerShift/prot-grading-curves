@@ -66,6 +66,8 @@
     "test:visual": "playwright test",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
+    "readme:sync": "node scripts/sync-readme-gallery.mjs",
+    "readme:check": "node scripts/sync-readme-gallery.mjs --check",
     "prepublishOnly": "npm run build:lib && node scripts/prepublish",
     "postpublish": "node scripts/postpublish",
     "test:coverage": "vitest run --coverage",

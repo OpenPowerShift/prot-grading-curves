@@ -355,9 +355,30 @@ annotate {
 curve) or `tag` (bare text). `coords = true` prints the actual
 (current, time) beside the label.
 
+A `pin` is a marker and nothing else, so it shows no label. Write one
+beside a pin and you are told, rather than left wondering where the
+text went.
+
+You can also place a mark by *time* instead of current, which is how a
+clearance figure usually arrives:
+
+[source,tc]
+----
+annotate {
+    on_curve = R_FDR:51;
+    at_t     = 300 ms;
+    label    = "Feeder at 300 ms";
+}
+----
+
+That reads the curve backwards -- "at what current is this relay this
+fast" -- and puts the mark there.
+
 Anything anchored outside the plotted window is left off rather than
 drawn beyond the frame, so zooming in never leaves marks floating over
-the legend.
+the legend. If a mark cannot be placed for a reason zooming will not
+fix -- a curve that never reaches the time you asked for -- the sheet
+names it in the notes under the axis.
 
 == 10. Requirements on the other axis
 

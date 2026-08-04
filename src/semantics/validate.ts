@@ -11,19 +11,28 @@
  * same identifier. Findings are ordered by source position.
  */
 
-import type { Document, SourceLocation } from '../parser/ast.js';
+import type { AnnotateBlock, Document, SourceLocation } from '../parser/ast.js';
 import {
   isKnownCurveId,
   suggestCurveId,
   tmsRangeFor,
   levenshtein,
 } from '../constants/curves.js';
-import { allElements, resolveRef, type Element, type Stage, type Study } from './model.js';
+import { isFaultType } from '../constants/sequence.js';
+import {
+  allElements, resolveRef,
+  type Device, type Element, type Stage, type Study,
+} from './model.js';
 import {
   MEASURED_QUANTITIES,
+  currentFor,
   elementQuantity,
   isMeasuredQuantity,
   measuredQuantityOf,
+  quantityField,
+  quantityLabel,
+  resolveCurrent,
+  type MeasuredQuantity,
 } from './quantity.js';
 import { conditionNames, resolveCondition } from './condition.js';
 import { FIELD_QUANTITY, KNOWN_UNITS, suffixFits, suffixesFor } from './units.js';
@@ -1071,6 +1080,8 @@ function validateAnnotations(ctx: Ctx): void {
         item.loc);
     }
 
+    checkAnnotationPlacement(ctx, item, target);
+
     for (const name of item.conditions ?? []) {
       /*
        * Judged at the level of whatever the annotation points at: each
@@ -1083,6 +1094,91 @@ function validateAnnotations(ctx: Ctx): void {
       checkConditionReference(ctx, name, 'annotate', level, item.loc);
     }
   }
+}
+
+/**
+ * Whether a point annotation can be placed at all, and whether every
+ * part of it will be drawn.
+ *
+ * An annotation that resolves to no position used to be dropped by the
+ * renderer with a bare `continue`: nothing on the sheet, nothing in the
+ * report, and a study that looked complete. Three of the five in the
+ * shipped sequence sample were being lost that way. These are the
+ * failures that can be seen without a viewport, so they are said here
+ * rather than as a note on one sheet.
+ */
+function checkAnnotationPlacement(
+  ctx: Ctx,
+  item: AnnotateBlock,
+  target: { element?: Element; device?: Device } | undefined,
+): void {
+  /* Only the point form; a margin is positioned by its two references. */
+  if (item.primary || item.backup) return;
+  if (!item.on_curve) return;
+
+  /*
+   * `pin` is specified as a marker and nothing else. A label written
+   * beside one is therefore never drawn -- which is indistinguishable,
+   * from the sheet, from the annotation having failed entirely.
+   */
+  if (item.style === 'pin' && item.label != null) {
+    add(ctx, 'ANNOTATE_LABEL_NOT_DRAWN', 'warning',
+      'style = pin draws a marker only, so this label will not appear; ' +
+      'use leader or tag to show it',
+      item.loc);
+  }
+
+  const declared: Array<[string, MeasuredQuantity, number | undefined]> = [
+    ['at_I', 'phase', item.at_I_A],
+    ['at_I1', 'I1', item.at_I1_A],
+    ['at_I2', 'I2', item.at_I2_A],
+    ['at_I0', 'I0', item.at_I0_A],
+    ['at_residual', '3I0', item.at_earth_A],
+  ];
+  const given = declared.filter(([, , value]) => value != null);
+
+  /* No current, no time, no condition: nothing says where it goes. */
+  if (given.length === 0 && item.at_t_s == null && (item.conditions?.length ?? 0) === 0) {
+    add(ctx, 'ANNOTATE_NO_POSITION', 'error',
+      `annotate on ${item.on_curve.text} says where to point but not where to put it: ` +
+      'give at_I (or at_I1, at_I2, at_I0, at_residual), at_t, or a fault or scenario',
+      item.loc);
+    return;
+  }
+
+  if (given.length === 0) return;
+
+  /*
+   * The component written has to be one the annotated element measures.
+   * `at_I1` beside an element scaled in `3I2` resolves to nothing --
+   * positive sequence is not negative sequence, and the tool will not
+   * substitute one for the other -- so the mark silently vanished.
+   */
+  const measured = target?.element ? elementQuantity(target.element.stages) : 'phase';
+  if (measured == null || measured === 'mixed') return;
+
+  const currents = {
+    phase: item.at_I_A, I1: item.at_I1_A, I2: item.at_I2_A,
+    I0: item.at_I0_A, residual: item.at_earth_A,
+  };
+  if (currentFor(measured, currents) != null) return;
+
+  /*
+   * A fault type can bridge the gap -- for a solid phase-earth fault
+   * `I1` and `I0` are the same figure -- but only if the annotation
+   * says which type it is talking about.
+   */
+  if (isFaultType(item.faultType)
+    && resolveCurrent(measured, currents, item.faultType) != null) return;
+
+  add(ctx, 'ANNOTATE_QUANTITY_MISMATCH', 'error',
+    `annotate places a mark on ${item.on_curve.text}, which measures ` +
+    `${quantityLabel(measured)}, but declares only ` +
+    `${given.map(([name]) => name).join(' and ')}; ` +
+    `give at_${quantityField(measured).replace(' (or residual)', '')}` +
+    `${measured === 'I0' || measured === '3I0' ? ' or at_residual' : ''}, ` +
+    'or add a type so the components can be derived',
+    item.loc);
 }
 
 function validatePoints(ctx: Ctx): void {

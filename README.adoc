@@ -1251,6 +1251,18 @@ relay R_RING {
     I_pickup = 400 A;
     tms = 0.22;
   }
+
+  # Positive sequence. Unlike phase current it is unaffected by the
+  # unbalance itself, so it makes a backup that reads the same figure
+  # whichever phase the fault is on.
+  element 51P {
+    name = "Positive sequence backup";
+    function = "phase_oc";
+    measures = I1;
+    curve = iec.si;
+    I_pickup = 500 A;
+    tms = 0.30;
+  }
 }
 
 grade {
@@ -1281,20 +1293,40 @@ annotate {
   on_curve = R_TEE:46;
   at_I2 = 800 A;
   label = "46 at the phase-earth fault";
-  style = pin;
+  style = tag;
 }
 
+# An earth-fault mark has nowhere to go on a sheet drawn for a fault
+# with no earth in it. The "Three times I2" sheet depicts the
+# phase-phase condition, where I0 and the residual are both zero — so
+# there is no factor from 3I0 onto that axis, and these three marks are
+# scoped to the sheets where zero sequence actually exists. Left
+# unscoped the sheet still draws, and says in its notes which marks it
+# could not place.
 annotate {
   on_curve = R_TEE:51G;
   at_residual = 2.4 kA;
   label = "51G sees the whole residual";
   style = leader;
+  views = ["Phase", "Negative sequence", "Residual"];
+}
+
+# The component written has to be one the element measures. This relay
+# is scaled in 3I2, so the figure is declared as I2 and the factor of
+# three is applied for you -- writing `at_I1` here would be refused,
+# because positive sequence is not negative sequence and the tool will
+# not quietly substitute one for the other.
+annotate {
+  on_curve = R_RING:46;
+  at_I2 = 800 A;
+  label = "declared as I2, read on a 3I2 element";
+  style = tag;
 }
 
 annotate {
-  on_curve = R_RING:46;
+  on_curve = R_RING:51P;
   at_I1 = 800 A;
-  label = "positive-sequence reference";
+  label = "positive-sequence backup";
   style = tag;
 }
 
@@ -1303,15 +1335,27 @@ annotate {
   at_I0 = 800 A;
   label = "I0 rather than 3I0";
   style = tag;
+  views = ["Phase", "Negative sequence", "Residual"];
 }
 
 # `at_t` places the mark by time instead of current — where a curve is
 # read the other way round, "what current gives me 300 ms?".
+#
+# `style` decides what is drawn: `leader` an elbowed line to the text,
+# `tag` the text alone, `pin` a bare marker. A `pin` draws no label, so
+# writing one beside it is refused rather than dropped.
 annotate {
   on_curve = R_TEE:51;
   at_t = 300 ms;
   label = "phase element at 300 ms";
-  style = pin;
+  style = leader;
+}
+
+annotate {
+  on_curve = R_TEE:51G;
+  at_residual = 1.2 kA;
+  style = pin;                    # a marker only — no label to lose
+  views = ["Phase", "Negative sequence", "Residual"];
 }
 
 # ---- A point drawn for both conditions at once. ----------------------

@@ -2043,6 +2043,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /** Annotations dropped because their anchor is off the window. */
   const offPlotAnnotations: string[] = [];
 
+  /**
+   * Annotations that have no position at all on this sheet.
+   *
+   * Distinct from `offPlotAnnotations`, which is a consequence of the
+   * viewport and changes as you zoom. These are marks the study asked
+   * for that could not be placed for any window: a curve that never
+   * reaches the time asked for, a component the annotated element does
+   * not measure, a condition that declares nothing at that level.
+   *
+   * They are *named* rather than counted, because unlike an off-plot
+   * mark the answer is not "zoom out" -- it is a line of source to fix,
+   * and the author needs to know which one.
+   */
+  const unplaceableAnnotations: string[] = [];
+
 
   /*
    * House style for leader lines. The `page { leaders }` block was
@@ -2738,29 +2753,69 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const { element, device } = atStage(
       resolveRef(study, annotation.on_curve), annotation.on_curve);
     const annotatedQ = element ? elementQuantity(element.stages) : 'phase';
-    const I = annotationCurrent(
-      study, annotation, element?.voltage ?? device?.voltage,
-      annotatedQ == null || annotatedQ === 'mixed' ? 'phase' : annotatedQ,
-    );
-    if (I == null) continue;
-    const t = element
-      ? tTripElement(element, I)
-      : device
-        ? deviceTime(device, I)
-        : Infinity;
-    if (!Number.isFinite(t)) continue;
+
+    /*
+     * `at_t` reads the curve the other way round: not "how long at this
+     * current" but "at what current is this curve this fast". Both are
+     * ordinary questions to ask of a characteristic, and a clearance
+     * time is far more often the figure an engineer has in hand.
+     *
+     * It used to be accepted by the parser, carried through the model,
+     * and then read by nothing on this path -- so the mark was not
+     * drawn and nothing said why. The inversion is the same bisection
+     * the current-margin arrow already uses, which is exact enough on
+     * a log axis and works for a flex table and a definite stage alike.
+     */
+    const byTime = annotation.at_t_s != null && annotation.at_I_A == null
+      && annotation.at_I1_A == null && annotation.at_I2_A == null
+      && annotation.at_I0_A == null && annotation.at_earth_A == null
+      && annotation.condition == null;
+
+    const I = byTime
+      ? currentAtTime({ element, device }, annotation.at_t_s!, 'primary')
+      : annotationCurrent(
+        study, annotation, element?.voltage ?? device?.voltage,
+        annotatedQ == null || annotatedQ === 'mixed' ? 'phase' : annotatedQ,
+      );
+    if (I == null) {
+      unplaceableAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
+      continue;
+    }
+    /*
+     * Placed at the time asked for rather than at the time the curve
+     * gives for the current just solved: the two agree to the accuracy
+     * of the bisection, and taking the declared figure keeps the mark
+     * exactly on the horizontal an author drew it to sit on.
+     */
+    const t = byTime
+      ? annotation.at_t_s!
+      : element
+        ? tTripElement(element, I)
+        : device
+          ? deviceTime(device, I)
+          : Infinity;
+    if (!Number.isFinite(t)) {
+      unplaceableAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
+      continue;
+    }
 
     /* Placed on the axis the sheet is drawn in, as the curve it marks
      * is -- otherwise the mark sits off its own curve. */
     const I_view = onAxisCurrent(element, I, device?.voltage_kV);
-    if (I_view == null) continue;
+    if (I_view == null) {
+      unplaceableAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
+      continue;
+    }
     if (!anchorOnPlot(I_view, t)) {
       offPlotAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
       continue;
     }
     const px = xScale.toPx(I_view);
     const py = yScale.toPx(t);
-    if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+    if (!Number.isFinite(px) || !Number.isFinite(py)) {
+      unplaceableAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
+      continue;
+    }
 
     const base = annotation.label ?? annotation.on_curve?.text ?? '';
     const text = annotation.coords ? `${base} (${coordText(I_view, t)})` : base;
@@ -3004,6 +3059,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       axisNotes.push(
         `${offPlotAnnotations.length} annotation`
         + `${offPlotAnnotations.length === 1 ? '' : 's'} outside the plotted range`,
+      );
+    }
+    /*
+     * Named, unlike the off-plot count: no amount of zooming brings
+     * these back, so the reader needs to know which mark is absent.
+     */
+    if (unplaceableAnnotations.length > 0) {
+      axisNotes.push(
+        `could not place ${unplaceableAnnotations.length === 1 ? 'annotation' : 'annotations'}: `
+        + unplaceableAnnotations.join(', '),
       );
     }
 

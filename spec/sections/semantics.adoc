@@ -1713,6 +1713,37 @@ correctly.
 * `style = "pin"` -- adds only a marker;
 * `style = "tag"` -- adds only a label.
 
+Because `"pin"` draws no text, a `label` declared beside one is never
+rendered; an implementation SHALL report `ANNOTATE_LABEL_NOT_DRAWN`
+rather than discard it silently.
+
+==== Placement of a point annotation
+
+A point annotation SHALL declare at least one of a current
+(`at_I`, `at_I1`, `at_I2`, `at_I0`, `at_residual`), a time (`at_t`),
+or a condition (`fault`, `faults`, `scenario`, `scenarios`).
+Declaring none is `ANNOTATE_NO_POSITION`.
+
+`at_t` positions the mark by *time*: the annotation is placed at the
+current at which the referenced characteristic operates in that time,
+which for a monotonic characteristic is unique. Where the
+characteristic does not reach that time anywhere in the drawn current
+domain, the mark SHALL be omitted and the sheet SHALL name it among
+its notes.
+
+A declared component SHALL be resolvable to the quantity the annotated
+element measures, by the ordinary resolution rules -- so a scaling of
+the same component converts (`at_I0` on a `3I0` element is multiplied
+by three), and a different component does not. Where it cannot be
+resolved, an implementation SHALL report
+`ANNOTATE_QUANTITY_MISMATCH`.
+
+Annotations that cannot be placed for reasons independent of the
+viewport SHALL be named in the sheet's notes. This is distinct from
+annotations whose anchor merely falls outside the plotted range, which
+SHALL be counted rather than named, since that set changes with every
+zoom.
+
 The annotation is rendered along with the curve's standard colour
 unless overridden per `annotate.color = "<css-color>"` (the colour
 override is optional in v1).

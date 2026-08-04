@@ -91,6 +91,17 @@ interface SnapState {
   I_A: number;
   t_s: number;
   curveLabel: string;
+  /**
+   * The identifier a `grade` or `annotate` block would name -- the
+   * relay reference for a curve, the declared name for a fault or a
+   * marked point.
+   *
+   * Shown beneath the label whenever the two differ, which they do
+   * whenever a relay or element declares a `name`. Someone building a
+   * file has the curve in front of them and needs to know what to
+   * type; the drawing's own words for it are no help.
+   */
+  ref?: string;
   voltage: string;
   protocol: 'snap' | 'free';
   /** polyline SVG path string */
@@ -320,6 +331,7 @@ export class TcViewer extends LitElement {
             I_A: I_at_x,
             t_s: t_at_y,
             curveLabel: p.getAttribute('data-curve') ?? '',
+            ref: p.getAttribute('data-ref') || undefined,
             voltage: p.getAttribute('data-voltage') ?? '',
             protocol: 'snap',
             pathD: '',
@@ -366,6 +378,8 @@ export class TcViewer extends LitElement {
           I_A: current,
           t_s: NaN,
           curveLabel: line.getAttribute('data-fault') ?? 'fault',
+          /* A condition's declared name *is* its reference. */
+          ref: line.getAttribute('data-fault') || undefined,
           voltage: '',
           protocol: 'snap',
           pathD: '',
@@ -389,6 +403,7 @@ export class TcViewer extends LitElement {
           I_A: Number(group.getAttribute('data-current')),
           t_s: Number(group.getAttribute('data-time')),
           curveLabel: group.getAttribute('data-point') ?? 'point',
+          ref: group.getAttribute('data-point') || undefined,
           voltage: '',
           protocol: 'snap',
           pathD: '',
@@ -1014,6 +1029,21 @@ render() {
      */
     const lines: string[] = [];
     if (snapped && hover.curveLabel) lines.push(hover.curveLabel);
+    /*
+     * The reference, when it is not simply the label again.
+     *
+     * A relay that declares a `name` is drawn as "Feeder 4 (Mill Road)
+     * 51" and referred to as `R_FDR:51`, and only the second can be
+     * typed into a `grade` or an `annotate`. Someone building a file
+     * has the curve under the cursor and no way to get from one to the
+     * other without going back to the source and reading relay blocks.
+     *
+     * Suppressed when they match, which is the case for a study that
+     * names nothing -- there a second identical line would be noise.
+     */
+    if (snapped && hover.ref && hover.ref !== hover.curveLabel) {
+      lines.push(hover.ref);
+    }
     lines.push(`I = ${prettyNum(hover.I_A)}`);
     /* A fault marker asserts a current, not a time. */
     if (hover.target !== 'fault') lines.push(`t = ${prettyTime(hover.t_s)}`);

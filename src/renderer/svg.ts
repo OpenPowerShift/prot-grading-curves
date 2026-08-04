@@ -198,6 +198,18 @@ interface DetailLine {
 
 interface CurveEntry {
   label: string;
+  /**
+   * The identifier `grade`, `annotate` and `combine` resolve against
+   * -- `R_FDR:51` -- as opposed to `label`, which is what the drawing
+   * calls the curve.
+   *
+   * The two differ whenever a relay or element declares a `name`,
+   * which is most studies worth reading. Carried onto the sheet so the
+   * playground can tell an author what to type: hovering a curve and
+   * being shown "Feeder 4 (Mill Road) 51" is no help at all when the
+   * reference you need is `R_FDR:51`.
+   */
+  ref?: string;
   color: string;
   pathD: string;
   pickupPx: number;       // in the view frame
@@ -1690,6 +1702,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         if (!pathD) continue;
         curves.push({
           label: `${element.label}/${stage.id}`,
+          ref: `${element.ref}/${stage.id}`,
           color: drawn.color,
           pathD,
           pickupPx: stage.I_pu_A != null
@@ -1716,6 +1729,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (!pathD) continue;
     curves.push({
       label: element.label,
+      ref: element.ref,
       color: drawn.color,
       pathD,
       pickupPx: pickupPxOf(element, factor, V_source),
@@ -2226,7 +2240,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const sw = isHl ? String(baseWidth * 1.6) : String(baseWidth);
     const dashValue = c.dashArray ?? (c.dashed ? '6 4' : undefined);
     const dash = dashValue ? ` stroke-dasharray="${dashValue}"` : '';
-    out.push(`<path d="${c.pathD}" class="${cls}" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="${c.color}" stroke-width="${sw}"${dash} data-curve="${escapeXml(c.label)}" data-voltage="${escapeXml(c.voltage ?? '')}"/>`);
+    out.push(`<path d="${c.pathD}" class="${cls}" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="${c.color}" stroke-width="${sw}"${dash} data-curve="${escapeXml(c.label)}" data-ref="${escapeXml(c.ref ?? '')}" data-voltage="${escapeXml(c.voltage ?? '')}"/>`);
   }
 
   /* The limits, over the characteristics they judge. */

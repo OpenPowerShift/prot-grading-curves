@@ -106,6 +106,13 @@ Two ways, both in the playground:
   anything and it explains it, including named values like `iec.si`.
   Docked rather than floating, because a tooltip covers the line you
   are reading -- which is exactly the line you were asking about.
+* **Hovering the plot**: the readout names what the cursor has latched
+  onto and, beneath that, the *reference* a `grade` or an `annotate`
+  would use. Those differ as soon as anything declares a `name` -- a
+  curve drawn as "11 kV feeder · Phase TOC" is written `R_FDR:51` --
+  and the reference is the one you can type. Faults and marked points
+  answer with their declared names, which are already their
+  references.
 
 === Running it
 

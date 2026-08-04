@@ -37,9 +37,31 @@ const poke = (el: TcApp, key: string, value: unknown): void => {
  * reprocessed on every keystroke, which means the study is not there
  * the instant the source changes.
  */
+/**
+ * Type into the editor and wait for the app to catch up.
+ *
+ * The app debounces parsing by 200 ms. This used to sleep for 260 --
+ * a 60 ms margin, which is ample on an idle machine and not ample at
+ * all when the whole suite is running in parallel workers, so the test
+ * failed perhaps one run in three with `expected undefined to be
+ * defined`. Adding any other slow test made it worse, which is how it
+ * was noticed.
+ *
+ * Waiting for the *outcome* instead of for a duration is both faster
+ * in the common case and immune to load. The deadline is generous
+ * because it is only reached when something is genuinely broken, and
+ * the failure it produces then says so.
+ */
 async function edit(el: TcApp, source: string): Promise<void> {
+  const before = (el as unknown as { ast?: unknown }).ast;
   (el as unknown as { handleSourceChange(s: string): void }).handleSourceChange(source);
-  await new Promise((r) => setTimeout(r, 260));
+
+  const deadline = Date.now() + 4000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 10));
+    const settled = (el as unknown as { parseTimer: number | null }).parseTimer == null;
+    if (settled && (el as unknown as { ast?: unknown }).ast !== before) break;
+  }
   await el.updateComplete;
 }
 

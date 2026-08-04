@@ -14,6 +14,11 @@ If you want the reference rather than the walkthrough, read the user
 guide -- the *Reference* tab above, or `docs/guide.adoc`. If you want to
 know what a particular key does while you are typing, press `?`.
 
+Hovering a curve on the plot tells you what it is *and* what to call
+it: the drawing's own words on top, and beneath them the reference --
+`R_FDR:51` -- that a `grade` or an `annotate` has to name. That saves
+scrolling back through relay blocks while you write one.
+
 toc::[]
 
 == 1. One curve

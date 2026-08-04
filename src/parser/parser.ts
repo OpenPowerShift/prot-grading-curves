@@ -29,6 +29,7 @@ import type {
   RelayBlock,
   ScalarValue,
   SolveBlock,
+  SpanEnd,
   StageBlock,
   SystemBlock,
   TopLevel,
@@ -128,7 +129,11 @@ export const KEYWORDS = new Set([
   'ct_ratio', 'maker', 'model', 'name',
   'measures', 'quantity', 'phase', 'I1', 'I2', '3I2', 'I0', '3I0', 'any',
   'type', 'condition', 'three_phase', 'two_phase', 'two_phase_earth',
-  'single_phase_earth', 'zero_sequence', 'blocked', 'continuous', 'to',
+  'single_phase_earth', 'zero_sequence', 'blocked', 'continuous',
+  /* `to` is shared: the joiner in `zero_sequence { "A" to "B" }` and
+   * the far end of an annotate span. Both are read positionally, so
+   * one keyword serves. */
+  'from', 'to',
   'min_melt', 'total_clear',
   // combine/view/page sub
   'sources', 'as', 'style', 'label', 'color', 'name', 'two_axes',
@@ -1699,6 +1704,10 @@ if (kwName === 'flex_points') {
             a.at_t_s = this.parseNumberWithUnit_s('at_t');
             this.eat('SEMI');
             break;
+          case 'from':
+            a.from = this.parseCurrentOrTime('from'); this.eat('SEMI'); break;
+          case 'to':
+            a.to = this.parseCurrentOrTime('to'); this.eat('SEMI'); break;
           case 'point':
             {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
@@ -1787,7 +1796,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords', 'view', 'views']);
+            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t', 'from', 'to', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords', 'view', 'views']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -2306,6 +2315,36 @@ if (kwName === 'flex_points') {
     }
     this.pos++;
     return raw * factor;
+  }
+
+  /**
+   * A figure that may be a current or a time, reporting which it was.
+   *
+   * For `from` and `to`, where the *unit* is what says whether the
+   * span is drawn across the sheet or up it. Asking the author to
+   * declare the orientation separately would let the two disagree;
+   * `400 A` and `300 ms` already carry it, and units are mandatory
+   * everywhere else for exactly this reason.
+   */
+  private parseCurrentOrTime(field: string): SpanEnd | undefined {
+    const at = this.peek();
+    const unit = this.tokens[this.pos + 1];
+    const isTime = unit != null && (unit.kind === 'IDENT' || unit.kind === 'KW')
+      && ['s', 'ms', 'min', 'ks'].includes(unit.image);
+
+    if (isTime) {
+      const value = this.parseNumberWithUnit_s(field);
+      return Number.isFinite(value) ? { value, quantity: 'time' } : undefined;
+    }
+
+    /*
+     * Anything else is read as a current, so an unknown or missing
+     * unit produces the ordinary current diagnostic rather than a
+     * second, vaguer one about not being able to tell what was meant.
+     */
+    if (at.kind !== 'NUMBER') return undefined;
+    const value = this.parseNumberWithUnit_A(field);
+    return Number.isFinite(value) ? { value, quantity: 'current' } : undefined;
   }
 
   private parseNumberWithUnit_A(field?: string): number {

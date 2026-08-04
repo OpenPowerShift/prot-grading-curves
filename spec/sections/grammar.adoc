@@ -350,12 +350,20 @@ annotate-member ::= "on_curve" "=" ref ";"          (* point form *)
                   | "primary"  "=" ref ";"          (* margin form *)
                   | "backup"   "=" ref ";"
                   | "at_I"   "=" number current-unit ";"
+                  | "at_t"   "=" number time-unit ";"
+                  | span-asg                          (* span form *)
                   | condition-asg
                   | "label"    "=" string  ";"
                   | "style"    "=" annotation-style ";"
                   | "color"    "=" color-value ";"
                   | "coords"   "=" boolean ";" ;
 annotation-style ::= "leader" | "pin" | "tag" ;
+
+(* A dimension between two figures the study names, with no curve at
+   either end. The *unit* selects the orientation: two times draw a
+   vertical span, two currents a horizontal one. Both ends must be of
+   the same quantity. *)
+span-asg        ::= ( "from" | "to" ) "=" number ( current-unit | time-unit ) ";" ;
 
 point-block     ::= "point" point-id "{" { point-member } "}" ;
 point-id        ::= string | identifier ;

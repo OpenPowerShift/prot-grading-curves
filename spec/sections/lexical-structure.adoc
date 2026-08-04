@@ -104,8 +104,9 @@ maker, model, comment, description, reference
 *Inside `grade`* -- primary, backup, fault, scenario, margin,
 margin_target, tolerance_pct, upstream, upstream_to, comment, solve
 
-*Inside `annotate`* -- on_curve, at_I, at_I1, at_I2, at_I0, at_residual, at_t, primary, backup, fault,
-label, style, color
+*Inside `annotate`* -- on_curve, at_I, at_I1, at_I2, at_I0, at_residual, at_t,
+from, to, primary, backup, point, fault, faults, scenario, scenarios,
+voltage, type, view, views, label, style, color, coords
 
 *Inside `device`* -- kind, voltage, maker, model, rating_I, rating_V,
 rating_S, flex_points, min_melt, total_clear, t_delay, comment,

@@ -1119,6 +1119,7 @@ function validateAnnotations(ctx: Ctx): void {
         item.loc);
     }
 
+    checkAnnotationSpan(ctx, item);
     checkAnnotationPlacement(ctx, item, target);
 
     for (const name of item.conditions ?? []) {
@@ -1132,6 +1133,64 @@ function validateAnnotations(ctx: Ctx): void {
       const level = target?.element?.voltage ?? target?.device?.voltage;
       checkConditionReference(ctx, name, 'annotate', level, item.loc);
     }
+  }
+}
+
+/**
+ * A `from` / `to` dimension between two figures the study names.
+ *
+ * Unlike either margin form there is no curve at either end, so
+ * nothing else constrains it: every way of getting it wrong has to be
+ * caught here or it becomes a mark that does not appear.
+ */
+function checkAnnotationSpan(ctx: Ctx, item: AnnotateBlock): void {
+  const { from, to } = item;
+  if (!from && !to) return;
+
+  if (!from || !to) {
+    add(ctx, 'SPAN_INCOMPLETE', 'error',
+      `annotate declares ${from ? 'from' : 'to'} without ${from ? 'to' : 'from'}; ` +
+      'a span needs both of its ends',
+      item.loc);
+    return;
+  }
+
+  /*
+   * The unit is what says which way the dimension runs, so two units
+   * from different quantities describe no line at all -- there is no
+   * distance between a current and a time.
+   */
+  if (from.quantity !== to.quantity) {
+    add(ctx, 'SPAN_MIXED_QUANTITIES', 'error',
+      `annotate spans from a ${from.quantity} to a ${to.quantity}; ` +
+      'both ends must be currents or both times, since the unit is what ' +
+      'decides whether the span is drawn across the sheet or up it',
+      item.loc);
+    return;
+  }
+
+  if (from.value === to.value) {
+    add(ctx, 'SPAN_EMPTY', 'warning',
+      'annotate spans from a figure to itself, which draws a dimension of nothing',
+      item.loc);
+  }
+
+  /* The other coordinate: where along the perpendicular axis it sits. */
+  if (from.quantity === 'time') {
+    if (item.at_I_A == null && (item.conditions?.length ?? 0) === 0) {
+      add(ctx, 'SPAN_NO_ANCHOR', 'error',
+        'a span between two times is drawn vertically, so it needs a current ' +
+        'to stand at: give at_I, or name a fault or scenario',
+        item.loc);
+    }
+    return;
+  }
+
+  if (item.at_t_s == null) {
+    add(ctx, 'SPAN_NO_ANCHOR', 'error',
+      'a span between two currents is drawn horizontally, so it needs a time ' +
+      'to sit at: give at_t',
+      item.loc);
   }
 }
 
@@ -1151,8 +1210,10 @@ function checkAnnotationPlacement(
   item: AnnotateBlock,
   target: { element?: Element; device?: Device } | undefined,
 ): void {
-  /* Only the point form; a margin is positioned by its two references. */
+  /* Only the point form; a margin is positioned by its two references,
+   * and a span by its own two ends. */
   if (item.primary || item.backup) return;
+  if (item.from || item.to) return;
   if (!item.on_curve) return;
 
   /*

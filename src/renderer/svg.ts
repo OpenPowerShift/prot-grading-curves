@@ -2573,6 +2573,103 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const colour = annotation.color ?? th.foreground;
 
     /*
+     * A span: a dimension between two figures the study simply names.
+     *
+     * Both margin forms measure between two *characteristics*, which
+     * is the common case and not the only one. A grading band an
+     * authority requires, the window a setting has to fall inside, the
+     * range a supplier quotes -- none of those is a curve, so none of
+     * them could be drawn at all. Here the two ends are given, and
+     * only the other coordinate has to be worked out.
+     */
+    if (annotation.kind === 'span') {
+      const span = annotation.span!;
+      const lo = Math.min(span.from, span.to);
+      const hi = Math.max(span.from, span.to);
+
+      if (span.quantity === 'time') {
+        /* A vertical dimension needs a current to stand at. */
+        const I = annotation.condition
+          ? (faults.find((f) => f.name === annotation.condition)?.I_view
+            ?? faults.find((f) => f.name === annotation.condition)?.I_A ?? null)
+          : annotation.at_I_A ?? null;
+        if (I == null || !(I > 0)) {
+          unplaceableAnnotations.push(annotation.label ?? 'a span');
+          continue;
+        }
+        const px = xScale.toPx(I);
+        const pyLo = yScale.toPx(lo);
+        const pyHi = yScale.toPx(hi);
+        if (![px, pyLo, pyHi].every(Number.isFinite)) {
+          unplaceableAnnotations.push(annotation.label ?? 'a span');
+          continue;
+        }
+
+        out.push(
+          `<line x1="${px.toFixed(1)}" y1="${pyLo.toFixed(1)}" x2="${px.toFixed(1)}" y2="${pyHi.toFixed(1)}" ` +
+          `stroke="${colour}" stroke-width="1.4"/>`,
+        );
+        out.push(arrowHead(px, pyLo, pyLo < pyHi ? 1 : -1, colour));
+        out.push(arrowHead(px, pyHi, pyHi < pyLo ? 1 : -1, colour));
+        /* Short cross-bars, so the two ends read as limits. */
+        for (const py of [pyLo, pyHi]) {
+          out.push(
+            `<line x1="${(px - 6).toFixed(1)}" y1="${py.toFixed(1)}" x2="${(px + 6).toFixed(1)}" y2="${py.toFixed(1)}" ` +
+            `stroke="${colour}" stroke-width="1.4"/>`,
+          );
+        }
+
+        const figure = formatSi(hi - lo, 's');
+        const text = annotation.label ? `${annotation.label} ${figure}` : figure;
+        placer.avoidLine([{ x: px, y: Math.min(pyLo, pyHi) }, { x: px, y: Math.max(pyLo, pyHi) }]);
+        out.push(...placeLabel(text, { x: px, y: (pyLo + pyHi) / 2 }, colour,
+          { gap: 10, weight: 600 }));
+        continue;
+      }
+
+      /* A horizontal dimension needs a time to sit at. */
+      const t = annotation.at_t_s ?? null;
+      if (t == null || !(t > 0)) {
+        unplaceableAnnotations.push(annotation.label ?? 'a span');
+        continue;
+      }
+      const py = yScale.toPx(t);
+      const pxLo = xScale.toPx(lo);
+      const pxHi = xScale.toPx(hi);
+      if (![py, pxLo, pxHi].every(Number.isFinite)) {
+        unplaceableAnnotations.push(annotation.label ?? 'a span');
+        continue;
+      }
+
+      out.push(
+        `<line x1="${pxLo.toFixed(1)}" y1="${py.toFixed(1)}" x2="${pxHi.toFixed(1)}" y2="${py.toFixed(1)}" ` +
+        `stroke="${colour}" stroke-width="1.4"/>`,
+      );
+      out.push(arrowHeadH(pxLo, py, pxLo < pxHi ? 1 : -1, colour));
+      out.push(arrowHeadH(pxHi, py, pxHi < pxLo ? 1 : -1, colour));
+      for (const px of [pxLo, pxHi]) {
+        out.push(
+          `<line x1="${px.toFixed(1)}" y1="${(py - 6).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(py + 6).toFixed(1)}" ` +
+          `stroke="${colour}" stroke-width="1.4"/>`,
+        );
+      }
+
+      /*
+       * Quoted as the larger over the smaller, the same convention the
+       * current margin uses -- one gap, one figure, whichever order it
+       * was written in.
+       */
+      const figure = lo > 0
+        ? `${trimZeros(Number(((hi / lo) * 100).toFixed(1)))}%`
+        : formatSi(hi - lo, 'A');
+      const text = annotation.label ? `${annotation.label} ${figure}` : figure;
+      placer.avoidLine([{ x: Math.min(pxLo, pxHi), y: py }, { x: Math.max(pxLo, pxHi), y: py }]);
+      out.push(...placeLabel(text, { x: (pxLo + pxHi) / 2, y: py }, colour,
+        { prefer: ['above', 'below', 'right'], gap: 8, weight: 600 }));
+      continue;
+    }
+
+    /*
      * Current margin: the horizontal counterpart of the vertical
      * arrow. Spans the gap in current between two characteristics at
      * one time, and reports it as a percentage of the primary's

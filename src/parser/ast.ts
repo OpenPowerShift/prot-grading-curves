@@ -326,6 +326,15 @@ export interface GradeBlock extends BaseNode {
  *               study is usually *for*: it puts the number the grading
  *               argument turns on directly onto the chart.
  */
+/**
+ * One end of a `from` / `to` span, and which axis it is measured on.
+ */
+export interface SpanEnd {
+  value: number;
+  /** Amps for `current`, seconds for `time`. */
+  quantity: 'current' | 'time';
+}
+
 export interface AnnotateBlock extends BaseNode {
   /**
    * Sheets this belongs to, by `view` name. Absent means every sheet.
@@ -378,6 +387,23 @@ export interface AnnotateBlock extends BaseNode {
    * means nothing without knowing which end of the axis you are at.
    */
   at_t_s?: number;
+  /**
+   * The two ends of a *span*: a dimension between two figures the
+   * study names, rather than between two characteristics.
+   *
+   * A grading band an authority requires, the window a setting has to
+   * fall inside, the range a supplier quotes for a fuse -- none of
+   * these is a curve, so none could be drawn. `from` and `to` put an
+   * arbitrary dimension on the sheet and label it.
+   *
+   * The *unit* decides the orientation: two times draw a vertical
+   * span, two currents a horizontal one. Units are mandatory
+   * everywhere else precisely so a figure cannot be misread, and
+   * taking the orientation from a separate key would let the two
+   * disagree.
+   */
+  from?: SpanEnd;
+  to?: SpanEnd;
   /**
    * A marked point the current margin is measured to, by id.
    *

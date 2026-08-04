@@ -378,6 +378,19 @@ what tells you which way round it goes, so there is no `+` or `-` to
 read backwards, and the figure is the same whichever end you write
 first.
 
+*A dimension between two plain numbers.* Sometimes neither end is a
+curve at all -- a band an authority requires, a window your pickup has
+to sit inside. `from` and `to` draw it directly:
+
+[source,tc]
+----
+annotate { from = 500 ms; to = 800 ms; at_I = 6 kA; label = "band"; }
+----
+
+The unit decides which way it runs: two times draw a vertical span and
+need a current to stand at, two currents a horizontal one and need a
+time to sit at.
+
 *A point from the fault study or a data sheet:*
 
 [source,tc]

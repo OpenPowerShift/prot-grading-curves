@@ -1752,6 +1752,35 @@ named base rather than by a sign, a signed difference against one
 nominated end being neither symmetric -- one gap yields two magnitudes
 -- nor safe to read quickly on a drawing.
 
+*Span form* -- `from` and `to` -- draws a dimension between two figures
+the study names outright, with no characteristic at either end. A
+required grading band, the window a setting must fall inside, or a
+range quoted by a supplier is not a curve, and so cannot be expressed
+by either margin form.
+
+The *unit* of the two ends SHALL select the orientation:
+
+* two times draw a **vertical** span, and SHALL be anchored by `at_I`
+  or by a named condition;
+* two currents draw a **horizontal** span, and SHALL be anchored by
+  `at_t`.
+
+Both ends SHALL be of the same quantity; a mixed pair is
+`SPAN_MIXED_QUANTITIES`, there being no distance between a current and
+a time. One end without the other is `SPAN_INCOMPLETE`, a missing
+anchor is `SPAN_NO_ANCHOR`, and a span whose ends are equal is
+`SPAN_EMPTY`.
+
+A vertical span SHALL be labelled with the elapsed time between its
+ends; a horizontal span with the ratio of the larger current to the
+smaller, by the same rule as the current-margin form, so that one
+dimension carries one figure however it was written.
+
+Taking the orientation from the unit rather than from a separate key
+is deliberate: units are mandatory throughout the language precisely
+so that a figure cannot be misread, and a declared orientation could
+contradict the values it applied to.
+
 * `style = "leader"` -- adds a leader line plus a label;
 * `style = "pin"` -- adds only a marker;
 * `style = "tag"` -- adds only a label.

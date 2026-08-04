@@ -32,6 +32,7 @@ import type {
   GradeBlock,
   Ref,
   SourceLocation,
+  SpanEnd,
   StageBlock,
   TopLevel,
 } from '../parser/ast.js';
@@ -371,9 +372,18 @@ export interface Annotation {
   /**
    * `margin` spans the two curves vertically at one current and reports
    * a time; `current_margin` spans them horizontally at one time and
-   * reports a percentage of current.
+   * reports a percentage of current; `span` spans two figures the study
+   * simply names, with no curve at either end.
    */
-  kind: 'point' | 'margin' | 'current_margin';
+  kind: 'point' | 'margin' | 'current_margin' | 'span';
+  /**
+   * The two ends of a `span`, both on the same axis.
+   *
+   * A required grading band, the window a setting has to sit inside,
+   * a range a supplier quotes -- none of these is a characteristic, so
+   * before this none could be drawn at all.
+   */
+  span?: { quantity: 'current' | 'time'; from: number; to: number };
   on_curve?: Ref;
   primary?: Ref;
   backup?: Ref;
@@ -690,9 +700,18 @@ export function buildStudy(doc: Document): Study {
              * A current margin spans horizontally at one time, from a
              * curve to another curve, a condition, or a marked point.
              */
-            kind: item.at_t_s != null && item.primary
-              ? 'current_margin'
-              : (item.primary && item.backup ? 'margin' : 'point'),
+            /*
+             * A span names both its ends outright, so it is decided
+             * first: it needs neither a curve nor a reference, and
+             * asking about `primary` before `from` would file one as a
+             * point with no position.
+             */
+            kind: spanOf(item) != null
+              ? 'span'
+              : item.at_t_s != null && item.primary
+                ? 'current_margin'
+                : (item.primary && item.backup ? 'margin' : 'point'),
+            span: spanOf(item),
             on_curve: item.on_curve,
             primary: item.primary,
             backup: item.backup,
@@ -828,6 +847,23 @@ function drawingOverrides(
     style: isCurveStyle(style) ? style : undefined,
     width_px: Number.isFinite(width) && width > 0 ? width : undefined,
   };
+}
+
+/**
+ * The two ends of an annotate span, when both are present and agree.
+ *
+ * A `from` in amps against a `to` in seconds is not a span at all --
+ * there is no line between a current and a time -- so it resolves to
+ * nothing here and is reported by the validator.
+ */
+function spanOf(
+  item: { from?: SpanEnd; to?: SpanEnd },
+): { quantity: 'current' | 'time'; from: number; to: number } | undefined {
+  const { from, to } = item;
+  if (!from || !to) return undefined;
+  if (from.quantity !== to.quantity) return undefined;
+  if (!Number.isFinite(from.value) || !Number.isFinite(to.value)) return undefined;
+  return { quantity: from.quantity, from: from.value, to: to.value };
 }
 
 function resolveElement(

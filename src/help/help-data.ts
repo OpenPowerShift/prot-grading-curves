@@ -160,6 +160,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   time_pad_high: M('view', 'Extra room above the fitted time range, as a factor.', 'time_pad_high = 2;'),
   sees:        M('scenario', 'What share of this condition a named relay carries, in percent -- for parallel circuits, where each end feeds part of the fault.', 'sees R_FDR_A { share = 50; }'),
   current_max: M('view', 'Largest current drawn. On a view it is the right-hand end of the X-axis; on an element or a stage it is where that curve stops -- past the maximum fault the bus can deliver the curve describes a current that cannot flow, and drawing it invites a margin to be read at a fault that does not exist. A stage falls back to its element’s.', 'current_max = 50 kA;'),
+  from:        M('annotate', 'One end of a span: a dimension between two figures the study names, with no curve at either end. The unit decides the orientation -- two times draw a vertical span (anchored by at_I or a condition), two currents a horizontal one (anchored by at_t).', 'from = 300 ms; to = 800 ms; at_I = 2 kA;'),
+  to:          M('annotate', 'The far end of a from/to span. Must be the same quantity as `from` -- there is no distance between a current and a time.', 'to = 800 ms;'),
   color:       M('element', 'Ink for this one curve, overriding the palette -- for a house standard, or a figure whose colours are fixed by the report around it. The palette slot is still consumed, so the other curves keep their hues.', 'color = "#884400";'),
   style:       M('element', 'How this curve is stroked: solid, dashed or dotted. On an annotate block it means the label style instead.', 'style = dashed;'),
   width_px:    M('element', 'Stroke weight for this curve, overriding page { curves { line_width_px } } -- for drawing the subject heavier than its context.', 'width_px = 3;'),
@@ -265,7 +267,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */
   annotate:    ['view', 'views', 'on_curve', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual',
-               'type', 'at_t', 'voltage', 'primary', 'backup', 'point',
+               'type', 'at_t', 'from', 'to', 'voltage', 'primary', 'backup', 'point',
                'fault', 'faults', 'scenario', 'scenarios',
                'label', 'style', 'color', 'coords'],
   point:       ['view', 'views', 'I', 'I1', 'I2', 'I0', 'residual', 'type', 't',

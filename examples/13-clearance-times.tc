@@ -161,7 +161,7 @@ annotate {
   on_curve = R_INC:51;
   at_I = 3.2 kA;
   label = "Incomer backup";
-  style = pin;
+  style = leader; # `pin` draws a marker only, and would lose this label
 }
 
 # ---- The margin the study exists to prove. ---------------------------
@@ -170,6 +170,35 @@ annotate {
   backup = R_INC:51;
   fault = "Board max";
   label = "CTI";
+}
+
+# ---- A dimension between two figures, with no curve at either end. ---
+#      Both margin forms measure between two *characteristics*. A
+#      required band does not have a curve at either end — it is two
+#      numbers an authority gave you — so `from` and `to` draw the
+#      dimension directly.
+#
+#      The unit decides which way it runs: two times draw a vertical
+#      span and need a current to stand at; two currents draw a
+#      horizontal one and need a time to sit at.
+annotate {
+  from = 500 ms; # arc flash boundary
+  to = 800 ms; # grid code clearance
+  at_I = 6 kA;
+  label = "band available";
+  color = "#7a5c00";
+}
+
+#      The same idea across the sheet: the window the incomer's pickup
+#      has to fall inside, read at its own operating time. Quoted as
+#      the larger over the smaller, as every current gap on this sheet
+#      is, so one dimension has one figure whichever way it is written.
+annotate {
+  from = 1.2 kA; # above maximum load
+  to = 3.2 kA; # below the minimum fault it must see
+  at_t = 4 s;
+  label = "pickup window";
+  color = "#7a5c00";
 }
 
 # ---- A marked point taken from the fault study. ----------------------

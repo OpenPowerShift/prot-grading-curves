@@ -614,6 +614,20 @@ export interface PageLegend extends BaseNode {
    */
   currents?: LegendCurrents;
   /**
+   * The author's own remarks, drawn at the foot of the panel.
+   *
+   * Distinct from `Notes`, which the tool writes about what it could
+   * not do. This is the standing text every drawing office wants on a
+   * sheet -- the issue it was checked against, the assumption the
+   * study rests on, who to ask -- and there was nowhere for it: `meta`
+   * is metadata rather than something drawn, and the title block takes
+   * a line, not a paragraph.
+   *
+   * Written as one string or as a list of lines; a `\n` inside a
+   * single string breaks it the same way.
+   */
+  comment?: string[];
+  /**
    * Draw the `Notes` block at the foot of the panel. Defaults to true.
    *
    * The notes are how a sheet accounts for what it left out, so they

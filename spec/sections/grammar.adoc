@@ -655,7 +655,14 @@ legend-member   ::= "show"      "=" boolean ";"
                   | "color"     "=" color-value ";"
                   | "swatch"    "=" legend-swatch-keyword ";"
                   | "currents"  "=" legend-currents ";"
+                  | "notes"     "=" boolean ";"
+                  | "comment"   "=" text-lines ";"
                   | "title"     "=" string ";" ;
+(* Standing text the author put on the sheet, as opposed to the `Notes`
+   block the tool writes about what it could not draw. One string, or a
+   list of lines; a `\n` inside a single string breaks it the same way,
+   and blank lines are dropped rather than drawn as gaps. *)
+text-lines      ::= string | "[" [ string { "," string } [ "," ] ] "]" ;
 (* Which amps the legend quotes a pickup in. Independent of
    `view { axis }`, which decides the abscissa; `secondary` and `both`
    need the relay's `ct_ratio` and fall back to primary without one. *)

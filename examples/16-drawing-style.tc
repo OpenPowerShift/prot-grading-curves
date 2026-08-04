@@ -159,7 +159,18 @@ page {
     color = "#222222";
     swatch = "circle";
     currents = "both"; # primary and secondary amps
-    notes = true;
+    notes = true; # the tool's account of what it could not draw
+
+    # The office's own standing text, under its own heading. `notes`
+    # changes as the study does; this does not, which is why the two
+    # are kept apart rather than run together. Write one string, or a
+    # list of lines as here — a single string with "\n" in it works
+    # too, and is harder to read in a file someone has to maintain.
+    comment = [
+      "Settings checked against issue D of the fault study.",
+      "Source impedance assumed 250 MVA at the 11 kV board.",
+      "Queries to M. Haugen, protection team.",
+    ];
   };
 
   # Axis furniture, kept recessive so the curves carry the eye.

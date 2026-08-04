@@ -3306,6 +3306,46 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       : 10 + LINE_HEADING
         + notesWrapped.reduce((n, w) => n + w.length, 0) * (LINE_DETAIL - 2);
 
+    /*
+     * The author's own remarks, above the tool's notes.
+     *
+     * Two different things that both live at the foot of the panel and
+     * must not be confused: `Notes` is the tool accounting for what it
+     * could not draw, and changes as the study does. This is standing
+     * text the office put there deliberately -- the issue it was
+     * checked against, the assumption it rests on -- and the reader has
+     * to be able to tell which is which, so each keeps its own heading.
+     *
+     * Set in the ordinary legend ink rather than the muted italic the
+     * notes use: it is content, not a caveat.
+     */
+    const commentLines = opts.page?.legend?.comment ?? [];
+    const commentWrapped = commentLines.map((line) => wrapText(line, width, FONT_DETAIL));
+    const showComment = commentLines.length > 0 && density !== 'minimal';
+    const commentHeight = !showComment
+      ? 0
+      : 10 + LINE_HEADING
+        + commentWrapped.reduce((n, w) => n + w.length, 0) * (LINE_DETAIL - 1);
+
+    const emitComment = (): void => {
+      if (!showComment) return;
+      cursorY += 10;
+      lines.push(
+        `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
+        `font-weight="600" class="tc-legend" fill="${legendInk}">Comment</text>`,
+      );
+      cursorY += LINE_HEADING;
+      for (const wrapped of commentWrapped) {
+        for (const line of wrapped) {
+          lines.push(
+            `<text x="${originX}" y="${cursorY}" class="tc-legend" fill="${legendInk}" ` +
+            `font-size="${FONT_DETAIL}">${escapeXml(line)}</text>`,
+          );
+          cursorY += LINE_DETAIL - 1;
+        }
+      }
+    };
+
     const emitNotes = (): void => {
       if (axisNotes.length === 0 || !showNotes) return;
       cursorY += 10;
@@ -3550,7 +3590,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       let faultsY = cursorY + FONT_HEADING;
       if (anchorFaultsToPlotBottom) {
         const wanted = topMargin + plotH - (faultLineCount * LINE_LABEL)
-          - LINE_HEADING + FONT_HEADING - notesHeight;
+          - LINE_HEADING + FONT_HEADING - notesHeight - commentHeight;
         faultsY = Math.max(wanted, cursorY + 12);
       }
 
@@ -3657,6 +3697,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       cursorY += LINE_DETAIL - 2;
     }
 
+    /* The office's own words first, then the tool's account of what it
+     * could not do. */
+    emitComment();
     emitNotes();
 
     if (dropped > 0) {

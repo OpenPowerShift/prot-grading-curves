@@ -1589,6 +1589,28 @@ outright:
 page { legend = { notes = false; }; }
 ----
 
+Above it, under its own `Comment` heading, goes whatever the office
+put there on purpose -- the issue the settings were checked against,
+an assumption the study rests on, who to ask. One string, or a list of
+lines:
+
+[source,tc]
+----
+page {
+    legend = {
+        comment = [
+            "Settings checked against issue D of the fault study.",
+            "Source impedance assumed 250 MVA at the 11 kV board.",
+        ];
+    };
+}
+----
+
+The two are deliberately separate. `Notes` is the tool's account of
+what it could not draw and changes as the study does; the comment is
+yours and does not. A `\n` inside a single string breaks it the same
+way as a list, for text pasted in from elsewhere.
+
 If the panel is still short of room, in the order that costs least:
 
 . `legend { style = "inside" }` floats it over the plot, or

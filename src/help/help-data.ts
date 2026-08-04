@@ -73,7 +73,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   ct_ratio:    M('relay', 'Current-transformer ratio (primary/secondary).', 'ct_ratio = 600/5;'),
   direction:   M('relay', 'Direction control: "forward", "reverse", or "none".', 'direction = "forward";'),
   relay_faults: M('relay', 'List of faults this relay explicitly considers. Optional.', 'faults = ["F1", "F2"];'),
-  comment:     M('relay', 'Inline documentation. Free text.', 'comment = "primary OC element";'),
+  comment:     M('relay', 'Inline documentation. Free text. Inside page { legend } it is standing text drawn on the sheet under a "Comment" heading -- one string, or a list of lines -- as distinct from "Notes", which the tool writes about what it could not draw.', 'comment = "primary OC element";'),
 
   // element
   function:    M('element', 'Function of the protection element: phase_oc, earth_fault, neg_seq, thermal, breaker_fail.', 'function = "phase_oc";'),
@@ -254,7 +254,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'faults', 'times'],
   /* `page` sub-blocks, so asking inside one lists what it accepts
    * rather than repeating the page's own fields. */
-  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents',
+  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents', 'comment',
                'notes'],
   axes:        ['color', 'grid_color', 'label_color', 'label_size_px', 'tick_size_px',
                'frame', 'mirror'],

@@ -75,7 +75,8 @@ export const RENAMED_KEYS: Readonly<Record<string, string>> = {
  * nothing anywhere said why.
  */
 export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'currents', 'notes'],
+  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'currents', 'notes',
+    'comment'],
   axes: ['color', 'grid_color', 'label_color', 'label_size_px', 'tick_size_px',
     'frame', 'mirror'],
   curves: ['palette', 'line_width_px', 'auto_color'],
@@ -87,6 +88,15 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
   times: ['width_px', 'color', 'style', 'labels'],
   footer: ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
 };
+
+/**
+ * What a `page` sub-block member may hold.
+ *
+ * A list joined the three scalars for free text running to several
+ * lines: one long string with `\n` in it is legal and unreadable in a
+ * file an engineer maintains.
+ */
+type PageSubValue = string | number | boolean | string[];
 
 export const REMOVED_KEYS: Readonly<Record<string, string>> = {
   frequency_Hz: 'nothing in the tool reads it',
@@ -2006,10 +2016,10 @@ if (kwName === 'flex_points') {
    * unquoted, booleans as booleans -- so the caller can assign them to
    * typed fields without re-parsing.
    */
-  private parsePageSubBlock(name: string): Record<string, string | number | boolean> {
+  private parsePageSubBlock(name: string): Record<string, PageSubValue> {
     this.expect('LBRACE', '{');
     const accepts = PAGE_SUB_FIELDS[name] ?? [];
-    const out: Record<string, string | number | boolean> = {};
+    const out: Record<string, PageSubValue> = {};
     while (!this.at('RBRACE') && !this.at('EOF')) {
       const key = this.eat('KW') ?? this.eat('IDENT');
       if (!key) { this.pos++; continue; }
@@ -2021,6 +2031,20 @@ if (kwName === 'flex_points') {
         out[key.image] = this.parseNumberWithUnit_any();
       } else if (t.kind === 'KW' && (t.image === 'true' || t.image === 'false')) {
         out[key.image] = this.parseBool();
+      } else if (t.kind === 'LBRACK') {
+        /*
+         * A bracketed list, for text that runs to several lines. The
+         * alternative is one long string with `\n` in it, which is
+         * legal and unreadable in a source file an engineer maintains.
+         */
+        this.pos++;
+        const items: string[] = [];
+        if (!this.at('RBRACK')) {
+          items.push(this.parseStringOrIdent());
+          while (this.eat('COMMA')) items.push(this.parseStringOrIdent());
+        }
+        this.expect('RBRACK', ']');
+        out[key.image] = items;
       } else {
         out[key.image] = this.parseStringOrIdent();
       }
@@ -2560,7 +2584,7 @@ export function lex(source: string) {
 function applyPageSubBlock(
   page: PageBlock,
   name: string,
-  fields: Record<string, string | number | boolean>,
+  fields: Record<string, PageSubValue>,
 ): void {
   const str = (k: string): string | undefined =>
     typeof fields[k] === 'string' ? (fields[k] as string) : undefined;
@@ -2568,6 +2592,20 @@ function applyPageSubBlock(
     typeof fields[k] === 'number' ? (fields[k] as number) : undefined;
   const bool = (k: string): boolean | undefined =>
     typeof fields[k] === 'boolean' ? (fields[k] as boolean) : undefined;
+  /**
+   * Free text, written either as one string or as a list of lines.
+   *
+   * Normalised to lines here so nothing downstream has to know which
+   * spelling was used. A `\n` inside a single string breaks it the
+   * same way, for text pasted in from somewhere else.
+   */
+  const lines = (k: string): string[] | undefined => {
+    const value = fields[k];
+    if (Array.isArray(value)) return value.filter((s) => s.trim() !== '');
+    if (typeof value !== 'string') return undefined;
+    const split = value.split('\n').filter((s) => s.trim() !== '');
+    return split.length > 0 ? split : undefined;
+  };
 
   switch (name) {
     case 'legend':
@@ -2581,6 +2619,7 @@ function applyPageSubBlock(
         title: str('title'),
         currents: str('currents') as import('./ast.js').LegendCurrents | undefined,
         notes: bool('notes'),
+        comment: lines('comment'),
       };
       break;
     case 'axes':

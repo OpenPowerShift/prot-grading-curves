@@ -478,7 +478,10 @@ page {
     theme       = "light";
     border      = true;
 
-    legend = { title = "Protection"; currents = "both"; };
+    legend = { title    = "Protection";
+               currents = "both";
+               comment  = ["Checked against issue D.",
+                           "Queries to the protection team."]; };
     faults = { style = "dashed"; };
     times  = { style = "solid"; color = "#1d7a4c"; };
 
@@ -489,6 +492,11 @@ page {
                right = "Rev B"; };
 }
 ----
+
+`legend { comment }` is your own standing text on the sheet, under its
+own heading. It is deliberately separate from the `Notes` block the
+tool writes about what it could not draw: that changes as the study
+does, yours does not.
 
 `border = true` adds a drawing frame and a title block filled from your
 `meta` block, which is where the project details go:

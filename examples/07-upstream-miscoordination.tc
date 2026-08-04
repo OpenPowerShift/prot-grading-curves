@@ -16,77 +16,77 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Mis-coordination demo";
-    engineer = "A. Cooper";
-    date     = "2026-07-28";
-    margin   = 0.30 s;
+  project = "Mis-coordination demo";
+  engineer = "A. Cooper";
+  date = "2026-07-28";
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "MV" {
-            V = 11.0 kV;
-        }
+  voltages {
+    "MV" {
+      V = 11.0 kV;
     }
+  }
 }
 
 faults {
-    "Bus fault" {
-        I = 3.0 kA;
-    }
-    "Max fault" {
-        I = 20.0 kA;
-    }
+  "Bus fault" {
+    I = 3.0 kA;
+  }
+  "Max fault" {
+    I = 20.0 kA;
+  }
 }
 
 relay R_FEEDER {
-    voltage  = "MV";
-    maker    = "GE";
-    model    = "UR T60";
-    ct_ratio = 400/5;
+  voltage = "MV";
+  maker = "GE";
+  model = "UR T60";
+  ct_ratio = 400/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si; # standard inverse — shallow
-        I_pickup = 300 A;
-        tms      = 0.20;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si; # standard inverse — shallow
+    I_pickup = 300 A;
+    tms = 0.20;
+  }
 }
 
 relay R_INCOMER {
-    voltage  = "MV";
-    maker    = "GE";
-    model    = "UR T60";
-    ct_ratio = 600/5;
+  voltage = "MV";
+  maker = "GE";
+  model = "UR T60";
+  ct_ratio = 600/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.ei; # extremely inverse — steep
-        I_pickup = 500 A;
-        tms      = 0.40;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.ei; # extremely inverse — steep
+    I_pickup = 500 A;
+    tms = 0.40;
+  }
 }
 
 grade {
-    primary  = R_FEEDER:51;
-    backup   = R_INCOMER:51;
-    fault    = "Bus fault";
-    margin   = 0.30 s;
-    upstream = true;
+  primary = R_FEEDER:51;
+  backup = R_INCOMER:51;
+  fault = "Bus fault";
+  margin = 0.30 s;
+  upstream = true;
 }
 
 page {
-    size        = "A4";
-    orientation = "landscape";
-    # Dark, for reading on a screen in a substation at night.
-    theme  = "dark";
-    border = true;
-    title       = {
-        text     = "Curve families that converge";
-        subtitle = "IEC SI feeder against an IEC EI incomer";
-    };
+  size = "A4";
+  orientation = "landscape";
+  # Dark, for reading on a screen in a substation at night.
+  theme = "dark";
+  border = true;
+  title       = {
+    text = "Curve families that converge";
+    subtitle = "IEC SI feeder against an IEC EI incomer";
+  };
 }
 
 view {
-    current_pad = 0.25;
+  current_pad = 0.25;
 }

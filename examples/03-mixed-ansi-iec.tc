@@ -11,67 +11,67 @@
 # conditions and voltage levels included.
 
 meta {
-    project = "Cross-vendor study";
-    standard = ["IEEE_C37_112", "IEC_60255_151"];
+  project = "Cross-vendor study";
+  standard = ["IEEE_C37_112", "IEC_60255_151"];
 }
 
 system {
-    voltages {
-        "HV" {
-            V = 115.0 kV;
-        }
-        "LV" {
-            V = 12.47 kV;
-        }
+  voltages {
+    "HV" {
+      V = 115.0 kV;
     }
+    "LV" {
+      V = 12.47 kV;
+    }
+  }
 }
 
 faults {
-    "LV 3ph" {
-        I       = 5500 A;
-        voltage = "LV";
-    }
-    "HV 3ph" {
-        I       = 12000 A;
-        voltage = "HV";
-    }
+  "LV 3ph" {
+    I = 5500 A;
+    voltage = "LV";
+  }
+  "HV 3ph" {
+    I = 12000 A;
+    voltage = "HV";
+  }
 }
 
 relay R_FDR {
-    voltage  = "LV";
-    maker    = "GE";
-    model    = "UR T60";
-    ct_ratio = 1200/5;
+  voltage = "LV";
+  maker = "GE";
+  model = "UR T60";
+  ct_ratio = 1200/5;
 
-    element 51 {
-        curve    = ansi.mi;
-        I_pickup = 480 A;
-        tms      = 0.50;
-    }
+  element 51 {
+    curve = ansi.mi;
+    I_pickup = 480 A;
+    tms = 0.50;
+  }
 }
 
 relay R_INC {
-    voltage  = "HV";
-    maker    = "ABB";
-    model    = "REL-615";
-    ct_ratio = 1200/5;
+  voltage = "HV";
+  maker = "ABB";
+  model = "REL-615";
+  ct_ratio = 1200/5;
 
-    element 51 {
-        curve    = iec.vi;
-        I_pickup = 600 A;
-        tms      = 0.35;
-    }
+  element 51 {
+    curve = iec.vi;
+    I_pickup = 600 A;
+    tms = 0.35;
+  }
 }
 
 grade {
-    primary       = R_FDR:51;
-    backup        = R_INC:51;
-    fault         = "LV 3ph";
-    margin_target = 0.35 s;
+  primary = R_FDR:51;
+  backup = R_INC:51;
+  fault = "LV 3ph";
+  margin_target = 0.35 s;
 }
 
 page {
-    size  = "A4";
-    theme = "light";
-    title = "Cross-vendor TCC comparison";
+  size = "A4";
+  theme = "light";
+  title = "Cross-vendor TCC comparison";
 }

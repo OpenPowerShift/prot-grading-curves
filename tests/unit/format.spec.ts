@@ -16,7 +16,7 @@ const repoRoot = (): string =>
   (globalThis as { process?: { cwd(): string } }).process!.cwd();
 
 describe('formatSource', () => {
-  it('indents by brace depth', () => {
+  it('indents by brace depth, two spaces a level', () => {
     const out = formatSource(`
 relay R {
 element 51 {
@@ -26,11 +26,33 @@ curve = iec.si;
 `);
     expect(out).toBe(
       'relay R {\n' +
-      '    element 51 {\n' +
-      '        curve = iec.si;\n' +
-      '    }\n' +
+      '  element 51 {\n' +
+      '    curve = iec.si;\n' +
+      '  }\n' +
       '}\n',
     );
+  });
+
+  it('puts one space either side of `=` by default', () => {
+    /*
+     * Aligned columns cost the author every time they add a longer key:
+     * one new line reflows a dozen others and the diff stops showing
+     * what changed. Padding is available, it is just not the default.
+     */
+    const out = formatSource('meta {\nproject   = "X";\nengineer      = "Y";\n}\n');
+    expect(out).toContain('  project = "X";');
+    expect(out).toContain('  engineer = "Y";');
+  });
+
+  it('collapses the padding a hand-aligned file already had', () => {
+    const out = formatSource('times {\n"A"     {\nt    = 430 ms;\n}\n}\n');
+    expect(out).toContain('  "A" {');
+    expect(out).toContain('    t = 430 ms;');
+  });
+
+  it('trims trailing whitespace', () => {
+    const out = formatSource('meta {\n  project = "X";   \n}\n');
+    expect(out.split('\n').every((l) => l === l.trimEnd())).toBe(true);
   });
 
   it('aligns assignments within a run', () => {
@@ -40,10 +62,10 @@ project = "X";
 engineer = "Y";
 date = "2026-01-01";
 }
-`);
-    expect(out).toContain('    project  = "X";');
-    expect(out).toContain('    engineer = "Y";');
-    expect(out).toContain('    date     = "2026-01-01";');
+`, { alignAssignments: true });
+    expect(out).toContain('  project  = "X";');
+    expect(out).toContain('  engineer = "Y";');
+    expect(out).toContain('  date     = "2026-01-01";');
   });
 
   it('keeps comments', () => {
@@ -56,8 +78,8 @@ date = "2026-01-01";
   it('is not fooled by braces inside strings', () => {
     const out = formatSource('meta {\nproject = "a { b } c";\nengineer = "Z";\n}\n');
     // The string's braces must not change the nesting.
-    expect(out).toContain('    project  = "a { b } c";');
-    expect(out).toContain('    engineer = "Z";');
+    expect(out).toContain('  project = "a { b } c";');
+    expect(out).toContain('  engineer = "Z";');
     expect(out.trimEnd().endsWith('}')).toBe(true);
   });
 
@@ -78,10 +100,10 @@ date = "2026-01-01";
     );
     expect(out).toBe(
       'page {\n'
-      + '    title = {\n'
-      + '        text     = "Northgate";\n'
-      + '        subtitle = "cascade";\n'
-      + '    };\n'
+      + '  title = {\n'
+      + '    text = "Northgate";\n'
+      + '    subtitle = "cascade";\n'
+      + '  };\n'
       + '}\n',
     );
   });
@@ -90,12 +112,12 @@ date = "2026-01-01";
     /* `} "LV" {` must not leave the next block trailing after the brace
      * that closed the last. */
     const out = formatSource('system { voltages { "HV" { V = 33 kV; } "LV" { V = 11 kV; } } }\n');
-    expect(out).toContain('        }\n        "LV" {\n');
+    expect(out).toContain('    }\n    "LV" {\n');
   });
 
   it('keeps a closing brace and its semicolon together', () => {
     /* Splitting them would leave a line holding one semicolon. */
-    expect(formatSource('page { legend = { title = "E"; }; }\n')).toContain('    };\n');
+    expect(formatSource('page { legend = { title = "E"; }; }\n')).toContain('  };\n');
   });
 
   it('leaves bracketed values alone', () => {
@@ -104,12 +126,12 @@ date = "2026-01-01";
      * as rows, and exploding them by element would make them unreadable.
      */
     const out = formatSource('device "f" {\n  flex_points = [[100, 5], [200, 1]];\n}\n');
-    expect(out).toContain('    flex_points = [[100, 5], [200, 1]];\n');
+    expect(out).toContain('  flex_points = [[100, 5], [200, 1]];\n');
   });
 
   it('does not split on punctuation inside a string', () => {
     const out = formatSource('meta {\n  project = "a; b { c } d";\n}\n');
-    expect(out).toContain('    project = "a; b { c } d";\n');
+    expect(out).toContain('  project = "a; b { c } d";\n');
   });
 
   it('keeps a trailing comment with the statement it followed', () => {
@@ -118,7 +140,7 @@ date = "2026-01-01";
   });
 
   it('leaves the source alone when expansion is off', () => {
-    const inline = 'page {\n    legend = { title = "E"; };\n}\n';
+    const inline = 'page {\n  legend = { title = "E"; };\n}\n';
     expect(formatSource(inline, { expandBlocks: false })).toBe(inline);
   });
 

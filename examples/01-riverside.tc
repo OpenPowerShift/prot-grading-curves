@@ -12,97 +12,97 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Riverside 33/11";
-    engineer = "A. Cooper";
-    date     = "2026-07-26";
-    standard = ["IEC_60255_151"];
-    margin = 0.30 s;
+  project = "Riverside 33/11";
+  engineer = "A. Cooper";
+  date = "2026-07-26";
+  standard = ["IEC_60255_151"];
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "HV" {
-            V           = 33.0 kV;
-            description = "33 kV side";
-        }
-        "LV" {
-            V           = 11.0 kV;
-            description = "11 kV side";
-        }
+  voltages {
+    "HV" {
+      V = 33.0 kV;
+      description = "33 kV side";
     }
+    "LV" {
+      V = 11.0 kV;
+      description = "11 kV side";
+    }
+  }
 }
 
 faults {
-    "LV max"  {
-        I       = 6400 A;
-        voltage = "LV";
-    }
-    "HV max"  {
-        I       = 18400 A;
-        voltage = "HV";
-    }
-    "LV min"  {
-        I       = 1500 A;
-        voltage = "LV";
-    }
+  "LV max" {
+    I = 6400 A;
+    voltage = "LV";
+  }
+  "HV max" {
+    I = 18400 A;
+    voltage = "HV";
+  }
+  "LV min" {
+    I = 1500 A;
+    voltage = "LV";
+  }
 }
 
 relay R_FDR_110 {
-    voltage  = "LV";
-    maker    = "ABB";
-    model    = "REL-615";
-    ct_ratio = 600/5;
+  voltage = "LV";
+  maker = "ABB";
+  model = "REL-615";
+  ct_ratio = 600/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 480 A;
-        tms      = 0.30;
-    }
-    element 50 {
-        function = "phase_oc";
-        curve    = definite;
-        I_pickup = 4000 A;
-        t_delay  = 0.10 s;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 480 A;
+    tms = 0.30;
+  }
+  element 50 {
+    function = "phase_oc";
+    curve = definite;
+    I_pickup = 4000 A;
+    t_delay = 0.10 s;
+  }
 }
 
 relay R_TRF_INC {
-    voltage  = "HV";
-    maker    = "ABB";
-    model    = "REL-615";
-    ct_ratio = 600/5;
+  voltage = "HV";
+  maker = "ABB";
+  model = "REL-615";
+  ct_ratio = 600/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 720 A;
-        tms      = 0.45;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 720 A;
+    tms = 0.45;
+  }
 }
 
 grade {
-    primary       = R_FDR_110:51;
-    backup        = R_TRF_INC:51;
-    fault         = "LV max";
-    margin_target = 0.30 s;
-    solve {
-        strategy      = "tight";
-        tolerance_pct = 5;
-    }
+  primary = R_FDR_110:51;
+  backup = R_TRF_INC:51;
+  fault = "LV max";
+  margin_target = 0.30 s;
+  solve {
+    strategy = "tight";
+    tolerance_pct = 5;
+  }
 }
 
 page {
-    size        = "A4";
-    orientation = "landscape";
-    theme       = "light";
-    title       = "Riverside 33/11 kV — OC grading";
+  size = "A4";
+  orientation = "landscape";
+  theme = "light";
+  title = "Riverside 33/11 kV — OC grading";
 }
 
 view {
-    voltage     = "HV"; # project both LV and HV relays onto the HV frame
-    current_min = 100 A; # don't show below 100 A on the current axis
-    current_max = 50 kA;
-    time_min    = 0.01 s;
-    time_max    = 1000 s;
+  voltage = "HV"; # project both LV and HV relays onto the HV frame
+  current_min = 100 A; # don't show below 100 A on the current axis
+  current_max = 50 kA;
+  time_min = 0.01 s;
+  time_max = 1000 s;
 }

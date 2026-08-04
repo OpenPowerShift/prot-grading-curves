@@ -724,11 +724,15 @@ margin of its own, for a study that has to survive settings drifting
 before the next review. The solved value is marked `(auto)` in the
 legend.
 
-`solve` *reports* the setting that would meet `margin_target`; it does
-not change the relay. The dial in the file stays the engineer's, and
-the report says whether the tool would have chosen the same -- which is
-the useful direction, since a setting nobody chose is a setting nobody
-can defend.
+`solve` *applies* the setting it computes. The curve is drawn at the
+solved dial, the margins are computed from it, and that is the setting
+the study asserts -- what is drawn is what is used.
+
+A dial already in the file is superseded rather than discarded. The
+legend says `TMS 0.175 (auto, was 0.45)` and the report carries a
+`SOLVE_OVERRODE_SETTING` warning naming both, because otherwise the
+drawing and the settings sheet disagree with nothing saying which
+governs -- and a commissioning engineer sets from the drawing.
 
 === combine
 

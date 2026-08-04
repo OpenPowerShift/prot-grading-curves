@@ -14,216 +14,216 @@
 # `legend` offers layouts and inside `leaders` offers line/arrow/dot.
 
 meta {
-    project  = "Netherfield BSP";
-    study    = "Drawing standard sheet";
-    engineer = "M. Haugen";
-    date     = "2026-08-01";
-    revision = "D";
-    client   = "Northern Networks"; # any extra key is carried through
-    drawing  = "NF-TCC-0014"; # and readable by a [meta.*] macro
-    margin   = 0.30 s;
+  project = "Netherfield BSP";
+  study = "Drawing standard sheet";
+  engineer = "M. Haugen";
+  date = "2026-08-01";
+  revision = "D";
+  client = "Northern Networks"; # any extra key is carried through
+  drawing = "NF-TCC-0014"; # and readable by a [meta.*] macro
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "MV" {
-            V           = 11.0 kV;
-            description = "11 kV switchboard";
-        }
+  voltages {
+    "MV" {
+      V = 11.0 kV;
+      description = "11 kV switchboard";
     }
+  }
 }
 
 faults {
-    "Board max" {
-        I       = 12.5 kA;
-        type    = three_phase;
-        voltage = "MV";
-    }
-    "Board min" {
-        I       = 3.1 kA;
-        type    = two_phase;
-        voltage = "MV";
-    }
+  "Board max" {
+    I = 12.5 kA;
+    type = three_phase;
+    voltage = "MV";
+  }
+  "Board min" {
+    I = 3.1 kA;
+    type = two_phase;
+    voltage = "MV";
+  }
 }
 
 times {
-    "Switchgear rating" {
-        t           = 1 s;
-        at_I        = 8 kA;
-        description = "1 s short-time withstand";
-    }
+  "Switchgear rating" {
+    t = 1 s;
+    at_I = 8 kA;
+    description = "1 s short-time withstand";
+  }
 }
 
 relay R_FDR {
-    name     = "Feeder";
-    maker    = "Siemens";
-    model    = "7SJ82";
-    voltage  = "MV";
-    ct_ratio = 800/5;
+  name = "Feeder";
+  maker = "Siemens";
+  model = "7SJ82";
+  voltage = "MV";
+  ct_ratio = 800/5;
 
-    element 51 {
-        function    = "phase_oc";
-        curve       = iec.si;
-        I_pickup    = 960 A;
-        tms         = 0.12;
-        current_max = 12.5 kA;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 960 A;
+    tms = 0.12;
+    current_max = 12.5 kA;
+  }
 }
 
 relay R_INC {
-    name     = "Incomer";
-    maker    = "Siemens";
-    model    = "7SJ85";
-    voltage  = "MV";
-    ct_ratio = 1600/5;
+  name = "Incomer";
+  maker = "Siemens";
+  model = "7SJ85";
+  voltage = "MV";
+  ct_ratio = 1600/5;
 
-    element 51 {
-        function    = "phase_oc";
-        curve       = iec.si;
-        I_pickup    = 1.8 kA;
-        tms         = 0.30;
-        current_max = 12.5 kA;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 1.8 kA;
+    tms = 0.30;
+    current_max = 12.5 kA;
+  }
 
-    # A breaker-fail stage: fixed delay, started by the same pickup.
-    element 50BF {
-        name     = "Breaker fail";
-        function = "breaker_fail";
-        curve    = definite;
-        I_pickup = 1.8 kA;
-        t_delay  = 250 ms;
-    }
+  # A breaker-fail stage: fixed delay, started by the same pickup.
+  element 50BF {
+    name = "Breaker fail";
+    function = "breaker_fail";
+    curve = definite;
+    I_pickup = 1.8 kA;
+    t_delay = 250 ms;
+  }
 }
 
 grade {
-    primary = R_FDR:51;
-    backup  = R_INC:51;
-    fault   = "Board max";
-    margin  = 0.30 s;
+  primary = R_FDR:51;
+  backup = R_INC:51;
+  fault = "Board max";
+  margin = 0.30 s;
 }
 
 annotate {
-    primary = R_FDR:51;
-    backup  = R_INC:51;
-    fault   = "Board max";
-    label   = "CTI";
+  primary = R_FDR:51;
+  backup = R_INC:51;
+  fault = "Board max";
+  label = "CTI";
 }
 
 point "Rating corner" {
-    I     = 8 kA;
-    t     = 1 s;
-    label = "Switchgear 1 s rating";
-    shape = circle;
+  I = 8 kA;
+  t = 1 s;
+  label = "Switchgear 1 s rating";
+  shape = circle;
 }
 
 # ---- The house style. ------------------------------------------------
 page {
-    # Paper. `stretch` fills the viewport rather than keeping the
-    # sheet's own aspect ratio.
-    size        = "Tabloid";
-    orientation = "landscape";
-    stretch     = false;
-    border      = true;
+  # Paper. `stretch` fills the viewport rather than keeping the
+  # sheet's own aspect ratio.
+  size = "Tabloid";
+  orientation = "landscape";
+  stretch = false;
+  border = true;
 
-    # Monochrome prints legibly on a plan copier and survives a fax.
-    theme = "monochrome";
+  # Monochrome prints legibly on a plan copier and survives a fax.
+  theme = "monochrome";
 
-    margins_mm  = {
-        top    = 14;
-        right  = 12;
-        bottom = 16;
-        left   = 18;
-    };
+  margins_mm  = {
+    top = 14;
+    right = 12;
+    bottom = 16;
+    left = 18;
+  };
 
-    # Where the identification goes, and what shape the swatch is.
-    legend = {
-        show     = true;
-        style    = "inside"; # floated over the plot, not a gutter
-        position = "top_left";
-        title    = "Protection";
-        color    = "#222222";
-        swatch   = "circle";
-        currents = "both"; # primary and secondary amps
-        notes    = true;
-    };
+  # Where the identification goes, and what shape the swatch is.
+  legend = {
+    show = true;
+    style = "inside"; # floated over the plot, not a gutter
+    position = "top_left";
+    title = "Protection";
+    color = "#222222";
+    swatch = "circle";
+    currents = "both"; # primary and secondary amps
+    notes = true;
+  };
 
-    # Axis furniture, kept recessive so the curves carry the eye.
-    axes = {
-        color         = "#333333";
-        grid_color    = "#d8d8d8";
-        label_color   = "#444444";
-        label_size_px = 11;
-        tick_size_px  = 9;
-        frame         = true;
-        mirror        = false;
-    };
+  # Axis furniture, kept recessive so the curves carry the eye.
+  axes = {
+    color = "#333333";
+    grid_color = "#d8d8d8";
+    label_color = "#444444";
+    label_size_px = 11;
+    tick_size_px = 9;
+    frame = true;
+    mirror = false;
+  };
 
-    curves = {
-        palette       = "grayscale";
-        line_width_px = 2.0;
-        auto_color    = true;
-    };
+  curves = {
+    palette = "grayscale";
+    line_width_px = 2.0;
+    auto_color = true;
+  };
 
-    points = {
-        color   = "#111111";
-        shape   = "circle";
-        size_px = 9;
-        outline = true;
-    };
+  points = {
+    color = "#111111";
+    shape = "circle";
+    size_px = 9;
+    outline = true;
+  };
 
-    leaders = {
-        show            = true;
-        style           = "dot";
-        width_px        = 0.9;
-        color           = "#666666";
-        label_offset_px = 12;
-    };
+  leaders = {
+    show = true;
+    style = "dot";
+    width_px = 0.9;
+    color = "#666666";
+    label_offset_px = 12;
+  };
 
-    faults = {
-        style    = "dotted";
-        color    = "#555555";
-        width_px = 1.2;
-        labels   = true;
-    };
-    times  = {
-        style    = "dashed";
-        color    = "#333333";
-        width_px = 1.4;
-        labels   = true;
-    };
+  faults = {
+    style = "dotted";
+    color = "#555555";
+    width_px = 1.2;
+    labels = true;
+  };
+  times  = {
+    style = "dashed";
+    color = "#333333";
+    width_px = 1.4;
+    labels = true;
+  };
 
-    scale  = {
-        auto         = true;
-        tick_density = "dense";
-    };
+  scale  = {
+    auto = true;
+    tick_density = "dense";
+  };
 
-    # `[meta.*]`, `[page]` and `[of]` macros are substituted at render.
-    title = {
-        text         = "[meta.project] — [meta.study]";
-        subtitle     = "Drawing [meta.drawing] for [meta.client]";
-        align        = "left";
-        color        = "#000000";
-        font_size_px = 15;
-    };
+  # `[meta.*]`, `[page]` and `[of]` macros are substituted at render.
+  title = {
+    text = "[meta.project] — [meta.study]";
+    subtitle = "Drawing [meta.drawing] for [meta.client]";
+    align = "left";
+    color = "#000000";
+    font_size_px = 15;
+  };
 
-    footer = {
-        left         = "[meta.drawing] rev [meta.revision]";
-        center       = "[meta.engineer] · [meta.date]";
-        right        = "[meta.drawing] · sheet [page] of [of]";
-        font_size_px = 8;
-        color        = "#555555";
-        border       = true;
-    };
+  footer = {
+    left = "[meta.drawing] rev [meta.revision]";
+    center = "[meta.engineer] · [meta.date]";
+    right = "[meta.drawing] · sheet [page] of [of]";
+    font_size_px = 8;
+    color = "#555555";
+    border = true;
+  };
 
-    watermark = "UNISSUED — FOR COMMENT";
+  watermark = "UNISSUED — FOR COMMENT";
 }
 
 view {
-    voltage     = "MV";
-    quantity    = any;
-    stages      = individual; # draw each stage, not the composite
-    current_min = 200 A;
-    current_max = 40 kA;
-    time_min    = 20 ms;
-    time_max    = 100 s;
+  voltage = "MV";
+  quantity = any;
+  stages = individual; # draw each stage, not the composite
+  current_min = 200 A;
+  current_max = 40 kA;
+  time_min = 20 ms;
+  time_max = 100 s;
 }

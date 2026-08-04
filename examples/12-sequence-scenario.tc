@@ -39,36 +39,36 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Sequence currents";
-    study    = "LV earth fault behind a delta-star transformer";
-    engineer = "A. Cooper";
-    date     = "2026-07-30";
-    revision = "A";
-    margin   = 0.30 s;
+  project = "Sequence currents";
+  study = "LV earth fault behind a delta-star transformer";
+  engineer = "A. Cooper";
+  date = "2026-07-30";
+  revision = "A";
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "HV" {
-            V           = 33.0 kV;
-            description = "33 kV, delta winding";
-        }
-        "LV" {
-            V           = 0.48 kV;
-            description = "480 V, star, earthed";
-        }
+  voltages {
+    "HV" {
+      V = 33.0 kV;
+      description = "33 kV, delta winding";
     }
+    "LV" {
+      V = 0.48 kV;
+      description = "480 V, star, earthed";
+    }
+  }
 
-    # Whether zero sequence reaches the other level depends on the
-    # windings, so the study says. This transformer is delta on the HV
-    # side, which blocks it -- and that is the whole reason the HV
-    # residual element below is blind to an LV earth fault.
-    #
-    # A star-star transformer with both neutrals earthed would be
-    # `continuous`, and the residual would refer by the turns ratio.
-    zero_sequence {
-        "HV" to "LV" = blocked;
-    }
+  # Whether zero sequence reaches the other level depends on the
+  # windings, so the study says. This transformer is delta on the HV
+  # side, which blocks it -- and that is the whole reason the HV
+  # residual element below is blind to an LV earth fault.
+  #
+  # A star-star transformer with both neutrals earthed would be
+  # `continuous`, and the residual would refer by the turns ratio.
+  zero_sequence {
+    "HV" to "LV" = blocked;
+  }
 }
 
 # ---- The condition, at every level it is measured. ---------------------
@@ -90,41 +90,41 @@ system {
 #      0.564 instead: a declared component always beats the type's
 #      table, so the ratio you write is the ratio you get.
 scenario "LV earth fault" {
-    type        = single_phase_earth;
-    description = "Single phase to earth at 0.48 kV, system normal";
+  type = single_phase_earth;
+  description = "Single phase to earth at 0.48 kV, system normal";
 
-    level "LV" {
-        I  = 460 A;
-        I1 = 153.3 A;
-        I2 = 153.3 A;
-        I0 = 153.3 A;
-    }
-    level "HV" {
-        I  = 3.86 A;
-        I1 = 2.23 A;
-        I2 = 2.23 A;
-        I0 = 0 A;
-    }
+  level "LV" {
+    I = 460 A;
+    I1 = 153.3 A;
+    I2 = 153.3 A;
+    I0 = 153.3 A;
+  }
+  level "HV" {
+    I = 3.86 A;
+    I1 = 2.23 A;
+    I2 = 2.23 A;
+    I0 = 0 A;
+  }
 }
 
 # A second condition for the phase elements: a solid three-phase fault
 # on the LV side, which is balanced and so carries no I2 or I0 at all.
 scenario "LV three-phase fault" {
-    type        = three_phase;
-    description = "Balanced 3ph at 0.48 kV";
+  type = three_phase;
+  description = "Balanced 3ph at 0.48 kV";
 
-    level "LV" {
-        I  = 520 A;
-        I1 = 520 A;
-        I2 = 0 A;
-        I0 = 0 A;
-    }
-    level "HV" {
-        I  = 7.6 A;
-        I1 = 7.6 A;
-        I2 = 0 A;
-        I0 = 0 A;
-    }
+  level "LV" {
+    I = 520 A;
+    I1 = 520 A;
+    I2 = 0 A;
+    I0 = 0 A;
+  }
+  level "HV" {
+    I = 7.6 A;
+    I1 = 7.6 A;
+    I2 = 0 A;
+    I0 = 0 A;
+  }
 }
 
 # ---- Nothing else is needed to mark them. -----------------------------
@@ -143,108 +143,108 @@ scenario "LV three-phase fault" {
 
 # ---- Downstream: the LV air circuit breaker. ---------------------------
 relay R_ACB {
-    name     = "LV ACB";
-    voltage  = "LV";
-    ct_ratio = 1/1;
+  name = "LV ACB";
+  voltage = "LV";
+  ct_ratio = 1/1;
 
-    element 51 {
-        name     = "Phase OC";
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 300 A;
-        tms      = 0.10;
-    }
+  element 51 {
+    name = "Phase OC";
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 300 A;
+    tms = 0.10;
+  }
 }
 
 # ---- Upstream: the HV relay, three elements measuring three currents. --
 relay R_850 {
-    name     = "HV relay (GE Multilin 850)";
-    maker    = "GE Multilin";
-    model    = "850";
-    voltage  = "HV";
-    ct_ratio = 250/1;
+  name = "HV relay (GE Multilin 850)";
+  maker = "GE Multilin";
+  model = "850";
+  voltage = "HV";
+  ct_ratio = 250/1;
 
-    element 51 {
-        name     = "Phase TOC (51)";
-        function = "phase_oc"; # measures phase current
-        curve    = iec.si;
-        I_pickup = 4.2 A;
-        tms      = 0.20;
-    }
+  element 51 {
+    name = "Phase TOC (51)";
+    function = "phase_oc"; # measures phase current
+    curve = iec.si;
+    I_pickup = 4.2 A;
+    tms = 0.20;
+  }
 
-    element 51G {
-        name     = "Ground TOC (51G)";
-        function = "earth_fault"; # measures residual 3*I0
-        curve    = iec.si;
-        I_pickup = 0.8 A;
-        tms      = 0.15;
-    }
+  element 51G {
+    name = "Ground TOC (51G)";
+    function = "earth_fault"; # measures residual 3*I0
+    curve = iec.si;
+    I_pickup = 0.8 A;
+    tms = 0.15;
+  }
 
-    element 46 {
-        name     = "Negative Sequence (46)";
-        function = "neg_seq";
-        measures = "I2"; # this IED is scaled in I2
-        curve    = definite;
-        I_pickup = 1.5 A;
-        t_delay  = 2.00 s; # slower than the ACB's 1.63 s at this fault
-    }
+  element 46 {
+    name = "Negative Sequence (46)";
+    function = "neg_seq";
+    measures = "I2"; # this IED is scaled in I2
+    curve = definite;
+    I_pickup = 1.5 A;
+    t_delay = 2.00 s; # slower than the ACB's 1.63 s at this fault
+  }
 }
 
 # ---- Upstream: the feeder relay's own I2 backup. ----------------------
 #      Two negative-sequence elements grade against each other, which is
 #      what the sheet below actually plots.
 relay R_FDR {
-    name     = "33 kV feeder (SEL-751)";
-    maker    = "SEL";
-    model    = "751";
-    voltage  = "HV";
-    ct_ratio = 250/1;
+  name = "33 kV feeder (SEL-751)";
+  maker = "SEL";
+  model = "751";
+  voltage = "HV";
+  ct_ratio = 250/1;
 
-    element 46 {
-        name     = "Neg Seq backup (46)";
-        function = "neg_seq";
-        measures = I2; # unquoted spelling works too
-        curve    = definite;
-        I_pickup = 1.5 A;
-        t_delay  = 2.60 s; # 0.6 s above the 850
-    }
+  element 46 {
+    name = "Neg Seq backup (46)";
+    function = "neg_seq";
+    measures = I2; # unquoted spelling works too
+    curve = definite;
+    I_pickup = 1.5 A;
+    t_delay = 2.60 s; # 0.6 s above the 850
+  }
 }
 
 # ---- I2 grading: the 850 against the feeder relay. --------------------
 grade {
-    primary  = R_850:46;
-    backup   = R_FDR:46;
-    scenario = "LV earth fault";
-    margin   = 0.30 s;
-    comment  = "both measure I2, so this is a like-for-like margin";
+  primary = R_850:46;
+  backup = R_FDR:46;
+  scenario = "LV earth fault";
+  margin = 0.30 s;
+  comment = "both measure I2, so this is a like-for-like margin";
 }
 
 # ---- The negative-sequence element does the backing up. ---------------
 grade {
-    primary  = R_ACB:51;
-    backup   = R_850:46;
-    scenario = "LV earth fault";
-    margin   = 0.30 s;
-    comment  = "I2 backup for an LV earth fault the HV residual cannot see";
+  primary = R_ACB:51;
+  backup = R_850:46;
+  scenario = "LV earth fault";
+  margin = 0.30 s;
+  comment = "I2 backup for an LV earth fault the HV residual cannot see";
 }
 
 # ---- The residual element cannot: 3 x 0 = 0 at HV. --------------------
 #      The report says NO_OPERATION, which is the correct physical
 #      answer rather than a margin computed off the wrong current.
 grade {
-    primary  = R_ACB:51;
-    backup   = R_850:51G;
-    scenario = "LV earth fault";
-    margin   = 0.30 s;
-    comment  = "blind to this fault -- zero sequence stays in the delta";
+  primary = R_ACB:51;
+  backup = R_850:51G;
+  scenario = "LV earth fault";
+  margin = 0.30 s;
+  comment = "blind to this fault -- zero sequence stays in the delta";
 }
 
 # ---- Phase grading, on the balanced condition. ------------------------
 grade {
-    primary  = R_ACB:51;
-    backup   = R_850:51;
-    scenario = "LV three-phase fault";
-    margin   = 0.30 s;
+  primary = R_ACB:51;
+  backup = R_850:51;
+  scenario = "LV three-phase fault";
+  margin = 0.30 s;
 }
 
 # ---- Putting the margin on the drawing. --------------------------------
@@ -257,10 +257,10 @@ grade {
 #      `fault = "..."` and `faults = [...]` are all the same key: a
 #      condition, one or several.
 annotate {
-    primary  = R_850:46;
-    backup   = R_FDR:46;
-    scenario = "LV earth fault";
-    label    = "CTI";
+  primary = R_850:46;
+  backup = R_FDR:46;
+  scenario = "LV earth fault";
+  label = "CTI";
 }
 
 # ---- A marked point at a condition's current. --------------------------
@@ -281,25 +281,25 @@ annotate {
 #      scenario is NOT the same as its declared figure for this level --
 #      see the note in the guide.
 point "850 negative-sequence trip" {
-    scenario = "LV earth fault";
-    voltage  = "HV";
-    t        = 2.00 s;
-    label    = "850 46 operates";
-    shape    = square;
+  scenario = "LV earth fault";
+  voltage = "HV";
+  t = 2.00 s;
+  label = "850 46 operates";
+  shape = square;
 }
 
 page {
-    size        = "A4";
-    orientation = "landscape";
-    theme       = "light";
-    border      = true;
-    legend      = {
-        title = "Elements";
-    };
-    title       = {
-        text     = "Sequence currents — what each relay measures";
-        subtitle = "LV earth fault behind a delta-star transformer";
-    };
+  size = "A4";
+  orientation = "landscape";
+  theme = "light";
+  border = true;
+  legend      = {
+    title = "Elements";
+  };
+  title       = {
+    text = "Sequence currents — what each relay measures";
+    subtitle = "LV earth fault behind a delta-star transformer";
+  };
 }
 
 # ---- Which current the sheet is drawn against. ------------------------
@@ -342,11 +342,11 @@ page {
 #      because I0 = 0 at HV. Drop `condition` and the sheet falls back to
 #      showing only what measures I2.
 view {
-    voltage     = "HV";
-    quantity    = I2;
-    condition   = "LV earth fault";
-    current_min = 0.5 A;
-    current_max = 50 A;
-    time_min    = 20 ms;
-    time_max    = 100 s;
+  voltage = "HV";
+  quantity = I2;
+  condition = "LV earth fault";
+  current_min = 0.5 A;
+  current_max = 50 A;
+  time_min = 20 ms;
+  time_max = 100 s;
 }

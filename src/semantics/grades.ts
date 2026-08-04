@@ -845,6 +845,23 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
          * The solved value is recorded on the model (not the source
          * text) so the renderer can label the curve `tms=... (auto)`.
          */
+        /*
+         * The declared dial is kept, not overwritten. What is drawn is
+         * what is used -- so the solved value governs -- but the figure
+         * in the file has to stay visible, or the drawing and the
+         * settings sheet disagree with nothing saying which is right.
+         */
+        if (result.stage.tms != null && result.stage.tms !== result.tms) {
+          result.stage.tms_declared = result.stage.tms;
+          diagnostics.push({
+            code: 'SOLVE_OVERRODE_SETTING',
+            severity: 'warning',
+            message:
+              `solve replaced the declared tms ${result.stage.tms} on ${backup.ref} with `
+              + `${result.tms.toFixed(3)}; the sheet is drawn at the solved value, so that `
+              + 'is the setting the study asserts',
+          });
+        }
         result.stage.tms = result.tms;
         result.stage.tms_auto = true;
         if (result.I_pu_A != null) result.stage.I_pu_A = result.I_pu_A;
@@ -1026,12 +1043,24 @@ export function formatGradeReport(report: GradeReport): string {
     }
   }
 
-  /* Study-wide verdict across every point evaluated. */
-  if (report.CTI_min_s != null && report.pass != null) {
+  /*
+   * Study-wide verdict across every point evaluated.
+   *
+   * Judged against `margin` where the study declares one, and against
+   * `margin_target` where it only declares that -- a solved pair
+   * previously produced no verdict at all, so the one line a reader
+   * looks for was missing from exactly the studies that had asked the
+   * tool to choose a setting for them.
+   */
+  const required = report.CTI_min_s ?? report.margin_s;
+  const against = report.CTI_min_s != null ? 'margin' : 'margin_target';
+  if (required != null && report.min_margin_s != null
+      && Number.isFinite(report.min_margin_s)) {
+    const met = report.min_margin_s >= required;
     const where = report.min_margin_at_A != null
       ? ` (worst ${s3(report.min_margin_s)} s at ${report.min_margin_at_A.toFixed(0)} A)`
       : '';
-    out.push(`    overall         : ${report.pass ? 'PASS' : 'FAIL'}${where}`);
+    out.push(`    overall         : ${met ? 'PASS' : 'FAIL'}${where} vs ${against}`);
   }
 
   for (const d of report.diagnostics) {

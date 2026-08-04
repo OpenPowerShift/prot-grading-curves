@@ -501,7 +501,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const unmarkedScenarios: string[] = [];
 
   /*
-   * Required times, drawn as horizontal rules.
+   * Times, drawn as horizontal rules.
    *
    * The other axis's answer to a fault: a limit the curves are judged
    * against rather than a current they are evaluated at. They widen the
@@ -509,12 +509,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * requirement can never be off the sheet that is supposed to show it
    * being met.
    */
-  const times = [...study.times.values()].filter((t) => Number.isFinite(t.t_s) && t.t_s > 0);
+  /*
+   * Longest first, so the legend reads down the sheet the way the rules
+   * stand on it: the 4 s withstand at the top, the 200 ms arc-flash
+   * boundary at the bottom. Declaration order made the reader match
+   * each entry to a rule by its figure.
+   */
+  const times = [...study.times.values()]
+    .filter((t) => Number.isFinite(t.t_s) && t.t_s > 0)
+    .sort((a, b) => b.t_s - a.t_s);
   for (const t of times) {
     if (t.t_s * 0.7 < t_lo) t_lo = t.t_s * 0.7;
     if (t.t_s * 1.4 > t_hi) t_hi = t.t_s * 1.4;
   }
 
+  /*
+   * Faults are listed in the order the axis puts them, not the order
+   * they were declared. A legend that runs 6.4 kA, 950 A, 3.1 kA
+   * against rules standing left to right makes the reader match them up
+   * by eye, every time.
+   */
   const faults: FaultEntry[] = [];
   for (const item of doc.items) {
     if (item.type === 'faults') {
@@ -576,6 +590,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
   }
 
+  /* Left to right, as the rules stand on the sheet. */
+  faults.sort((a, b) => (a.I_view ?? a.I_A) - (b.I_view ?? b.I_A));
 
   /**
    * Marked points the sheet's own quantity cannot carry to this level.
@@ -1240,7 +1256,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       if (stage.t_delay_s != null) bits.push(`delay ${formatSi(stage.t_delay_s, 's')}`);
     } else if (stage.tms != null) {
       /* Spec _On-graph annotation_: a solver-set value is labelled. */
-      bits.push(`TMS ${trimZeros(stage.tms)}${stage.tms_auto ? ' (auto)' : ''}`);
+      /* A solved dial names the one it replaced: the drawing is what
+       * gets set, and the file still says something else. */
+      const wasDeclared = stage.tms_declared != null
+        ? `, was ${trimZeros(stage.tms_declared)}` : '';
+      bits.push(`TMS ${trimZeros(stage.tms)}`
+        + (stage.tms_auto ? ` (auto${wasDeclared})` : ''));
     }
     /*
      * What the curve is plotted against.
@@ -2055,10 +2076,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * line belongs to.
    */
   const timesOnPlot = times.filter((t) => t.t_s >= t_min && t.t_s <= t_max);
+
+  /*
+   * Held back and drawn after the curves.
+   *
+   * A required time is a limit the characteristics are being judged
+   * against, so it has to be legible where it crosses them -- under a
+   * 2 px curve it disappears at exactly the current the reader is
+   * checking.
+   */
+  const timeRules: string[] = [];
   for (const t of timesOnPlot) {
     const py = yScale.toPx(t.t_s);
     if (!Number.isFinite(py)) continue;
-    out.push(
+    timeRules.push(
       `<line x1="${leftMargin}" y1="${py.toFixed(1)}" ` +
       `x2="${leftMargin + plotW}" y2="${py.toFixed(1)}" class="tc-time" ` +
       `data-time-name="${escapeXml(t.name)}" data-time="${t.t_s}" ` +
@@ -2108,6 +2139,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const dash = dashValue ? ` stroke-dasharray="${dashValue}"` : '';
     out.push(`<path d="${c.pathD}" class="${cls}" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="${c.color}" stroke-width="${sw}"${dash} data-curve="${escapeXml(c.label)}" data-voltage="${escapeXml(c.voltage ?? '')}"/>`);
   }
+
+  /* The limits, over the characteristics they judge. */
+  out.push(...timeRules);
 
   /*
    * Direct labels, drawn here rather than with the legend so that the
@@ -3301,7 +3335,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
 
     /*
-     * Required times.
+     * Times.
      *
      * Their own section, because they answer a different question from
      * the conditions above -- "is the curve under this?" rather than
@@ -3313,7 +3347,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       cursorY += 8;
       lines.push(
         `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
-        `font-weight="600" fill="${timeColour}">Required times</text>`,
+        `font-weight="600" fill="${timeColour}">Times</text>`,
       );
       cursorY += LINE_HEADING;
 

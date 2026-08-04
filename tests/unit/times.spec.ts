@@ -70,10 +70,15 @@ describe('declaring required times', () => {
 
 describe('drawing them', () => {
   it('draws one horizontal rule each, at its own time', () => {
+    /*
+     * Longest first, so the list reads down the sheet the way the rules
+     * stand on it. Declaration order made the reader match each entry
+     * to a rule by its figure.
+     */
     expect(rules(svg)).toEqual([
-      ['Arc flash limit', 0.2],
-      ['Grid code clearance', 0.43],
       ['Bus zone backup', 2],
+      ['Grid code clearance', 0.43],
+      ['Arc flash limit', 0.2],
     ]);
   });
 
@@ -123,7 +128,7 @@ describe('drawing them', () => {
   });
 
   it('lists them in their own legend section', () => {
-    expect(svg).toContain('>Required times</text>');
+    expect(svg).toContain('>Times</text>');
     /* And the author's note on what the limit is. */
     expect(svg).toContain('PPE category boundary');
   });
@@ -158,7 +163,7 @@ describe('drawing them', () => {
       STUDY.replace(/times \{[\s\S]*?\n\}\n/, ''), { theme: 'light' },
     ).svg;
     expect(rules(none)).toHaveLength(0);
-    expect(none).not.toContain('Required times');
+    expect(none).not.toContain('Times');
   });
 });
 
@@ -203,6 +208,6 @@ describe('a required time and a fault rule together', () => {
     expect(onPlot(svg)).toBe(1);
     expect(onPlot(bare)).toBe(0);
     /* Still listed, so the requirement is not lost. */
-    expect(bare).toContain('>Required times</text>');
+    expect(bare).toContain('>Times</text>');
   });
 });

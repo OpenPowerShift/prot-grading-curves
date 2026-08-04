@@ -19,39 +19,39 @@
 # exactly the six kinds, and after `as =` the four combining rules.
 
 meta {
-    project  = "Halgarth pumping station";
-    study    = "Device library and protected envelope";
-    engineer = "T. Okafor";
-    date     = "2026-08-01";
-    revision = "A";
-    margin   = 0.30 s;
+  project = "Halgarth pumping station";
+  study = "Device library and protected envelope";
+  engineer = "T. Okafor";
+  date = "2026-08-01";
+  revision = "A";
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "MV" {
-            V           = 11.0 kV;
-            description = "11 kV incoming";
-        }
-        "LV" {
-            V           = 0.4 kV;
-            description = "400 V motor board";
-        }
+  voltages {
+    "MV" {
+      V = 11.0 kV;
+      description = "11 kV incoming";
     }
-    I_base = 1000 A;
+    "LV" {
+      V = 0.4 kV;
+      description = "400 V motor board";
+    }
+  }
+  I_base = 1000 A;
 }
 
 faults {
-    "LV board max" {
-        I       = 21 kA;
-        type    = three_phase;
-        voltage = "LV";
-    }
-    "LV board min" {
-        I       = 8.4 kA;
-        type    = two_phase;
-        voltage = "LV";
-    }
+  "LV board max" {
+    I = 21 kA;
+    type = three_phase;
+    voltage = "LV";
+  }
+  "LV board min" {
+    I = 8.4 kA;
+    type = two_phase;
+    voltage = "LV";
+  }
 }
 
 # ---- The published curves. -------------------------------------------
@@ -60,121 +60,121 @@ faults {
 #      nobody can check.
 
 device "spur_fuse_100T" {
-    kind        = fuse;
-    voltage     = "LV";
-    maker       = "Mersen";
-    model       = "100T";
-    rating_I    = 100 A;
-    rating_V    = 0.6 kV;
-    reference   = "Mersen T-link data sheet, table 2";
-    description = "Spur fuse to the sump pump";
+  kind = fuse;
+  voltage = "LV";
+  maker = "Mersen";
+  model = "100T";
+  rating_I = 100 A;
+  rating_V = 0.6 kV;
+  reference = "Mersen T-link data sheet, table 2";
+  description = "Spur fuse to the sump pump";
 
-    # A fuse is a band, not a line: it may start to melt at the first
-    # curve and is guaranteed clear by the second. The renderer shades
-    # between them, so no `combine` is needed.
-    min_melt    = [(200 A, 10.0 s), (400 A, 1.20 s), (800 A, 0.14 s), (1.6 kA, 0.022 s)];
-    total_clear = [(200 A, 16.0 s), (400 A, 2.00 s), (800 A, 0.26 s), (1.6 kA, 0.045 s)];
+  # A fuse is a band, not a line: it may start to melt at the first
+  # curve and is guaranteed clear by the second. The renderer shades
+  # between them, so no `combine` is needed.
+  min_melt    = [(200 A, 10.0 s), (400 A, 1.20 s), (800 A, 0.14 s), (1.6 kA, 0.022 s)];
+  total_clear = [(200 A, 16.0 s), (400 A, 2.00 s), (800 A, 0.26 s), (1.6 kA, 0.045 s)];
 }
 
 device "sub_main_cable" {
-    kind        = cable;
-    voltage     = "LV";
-    rating_I    = 400 A;
-    reference   = "IEC 60949, 185 mm2 Cu XLPE, k = 143";
-    description = "Board to motor control centre, 185 mm2";
+  kind = cable;
+  voltage = "LV";
+  rating_I = 400 A;
+  reference = "IEC 60949, 185 mm2 Cu XLPE, k = 143";
+  description = "Board to motor control centre, 185 mm2";
 
-    # Adiabatic damage: t = (k*S/I)^2. Tabulated here rather than
-    # derived, so the sheet shows the same numbers the cable schedule does.
-    flex_points = [(4 kA, 43.0 s), (8 kA, 10.8 s), (16 kA, 2.70 s), (32 kA, 0.67 s)];
+  # Adiabatic damage: t = (k*S/I)^2. Tabulated here rather than
+  # derived, so the sheet shows the same numbers the cable schedule does.
+  flex_points = [(4 kA, 43.0 s), (8 kA, 10.8 s), (16 kA, 2.70 s), (32 kA, 0.67 s)];
 }
 
 device "tx_damage_1250" {
-    kind        = transformer_damage;
-    voltage     = "LV";
-    maker       = "Wilson";
-    model       = "1250 kVA ONAN";
-    rating_S    = 1.25 MVA;
-    rating_V    = 11 kV;
-    reference   = "IEEE C57.109 category II";
-    description = "Through-fault withstand, delta-star";
+  kind = transformer_damage;
+  voltage = "LV";
+  maker = "Wilson";
+  model = "1250 kVA ONAN";
+  rating_S = 1.25 MVA;
+  rating_V = 11 kV;
+  reference = "IEEE C57.109 category II";
+  description = "Through-fault withstand, delta-star";
 
-    flex_points = [(3.6 kA, 300 s), (7.2 kA, 75 s), (14.4 kA, 18.8 s), (28.8 kA, 4.7 s)];
+  flex_points = [(3.6 kA, 300 s), (7.2 kA, 75 s), (14.4 kA, 18.8 s), (28.8 kA, 4.7 s)];
 }
 
 device "sump_motor_start" {
-    kind        = motor_startup;
-    voltage     = "LV";
-    rating_I    = 180 A;
-    reference   = "Motor data sheet, DOL, 6.2x FLC";
-    description = "132 kW sump pump, direct on line";
+  kind = motor_startup;
+  voltage = "LV";
+  rating_I = 180 A;
+  reference = "Motor data sheet, DOL, 6.2x FLC";
+  description = "132 kW sump pump, direct on line";
 
-    # The start is a load, not a fault: nothing may trip during it.
-    flex_points = [(1.12 kA, 9.0 s), (1.12 kA, 0.05 s)];
+  # The start is a load, not a fault: nothing may trip during it.
+  flex_points = [(1.12 kA, 9.0 s), (1.12 kA, 0.05 s)];
 }
 
 device "acb_operating" {
-    kind        = breaker;
-    voltage     = "LV";
-    maker       = "Schneider";
-    model       = "NW20";
-    rating_I    = 2000 A;
-    reference   = "Masterpact NW catalogue, opening + arcing";
-    description = "Air circuit breaker own clearing time";
-    t_delay     = 50 ms;
+  kind = breaker;
+  voltage = "LV";
+  maker = "Schneider";
+  model = "NW20";
+  rating_I = 2000 A;
+  reference = "Masterpact NW catalogue, opening + arcing";
+  description = "Air circuit breaker own clearing time";
+  t_delay = 50 ms;
 }
 
 device "recloser_R1" {
-    kind        = recloser;
-    voltage     = "MV";
-    maker       = "Schneider";
-    model       = "N-Series";
-    rating_I    = 630 A;
-    reference   = "N-Series fast curve, 11 kV pole-top";
-    description = "Pole-top recloser, fast operation";
+  kind = recloser;
+  voltage = "MV";
+  maker = "Schneider";
+  model = "N-Series";
+  rating_I = 630 A;
+  reference = "N-Series fast curve, 11 kV pole-top";
+  description = "Pole-top recloser, fast operation";
 
-    flex_points = [(700 A, 0.60 s), (2 kA, 0.10 s), (6 kA, 0.045 s)];
+  flex_points = [(700 A, 0.60 s), (2 kA, 0.10 s), (6 kA, 0.045 s)];
 }
 
 # ---- The relays being graded against them. ---------------------------
 relay R_MCC {
-    name      = "MCC incomer";
-    maker     = "SEL";
-    model     = "751";
-    reference = "MCC-1 panel";
-    voltage   = "LV";
-    ct_ratio  = 2000/5;
+  name = "MCC incomer";
+  maker = "SEL";
+  model = "751";
+  reference = "MCC-1 panel";
+  voltage = "LV";
+  ct_ratio = 2000/5;
 
-    element 51 {
-        name        = "Phase TOC";
-        function    = "phase_oc";
-        curve       = iec.vi;
-        I_pickup    = 1.6 kA;
-        tms         = 0.10;
-        current_max = 21 kA;
-    }
+  element 51 {
+    name = "Phase TOC";
+    function = "phase_oc";
+    curve = iec.vi;
+    I_pickup = 1.6 kA;
+    tms = 0.10;
+    current_max = 21 kA;
+  }
 }
 
 relay R_BOARD {
-    name     = "LV board incomer";
-    voltage  = "LV";
-    ct_ratio = 3000/5;
+  name = "LV board incomer";
+  voltage = "LV";
+  ct_ratio = 3000/5;
 
-    element 51 {
-        name        = "Phase TOC";
-        function    = "phase_oc";
-        curve       = iec.vi;
-        I_pickup    = 2.4 kA;
-        tms         = 0.25;
-        current_max = 21 kA;
-    }
+  element 51 {
+    name = "Phase TOC";
+    function = "phase_oc";
+    curve = iec.vi;
+    I_pickup = 2.4 kA;
+    tms = 0.25;
+    current_max = 21 kA;
+  }
 
-    # An element can carry a table too, when the device it models is
-    # not one of the built-in kinds.
-    element 49 {
-        name     = "Thermal overload";
-        function = "thermal";
-        flex_points = [(2.6 kA, 900 s), (4 kA, 220 s), (8 kA, 40 s)];
-    }
+  # An element can carry a table too, when the device it models is
+  # not one of the built-in kinds.
+  element 49 {
+    name = "Thermal overload";
+    function = "thermal";
+    flex_points = [(2.6 kA, 900 s), (4 kA, 220 s), (8 kA, 40 s)];
+  }
 }
 
 # ---- Synthetic curves. -----------------------------------------------
@@ -190,97 +190,97 @@ relay R_BOARD {
 #      annotated.
 
 combine {
-    name = "Fastest LV protection";
-    sources = [R_MCC:51, R_BOARD:51];
-    as    = envelope_min;
-    label = "Fastest LV protection (envelope)";
-    color = "#7d3c98";
+  name = "Fastest LV protection";
+  sources = [R_MCC:51, R_BOARD:51];
+  as = envelope_min;
+  label = "Fastest LV protection (envelope)";
+  color = "#7d3c98";
 }
 
 combine {
-    name = "Slowest LV protection";
-    sources = [R_MCC:51, R_BOARD:51];
-    as    = envelope_max;
-    label = "Worst case to grade against";
-    color = "#b7950b";
+  name = "Slowest LV protection";
+  sources = [R_MCC:51, R_BOARD:51];
+  as = envelope_max;
+  label = "Worst case to grade against";
+  color = "#b7950b";
 }
 
 combine {
-    name = "Board clear incl. breaker";
-    sources = [R_BOARD:51, acb_operating];
-    as    = sum;
-    label = "Relay + ACB total clearing time";
-    color = "#1a5276";
+  name = "Board clear incl. breaker";
+  sources = [R_BOARD:51, acb_operating];
+  as = sum;
+  label = "Relay + ACB total clearing time";
+  color = "#1a5276";
 }
 
 combine {
-    name = "First to operate";
-    sources = [R_MCC:51, R_BOARD:49];
-    as    = select_first;
-    label = "Whichever element picks up first";
-    color = "#117a65";
+  name = "First to operate";
+  sources = [R_MCC:51, R_BOARD:49];
+  as = select_first;
+  label = "Whichever element picks up first";
+  color = "#117a65";
 }
 
 # ---- Grading. --------------------------------------------------------
 grade {
-    primary = R_MCC:51;
-    backup  = R_BOARD:51;
-    fault   = "LV board max";
-    margin  = 0.30 s;
-    comment = "MCC ahead of the board incomer";
+  primary = R_MCC:51;
+  backup = R_BOARD:51;
+  fault = "LV board max";
+  margin = 0.30 s;
+  comment = "MCC ahead of the board incomer";
 }
 
 annotate {
-    primary = R_MCC:51;
-    backup  = R_BOARD:51;
-    fault   = "LV board max";
-    label   = "CTI";
+  primary = R_MCC:51;
+  backup = R_BOARD:51;
+  fault = "LV board max";
+  label = "CTI";
 }
 
 annotate {
-    on_curve = R_BOARD:51;
-    at_I     = 8.4 kA;
-    label    = "Board incomer at minimum fault";
-    style    = leader;
+  on_curve = R_BOARD:51;
+  at_I = 8.4 kA;
+  label = "Board incomer at minimum fault";
+  style = leader;
 }
 
 point "Motor start corner" {
-    I     = 1.12 kA;
-    t     = 9 s;
-    label = "DOL start, 6.2x FLC for 9 s";
-    shape = triangle;
+  I = 1.12 kA;
+  t = 9 s;
+  label = "DOL start, 6.2x FLC for 9 s";
+  shape = triangle;
 }
 
 page {
-    size        = "A3";
-    orientation = "landscape";
-    theme       = "light";
-    border      = true;
-    legend      = {
-        title    = "Devices and curves";
-        position = "right";
-        swatch   = "line";
-    };
-    curves      = {
-        palette       = "okabe_ito";
-        line_width_px = 1.8;
-    };
-    points      = {
-        shape   = "triangle";
-        size_px = 8;
-        outline = true;
-    };
-    title       = {
-        text     = "Halgarth pumping station — device library";
-        subtitle = "Published tables, synthetic envelopes, and the relays graded against them";
-    };
+  size = "A3";
+  orientation = "landscape";
+  theme = "light";
+  border = true;
+  legend      = {
+    title = "Devices and curves";
+    position = "right";
+    swatch = "line";
+  };
+  curves      = {
+    palette = "okabe_ito";
+    line_width_px = 1.8;
+  };
+  points      = {
+    shape = "triangle";
+    size_px = 8;
+    outline = true;
+  };
+  title       = {
+    text = "Halgarth pumping station — device library";
+    subtitle = "Published tables, synthetic envelopes, and the relays graded against them";
+  };
 }
 
 view {
-    voltage     = "LV";
-    quantity    = any;
-    current_min = 100 A;
-    current_max = 60 kA;
-    time_min    = 10 ms;
-    time_max    = 1 ks;
+  voltage = "LV";
+  quantity = any;
+  current_min = 100 A;
+  current_max = 60 kA;
+  time_min = 10 ms;
+  time_max = 1 ks;
 }

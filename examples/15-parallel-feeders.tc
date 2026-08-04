@@ -18,44 +18,44 @@
 # `strategy =` for how tightly it should land.
 
 meta {
-    project  = "Ardmore 33 kV double circuit";
-    study    = "Parallel feeder grading with directional backup";
-    engineer = "L. Vasquez";
-    date     = "2026-08-01";
-    revision = "B";
-    margin   = 0.35 s;
+  project = "Ardmore 33 kV double circuit";
+  study = "Parallel feeder grading with directional backup";
+  engineer = "L. Vasquez";
+  date = "2026-08-01";
+  revision = "B";
+  margin = 0.35 s;
 }
 
 system {
-    voltages {
-        "HV" {
-            V           = 33.0 kV;
-            description = "33 kV double circuit";
-        }
+  voltages {
+    "HV" {
+      V = 33.0 kV;
+      description = "33 kV double circuit";
     }
-    I_base  = 500 A;
-    I_units = "primary";
+  }
+  I_base = 500 A;
+  I_units = "primary";
 }
 
 faults {
-    "Load end 3ph"  {
-        I       = 7.2 kA;
-        type    = three_phase;
-        voltage = "HV";
-    }
-    "Load end 2ph"  {
-        I       = 6.2 kA;
-        type    = two_phase;
-        voltage = "HV";
-    }
-    "Load end 2phE" {
-        I        = 5.8 kA;
-        type     = two_phase_earth;
-        voltage  = "HV";
-        I2       = 2.1 kA;
-        I0       = 1.4 kA;
-        residual = 4.2 kA;
-    }
+  "Load end 3ph" {
+    I = 7.2 kA;
+    type = three_phase;
+    voltage = "HV";
+  }
+  "Load end 2ph" {
+    I = 6.2 kA;
+    type = two_phase;
+    voltage = "HV";
+  }
+  "Load end 2phE" {
+    I = 5.8 kA;
+    type = two_phase_earth;
+    voltage = "HV";
+    I2 = 2.1 kA;
+    I0 = 1.4 kA;
+    residual = 4.2 kA;
+  }
 }
 
 # ---- The condition, and who carries what. ----------------------------
@@ -63,143 +63,144 @@ faults {
 #      Written down, it is auditable; left to the reader, it is the
 #      commonest place a parallel study goes wrong by a factor of two.
 scenario "Both circuits in" {
-    type        = three_phase;
-    description = "Normal running, both feeders closed";
+  type = three_phase;
+  description = "Normal running, both feeders closed";
 
-    level "HV" {
-        I  = 7.2 kA;
-        I1 = 7.2 kA;
-        I2 = 0 A;
-        I0 = 0 A;
-    }
+  level "HV" {
+    I = 7.2 kA;
+    I1 = 7.2 kA;
+    I2 = 0 A;
+    I0 = 0 A;
+  }
 
-    sees R_FDR_A {
-        share = 50;
-    }
-    sees R_FDR_B {
-        share = 50;
-    }
+  sees R_FDR_A {
+    share = 50;
+  }
+  sees R_FDR_B {
+    share = 50;
+  }
 }
 
 scenario "One circuit out" {
-    type        = three_phase;
-    description = "B out for maintenance; A carries the lot";
+  type = three_phase;
+  description = "B out for maintenance; A carries the lot";
 
-    level "HV" {
-        I  = 6.4 kA;
-        I1 = 6.4 kA;
-        I2 = 0 A;
-        I0 = 0 A;
-    }
+  level "HV" {
+    I = 6.4 kA;
+    I1 = 6.4 kA;
+    I2 = 0 A;
+    I0 = 0 A;
+  }
 
-    sees R_FDR_A {
-        share = 100;
-    }
+  sees R_FDR_A {
+    share = 100;
+  }
 }
 
 # ---- Feeder A: looks down the line. ----------------------------------
 relay R_FDR_A {
-    name      = "Feeder A";
-    maker     = "SEL";
-    model     = "751";
-    reference = "Ardmore panel A";
-    voltage   = "HV";
-    ct_ratio  = 400/5;
-    direction = forward;
+  name = "Feeder A";
+  maker = "SEL";
+  model = "751";
+  reference = "Ardmore panel A";
+  voltage = "HV";
+  ct_ratio = 400/5;
+  direction = forward;
 
-    element 51 {
-        name     = "Phase TOC";
-        function = "phase_oc";
-        curve    = ansi.mi;
-        I_pickup = 480 A;
-        tms      = 1.0;
+  element 51 {
+    name = "Phase TOC";
+    function = "phase_oc";
+    curve = ansi.mi;
+    I_pickup = 480 A;
+    tms = 1.0;
 
-        # Half the fault current under the normal condition.
-        share = 50;
+    # Half the fault current under the normal condition.
+    share = 50;
 
-        # A directional element only operates for faults in front of it,
-        # which is what stops the healthy feeder tripping for a fault on
-        # its partner. The characteristic angle is where its maximum
-        # torque sits relative to the polarising quantity.
-        directional = true;
-        char_angle  = 45 deg;
+    # A directional element only operates for faults in front of it,
+    # which is what stops the healthy feeder tripping for a fault on
+    # its partner. The characteristic angle is where its maximum
+    # torque sits relative to the polarising quantity.
+    directional = true;
+    char_angle = 45 deg;
 
-        # An induction disc does not reset instantly: it unwinds. On a
-        # reclosing scheme that memory decides whether the second shot
-        # lands on a partly-run disc.
-        reset   = disk_emulation;
-        t_reset = 6 s;
-    }
+    # An induction disc does not reset instantly: it unwinds. On a
+    # reclosing scheme that memory decides whether the second shot
+    # lands on a partly-run disc.
+    reset = disk_emulation;
+    t_reset = 6 s;
+  }
 }
 
 # ---- Feeder B: identical plant, same setting. ------------------------
 relay R_FDR_B {
-    name      = "Feeder B";
-    maker     = "SEL";
-    model     = "751";
-    voltage   = "HV";
-    ct_ratio  = 400/5;
-    direction = forward;
+  name = "Feeder B";
+  maker = "SEL";
+  model = "751";
+  voltage = "HV";
+  ct_ratio = 400/5;
+  direction = forward;
 
-    element 51 {
-        name        = "Phase TOC";
-        function    = "phase_oc";
-        curve       = ansi.mi;
-        I_pickup    = 480 A;
-        tms         = 1.0;
-        share       = 50;
-        directional = true;
-        char_angle  = 45 deg;
-        reset       = dependent;
-        t_reset     = 6 s;
-    }
+  element 51 {
+    name = "Phase TOC";
+    function = "phase_oc";
+    curve = ansi.mi;
+    I_pickup = 480 A;
+    tms = 1.0;
+    share = 50;
+    directional = true;
+    char_angle = 45 deg;
+    reset = dependent;
+    t_reset = 6 s;
+  }
 }
 
 # ---- The source-end backup: non-directional, sees everything. --------
 relay R_SRC {
-    name      = "Source incomer";
-    maker     = "ABB";
-    model     = "REF615";
-    voltage   = "HV";
-    ct_ratio  = 800/5;
-    direction = none;
+  name = "Source incomer";
+  maker = "ABB";
+  model = "REF615";
+  voltage = "HV";
+  ct_ratio = 800/5;
+  direction = none;
 
-    element 51 {
-        name     = "Phase TOC";
-        function = "phase_oc";
-        curve    = ansi.mi;
-        I_pickup = 900 A;
-        tms      = 2.0;
+  element 51 {
+    name = "Phase TOC";
+    function = "phase_oc";
+    curve = ansi.mi;
+    I_pickup = 900 A;
+    tms = 2.0;
 
-        # Non-directional: it backs up both circuits, so it must not
-        # care which way the current is flowing.
-        directional = false;
-        reset       = instant;
-    }
+    # Non-directional: it backs up both circuits, so it must not
+    # care which way the current is flowing.
+    directional = false;
+    reset = instant;
+  }
 }
 
 # ---- A reverse-looking element, for the busbar behind it. ------------
 relay R_BUS {
-    name      = "Bus zone backup";
-    voltage   = "HV";
-    ct_ratio  = 800/5;
-    direction = reverse;
+  name = "Bus zone backup";
+  voltage = "HV";
+  ct_ratio = 800/5;
+  direction = reverse;
 
-    element 51 {
-        name        = "Reverse-looking TOC";
-        function    = "phase_oc";
-        curve       = ansi.vi;
-        I_pickup    = 1.2 kA;
-        tms         = 3.0;
-        directional = true;
-        char_angle  = 60 deg;
-    }
+  element 51 {
+    name = "Reverse-looking TOC";
+    function = "phase_oc";
+    curve = ansi.vi;
+    I_pickup = 1.2 kA;
+    tms = 3.0;
+    directional = true;
+    char_angle = 60 deg;
+  }
 }
 
 # ---- Grading, with the source relay's dial computed. -----------------
-#      `solve` reports the setting that would meet `margin_target`; it
-#      does not change the relay. The dial below is the engineer's, and
-#      the report says whether the tool would have chosen the same.
+#      `solve` APPLIES the setting it computes: the curve is drawn at
+#      the solved dial and the margins come from it. A dial already in
+#      the file is superseded, not discarded -- the legend shows both
+#      and the report warns which governs.
 #
 #        free     = [tms] | [t_delay] | [I_pickup]  what may change
 #        strategy = tight | loose | safety_factor
@@ -207,99 +208,99 @@ relay R_BUS {
 #      `tight` lands as close above the target as the dial steps allow;
 #      `loose` leaves headroom; `safety_factor` multiplies the target.
 grade {
-    primary       = R_FDR_A:51;
-    backup        = R_SRC:51;
-    scenario      = "Both circuits in";
-    margin        = 0.35 s;
-    margin_target = 0.40 s;
-    comment       = "A carries half; the source relay sees the whole fault";
+  primary = R_FDR_A:51;
+  backup = R_SRC:51;
+  scenario = "Both circuits in";
+  margin = 0.35 s;
+  margin_target = 0.40 s;
+  comment = "A carries half; the source relay sees the whole fault";
 
-    solve {
-        strategy = loose;
-        free          = [tms];
-        tolerance_pct = 5;
-        comment       = "dial the source relay to clear the grading";
-    }
+  solve {
+    strategy = loose;
+    free          = [tms];
+    tolerance_pct = 5;
+    comment = "dial the source relay to clear the grading";
+  }
 }
 
 grade {
-    primary  = R_FDR_A:51;
-    backup   = R_SRC:51;
-    scenario = "One circuit out";
-    margin   = 0.35 s;
-    comment  = "worst case for A: it now carries everything";
+  primary = R_FDR_A:51;
+  backup = R_SRC:51;
+  scenario = "One circuit out";
+  margin = 0.35 s;
+  comment = "worst case for A: it now carries everything";
 }
 
 annotate {
-    primary  = R_FDR_A:51;
-    backup   = R_SRC:51;
-    scenario = "Both circuits in";
-    label    = "CTI, both in";
+  primary = R_FDR_A:51;
+  backup = R_SRC:51;
+  scenario = "Both circuits in";
+  label = "CTI, both in";
 }
 
 # ---- Two sheets from one study. --------------------------------------
 #      `default = true` picks the one the CLI and a fresh playground
 #      open on; the picker offers the rest.
 view "Primary amps" {
-    default   = true;
-    voltage   = "HV";
-    quantity  = phase;
-    condition = "Both circuits in";
-    title     = "Parallel feeder grading";
-    subtitle  = "Both circuits in service, 50% share each";
-    axis      = "primary";
+  default = true;
+  voltage = "HV";
+  quantity = phase;
+  condition = "Both circuits in";
+  title = "Parallel feeder grading";
+  subtitle = "Both circuits in service, 50% share each";
+  axis = "primary";
 
-    # A second time axis down the right-hand edge, for reading a long
-    # sheet without tracking back across it.
-    two_axes = true;
+  # A second time axis down the right-hand edge, for reading a long
+  # sheet without tracking back across it.
+  two_axes = true;
 
-    current_min = 100 A;
-    current_max = 30 kA;
-    time_min    = 20 ms;
-    time_max    = 100 s;
+  current_min = 100 A;
+  current_max = 30 kA;
+  time_min = 20 ms;
+  time_max = 100 s;
 }
 
 view "Multiples of pickup" {
-    voltage   = "HV";
-    quantity  = phase;
-    condition = "One circuit out";
-    title     = "Same study, drawn in multiples";
-    subtitle  = "x pickup rather than amps — how a settings sheet reads";
+  voltage = "HV";
+  quantity = phase;
+  condition = "One circuit out";
+  title = "Same study, drawn in multiples";
+  subtitle = "x pickup rather than amps — how a settings sheet reads";
 
-    # `multiples` draws the abscissa as x-pickup instead of amps, which
-    # is how a relay manual states its curves.
-    axis = "multiples";
+  # `multiples` draws the abscissa as x-pickup instead of amps, which
+  # is how a relay manual states its curves.
+  axis = "multiples";
 
-    current_min = 100 A;
-    current_max = 30 kA;
-    time_min    = 20 ms;
-    time_max    = 100 s;
+  current_min = 100 A;
+  current_max = 30 kA;
+  time_min = 20 ms;
+  time_max = 100 s;
 }
 
 page {
-    size        = "A4";
-    orientation = "landscape";
-    theme       = "light";
-    border      = true;
-    legend      = {
-        title    = "Feeders";
-        position = "bottom_right";
-        swatch   = "box";
-        currents = "both";
-    };
-    curves      = {
-        palette    = "high_contrast";
-        auto_color = true;
-    };
-    leaders     = {
-        style           = "arrow";
-        color           = "#555555";
-        label_offset_px = 14;
-    };
-    footer      = {
-        left         = "[meta.project]";
-        center       = "[meta.study]";
-        right        = "Rev [meta.revision] · [meta.date]";
-        font_size_px = 9;
-    };
+  size = "A4";
+  orientation = "landscape";
+  theme = "light";
+  border = true;
+  legend      = {
+    title = "Feeders";
+    position = "bottom_right";
+    swatch = "box";
+    currents = "both";
+  };
+  curves      = {
+    palette = "high_contrast";
+    auto_color = true;
+  };
+  leaders     = {
+    style = "arrow";
+    color = "#555555";
+    label_offset_px = 14;
+  };
+  footer      = {
+    left = "[meta.project]";
+    center = "[meta.study]";
+    right = "Rev [meta.revision] · [meta.date]";
+    font_size_px = 9;
+  };
 }

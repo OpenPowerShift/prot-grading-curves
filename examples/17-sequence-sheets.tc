@@ -20,259 +20,259 @@
 # reader to work out which current a bare number meant.
 
 meta {
-    project  = "Cardross 33 kV";
-    study    = "Sequence sheets for an unbalanced fault";
-    engineer = "P. Nowak";
-    date     = "2026-08-01";
-    revision = "A";
-    margin   = 0.30 s;
+  project = "Cardross 33 kV";
+  study = "Sequence sheets for an unbalanced fault";
+  engineer = "P. Nowak";
+  date = "2026-08-01";
+  revision = "A";
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "HV" {
-            V           = 33.0 kV;
-            description = "33 kV ring";
-        }
+  voltages {
+    "HV" {
+      V = 33.0 kV;
+      description = "33 kV ring";
     }
+  }
 }
 
 # ---- Two conditions, both unbalanced. --------------------------------
 scenario "Phase-earth at the tee" {
-    type        = single_phase_earth;
-    description = "Solid A-earth fault at the tee point";
+  type = single_phase_earth;
+  description = "Solid A-earth fault at the tee point";
 
-    # I1 = I2 = I0 = If/3 for a solid phase-earth fault; the residual
-    # 3*I0 is the whole fault current.
-    level "HV" {
-        I        = 2.4 kA;
-        I1       = 800 A;
-        I2       = 800 A;
-        I0       = 800 A;
-        residual = 2.4 kA;
-    }
+  # I1 = I2 = I0 = If/3 for a solid phase-earth fault; the residual
+  # 3*I0 is the whole fault current.
+  level "HV" {
+    I = 2.4 kA;
+    I1 = 800 A;
+    I2 = 800 A;
+    I0 = 800 A;
+    residual = 2.4 kA;
+  }
 }
 
 scenario "Phase-phase at the tee" {
-    type        = two_phase;
-    description = "B-C fault, no earth path";
+  type = two_phase;
+  description = "B-C fault, no earth path";
 
-    # A phase-phase fault carries no zero sequence at all, so the
-    # residual sheet has nothing to draw for it — and says so.
-    level "HV" {
-        I        = 2.1 kA;
-        I1       = 1.21 kA;
-        I2       = 1.21 kA;
-        I0       = 0 A;
-        residual = 0 A;
-    }
+  # A phase-phase fault carries no zero sequence at all, so the
+  # residual sheet has nothing to draw for it — and says so.
+  level "HV" {
+    I = 2.1 kA;
+    I1 = 1.21 kA;
+    I2 = 1.21 kA;
+    I0 = 0 A;
+    residual = 0 A;
+  }
 }
 
 faults {
-    "Ring max" {
-        I       = 3.6 kA;
-        type    = three_phase;
-        voltage = "HV";
-    }
+  "Ring max" {
+    I = 3.6 kA;
+    type = three_phase;
+    voltage = "HV";
+  }
 }
 
 # ---- The tee relay: three elements, three different currents. --------
 relay R_TEE {
-    name      = "Tee point (SEL-751)";
-    maker     = "SEL";
-    model     = "751";
-    reference = "Cardross tee kiosk";
-    voltage   = "HV";
-    ct_ratio  = 400/5;
+  name = "Tee point (SEL-751)";
+  maker = "SEL";
+  model = "751";
+  reference = "Cardross tee kiosk";
+  voltage = "HV";
+  ct_ratio = 400/5;
 
-    element 51 {
-        name     = "Phase TOC";
-        function = "phase_oc"; # -> phase current
-        curve    = iec.si;
-        I_pickup = 480 A;
-        tms      = 0.12;
-    }
+  element 51 {
+    name = "Phase TOC";
+    function = "phase_oc"; # -> phase current
+    curve = iec.si;
+    I_pickup = 480 A;
+    tms = 0.12;
+  }
 
-    element 51G {
-        name     = "Ground TOC";
-        function = "earth_fault"; # -> residual 3*I0
-        curve    = iec.si;
-        I_pickup = 240 A;
-        tms      = 0.10;
-    }
+  element 51G {
+    name = "Ground TOC";
+    function = "earth_fault"; # -> residual 3*I0
+    curve = iec.si;
+    I_pickup = 240 A;
+    tms = 0.10;
+  }
 
-    element 46 {
-        name     = "Negative sequence";
-        function = "neg_seq";
-        measures = I2; # this IED is scaled in I2
-        curve    = definite;
-        I_pickup = 200 A;
-        t_delay  = 0.60 s;
-    }
+  element 46 {
+    name = "Negative sequence";
+    function = "neg_seq";
+    measures = I2; # this IED is scaled in I2
+    curve = definite;
+    I_pickup = 200 A;
+    t_delay = 0.60 s;
+  }
 }
 
 # ---- The ring relay backing it up, scaled in 3*I2. -------------------
 #      Same physics, different convention: state which and the tool
 #      places both on whichever sheet is asked for.
 relay R_RING {
-    name     = "Ring incomer (ABB REF615)";
-    maker    = "ABB";
-    model    = "REF615";
-    voltage  = "HV";
-    ct_ratio = 600/5;
+  name = "Ring incomer (ABB REF615)";
+  maker = "ABB";
+  model = "REF615";
+  voltage = "HV";
+  ct_ratio = 600/5;
 
-    element 46 {
-        name     = "Negative sequence backup";
-        function = "neg_seq";
-        measures = 3I2; # scaled in three times I2
-        curve    = definite;
-        I_pickup = 900 A;
-        t_delay  = 1.20 s;
-    }
+  element 46 {
+    name = "Negative sequence backup";
+    function = "neg_seq";
+    measures = 3I2; # scaled in three times I2
+    curve = definite;
+    I_pickup = 900 A;
+    t_delay = 1.20 s;
+  }
 
-    element 51G {
-        name     = "Ground backup";
-        function = "earth_fault";
-        measures = 3I0; # residual, stated rather than assumed
-        curve    = iec.si;
-        I_pickup = 400 A;
-        tms      = 0.22;
-    }
+  element 51G {
+    name = "Ground backup";
+    function = "earth_fault";
+    measures = 3I0; # residual, stated rather than assumed
+    curve = iec.si;
+    I_pickup = 400 A;
+    tms = 0.22;
+  }
 }
 
 grade {
-    primary  = R_TEE:46;
-    backup   = R_RING:46;
-    scenario = "Phase-earth at the tee";
-    margin   = 0.30 s;
-    comment  = "both measure negative sequence, one scaled by three";
+  primary = R_TEE:46;
+  backup = R_RING:46;
+  scenario = "Phase-earth at the tee";
+  margin = 0.30 s;
+  comment = "both measure negative sequence, one scaled by three";
 
-    solve {
-        strategy      = safety_factor;
-        tolerance_pct = 10;
-        comment       = "what a 1.5x safety factor on the target would need";
-    }
+  solve {
+    strategy = safety_factor;
+    tolerance_pct = 10;
+    comment = "what a 1.5x safety factor on the target would need";
+  }
 }
 
 grade {
-    primary  = R_TEE:51G;
-    backup   = R_RING:51G;
-    scenario = "Phase-earth at the tee";
-    margin   = 0.30 s;
+  primary = R_TEE:51G;
+  backup = R_RING:51G;
+  scenario = "Phase-earth at the tee";
+  margin = 0.30 s;
 }
 
 # ---- Annotations that name their component. --------------------------
 #      A bare `at_I` is a phase current. On a sequence sheet that is
 #      rarely what is meant, so each component has its own spelling.
 annotate {
-    on_curve = R_TEE:46;
-    at_I2    = 800 A;
-    label    = "46 at the phase-earth fault";
-    style    = pin;
+  on_curve = R_TEE:46;
+  at_I2 = 800 A;
+  label = "46 at the phase-earth fault";
+  style = pin;
 }
 
 annotate {
-    on_curve    = R_TEE:51G;
-    at_residual = 2.4 kA;
-    label       = "51G sees the whole residual";
-    style       = leader;
+  on_curve = R_TEE:51G;
+  at_residual = 2.4 kA;
+  label = "51G sees the whole residual";
+  style = leader;
 }
 
 annotate {
-    on_curve = R_RING:46;
-    at_I1    = 800 A;
-    label    = "positive-sequence reference";
-    style    = tag;
+  on_curve = R_RING:46;
+  at_I1 = 800 A;
+  label = "positive-sequence reference";
+  style = tag;
 }
 
 annotate {
-    on_curve = R_RING:51G;
-    at_I0    = 800 A;
-    label    = "I0 rather than 3I0";
-    style    = tag;
+  on_curve = R_RING:51G;
+  at_I0 = 800 A;
+  label = "I0 rather than 3I0";
+  style = tag;
 }
 
 # `at_t` places the mark by time instead of current — where a curve is
 # read the other way round, "what current gives me 300 ms?".
 annotate {
-    on_curve = R_TEE:51;
-    at_t     = 300 ms;
-    label    = "phase element at 300 ms";
-    style    = pin;
+  on_curve = R_TEE:51;
+  at_t = 300 ms;
+  label = "phase element at 300 ms";
+  style = pin;
 }
 
 # ---- A point drawn for both conditions at once. ----------------------
 #      `scenarios` takes a list; the marker is drawn once per condition
 #      named, at each one's own figure for the level being shown.
 point "Tee I2" {
-    scenarios = ["Phase-earth at the tee", "Phase-phase at the tee"];
-    voltage = "HV";
-    t       = 0.60 s;
-    label   = "46 operates";
-    shape   = square;
+  scenarios = ["Phase-earth at the tee", "Phase-phase at the tee"];
+  voltage = "HV";
+  t = 0.60 s;
+  label = "46 operates";
+  shape = square;
 }
 
 page {
-    size        = "A4";
-    orientation = "landscape";
-    theme       = "light";
-    legend      = {
-        title    = "Elements";
-        position = "top_right";
-    };
-    curves      = {
-        palette = "ieee";
-    };
+  size = "A4";
+  orientation = "landscape";
+  theme = "light";
+  legend      = {
+    title = "Elements";
+    position = "top_right";
+  };
+  curves      = {
+    palette = "ieee";
+  };
 }
 
 # ---- Four sheets of the same study. ----------------------------------
 #      `condition` lets curves measuring one quantity be drawn on an
 #      axis in another, using that condition's own declared figures.
 view "Phase" {
-    default     = true;
-    voltage     = "HV";
-    quantity    = phase;
-    condition   = "Phase-earth at the tee";
-    title       = "Phase sheet";
-    subtitle    = "Everything converted onto phase current";
-    current_min = 50 A;
-    current_max = 20 kA;
+  default = true;
+  voltage = "HV";
+  quantity = phase;
+  condition = "Phase-earth at the tee";
+  title = "Phase sheet";
+  subtitle = "Everything converted onto phase current";
+  current_min = 50 A;
+  current_max = 20 kA;
 
-    # Room beyond the fitted range, as a factor, rather than fixed
-    # bounds — so the sheet still frames itself if a setting changes.
-    time_pad     = 1.5;
-    time_pad_low = 2;
+  # Room beyond the fitted range, as a factor, rather than fixed
+  # bounds — so the sheet still frames itself if a setting changes.
+  time_pad = 1.5;
+  time_pad_low = 2;
 }
 
 view "Negative sequence" {
-    voltage     = "HV";
-    quantity    = I2;
-    condition   = "Phase-earth at the tee";
-    title       = "I2 sheet";
-    subtitle    = "As the tee relay is scaled";
-    current_min = 50 A;
-    current_max = 20 kA;
+  voltage = "HV";
+  quantity = I2;
+  condition = "Phase-earth at the tee";
+  title = "I2 sheet";
+  subtitle = "As the tee relay is scaled";
+  current_min = 50 A;
+  current_max = 20 kA;
 
-    current_pad_low  = 1.5;
-    current_pad_high = 1.2;
+  current_pad_low = 1.5;
+  current_pad_high = 1.2;
 }
 
 view "Three times I2" {
-    voltage     = "HV";
-    quantity    = 3I2;
-    condition   = "Phase-phase at the tee";
-    title       = "3I2 sheet";
-    subtitle    = "As the ring relay is scaled — the same physics, x3";
-    current_min = 50 A;
-    current_max = 20 kA;
+  voltage = "HV";
+  quantity = 3I2;
+  condition = "Phase-phase at the tee";
+  title = "3I2 sheet";
+  subtitle = "As the ring relay is scaled — the same physics, x3";
+  current_min = 50 A;
+  current_max = 20 kA;
 }
 
 view "Residual" {
-    voltage     = "HV";
-    quantity    = 3I0;
-    condition   = "Phase-earth at the tee";
-    title       = "Residual sheet";
-    subtitle    = "3I0 — what an earth-fault element measures";
-    current_min = 50 A;
-    current_max = 20 kA;
+  voltage = "HV";
+  quantity = 3I0;
+  condition = "Phase-earth at the tee";
+  title = "Residual sheet";
+  subtitle = "3I0 — what an earth-fault element measures";
+  current_min = 50 A;
+  current_max = 20 kA;
 }

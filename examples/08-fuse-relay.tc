@@ -16,74 +16,74 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Spur fuse coordination";
-    engineer = "B. Singh";
-    date     = "2026-07-28";
-    margin   = 0.15 s; # typical fuse-relay CTI
+  project = "Spur fuse coordination";
+  engineer = "B. Singh";
+  date = "2026-07-28";
+  margin = 0.15 s; # typical fuse-relay CTI
 }
 
 system {
-    voltages {
-        "MV" {
-            V = 11.0 kV;
-        }
+  voltages {
+    "MV" {
+      V = 11.0 kV;
     }
+  }
 }
 
 faults {
-    "Spur fault" {
-        I = 900 A;
-    }
-    "Bus fault"  {
-        I = 4200 A;
-    }
+  "Spur fault" {
+    I = 900 A;
+  }
+  "Bus fault" {
+    I = 4200 A;
+  }
 }
 
 device "fuse_100T" {
-    voltage  = "MV"; # the level it sits on
-    kind     = "fuse";
-    maker    = "Mersen";
-    model    = "100T";
-    rating_I = 100 A;
+  voltage = "MV"; # the level it sits on
+  kind = "fuse";
+  maker = "Mersen";
+  model = "100T";
+  rating_I = 100 A;
 
-    min_melt    = [(200 A, 60 s), (300 A, 9.0 s), (600 A, 0.60 s),
-    (1200 A, 0.10 s), (3000 A, 0.016 s)];
-    total_clear = [(200 A, 105 s), (300 A, 15.0 s), (600 A, 1.00 s),
-    (1200 A, 0.17 s), (3000 A, 0.028 s)];
+  min_melt    = [(200 A, 60 s), (300 A, 9.0 s), (600 A, 0.60 s),
+  (1200 A, 0.10 s), (3000 A, 0.016 s)];
+  total_clear = [(200 A, 105 s), (300 A, 15.0 s), (600 A, 1.00 s),
+  (1200 A, 0.17 s), (3000 A, 0.028 s)];
 }
 
 relay R_FEEDER {
-    voltage  = "MV";
-    maker    = "SEL";
-    model    = "SEL-751";
-    ct_ratio = 400/5;
+  voltage = "MV";
+  maker = "SEL";
+  model = "SEL-751";
+  ct_ratio = 400/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.vi;
-        I_pickup = 200 A;
-        tms      = 0.35;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.vi;
+    I_pickup = 200 A;
+    tms = 0.35;
+  }
 }
 
 grade {
-    primary = fuse_100T; # fuse clears first
-    backup  = R_FEEDER:51;
-    fault   = "Spur fault";
-    margin  = 0.15 s;
+  primary = fuse_100T; # fuse clears first
+  backup = R_FEEDER:51;
+  fault = "Spur fault";
+  margin = 0.15 s;
 }
 
 page {
-    size        = "Letter";
-    orientation = "landscape";
-    theme       = "light";
-    border      = true;
-    title       = {
-        text     = "11 kV spur — fuse / relay coordination";
-        subtitle = "Mersen 100T against an SEL-751 feeder element";
-    };
+  size = "Letter";
+  orientation = "landscape";
+  theme = "light";
+  border = true;
+  title       = {
+    text = "11 kV spur — fuse / relay coordination";
+    subtitle = "Mersen 100T against an SEL-751 feeder element";
+  };
 }
 
 view {
-    current_pad = 0.25;
+  current_pad = 0.25;
 }

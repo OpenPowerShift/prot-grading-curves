@@ -13,59 +13,59 @@
 # ---- meta: who, what, when. Open-ended; the title block and the
 #      [meta.*] footer macros read these. ------------------------------
 meta {
-    project  = "Capability tour";
-    study    = "Every block, once";
-    engineer = "A. Cooper";
-    date     = "2026-07-28";
-    revision = "C";
-    standard  = ["IEC_60255_151"];
-    margin = 0.30 s;
+  project = "Capability tour";
+  study = "Every block, once";
+  engineer = "A. Cooper";
+  date = "2026-07-28";
+  revision = "C";
+  standard  = ["IEC_60255_151"];
+  margin = 0.30 s;
 }
 
 # ---- system: named voltage levels. Turns ratios are derived from
 #      these, so no transformer block is needed. ----------------------
 system {
-    voltages {
-        "HV" {
-            V           = 33.0 kV;
-            description = "33 kV incomer";
-        }
-        "LV" {
-            V           = 11.0 kV;
-            description = "11 kV board";
-        }
+  voltages {
+    "HV" {
+      V = 33.0 kV;
+      description = "33 kV incomer";
     }
-    base_S = 25.0 MVA;
+    "LV" {
+      V = 11.0 kV;
+      description = "11 kV board";
+    }
+  }
+  base_S = 25.0 MVA;
 }
 
 # ---- faults: a single point, or a range with min_A / max_A that the
 #      CTI constraint sweeps across. ---------------------------------
 faults {
-    "LV max" {
-        I       = 6.40 kA;
-        I_min   = 4.0 kA;
-        I_max   = 8.0 kA;
-        voltage = "LV";
-    }
-    "LV min" {
-        I       = 1.50 kA;
-        voltage = "LV";
-    }
-    "HV max" {
-        I       = 18.4 kA;
-        voltage = "HV";
-    }
+  "LV max" {
+    I = 6.40 kA;
+    I_min = 4.0 kA;
+    I_max = 8.0 kA;
+    voltage = "LV";
+  }
+  "LV min" {
+    I = 1.50 kA;
+    voltage = "LV";
+  }
+  "HV max" {
+    I = 18.4 kA;
+    voltage = "HV";
+  }
 }
 
 # ---- point: a marked (I, t) the curves must respect. ---------------
 # `\n` in any label breaks the line, so a marked point can carry its
 # justification without crowding the plot.
 point "TX1_inrush" {
-    I       = 5250 A;
-    t       = 0.10 s;
-    voltage = "HV";
-    label   = "TX1 inrush\n12 x FLC, 100 ms";
-    shape   = "cross";
+  I = 5250 A;
+  t = 0.10 s;
+  voltage = "HV";
+  label = "TX1 inrush\n12 x FLC, 100 ms";
+  shape = "cross";
 }
 
 # ---- device: a published characteristic. A fuse carries a band. ----
@@ -76,133 +76,133 @@ point "TX1_inrush" {
 #      ratio. `rating_kV` is a different thing: the fuse's own
 #      insulation rating, not a system level.
 device "spur_fuse_50T" {
-    kind     = "fuse";
-    voltage  = "LV";
-    maker    = "Mersen";
-    model    = "50T";
-    rating_I = 50 A;
-    min_melt    = [(100 A, 60 s), (300 A, 0.85 s), (1500 A, 0.022 s)];
-    total_clear = [(100 A, 105 s), (300 A, 1.40 s), (1500 A, 0.038 s)];
+  kind = "fuse";
+  voltage = "LV";
+  maker = "Mersen";
+  model = "50T";
+  rating_I = 50 A;
+  min_melt    = [(100 A, 60 s), (300 A, 0.85 s), (1500 A, 0.022 s)];
+  total_clear = [(100 A, 105 s), (300 A, 1.40 s), (1500 A, 0.038 s)];
 }
 
 relay R_INC {
-    voltage  = "HV";
-    maker    = "ABB";
-    model    = "REF615";
-    ct_ratio = 600/5;
+  voltage = "HV";
+  maker = "ABB";
+  model = "REF615";
+  ct_ratio = 600/5;
 
-    # Shorthand element form: one curve producer, one implicit stage.
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 720 A;
-        tms      = 0.30;
-        reset    = "instant";
-    }
+  # Shorthand element form: one curve producer, one implicit stage.
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 720 A;
+    tms = 0.30;
+    reset = "instant";
+  }
 }
 
 relay R_FDR {
-    voltage  = "LV";
-    maker    = "Schneider";
-    model    = "MiCOM_P122";
-    ct_ratio = 400/5;
+  voltage = "LV";
+  maker = "Schneider";
+  model = "MiCOM_P122";
+  ct_ratio = 400/5;
 
-    # Staged element form: a composite of an IDMT low-set and a
-    # definite-time high-set. Drawn as their pointwise minimum.
-    element 51 {
-        function = "phase_oc";
-        stages {
-            stage main {
-                curve    = iec.vi;
-                I_pickup = 480 A;
-                tms      = 0.25;
-            }
-            stage inst {
-                curve    = definite;
-                I_pickup = 3200 A;
-                t_delay  = 0.05 s;
-            }
-        }
+  # Staged element form: a composite of an IDMT low-set and a
+  # definite-time high-set. Drawn as their pointwise minimum.
+  element 51 {
+    function = "phase_oc";
+    stages {
+      stage main {
+        curve = iec.vi;
+        I_pickup = 480 A;
+        tms = 0.25;
+      }
+      stage inst {
+        curve = definite;
+        I_pickup = 3200 A;
+        t_delay = 0.05 s;
+      }
     }
+  }
 
-    # A user-defined characteristic, when no table entry fits.
-    element 51X {
-        function = "phase_oc";
-        formula  = {
-            k     = 4.0 s;
-            c     = 0.10 s;
-            alpha = 0.50
-        };
-        I_pickup = 900 A;
-        tms      = 0.20;
-    }
+  # A user-defined characteristic, when no table entry fits.
+  element 51X {
+    function = "phase_oc";
+    formula  = {
+      k = 4.0 s;
+      c = 0.10 s;
+      alpha = 0.50
+    };
+    I_pickup = 900 A;
+    tms = 0.20;
+  }
 }
 
 # ---- grade: the coordination claim, checked at the fault and above. -
 grade {
-    primary  = R_FDR:51;
-    backup   = R_INC:51;
-    fault    = "LV max";
-    margin   = 0.30 s;
-    upstream = true;
+  primary = R_FDR:51;
+  backup = R_INC:51;
+  fault = "LV max";
+  margin = 0.30 s;
+  upstream = true;
 }
 
 # ---- annotate: margin form draws the gap between two curves. -------
 annotate {
-    primary = R_FDR:51;
-    backup  = R_INC:51;
-    fault   = "LV max";
-    label   = "CTI";
+  primary = R_FDR:51;
+  backup = R_INC:51;
+  fault = "LV max";
+  label = "CTI";
 }
 
 # ---- annotate: point form marks one curve at one current. ----------
 annotate {
-    on_curve = R_INC:51;
-    at_I     = 18.4 kA;
-    label    = "HV max fault";
-    style    = "leader";
+  on_curve = R_INC:51;
+  at_I = 18.4 kA;
+  label = "HV max fault";
+  style = "leader";
 }
 
 # ---- view: display directives; none of these change the maths. -----
 view {
-    voltage     = "HV";
-    stages      = "composite";
-    axis        = "primary";
-    current_pad = 0.25;
+  voltage = "HV";
+  stages = "composite";
+  axis = "primary";
+  current_pad = 0.25;
 }
 
 # ---- page: sheet geometry, decoration, and theme. ------------------
 page {
-    size = "A4";
-    legend      = {
-        position = "bottom_left";
-    };
-    orientation = "landscape";
-    theme       = "light";
-    border      = true;
+  size = "A4";
+  legend      = {
+    position = "bottom_left";
+  };
+  orientation = "landscape";
+  theme = "light";
+  border = true;
 
-    title = {
-        text     = "Capability tour";
-        subtitle = "Every block in the language, once";
-    };
+  title = {
+    text = "Capability tour";
+    subtitle = "Every block in the language, once";
+  };
 
-    scale  {
-        tick_density = "normal";
-    }
-    legend {
-        show  = true;
-        title = "Curves";
-    }
-    axes   {
-        frame = true;
-    }
-    curves {
-        line_width_px = 2;
-    }
+  scale {
+    tick_density = "normal";
+  }
+  legend {
+    show = true;
+    title = "Curves";
+  }
+  axes {
+    frame = true;
+  }
+  curves {
+    line_width_px = 2;
+  }
 }
 
 # ---- notes: editorial commentary carried with the study. -----------
 notes {
-    purpose = "Reference sheet for the .tc language, not a real design.";
-    source  = "See spec/spec.adoc for the normative definitions.";
+  purpose = "Reference sheet for the .tc language, not a real design.";
+  source = "See spec/spec.adoc for the normative definitions.";
 }

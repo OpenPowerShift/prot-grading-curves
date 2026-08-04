@@ -4,46 +4,46 @@
 # incomer? Everything else in this library is an elaboration of this.
 
 system {
-    voltages {
-        "MV" {
-            V = 11 kV;
-        }
+  voltages {
+    "MV" {
+      V = 11 kV;
     }
+  }
 }
 
 faults {
-    "Board max" {
-        I       = 6.2 kA;
-        type    = three_phase;
-        voltage = "MV";
-    }
+  "Board max" {
+    I = 6.2 kA;
+    type = three_phase;
+    voltage = "MV";
+  }
 }
 
 relay R_FDR {
-    voltage  = "MV";
-    ct_ratio = 400/5;
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 480 A;
-        tms      = 0.10;
-    }
+  voltage = "MV";
+  ct_ratio = 400/5;
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 480 A;
+    tms = 0.10;
+  }
 }
 
 relay R_INC {
-    voltage  = "MV";
-    ct_ratio = 1200/5;
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 960 A;
-        tms      = 0.25;
-    }
+  voltage = "MV";
+  ct_ratio = 1200/5;
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 960 A;
+    tms = 0.25;
+  }
 }
 
 grade {
-    primary = R_FDR:51;
-    backup  = R_INC:51;
-    fault   = "Board max";
-    margin  = 0.30 s;
+  primary = R_FDR:51;
+  backup = R_INC:51;
+  fault = "Board max";
+  margin = 0.30 s;
 }

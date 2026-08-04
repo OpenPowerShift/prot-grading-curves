@@ -1,9 +1,9 @@
 /**
  * Source formatter for `.tc`.
  *
- * Reflows a study to the house style: four-space indentation per brace
- * level, `=` aligned within each run of assignments, and blank lines
- * collapsed to at most one.
+ * Reflows a study to the house style: two-space indentation per brace
+ * level, one space either side of `=`, one statement per line, and
+ * blank lines collapsed to at most one.
  *
  * Deliberately *line-based* rather than a print of the AST. A parsed
  * document has thrown away comments and the author's grouping, and a
@@ -15,7 +15,12 @@
  * strings and comments, which `scanLine` handles.
  */
 
-const INDENT = '    ';
+/*
+ * Two spaces. Four made a deeply nested study -- `page` > `legend`, or
+ * `element` > `stages` > `stage` -- spend more of the line on
+ * indentation than on the setting.
+ */
+const INDENT = '  ';
 
 /** How a single line affects nesting, and where it should sit. */
 interface LineScan {
@@ -205,7 +210,14 @@ function explodeLine(line: string, startInComment: boolean): string[] {
 }
 
 export interface FormatOptions {
-  /** Align `=` within runs of assignments. Defaults to true. */
+  /**
+   * Pad keys so `=` lines up within a run. Defaults to *false*.
+   *
+   * Aligned columns look tidy and cost the author every time they add a
+   * longer key to a block: one new line reflows a dozen others, and the
+   * diff stops showing what changed. A single space costs nothing and
+   * leaves the value where the eye already is.
+   */
   alignAssignments?: boolean;
   /**
    * Give each brace and each statement its own line. Defaults to true.
@@ -221,7 +233,7 @@ export interface FormatOptions {
  * unchanged, which `tests/unit/format.spec.ts` pins.
  */
 export function formatSource(source: string, options: FormatOptions = {}): string {
-  const align = options.alignAssignments !== false;
+  const align = options.alignAssignments === true;
   const expand = options.expandBlocks !== false;
   const rawLines = source.replace(/\r\n?/g, '\n').split('\n');
 
@@ -276,7 +288,7 @@ export function formatSource(source: string, options: FormatOptions = {}): strin
       out.push({
         indent,
         text: fragment,
-        assignment: align ? splitAssignment(fragment) : null,
+        assignment: splitAssignment(fragment),
       });
     }
   }
@@ -287,18 +299,21 @@ export function formatSource(source: string, options: FormatOptions = {}): strin
    * line that is not a plain assignment -- so unrelated groups do not
    * get dragged to a common column by one long key elsewhere.
    */
-  if (align) {
+  /*
+   * Rewrite every assignment to `key = value`, and pad the key only
+   * when alignment was asked for. Without this the old hand-alignment
+   * survived: turning padding off left `t    = 430 ms;` exactly as
+   * typed, which is not "unaligned", it is "whatever was there".
+   */
+  {
     let runStart = 0;
     const flushRun = (end: number): void => {
       const run = out.slice(runStart, end).filter((o) => o.assignment);
-      if (run.length > 1) {
-        const width = Math.max(...run.map((o) => o.assignment!.key.length));
-        for (const o of run) {
-          o.text = `${o.assignment!.key.padEnd(width)} = ${o.assignment!.rest}`;
-        }
-      } else if (run.length === 1) {
-        const o = run[0];
-        o.text = `${o.assignment!.key} = ${o.assignment!.rest}`;
+      const width = align && run.length > 1
+        ? Math.max(...run.map((o) => o.assignment!.key.length))
+        : 0;
+      for (const o of run) {
+        o.text = `${o.assignment!.key.padEnd(width)} = ${o.assignment!.rest}`;
       }
       runStart = end;
     };
@@ -320,6 +335,16 @@ export function formatSource(source: string, options: FormatOptions = {}): strin
 
   const text = out
     .map((o) => (o.text === '' ? '' : INDENT.repeat(o.indent) + o.text))
+    /*
+     * One space before an opening brace and none inside the padding a
+     * hand-aligned file leaves behind: `"3ph clearance"     {` becomes
+     * `"3ph clearance" {`. The run of spaces was there to line the
+     * braces up, which is the same false economy as aligning `=`.
+     */
+    .map((line) => line.replace(/[ \t]+\{$/, ' {'))
+    /* Trailing whitespace is invisible, survives in the diff, and is
+     * one of the things a formatter exists to stop arguing about. */
+    .map((line) => line.replace(/[ \t]+$/, ''))
     .join('\n')
     .replace(/\n+$/, '');
 

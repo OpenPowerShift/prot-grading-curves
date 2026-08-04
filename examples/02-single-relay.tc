@@ -10,38 +10,38 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Plant 480 V feeder";
-    engineer = "B. Singh";
+  project = "Plant 480 V feeder";
+  engineer = "B. Singh";
 }
 
 system {
-    voltages {
-        "LV" {
-            V = 0.48 kV;
-        }
+  voltages {
+    "LV" {
+      V = 0.48 kV;
     }
+  }
 }
 
 faults {
-    "Bus fault" {
-        I = 4500 A;
-    } # bolted fault at end of feeder
+  "Bus fault" {
+    I = 4500 A;
+  } # bolted fault at end of feeder
 }
 
 relay R_FDR_480 {
-    voltage  = "LV";
-    ct_ratio = 600/5;
+  voltage = "LV";
+  ct_ratio = 600/5;
 
-    element 51 {
-        curve    = ansi.mi;
-        I_pickup = 600 A;
-        tms      = 2.00; # ANSI time dial: 0.5 .. 15
-    }
+  element 51 {
+    curve = ansi.mi;
+    I_pickup = 600 A;
+    tms = 2.00; # ANSI time dial: 0.5 .. 15
+  }
 }
 
 page {
-    # One relay needs little paper; A5 is a page in a report.
-    size  = "A5";
-    theme = "light";
-    title = "Plant 480 V — single-relay OC study";
+  # One relay needs little paper; A5 is a page in a report.
+  size = "A5";
+  theme = "light";
+  title = "Plant 480 V — single-relay OC study";
 }

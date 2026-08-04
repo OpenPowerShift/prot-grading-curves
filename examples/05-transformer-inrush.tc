@@ -16,104 +16,104 @@
 # conditions and voltage levels included.
 
 meta {
-    project  = "Transformer inrush and damage";
-    engineer = "A. Cooper";
-    date     = "2026-07-28";
-    standard  = ["IEC_60255_151", "IEEE_C57.109"];
-    margin = 0.30 s;
+  project = "Transformer inrush and damage";
+  engineer = "A. Cooper";
+  date = "2026-07-28";
+  standard  = ["IEC_60255_151", "IEEE_C57.109"];
+  margin = 0.30 s;
 }
 
 system {
-    voltages {
-        "HV" {
-            V           = 33.0 kV;
-            description = "33 kV incomer";
-        }
-        "LV" {
-            V           = 11.0 kV;
-            description = "11 kV feeders";
-        }
+  voltages {
+    "HV" {
+      V = 33.0 kV;
+      description = "33 kV incomer";
     }
-    base_S = 25.0 MVA;
+    "LV" {
+      V = 11.0 kV;
+      description = "11 kV feeders";
+    }
+  }
+  base_S = 25.0 MVA;
 }
 
 faults {
-    "LV max" {
-        I       = 6.40 kA;
-        voltage = "LV";
-    }
-    "LV min" {
-        I       = 2.50 kA;
-        voltage = "LV";
-    }
-    "HV max" {
-        I       = 18.4 kA;
-        voltage = "HV";
-    }
+  "LV max" {
+    I = 6.40 kA;
+    voltage = "LV";
+  }
+  "LV min" {
+    I = 2.50 kA;
+    voltage = "LV";
+  }
+  "HV max" {
+    I = 18.4 kA;
+    voltage = "HV";
+  }
 }
 
 # ---- transformer characteristic points -------------------------------
 #      25 MVA at 33 kV  ->  I_FLC = 25e6 / (sqrt(3) x 33e3) = 437 A
 #      Inrush is conventionally 12 x FLC held for 0.1 s.
 point "TX1_inrush" {
-    I       = 5250 A;
-    t       = 0.10 s;
-    voltage = "HV";
-    label   = "TX1 inrush — 12 x FLC";
-    shape   = "cross";
-    coords  = true; # append (current, time) to the label
+  I = 5250 A;
+  t = 0.10 s;
+  voltage = "HV";
+  label = "TX1 inrush — 12 x FLC";
+  shape = "cross";
+  coords = true; # append (current, time) to the label
 }
 
 #      IEEE C57.109 category II through-fault: 2 s at 25 x FLC.
 point "TX1_damage" {
-    I       = 10900 A;
-    t       = 2.0 s;
-    voltage = "HV";
-    label   = "TX1 through-fault limit";
-    shape   = "triangle";
-    coords  = true;
+  I = 10900 A;
+  t = 2.0 s;
+  voltage = "HV";
+  label = "TX1 through-fault limit";
+  shape = "triangle";
+  coords = true;
 }
 
 relay R_TRF_HV {
-    voltage  = "HV";
-    maker    = "ABB";
-    model    = "REF615";
-    ct_ratio = 600/5;
+  voltage = "HV";
+  maker = "ABB";
+  model = "REF615";
+  ct_ratio = 600/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.si;
-        I_pickup = 720 A;
-        tms      = 0.30;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 720 A;
+    tms = 0.30;
+  }
 }
 
 relay R_FDR_LV {
-    voltage  = "LV";
-    maker    = "Schneider";
-    model    = "MiCOM_P122";
-    ct_ratio = 400/5;
+  voltage = "LV";
+  maker = "Schneider";
+  model = "MiCOM_P122";
+  ct_ratio = 400/5;
 
-    element 51 {
-        function = "phase_oc";
-        curve    = iec.vi;
-        I_pickup = 480 A;
-        tms      = 0.25;
-    }
-    element 50 {
-        function = "phase_oc";
-        curve    = definite;
-        I_pickup = 3200 A;
-        t_delay  = 0.05 s;
-    }
+  element 51 {
+    function = "phase_oc";
+    curve = iec.vi;
+    I_pickup = 480 A;
+    tms = 0.25;
+  }
+  element 50 {
+    function = "phase_oc";
+    curve = definite;
+    I_pickup = 3200 A;
+    t_delay = 0.05 s;
+  }
 }
 
 grade {
-    primary  = R_FDR_LV:51;
-    backup   = R_TRF_HV:51;
-    fault    = "LV max";
-    margin   = 0.30 s;
-    upstream = true; # verify the margin holds above the fault too
+  primary = R_FDR_LV:51;
+  backup = R_TRF_HV:51;
+  fault = "LV max";
+  margin = 0.30 s;
+  upstream = true; # verify the margin holds above the fault too
 }
 
 # ---- annotate the grading margins on the plot ------------------------
@@ -121,31 +121,31 @@ grade {
 #      a fault current and labels it, so the number the coordination
 #      argument turns on is on the chart, not just in the report.
 annotate {
-    primary = R_FDR_LV:51;
-    backup  = R_TRF_HV:51;
-    fault   = "LV max";
-    label   = "CTI";
+  primary = R_FDR_LV:51;
+  backup = R_TRF_HV:51;
+  fault = "LV max";
+  label = "CTI";
 }
 
 annotate {
-    primary = R_FDR_LV:51;
-    backup  = R_TRF_HV:51;
-    fault   = "LV min";
-    label   = "CTI";
+  primary = R_FDR_LV:51;
+  backup = R_TRF_HV:51;
+  fault = "LV min";
+  label = "CTI";
 }
 
 page {
-    size        = "A4";
-    orientation = "landscape";
-    theme       = "light";
-    border      = true;
-    title       = {
-        text     = "25 MVA 33/11 kV — transformer protection";
-        subtitle = "Inrush, through-fault withstand, and feeder grading";
-    };
+  size = "A4";
+  orientation = "landscape";
+  theme = "light";
+  border = true;
+  title       = {
+    text = "25 MVA 33/11 kV — transformer protection";
+    subtitle = "Inrush, through-fault withstand, and feeder grading";
+  };
 }
 
 view {
-    voltage     = "HV";
-    current_pad = 0.25;
+  voltage = "HV";
+  current_pad = 0.25;
 }

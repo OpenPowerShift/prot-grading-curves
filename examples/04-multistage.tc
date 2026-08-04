@@ -11,58 +11,58 @@
 # conditions and voltage levels included.
 
 meta {
-    project = "Multi-stage demo";
+  project = "Multi-stage demo";
 }
 
 system {
-    voltages {
-        "MV" {
-            V = 11.0 kV;
-        }
+  voltages {
+    "MV" {
+      V = 11.0 kV;
     }
+  }
 }
 
 faults {
-    "Bus fault"   {
-        I = 6000 A;
-    }
-    "Remote fault"   {
-        I = 1200 A;
-    }
+  "Bus fault" {
+    I = 6000 A;
+  }
+  "Remote fault" {
+    I = 1200 A;
+  }
 }
 
 relay R_TGT {
-    voltage  = "MV";
-    ct_ratio = 600/5;
+  voltage = "MV";
+  ct_ratio = 600/5;
 
-    element 51 {
-        function = "phase_oc";
-        stages {
-            stage main {
-                curve    = iec.si;
-                I_pickup = 400 A;
-                tms      = 0.35;
-            }
-            stage inst {
-                curve    = definite;
-                I_pickup = 4500 A;
-                t_delay  = 0.08 s;
-            }
-        }
+  element 51 {
+    function = "phase_oc";
+    stages {
+      stage main {
+        curve = iec.si;
+        I_pickup = 400 A;
+        tms = 0.35;
+      }
+      stage inst {
+        curve = definite;
+        I_pickup = 4500 A;
+        t_delay = 0.08 s;
+      }
     }
+  }
 }
 
 page {
-    size = "A4";
-    # `column` is the default gutter; stated here so the
-    # alternatives (inside / direct / none) have something to read against.
-    legend = {
-        style = "column";
-    };
-    theme = "light";
-    title = "Multi-stage element (composite view)";
+  size = "A4";
+  # `column` is the default gutter; stated here so the
+  # alternatives (inside / direct / none) have something to read against.
+  legend = {
+    style = "column";
+  };
+  theme = "light";
+  title = "Multi-stage element (composite view)";
 }
 
 view {
-    stages = "composite";
+  stages = "composite";
 }

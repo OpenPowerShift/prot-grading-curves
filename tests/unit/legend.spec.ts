@@ -498,8 +498,9 @@ relay R {
     expect(rules(at('I2'))).toEqual([['F_earth', 1000]]);
     /* Residual is three times the component. */
     expect(rules(at('3I0'))).toEqual([['F_earth', 3000]]);
-    /* And on a phase sheet, the declared phase currents. */
-    expect(rules(at('phase')).map(([, i]) => i)).toEqual([9000, 3000]);
+    /* And on a phase sheet, the declared phase currents -- listed left
+     * to right, as the rules stand on the axis. */
+    expect(rules(at('phase')).map(([, i]) => i)).toEqual([3000, 9000]);
   });
 
   it('leaves out a fault with no value for that component', () => {

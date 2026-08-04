@@ -98,6 +98,16 @@ export interface Stage {
   tms?: number;
   /** `true` when the solver, not the source, set `tms`. */
   tms_auto?: boolean;
+  /**
+   * The dial the study declared, kept when the solver replaced it.
+   *
+   * What is drawn is what is used, so a solved value supersedes the
+   * declared one -- but silently discarding it left the sheet showing
+   * 0.175 while the file said 0.45, and a commissioning engineer
+   * setting from the drawing against a settings sheet from the file.
+   * Both figures are now on the sheet.
+   */
+  tms_declared?: number;
   t_delay_s?: number;
   t_reset_s?: number;
   reset?: 'instant' | 'dependent' | 'disk_emulation';

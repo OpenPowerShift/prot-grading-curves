@@ -20,7 +20,7 @@ import {
 } from '../constants/curves.js';
 import { isFaultType } from '../constants/sequence.js';
 import {
-  allElements, resolveRef,
+  allElements, isCurveStyle, resolveRef,
   type Device, type Element, type Stage, type Study,
 } from './model.js';
 import {
@@ -333,6 +333,43 @@ function checkUnitsOn(
   }
 }
 
+/**
+ * The per-curve drawing overrides, which are dropped when unusable.
+ *
+ * A setting the tool cannot act on is worse here than elsewhere,
+ * because the sheet still renders and looks deliberate: `style =
+ * dashed_line` produces a solid curve that the source claims is
+ * dashed, and nothing in the drawing says otherwise.
+ */
+function checkDrawingOn(
+  ctx: Ctx,
+  node: { members: Array<{ kind: string; key?: string; value?: unknown }>; loc?: SourceLocation },
+  what: string,
+): void {
+  for (const member of node.members) {
+    if (member.kind !== 'scalar' || !member.key) continue;
+
+    if (member.key === 'style') {
+      const value = typeof member.value === 'string' ? member.value : '';
+      if (!isCurveStyle(value)) {
+        add(ctx, 'CURVE_STYLE_INVALID', 'error',
+          `${what} declares style = "${value}"; a curve is drawn solid, dashed or dotted`,
+          node.loc);
+      }
+    }
+
+    if (member.key === 'width_px') {
+      const value = member.value as { kind?: string; value?: number } | undefined;
+      const width = value?.kind === 'number' ? value.value : Number(member.value);
+      if (!Number.isFinite(width) || (width as number) <= 0) {
+        add(ctx, 'CURVE_WIDTH_INVALID', 'error',
+          `${what} declares a width_px that is not a positive number`,
+          node.loc);
+      }
+    }
+  }
+}
+
 function validateElements(ctx: Ctx): void {
   const { study } = ctx;
 
@@ -400,9 +437,11 @@ function validateElements(ctx: Ctx): void {
 
     for (const element of relay.elements) {
       checkUnitsOn(ctx, element.node, `${relay.id}:${element.id}`);
+      checkDrawingOn(ctx, element.node, `${relay.id}:${element.id}`);
       for (const stage of element.stages) {
         if (stage.node !== element.node) {
           checkUnitsOn(ctx, stage.node, `${relay.id}:${element.id} stage "${stage.id}"`);
+          checkDrawingOn(ctx, stage.node, `${relay.id}:${element.id} stage "${stage.id}"`);
         }
       }
       validateElementShape(ctx, element, relay.ct_ratio, relay.id, relay.voltage_kV);

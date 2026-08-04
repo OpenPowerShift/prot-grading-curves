@@ -1187,8 +1187,9 @@ if (kwName === 'flex_points') {
     this.errors.push({
       message: `unknown setting "${at.image}"; ${what} accepts function, measures, `
         + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
-        + 't_reset, char_angle, reset, directional, name, comment'
-        + (what === 'an element' ? ', current_max, stages' : ''),
+        + 't_reset, char_angle, reset, directional, name, comment, current_max, '
+        + 'color, style, width_px'
+        + (what === 'an element' ? ', stages' : ''),
       line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
       severity: 'error', code: 'UNKNOWN_SETTING',
     });
@@ -1338,11 +1339,18 @@ if (kwName === 'flex_points') {
         el.members.push({ kind: 'scalar', key: k.image, value: v ?? '' });
         return k.image;
       }
+      /*
+       * Enum-ish members, written bare or quoted. `style` is here with
+       * them because it is the same shape: a word from a closed set.
+       * It says how the curve is *drawn* rather than how the element
+       * operates, which is the only thing that sets it apart.
+       */
       case 'function':
       case 'I_units':
       case 'reset':
       case 'directional':
-      case 'direction': {
+      case 'direction':
+      case 'style': {
         const v = this.eat('KW') ?? this.eat('IDENT') ?? this.eat('STRING');
         this.eat('SEMI');
         /* These are enum-ish and may be written bare or quoted; strip
@@ -1362,6 +1370,8 @@ if (kwName === 'flex_points') {
           'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
           'char_angle', 'reset', 'directional', 'stages', 'comment',
           'current_max',
+          /* How the curve is drawn, as opposed to how it operates. */
+          'color', 'style', 'width_px',
         ], /* strict */ true);
         const v = this.parseScalarValue();
         this.eat('SEMI');

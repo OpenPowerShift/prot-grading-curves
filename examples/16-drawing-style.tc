@@ -61,12 +61,18 @@ relay R_FDR {
   voltage = "MV";
   ct_ratio = 800/5;
 
+  # The curve this sheet is *about*, drawn heavier than its context.
+  # `width_px` overrides page { curves { line_width_px } } for this one
+  # characteristic; `color` and `style` override the palette the same
+  # way. On a grayscale sheet that is often the only way to say which
+  # line is the subject.
   element 51 {
     function = "phase_oc";
     curve = iec.si;
     I_pickup = 960 A;
     tms = 0.12;
     current_max = 12.5 kA;
+    width_px = 2.8;
   }
 }
 
@@ -86,12 +92,21 @@ relay R_INC {
   }
 
   # A breaker-fail stage: fixed delay, started by the same pickup.
+  #
+  # Context rather than argument, so it is subdued deliberately: its
+  # own ink and a dotted stroke keep it legible without competing with
+  # the two curves the grading turns on. The palette slot it would have
+  # taken is still consumed, so naming a colour here does not shuffle
+  # the hues of everything after it.
   element 50BF {
     name = "Breaker fail";
     function = "breaker_fail";
     curve = definite;
     I_pickup = 1.8 kA;
     t_delay = 250 ms;
+    color = "#8a8983";
+    style = dotted;
+    width_px = 1.4;
   }
 }
 

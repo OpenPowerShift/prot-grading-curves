@@ -55,7 +55,7 @@ import {
 } from '../semantics/quantity.js';
 import { resolveCondition, type ResolvedCondition } from '../semantics/condition.js';
 import { theme as loadTheme, type ThemeName } from './theme.js';
-import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
+import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, type CurveStyle, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
 import { tTripStage } from '../semantics/curves.js';
 import { tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
@@ -218,6 +218,11 @@ interface CurveEntry {
   opAt?: { I_A: number; t_s: number };
   /** Explicit stroke-dasharray, for combines and repeated hues. */
   dashArray?: string;
+  /**
+   * Stroke weight this curve asked for, overriding
+   * `page { curves { line_width_px } }`.
+   */
+  widthPx?: number;
   /** Synthetic `combine` curves may ask for a dashed stroke. */
   dashed?: boolean;
   /** True for a fuse band, whose legend swatch is a hatched block. */
@@ -920,6 +925,38 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     return {
       color: pal[index % pal.length],
       dash: strokeDashFor(index, pal.length),
+    };
+  };
+
+  /** Dash pattern for a style word, or undefined for a solid line. */
+  const dashForStyle = (style: CurveStyle | undefined): string | undefined => {
+    switch (style) {
+      case 'dashed': return '6 4';
+      case 'dotted': return '1 3';
+      /* `solid` is an explicit request for no dashes, and must beat the
+       * automatic pattern the palette would otherwise assign. */
+      case 'solid': return '';
+      default: return undefined;
+    }
+  };
+
+  /**
+   * The ink one curve is drawn in, after any declared override.
+   *
+   * A slot is consumed from the palette either way, so declaring a
+   * colour on one element does not shift the hues of the others. The
+   * sheet is read against the legend, and a study that recolours as
+   * curves are added and removed makes two revisions incomparable.
+   */
+  const styleFor = (
+    over: { color?: string; style?: CurveStyle; width_px?: number },
+    auto: { color: string; dash?: string },
+  ): { color: string; dash?: string; widthPx?: number } => {
+    const dash = dashForStyle(over.style);
+    return {
+      color: over.color ?? auto.color,
+      dash: dash === undefined ? auto.dash : (dash === '' ? undefined : dash),
+      widthPx: over.width_px,
     };
   };
 
@@ -1630,22 +1667,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
     }
 
-    const { color, dash } = pickStyle();
+    const auto = pickStyle();
     const V_source = placement.V_source;
 
     if (individual && element.stages.length > 1) {
       for (const stage of element.stages) {
+        /*
+         * Each stage takes its own ink where it declared any, and the
+         * element's otherwise -- `pick` in the model has already done
+         * that fallback, so a stage that says nothing carries the
+         * element's values here.
+         */
+        const drawn = styleFor(stage, auto);
         const pathD = trace(
           V_source,
           (I) => tTripStage(stage, I),
           stage.I_pu_A != null ? [project(stage.I_pu_A, V_source)] : [],
           factor,
-          element.current_max_A,
+          /* A stage may stop earlier than the element that owns it. */
+          stage.current_max_A ?? element.current_max_A,
         );
         if (!pathD) continue;
         curves.push({
           label: `${element.label}/${stage.id}`,
-          color,
+          color: drawn.color,
           pathD,
           pickupPx: stage.I_pu_A != null
             ? xScale.toPx(project(stage.I_pu_A, V_source) / factor)
@@ -1654,7 +1699,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
             { text: [element.maker, element.model].filter(Boolean).join(' '), role: 'identity' },
             { text: stageDetail(stage, element), role: 'settings' },
           ] as DetailLine[]).filter((l) => l.text),
-          dashArray: dash,
+          dashArray: drawn.dash,
+          widthPx: drawn.widthPx,
           voltage: element.voltage,
           voltage_kV: V_source,
         });
@@ -1662,6 +1708,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       continue;
     }
 
+    const drawn = styleFor(element, auto);
     const pathD = trace(
       V_source, (I) => tTripElement(element, I), breakpointsOf(element, V_source), factor,
       element.current_max_A,
@@ -1669,13 +1716,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (!pathD) continue;
     curves.push({
       label: element.label,
-      color,
+      color: drawn.color,
       pathD,
       pickupPx: pickupPxOf(element, factor, V_source),
       detailLines: elementDetailLines(element),
       voltage: element.voltage,
       voltage_kV: V_source,
-      dashArray: dash,
+      dashArray: drawn.dash,
+      widthPx: drawn.widthPx,
     });
   }
 
@@ -2168,8 +2216,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const isHl = hlLabel && c.label.trim() === hlLabel
       && (!hlVolt || (c.voltage ?? '').trim() === hlVolt);
     const cls = isHl ? 'tc-curve tc-curve-snap' : 'tc-curve';
-    /* `page { curves { line_width_px } }` sets the data-line weight. */
-    const baseWidth = opts.page?.curves?.line_width_px ?? 2;
+    /*
+     * `page { curves { line_width_px } }` sets the data-line weight for
+     * the sheet; a curve that declared its own `width_px` overrides it,
+     * which is what lets one characteristic be drawn heavier as the
+     * subject and the rest left as context.
+     */
+    const baseWidth = c.widthPx ?? opts.page?.curves?.line_width_px ?? 2;
     const sw = isHl ? String(baseWidth * 1.6) : String(baseWidth);
     const dashValue = c.dashArray ?? (c.dashed ? '6 4' : undefined);
     const dash = dashValue ? ` stroke-dasharray="${dashValue}"` : '';

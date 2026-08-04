@@ -96,7 +96,7 @@ type, voltage, view, views, description
 *Inside `element` / `stage`* -- name, function, measures, curve, formula,
 flex_points, I_pickup, I_units, share, tms, t_delay, t_reset,
 char_angle, reset, directional, direction, stages, stage, current_max,
-comment
+color, style, width_px, comment
 
 *Inside `relay`* -- name, voltage, ct_ratio, direction, faults,
 maker, model, comment, description, reference

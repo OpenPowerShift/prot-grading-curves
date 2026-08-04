@@ -209,10 +209,19 @@ element-member  ::= name-asg
                   | reset-asg
                   | directional-asg
                   | current_max-asg
+                  | curve-drawing-asg
                   | comment-asg
                   | stages-block ;
 
 current_max-asg ::= "current_max" "=" number current-unit ";" ;
+
+(* How one characteristic is stroked, overriding the sheet's palette
+   and line weight. Accepted on an `element` and on a `stage`; a stage
+   that declares none inherits its element's. *)
+curve-drawing-asg ::= "color"    "=" string ";"
+                    | "style"    "=" curve-style-keyword ";"
+                    | "width_px" "=" number ";" ;
+curve-style-keyword ::= "solid" | "dashed" | "dotted" ;
 
 comment-asg     ::= "comment" "=" string ";" ;
 element-id      ::= number | identifier ;
@@ -279,6 +288,8 @@ stage-member    ::= curve-asg
                   | char_angle-asg
                   | reset-asg
                   | directional-asg
+                  | current_max-asg
+                  | curve-drawing-asg
                   | comment-asg ;
 ----
 

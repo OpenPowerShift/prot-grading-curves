@@ -349,7 +349,42 @@ that does not exist.
 `element { current_max = 8 kA; }` stops the curve there. The legend
 records the limit, so a curve that ends short reads as one that was
 told to rather than one the tool failed to finish.
+
+A `stage` takes one too, and falls back to its element's. A high-set
+blocked above the maximum through-fault, or a thermal stage only
+characterised to a few multiples, stops where *its* data stops rather
+than where the element it happens to sit in does.
 ====
+
+==== Drawing one curve differently
+
+The palette is right for an ordinary study and wrong whenever a
+drawing has to match something outside itself: a house standard, a
+figure whose inks are fixed by the report around it, or a curve that
+is context rather than argument. `color`, `style` and `width_px` say
+so, on an `element` or a `stage`:
+
+[source,tc]
+----
+element 50BF {
+    curve    = definite;
+    I_pickup = 1.8 kA;
+    t_delay  = 250 ms;
+    color    = "#8a8983";          # context, deliberately subdued
+    style    = dotted;             # solid | dashed | dotted
+    width_px = 1.4;                # overrides curves.line_width_px
+}
+----
+
+A stage inherits whatever its element declared. The palette slot is
+*still consumed*, so naming a colour on one element does not shift the
+hues of the others -- a sheet is read against its legend, and a study
+that recolours as curves come and go makes two revisions of one
+drawing impossible to compare.
+
+A `style` the tool cannot draw is `CURVE_STYLE_INVALID`, not a silent
+fallback: a solid line the source calls dashed is a drawing that
+disagrees with its own file.
 
 === relay and element
 
@@ -851,29 +886,19 @@ annotate { on_curve = R_TEE:51;  at_t        = 300 ms; label = "at 300 ms"; }
 Sample 17 draws all of them across four sheets of one study.
 
 The component you write has to be one the annotated element measures.
-Scalings of the same component are converted for you -- `at_I0` on a
-`3I0` element is multiplied by three -- but *different* components are
-not substituted for each other. Writing `at_I1` beside an element
-scaled in `3I2` is an error (`ANNOTATE_QUANTITY_MISMATCH`), because
-positive sequence is not negative sequence and guessing which you
-meant would put the mark somewhere it does not belong.
+Scalings of the same component convert -- `at_I0` on a `3I0` element is
+multiplied by three -- but *different* components do not substitute for
+each other, so `at_I1` beside an element scaled in `3I2` is
+`ANNOTATE_QUANTITY_MISMATCH`. An annotation naming a curve must also
+say where on it to sit: a current, a time or a condition, or else
+`ANNOTATE_NO_POSITION`. And `style = pin` draws a marker only, so a
+`label` beside one is `ANNOTATE_LABEL_NOT_DRAWN` -- use `leader` or
+`tag` for text.
 
-An annotation that names a curve must also say where on it to sit:
-give a current, a time, or a condition. Naming none of them is
-`ANNOTATE_NO_POSITION` rather than a mark that quietly never appears.
-
-[WARNING]
-====
-`style = pin` draws a marker and nothing else, so a `label` beside one
-is never shown. That is `ANNOTATE_LABEL_NOT_DRAWN` -- use `leader` or
-`tag` when you want the text.
-====
-
-Where an annotation cannot be placed at all for reasons that depend on
-the sheet -- a curve that never reaches the time asked for, a level the
-condition does not cover -- the sheet says so in its notes, naming the
-mark. That is distinct from the count of annotations that are merely
-*outside the plotted range*, which changes as you zoom.
+Where a mark cannot be placed for reasons that depend on the sheet --
+a curve that never reaches the time asked for -- the sheet names it in
+its notes. That is distinct from the *count* of annotations outside the
+plotted range, which changes as you zoom.
 
 `voltage` names the level the figure is read at, defaulting to the
 view's. Without it a bare current was taken in *each* referenced

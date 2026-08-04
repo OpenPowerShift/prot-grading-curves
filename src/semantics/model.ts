@@ -125,6 +125,21 @@ export interface Stage {
   measures?: string;
   directional?: boolean;
   char_angle_deg?: number;
+  /**
+   * Current this stage's curve stops at, in primary amps.
+   *
+   * Falls back to the element's. A stage routinely has a narrower
+   * ceiling than the element that owns it -- an instantaneous stage
+   * that is blocked above a certain current, a thermal stage only
+   * characterised to a few multiples -- and before this the only
+   * ceiling available was the element's, which drew every stage to the
+   * same place whatever its own datasheet said.
+   */
+  current_max_A?: number;
+  /** Per-stage drawing overrides; fall back to the element's. */
+  color?: string;
+  style?: CurveStyle;
+  width_px?: number;
   /** Source AST node, for error locations. */
   node: ElementBlock | StageBlock;
 }
@@ -160,9 +175,33 @@ export interface Element {
    * margin to be read at a fault that does not exist.
    */
   current_max_A?: number;
+  /**
+   * How this one curve is drawn, overriding the palette.
+   *
+   * The automatic palette is right for an ordinary study, and wrong
+   * whenever a drawing has to match something outside itself: a house
+   * standard that colours the incomer red, a figure whose colours are
+   * already fixed by the report it sits in, a curve that must be
+   * subdued because it is context rather than argument.
+   */
+  color?: string;
+  style?: CurveStyle;
+  width_px?: number;
   voltage?: string;
   voltage_kV?: number;
   node: ElementBlock;
+}
+
+/**
+ * How a characteristic's stroke is drawn.
+ *
+ * Same vocabulary as `page { faults }` and `page { times }` use, so
+ * one word means one thing wherever a line is styled.
+ */
+export type CurveStyle = 'solid' | 'dashed' | 'dotted';
+
+export function isCurveStyle(value: unknown): value is CurveStyle {
+  return value === 'solid' || value === 'dashed' || value === 'dotted';
 }
 
 export interface Relay {
@@ -756,6 +795,41 @@ function resolveRelay(node: Extract<TopLevel, { type: 'relay' }>, study: Study):
   return relay;
 }
 
+/**
+ * A declared ceiling on where a curve stops, in primary amps.
+ *
+ * Zero and negative are dropped rather than honoured: a curve that
+ * stops at or before nothing is not a shorter curve, it is no curve,
+ * and silently drawing none is worse than ignoring the figure.
+ */
+function currentCeiling(raw: unknown): number | undefined {
+  if (raw === undefined) return undefined;
+  const read = amps(raw);
+  return Number.isFinite(read.value) && read.value > 0 ? read.value : undefined;
+}
+
+/**
+ * How one curve is drawn, where the study overrides the palette.
+ *
+ * Read the same way for an element and for a stage, so a stage
+ * inherits whatever its element declared unless it says otherwise --
+ * which is what lets a multi-stage element be given one colour and one
+ * of its stages a different dash.
+ */
+function drawingOverrides(
+  pick: (key: string) => unknown,
+): { color?: string; style?: CurveStyle; width_px?: number } {
+  const style = readString(pick('style'));
+  const width = rawNumber(pick('width_px'));
+  return {
+    color: readString(pick('color')),
+    /* An unrecognised word is dropped here and reported by the
+     * validator, so a typo cannot silently produce a solid line. */
+    style: isCurveStyle(style) ? style : undefined,
+    width_px: Number.isFinite(width) && width > 0 ? width : undefined,
+  };
+}
+
 function resolveElement(
   node: ElementBlock,
   relayId: string | undefined,
@@ -783,13 +857,8 @@ function resolveElement(
     ref,
     stages: [],
     staged,
-    current_max_A: ((): number | undefined => {
-      const raw = (node.members.find((m) => m.kind === 'scalar' && m.key === 'current_max') as
-        { value?: unknown } | undefined)?.value;
-      if (raw === undefined) return undefined;
-      const read = amps(raw);
-      return Number.isFinite(read.value) && read.value > 0 ? read.value : undefined;
-    })(),
+    current_max_A: currentCeiling(member(node, 'current_max')),
+    ...drawingOverrides((key) => member(node, key)),
     voltage: relay?.voltage,
     voltage_kV: relay?.voltage_kV,
     node,
@@ -871,6 +940,10 @@ function resolveStage(
     measures: readString(pick('measures')),
     directional: readBoolean(pick('directional')),
     char_angle_deg: Number.isFinite(charAngle) ? charAngle : undefined,
+    /* `pick` already falls back to the owning element, so a stage
+     * inherits its ceiling and its ink without restating either. */
+    current_max_A: currentCeiling(pick('current_max')),
+    ...drawingOverrides(pick),
     node,
   };
 }

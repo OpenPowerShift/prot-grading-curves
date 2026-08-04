@@ -1581,9 +1581,29 @@ right of the TCC plot in `landscape` mode (or below the plot in
 | `high_contrast`| 4 hues, maximum contrast                 | tc-curves default
 |===
 
-Per-element colour override (v0.2, not in v1 grammar): the v1
-grammar does not include a `style` sub-block on `element`; this
-is planned for v0.2 when per-element rendering options are needed.
+==== Per-curve overrides
+
+An `element` or a `stage` MAY declare `color`, `style` and `width_px`,
+which override the palette hue, the automatic stroke pattern and
+`curves.line_width_px` respectively for that curve alone.
+
+`style` SHALL be one of `solid`, `dashed` or `dotted`; any other word
+SHALL be reported as `CURVE_STYLE_INVALID`, and `width_px` that is not
+strictly positive as `CURVE_WIDTH_INVALID`. Neither SHALL be silently
+ignored: a curve stroked solid while its source declares it dashed is
+a drawing that contradicts its own file, with nothing on the sheet to
+say so.
+
+`style = solid` SHALL suppress any automatic dash pattern the palette
+would otherwise assign past the end of its hue list.
+
+A `stage` that declares none of the three SHALL inherit its element's.
+
+An element declaring a colour SHALL still consume its palette slot, so
+that the hues assigned to other curves are unchanged. A sheet is read
+against its legend, and a palette that reflows as curves are added or
+removed makes two revisions of one drawing incomparable.
+
 Per-`combine` colour override (common): `combine { ... color = "#ff0000"; style = "dashed"; }`.
 Per-`annotate` colour override: `annotate { ... color = "#0080c0"; }`.
 

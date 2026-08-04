@@ -43,10 +43,22 @@ relay R_TGT {
         I_pickup = 400 A;
         tms = 0.35;
       }
+      # A stage can stop before the element that owns it.
+      #
+      # This high-set is blocked above the maximum through-fault the
+      # board can deliver, so drawing it further right would show an
+      # instantaneous trip at a current that cannot flow. Without a
+      # ceiling of its own a stage takes the element's, and without
+      # either it runs to the edge of the sheet.
+      #
+      # Its own ink too: a high-set is read as a shelf rather than a
+      # characteristic, and dashing it says so at a glance.
       stage inst {
         curve = definite;
         I_pickup = 4500 A;
         t_delay = 0.08 s;
+        current_max = 6000 A;
+        style = dashed;
       }
     }
   }

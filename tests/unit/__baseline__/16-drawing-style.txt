@@ -5,431 +5,431 @@ domain-i 200,40000
 domain-t 0.02,100
 
 [-] rect 106.0,66.0 1222.0x572.0
-[-] rect 7.0,7.0 1386.0x855.0
-[-] line 7.0,785.0..1393.0,785.0
-[-] text 21.0,807.0 font-size=12 font-weight=600 "Netherfield BSP — Drawing standard sheet"
-[-] text 21.0,825.0 font-size=12 "Drawing NF-TCC-0014 for Northern Networks"
-[-] text 1330.6,805.0 font-size=10 "REV"
-[-] text 1330.6,823.0 font-size=11 "D"
-[-] text 1242.6,805.0 font-size=10 "DATE"
-[-] text 1242.6,823.0 font-size=11 "2026-08-01"
-[-] text 1161.2,805.0 font-size=10 "ENGINEER"
-[-] text 1161.2,823.0 font-size=11 "M. Haugen"
-[-] text 1040.2,805.0 font-size=10 "PROJECT"
-[-] text 1040.2,823.0 font-size=11 "Netherfield BSP"
-[-] text 21.0,856.0 text-anchor=start font-size=8 "NF-TCC-0014 rev D"
-[-] text 700.0,856.0 text-anchor=middle font-size=8 "M. Haugen · 2026-08-01"
-[-] text 1379.0,856.0 text-anchor=end font-size=8 "NF-TCC-0014 · sheet ? of ?"
-[-] rect 106.0,66.0 1222.0x572.0
-[-] line 106.0,66.0..106.0,638.0 class=tc-grid-minor
-[-] text 106.0,658.0 text-anchor=middle font-size=10 "200 A"
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
-[-] line 199.5,66.0..199.5,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
-[-] line 265.9,66.0..265.9,638.0 class=tc-grid-minor
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
-[-] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
-[-] line 359.4,66.0..359.4,638.0 class=tc-grid-minor
-[-] line 394.9,66.0..394.9,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
-[-] line 425.7,66.0..425.7,638.0 class=tc-grid-minor
-[-] line 452.9,66.0..452.9,638.0 class=tc-grid-minor
-[-] line 477.2,66.0..477.2,638.0 class=tc-grid-major
-[-] text 477.2,658.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
-[-] line 637.1,66.0..637.1,638.0 class=tc-grid-minor
-[-] text 637.1,658.0 text-anchor=middle font-size=10 "2 kA"
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
-[-] line 730.6,66.0..730.6,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
-[-] line 796.9,66.0..796.9,638.0 class=tc-grid-minor
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
-[-] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 890.4,66.0..890.4,638.0 class=tc-grid-minor
-[-] line 926.0,66.0..926.0,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
-[-] line 956.8,66.0..956.8,638.0 class=tc-grid-minor
-[-] line 984.0,66.0..984.0,638.0 class=tc-grid-minor
-[-] line 1008.3,66.0..1008.3,638.0 class=tc-grid-major
-[-] text 1008.3,658.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
-[-] line 1101.8,66.0..1101.8,638.0 class=tc-grid-minor
-[-] line 1101.8,66.0..1101.8,638.0 class=tc-grid-minor
-[-] line 1101.8,66.0..1101.8,638.0 class=tc-grid-minor
-[-] line 1168.1,66.0..1168.1,638.0 class=tc-grid-minor
-[-] text 1168.1,658.0 text-anchor=middle font-size=10 "20 kA"
-[-] line 1219.6,66.0..1219.6,638.0 class=tc-grid-minor
-[-] line 1219.6,66.0..1219.6,638.0 class=tc-grid-minor
-[-] line 1219.6,66.0..1219.6,638.0 class=tc-grid-minor
-[-] line 1261.6,66.0..1261.6,638.0 class=tc-grid-minor
-[-] line 1297.2,66.0..1297.2,638.0 class=tc-grid-minor
-[-] line 1297.2,66.0..1297.2,638.0 class=tc-grid-minor
-[-] line 1297.2,66.0..1297.2,638.0 class=tc-grid-minor
-[-] line 1328.0,66.0..1328.0,638.0 class=tc-grid-minor
-[-] line 106.0,638.0..1328.0,638.0 class=tc-grid-minor
-[-] text 96.0,641.0 text-anchor=end font-size=10 "20 ms"
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
-[-] line 106.0,610.8..1328.0,610.8 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
-[-] line 106.0,591.4..1328.0,591.4 class=tc-grid-minor
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
-[-] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
-[-] line 106.0,564.2..1328.0,564.2 class=tc-grid-minor
-[-] line 106.0,553.9..1328.0,553.9 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
-[-] line 106.0,544.9..1328.0,544.9 class=tc-grid-minor
-[-] line 106.0,537.0..1328.0,537.0 class=tc-grid-minor
-[-] line 106.0,529.9..1328.0,529.9 class=tc-grid-major
-[-] text 96.0,533.9 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
-[-] line 106.0,483.4..1328.0,483.4 class=tc-grid-minor
-[-] text 96.0,486.4 text-anchor=end font-size=10 "200 ms"
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
-[-] line 106.0,456.1..1328.0,456.1 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
-[-] line 106.0,436.8..1328.0,436.8 class=tc-grid-minor
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
-[-] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
-[-] line 106.0,409.6..1328.0,409.6 class=tc-grid-minor
-[-] line 106.0,399.2..1328.0,399.2 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
-[-] line 106.0,390.3..1328.0,390.3 class=tc-grid-minor
-[-] line 106.0,382.4..1328.0,382.4 class=tc-grid-minor
-[-] line 106.0,375.3..1328.0,375.3 class=tc-grid-major
-[-] text 96.0,379.3 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
-[-] line 106.0,328.7..1328.0,328.7 class=tc-grid-minor
-[-] text 96.0,331.7 text-anchor=end font-size=10 "2 s"
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
-[-] line 106.0,301.5..1328.0,301.5 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
-[-] line 106.0,282.2..1328.0,282.2 class=tc-grid-minor
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
-[-] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
-[-] line 106.0,254.9..1328.0,254.9 class=tc-grid-minor
-[-] line 106.0,244.6..1328.0,244.6 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
-[-] line 106.0,235.6..1328.0,235.6 class=tc-grid-minor
-[-] line 106.0,227.7..1328.0,227.7 class=tc-grid-minor
-[-] line 106.0,220.6..1328.0,220.6 class=tc-grid-major
-[-] text 96.0,224.6 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
-[-] line 106.0,174.1..1328.0,174.1 class=tc-grid-minor
-[-] text 96.0,177.1 text-anchor=end font-size=10 "20 s"
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
-[-] line 106.0,146.9..1328.0,146.9 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
-[-] line 106.0,127.5..1328.0,127.5 class=tc-grid-minor
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
-[-] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
-[-] line 106.0,100.3..1328.0,100.3 class=tc-grid-minor
-[-] line 106.0,90.0..1328.0,90.0 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
-[-] line 106.0,81.0..1328.0,81.0 class=tc-grid-minor
-[-] line 106.0,73.1..1328.0,73.1 class=tc-grid-minor
-[-] line 106.0,66.0..1328.0,66.0 class=tc-grid-major
-[-] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
-[-] text 44.0,352.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[-] text 717.0,758.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
-[-] line 467.8,638.0..467.8,642.0
-[-] line 612.8,638.0..612.8,642.0
-[-] line 612.8,638.0..612.8,642.0
-[-] line 738.1,66.0..738.1,638.0 class=tc-fault data-fault=Board min
-[-] line 1059.7,66.0..1059.7,638.0 class=tc-fault data-fault=Board max
-[-] path n=99 bbox=472.6,66.0..1059.7,452.0 class=tc-curve data-curve=Feeder · 51 data-ref=R_FDR:51 data-voltage=MV
-[-] path n=76 bbox=613.1,-107.9..1059.7,371.2 class=tc-curve data-curve=Incomer · 51 data-ref=R_INC:51 data-voltage=MV
-[-] path n=120 bbox=612.8,66.0..1328.0,468.4 class=tc-curve data-curve=Incomer · Breaker fail data-ref=R_INC:50BF data-voltage=MV
-[-] line 106.0,375.3..1328.0,375.3 class=tc-time data-time-name=Switchgear rating
-[-] text 880.9,390.4 text-anchor=start font-size=11 "Switchgear rating · 1 s"
-[-] circle 956.8,375.3 r=6.3
-[-] circle 956.8,375.3 r=4.5
-[-] path n=2 bbox=946.8,358.5..956.8,375.3
-[-] text 946.8,360.8 text-anchor=end font-size=11 "Switchgear 1 s rating"
-[-] line 1059.7,452.0..1059.7,371.2
-[-] polygon 3 pts
-[-] polygon 3 pts
-[-] line 1053.7,452.0..1065.7,452.0
-[-] line 1053.7,371.2..1065.7,371.2
-[-] text 1069.7,413.9 text-anchor=start font-size=11 font-weight=600 "CTI 744 ms"
-[-] line 738.1,638.0..738.1,663.0 class=tc-fault
-[-] text 740.1,672.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board min · 3.1 kA"
-[-] line 1059.7,638.0..1059.7,663.0 class=tc-fault
-[-] text 1061.7,672.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board max · 12.5 kA"
-[-] rect 120.0,80.0 324.0x398.0
-[-] text 132.0,99.0 class=tc-legend font-size=13 font-weight=600 "Protection"
-[-] circle 145.0,115.0 r=5.0
-[-] text 168.0,119.0 class=tc-legend font-size=12 font-weight=600 "Feeder · 51"
-[-] text 168.0,135.0 class=tc-legend-muted font-size=11 "IEC SI · 960 A (6 A sec) · TMS 0.12 · to"
-[-] text 168.0,150.0 class=tc-legend-muted font-size=11 "12.5 kA"
-[-] circle 145.0,163.0 r=5.0
-[-] text 168.0,167.0 class=tc-legend font-size=12 font-weight=600 "Incomer · 51"
-[-] text 168.0,183.0 class=tc-legend-muted font-size=11 "IEC SI · 1.8 kA (5.625 A sec) · TMS 0.3"
-[-] text 168.0,198.0 class=tc-legend-muted font-size=11 "· to 12.5 kA"
-[-] circle 145.0,211.0 r=5.0
-[-] text 168.0,215.0 class=tc-legend font-size=12 font-weight=600 "Incomer · Breaker fail"
-[-] text 168.0,231.0 class=tc-legend-muted font-size=11 "Definite time · 1.8 kA (5.625 A sec) ·"
-[-] text 168.0,246.0 class=tc-legend-muted font-size=11 "delay 250 ms"
-[-] text 132.0,276.0 font-size=13 font-weight=600 "Faults"
-[-] line 132.0,292.0..158.0,292.0
-[-] text 168.0,296.0 class=tc-legend font-size=11 "Board min · 3.1 kA · MV · 11 kV"
-[-] line 132.0,308.0..158.0,308.0
-[-] text 168.0,312.0 class=tc-legend font-size=11 "Board max · 12.5 kA · MV · 11 kV"
-[-] text 132.0,336.0 font-size=13 font-weight=600 "Times"
-[-] line 132.0,352.0..158.0,352.0
-[-] text 168.0,356.0 class=tc-legend font-size=11 "Switchgear rating · 1 s"
-[-] text 132.0,382.0 class=tc-legend font-size=13 font-weight=600 "Comment"
-[-] text 132.0,402.0 class=tc-legend font-size=11 "Settings checked against issue D of the fault"
-[-] text 132.0,416.0 class=tc-legend font-size=11 "study."
-[-] text 132.0,430.0 class=tc-legend font-size=11 "Source impedance assumed 250 MVA at the 11 kV"
-[-] text 132.0,444.0 class=tc-legend font-size=11 "board."
-[-] text 132.0,458.0 class=tc-legend font-size=11 "Queries to M. Haugen, protection team."
-[-] text 700.0,434.5 text-anchor=middle font-size=64 "UNISSUED — FOR COMMENT"
+[chrome] rect 7.0,7.0 1386.0x855.0
+[chrome] line 7.0,785.0..1393.0,785.0
+[chrome] text 21.0,807.0 font-size=12 font-weight=600 "Netherfield BSP — Drawing standard sheet"
+[chrome] text 21.0,825.0 font-size=12 "Drawing NF-TCC-0014 for Northern Networks"
+[chrome] text 1330.6,805.0 font-size=10 "REV"
+[chrome] text 1330.6,823.0 font-size=11 "D"
+[chrome] text 1242.6,805.0 font-size=10 "DATE"
+[chrome] text 1242.6,823.0 font-size=11 "2026-08-01"
+[chrome] text 1161.2,805.0 font-size=10 "ENGINEER"
+[chrome] text 1161.2,823.0 font-size=11 "M. Haugen"
+[chrome] text 1040.2,805.0 font-size=10 "PROJECT"
+[chrome] text 1040.2,823.0 font-size=11 "Netherfield BSP"
+[footer] text 21.0,856.0 text-anchor=start font-size=8 "NF-TCC-0014 rev D"
+[footer] text 700.0,856.0 text-anchor=middle font-size=8 "M. Haugen · 2026-08-01"
+[footer] text 1379.0,856.0 text-anchor=end font-size=8 "NF-TCC-0014 · sheet ? of ?"
+[frame] rect 106.0,66.0 1222.0x572.0
+[grid] line 106.0,66.0..106.0,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 157.5,66.0..157.5,638.0 class=tc-grid-minor
+[grid] line 199.5,66.0..199.5,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 235.1,66.0..235.1,638.0 class=tc-grid-minor
+[grid] line 265.9,66.0..265.9,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 317.3,66.0..317.3,638.0 class=tc-grid-minor
+[grid] line 359.4,66.0..359.4,638.0 class=tc-grid-minor
+[grid] line 394.9,66.0..394.9,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 410.8,66.0..410.8,638.0 class=tc-grid-minor
+[grid] line 425.7,66.0..425.7,638.0 class=tc-grid-minor
+[grid] line 452.9,66.0..452.9,638.0 class=tc-grid-minor
+[grid] line 477.2,66.0..477.2,638.0 class=tc-grid-major
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 570.7,66.0..570.7,638.0 class=tc-grid-minor
+[grid] line 637.1,66.0..637.1,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 688.5,66.0..688.5,638.0 class=tc-grid-minor
+[grid] line 730.6,66.0..730.6,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 766.1,66.0..766.1,638.0 class=tc-grid-minor
+[grid] line 796.9,66.0..796.9,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 848.4,66.0..848.4,638.0 class=tc-grid-minor
+[grid] line 890.4,66.0..890.4,638.0 class=tc-grid-minor
+[grid] line 926.0,66.0..926.0,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 941.9,66.0..941.9,638.0 class=tc-grid-minor
+[grid] line 956.8,66.0..956.8,638.0 class=tc-grid-minor
+[grid] line 984.0,66.0..984.0,638.0 class=tc-grid-minor
+[grid] line 1008.3,66.0..1008.3,638.0 class=tc-grid-major
+[grid] line 1101.8,66.0..1101.8,638.0 class=tc-grid-minor
+[grid] line 1101.8,66.0..1101.8,638.0 class=tc-grid-minor
+[grid] line 1101.8,66.0..1101.8,638.0 class=tc-grid-minor
+[grid] line 1168.1,66.0..1168.1,638.0 class=tc-grid-minor
+[grid] line 1219.6,66.0..1219.6,638.0 class=tc-grid-minor
+[grid] line 1219.6,66.0..1219.6,638.0 class=tc-grid-minor
+[grid] line 1219.6,66.0..1219.6,638.0 class=tc-grid-minor
+[grid] line 1261.6,66.0..1261.6,638.0 class=tc-grid-minor
+[grid] line 1297.2,66.0..1297.2,638.0 class=tc-grid-minor
+[grid] line 1297.2,66.0..1297.2,638.0 class=tc-grid-minor
+[grid] line 1297.2,66.0..1297.2,638.0 class=tc-grid-minor
+[grid] line 1328.0,66.0..1328.0,638.0 class=tc-grid-minor
+[grid] line 106.0,638.0..1328.0,638.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,623.0..1328.0,623.0 class=tc-grid-minor
+[grid] line 106.0,610.8..1328.0,610.8 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,600.4..1328.0,600.4 class=tc-grid-minor
+[grid] line 106.0,591.4..1328.0,591.4 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,576.5..1328.0,576.5 class=tc-grid-minor
+[grid] line 106.0,564.2..1328.0,564.2 class=tc-grid-minor
+[grid] line 106.0,553.9..1328.0,553.9 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,549.2..1328.0,549.2 class=tc-grid-minor
+[grid] line 106.0,544.9..1328.0,544.9 class=tc-grid-minor
+[grid] line 106.0,537.0..1328.0,537.0 class=tc-grid-minor
+[grid] line 106.0,529.9..1328.0,529.9 class=tc-grid-major
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,502.7..1328.0,502.7 class=tc-grid-minor
+[grid] line 106.0,483.4..1328.0,483.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,468.4..1328.0,468.4 class=tc-grid-minor
+[grid] line 106.0,456.1..1328.0,456.1 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,445.8..1328.0,445.8 class=tc-grid-minor
+[grid] line 106.0,436.8..1328.0,436.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,421.8..1328.0,421.8 class=tc-grid-minor
+[grid] line 106.0,409.6..1328.0,409.6 class=tc-grid-minor
+[grid] line 106.0,399.2..1328.0,399.2 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,394.6..1328.0,394.6 class=tc-grid-minor
+[grid] line 106.0,390.3..1328.0,390.3 class=tc-grid-minor
+[grid] line 106.0,382.4..1328.0,382.4 class=tc-grid-minor
+[grid] line 106.0,375.3..1328.0,375.3 class=tc-grid-major
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,348.0..1328.0,348.0 class=tc-grid-minor
+[grid] line 106.0,328.7..1328.0,328.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,313.7..1328.0,313.7 class=tc-grid-minor
+[grid] line 106.0,301.5..1328.0,301.5 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,291.1..1328.0,291.1 class=tc-grid-minor
+[grid] line 106.0,282.2..1328.0,282.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,267.2..1328.0,267.2 class=tc-grid-minor
+[grid] line 106.0,254.9..1328.0,254.9 class=tc-grid-minor
+[grid] line 106.0,244.6..1328.0,244.6 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,240.0..1328.0,240.0 class=tc-grid-minor
+[grid] line 106.0,235.6..1328.0,235.6 class=tc-grid-minor
+[grid] line 106.0,227.7..1328.0,227.7 class=tc-grid-minor
+[grid] line 106.0,220.6..1328.0,220.6 class=tc-grid-major
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,193.4..1328.0,193.4 class=tc-grid-minor
+[grid] line 106.0,174.1..1328.0,174.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,159.1..1328.0,159.1 class=tc-grid-minor
+[grid] line 106.0,146.9..1328.0,146.9 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,136.5..1328.0,136.5 class=tc-grid-minor
+[grid] line 106.0,127.5..1328.0,127.5 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,112.6..1328.0,112.6 class=tc-grid-minor
+[grid] line 106.0,100.3..1328.0,100.3 class=tc-grid-minor
+[grid] line 106.0,90.0..1328.0,90.0 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,85.3..1328.0,85.3 class=tc-grid-minor
+[grid] line 106.0,81.0..1328.0,81.0 class=tc-grid-minor
+[grid] line 106.0,73.1..1328.0,73.1 class=tc-grid-minor
+[grid] line 106.0,66.0..1328.0,66.0 class=tc-grid-major
+[axes] text 106.0,658.0 text-anchor=middle font-size=10 "200 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 317.3,658.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 477.2,658.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
+[axes] text 637.1,658.0 text-anchor=middle font-size=10 "2 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 848.4,658.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 1008.3,658.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
+[axes] text 1168.1,658.0 text-anchor=middle font-size=10 "20 kA"
+[axes] text 96.0,641.0 text-anchor=end font-size=10 "20 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,579.5 text-anchor=end font-size=10 "50 ms"
+[axes] text 96.0,533.9 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
+[axes] text 96.0,486.4 text-anchor=end font-size=10 "200 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,424.8 text-anchor=end font-size=10 "500 ms"
+[axes] text 96.0,379.3 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
+[axes] text 96.0,331.7 text-anchor=end font-size=10 "2 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,270.2 text-anchor=end font-size=10 "5 s"
+[axes] text 96.0,224.6 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
+[axes] text 96.0,177.1 text-anchor=end font-size=10 "20 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
+[axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
+[axes] text 44.0,352.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
+[axes] text 717.0,758.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[pickups] line 467.8,638.0..467.8,642.0
+[pickups] line 612.8,638.0..612.8,642.0
+[pickups] line 612.8,638.0..612.8,642.0
+[faults] line 738.1,66.0..738.1,638.0 class=tc-fault data-fault=Board min
+[faults] line 1059.7,66.0..1059.7,638.0 class=tc-fault data-fault=Board max
+[curves] path n=99 bbox=472.6,66.0..1059.7,452.0 class=tc-curve data-curve=Feeder · 51 data-ref=R_FDR:51 data-voltage=MV
+[curves] path n=76 bbox=613.1,-107.9..1059.7,371.2 class=tc-curve data-curve=Incomer · 51 data-ref=R_INC:51 data-voltage=MV
+[curves] path n=120 bbox=612.8,66.0..1328.0,468.4 class=tc-curve data-curve=Incomer · Breaker fail data-ref=R_INC:50BF data-voltage=MV
+[times] line 106.0,375.3..1328.0,375.3 class=tc-time data-time-name=Switchgear rating
+[time-labels] text 880.9,390.4 text-anchor=start font-size=11 "Switchgear rating · 1 s"
+[points] circle 956.8,375.3 r=6.3
+[points] circle 956.8,375.3 r=4.5
+[points] path n=2 bbox=946.8,358.5..956.8,375.3
+[points] text 946.8,360.8 text-anchor=end font-size=11 "Switchgear 1 s rating"
+[annotations] line 1059.7,452.0..1059.7,371.2
+[annotations] polygon 3 pts
+[annotations] polygon 3 pts
+[annotations] line 1053.7,452.0..1065.7,452.0
+[annotations] line 1053.7,371.2..1065.7,371.2
+[annotations] text 1069.7,413.9 text-anchor=start font-size=11 font-weight=600 "CTI 744 ms"
+[fault-band] line 738.1,638.0..738.1,663.0 class=tc-fault
+[fault-band] text 740.1,672.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board min · 3.1 kA"
+[fault-band] line 1059.7,638.0..1059.7,663.0 class=tc-fault
+[fault-band] text 1061.7,672.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board max · 12.5 kA"
+[legend] rect 120.0,80.0 324.0x404.0
+[legend] text 132.0,99.0 class=tc-legend font-size=13 font-weight=600 "Protection"
+[legend] circle 145.0,115.0 r=5.0
+[legend] text 168.0,119.0 class=tc-legend font-size=12 font-weight=600 "Feeder · 51"
+[legend] text 168.0,135.0 class=tc-legend-muted font-size=11 "IEC SI · 960 A (6 A sec) · TMS 0.12 · to"
+[legend] text 168.0,150.0 class=tc-legend-muted font-size=11 "12.5 kA"
+[legend] circle 145.0,163.0 r=5.0
+[legend] text 168.0,167.0 class=tc-legend font-size=12 font-weight=600 "Incomer · 51"
+[legend] text 168.0,183.0 class=tc-legend-muted font-size=11 "IEC SI · 1.8 kA (5.625 A sec) · TMS 0.3"
+[legend] text 168.0,198.0 class=tc-legend-muted font-size=11 "· to 12.5 kA"
+[legend] circle 145.0,211.0 r=5.0
+[legend] text 168.0,215.0 class=tc-legend font-size=12 font-weight=600 "Incomer · Breaker fail"
+[legend] text 168.0,231.0 class=tc-legend-muted font-size=11 "Definite time · 1.8 kA (5.625 A sec) ·"
+[legend] text 168.0,246.0 class=tc-legend-muted font-size=11 "delay 250 ms"
+[legend] text 132.0,276.0 font-size=13 font-weight=600 "Faults"
+[legend] line 132.0,292.0..158.0,292.0
+[legend] text 168.0,296.0 class=tc-legend font-size=11 "Board min · 3.1 kA · MV · 11 kV"
+[legend] line 132.0,310.0..158.0,310.0
+[legend] text 168.0,314.0 class=tc-legend font-size=11 "Board max · 12.5 kA · MV · 11 kV"
+[legend] text 132.0,340.0 font-size=13 font-weight=600 "Times"
+[legend] line 132.0,356.0..158.0,356.0
+[legend] text 168.0,360.0 class=tc-legend font-size=11 "Switchgear rating · 1 s"
+[legend] text 132.0,388.0 class=tc-legend font-size=13 font-weight=600 "Comment"
+[legend] text 132.0,408.0 class=tc-legend font-size=11 "Settings checked against issue D of the fault"
+[legend] text 132.0,422.0 class=tc-legend font-size=11 "study."
+[legend] text 132.0,436.0 class=tc-legend font-size=11 "Source impedance assumed 250 MVA at the 11 kV"
+[legend] text 132.0,450.0 class=tc-legend font-size=11 "board."
+[legend] text 132.0,464.0 class=tc-legend font-size=11 "Queries to M. Haugen, protection team."
+[watermark] text 700.0,434.5 text-anchor=middle font-size=64 "UNISSUED — FOR COMMENT"

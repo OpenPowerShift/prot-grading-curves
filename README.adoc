@@ -1447,6 +1447,27 @@ page {
   curves      = {
     palette = "ieee";
   };
+
+  # A footer along the foot of the sheet. This study declares no
+  # `border`, so there is no title block and the footer sits under the
+  # plot; on a framed sheet the same three slots are drawn along the
+  # foot of the title block instead. One declaration, placed to suit
+  # the sheet — sample 16 shows the framed form.
+  #
+  # `[meta.*]` reads any field of the `meta` block, so the strings stay
+  # correct when the study is revised rather than being a second copy
+  # to keep in step.
+  #
+  # `[page]` and `[of]` are also available and deliberately not used
+  # here: one SVG is one sheet and has no pagination to report, so they
+  # resolve to "?" until the study is exported to PDF, where the
+  # exporter counts the views. Put them in a footer you print, not in
+  # one you read on screen.
+  footer      = {
+    left = "[meta.project] · [meta.study]";
+    center = "[meta.engineer] · rev [meta.revision]";
+    right = "[meta.date]";
+  };
 }
 
 # ---- Four sheets of the same study. ----------------------------------

@@ -1658,6 +1658,63 @@ Theme presets are *bundles*: declaring `theme = "dark"` does not
 overwrite subsequent specific `axes.color = "#abc123"` overrides
 inside the same `page { ... }` block.
 
+=== Semantic layers in the SVG
+
+A sheet is a stack of independent things, and the rendered SVG says
+so. Every drawn element sits inside a group naming what it is:
+
+[source,xml]
+----
+<g data-layer="curves">
+    <path d="..." class="tc-curve" data-curve="..." data-ref="R_FDR:51"/>
+</g>
+----
+
+The layers, in paint order:
+
+[cols="1,3", options="header"]
+|===
+| `data-layer` | Contents
+
+| `chrome`       | Sheet border, title block, drawing-office headings
+| `frame`        | The plot rectangle
+| `grid`         | Gridlines, both axes
+| `axes`         | Tick labels, mirrored scales, the two axis titles
+| `pickups`      | Pickup ticks below the current axis
+| `faults`       | Vertical fault-current rules
+| `bands`        | Fuse and device bands, with their hatching
+| `curves`       | The relay characteristics
+| `times`        | Horizontal required-time rules
+| `curve-labels` | Direct labels, when `legend = "direct"`
+| `time-labels`  | Captions naming each required-time rule
+| `points`       | Marked points and their captions
+| `annotations`  | Margins, spans and percentages
+| `fault-band`   | Fault names and leaders below the axis
+| `legend`       | The legend, column or floating panel
+| `footer`       | Page footer slots, wherever they are placed
+| `watermark`    | The diagonal watermark, over everything
+|===
+
+Three properties a consumer may rely on:
+
+. *A phase that draws nothing emits no group.* A study with no faults
+  has no `faults` layer rather than an empty one, so counting
+  `[data-layer]` reports what a sheet actually contains.
+. *A layer name may appear more than once.* `times` appears twice --
+  once beneath the curves and once over them -- because that is how
+  the sheet is painted: a required time is context below the
+  characteristics and a limit that must stay legible across them.
+  Layers name the phases of the drawing; they do not reorder it.
+. *A layer may nest.* `footer` sits inside `chrome` on a framed sheet,
+  because the same declaration draws along the foot of the title block
+  there and under the plot otherwise. Selecting `footer` finds it
+  either way.
+
+This makes the output addressable without matching on class names:
+hiding the grid for a print, dimming the furniture while a curve is
+highlighted, or exporting the plot without the study's own annotations
+is one selector each.
+
 == Marked points
 
 The `point` block marks a single `(I, t)` coordinate on the TCC. It is

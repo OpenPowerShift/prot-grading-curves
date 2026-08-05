@@ -5,115 +5,115 @@ domain-i 50,30000
 domain-t 0.02,20
 
 [-] rect 106.0,66.0 950.0x689.0
-[-] rect 7.0,7.0 1386.0x956.0
-[-] line 7.0,902.0..1393.0,902.0
-[-] text 21.0,924.0 font-size=12 font-weight=600 "Kingsford 33/11 kV — clearance times"
-[-] text 21.0,942.0 font-size=12 "Feeder and incomer against arc-flash, grid-code and withstand limits"
-[-] text 1330.6,922.0 font-size=10 "REV"
-[-] text 1330.6,940.0 font-size=11 "C"
-[-] text 1242.6,922.0 font-size=10 "DATE"
-[-] text 1242.6,940.0 font-size=11 "2026-08-01"
-[-] text 1154.6,922.0 font-size=10 "ENGINEER"
-[-] text 1154.6,940.0 font-size=11 "R. Adeyemi"
-[-] text 1013.8,922.0 font-size=10 "PROJECT"
-[-] text 1013.8,940.0 font-size=11 "Kingsford 33/11 kV"
-[-] rect 106.0,66.0 950.0x689.0
-[-] line 208.9,66.0..208.9,755.0 class=tc-grid-major
-[-] text 208.9,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
-[-] line 550.9,66.0..550.9,755.0 class=tc-grid-major
-[-] text 550.9,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
-[-] line 892.8,66.0..892.8,755.0 class=tc-grid-major
-[-] text 892.8,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
-[-] line 106.0,594.5..1056.0,594.5 class=tc-grid-major
-[-] text 96.0,598.5 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
-[-] line 106.0,364.8..1056.0,364.8 class=tc-grid-major
-[-] text 96.0,368.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
-[-] line 106.0,135.1..1056.0,135.1 class=tc-grid-major
-[-] text 96.0,139.1 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
-[-] text 44.0,410.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[-] text 581.0,875.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
-[-] line 502.1,755.0..502.1,759.0
-[-] line 236.0,755.0..236.0,759.0
-[-] line 514.0,755.0..514.0,759.0
-[-] line 620.7,66.0..620.7,755.0 class=tc-fault data-fault=Earth max
-[-] line 661.1,66.0..661.1,755.0 class=tc-fault data-fault=Board min
-[-] line 883.7,66.0..883.7,755.0 class=tc-fault data-fault=Board max
-[-] path n=82 bbox=505.0,-90.5..883.7,549.6 class=tc-curve data-curve=11 kV feeder · Phase TOC data-ref=R_FDR:51 data-voltage=MV
-[-] path n=83 bbox=239.0,10.7..620.7,497.9 class=tc-curve data-curve=11 kV feeder · Ground TOC data-ref=R_FDR:51G data-voltage=MV
-[-] path n=81 bbox=514.5,-369.9..885.0,437.2 class=tc-curve data-curve=33/11 kV incomer · Phase TOC data-ref=R_INC:51 data-voltage=HV
-[-] line 106.0,226.5..1056.0,226.5 class=tc-time data-time-name=Transformer withstand
-[-] line 106.0,387.1..1056.0,387.1 class=tc-time data-time-name=Grid code clearance
-[-] line 106.0,433.9..1056.0,433.9 class=tc-time data-time-name=Arc flash boundary
-[-] text 488.9,215.9 text-anchor=start font-size=11 "Transformer withstand · 4 s"
-[-] text 621.6,376.5 text-anchor=start font-size=11 "Grid code clearance · 800 ms"
-[-] text 727.9,423.4 text-anchor=start font-size=11 "Arc flash boundary · 500 ms"
-[-] polygon 4 pts
-[-] polygon 4 pts
-[-] path n=2 bbox=568.0,226.5..578.0,260.0
-[-] text 568.0,262.3 text-anchor=end font-size=11 "Transformer withstand corner"
-[-] circle 680.9,594.5 r=6.8
-[-] circle 680.9,594.5 r=5.0
-[-] text 690.9,596.8 text-anchor=start font-size=11 "Transformer inrush, 12x for 100 ms"
-[-] text 731.9,537.0 text-anchor=start font-size=11 "Feeder clears the board fault (9.4 kA, 157 ms)"
-[-] circle 723.6,309.5 r=3.5
-[-] path n=3 bbox=723.6,309.5..747.6,309.5
-[-] text 747.6,311.8 text-anchor=start font-size=11 "Incomer backup"
-[-] line 883.7,549.6..883.7,436.2
-[-] polygon 3 pts
-[-] polygon 3 pts
-[-] line 877.7,549.6..889.7,549.6
-[-] line 877.7,436.2..889.7,436.2
-[-] text 893.7,495.2 text-anchor=start font-size=11 font-weight=600 "CTI 332 ms"
-[-] line 817.0,433.9..817.0,387.1
-[-] polygon 3 pts
-[-] polygon 3 pts
-[-] line 811.0,433.9..823.0,433.9
-[-] line 811.0,387.1..823.0,387.1
-[-] path n=2 bbox=807.0,410.5..817.0,511.0
-[-] text 807.0,513.3 text-anchor=end font-size=11 font-weight=600 "band available 300 ms"
-[-] line 578.0,226.5..723.6,226.5
-[-] polygon 3 pts
-[-] polygon 3 pts
-[-] line 578.0,220.5..578.0,232.5
-[-] line 723.6,220.5..723.6,232.5
-[-] text 584.8,243.7 text-anchor=start font-size=11 font-weight=600 "pickup window 266.7%"
-[-] line 620.7,755.0..620.7,780.0 class=tc-fault
-[-] text 622.7,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Earth max · 1.6 kA"
-[-] line 661.1,755.0..661.1,794.0 class=tc-fault
-[-] text 663.1,803.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board min · 2.1 kA"
-[-] line 883.7,755.0..883.7,780.0 class=tc-fault
-[-] text 885.7,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board max · 9.4 kA"
-[-] text 1090.0,79.0 class=tc-legend font-size=13 font-weight=600 "Curves"
-[-] line 1090.0,95.0..1116.0,95.0
-[-] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "11 kV feeder · Phase TOC"
-[-] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL 751"
-[-] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC VI · 720 A · TMS 0.14 · to 9.4 kA"
-[-] text 1126.0,145.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
-[-] line 1090.0,166.0..1116.0,166.0
-[-] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "11 kV feeder · Ground TOC"
-[-] text 1126.0,186.0 class=tc-legend-muted font-size=11 "SEL 751"
-[-] text 1126.0,201.0 class=tc-legend-muted font-size=11 "IEC SI · 120 A · TMS 0.1 · vs residual"
-[-] text 1126.0,216.0 class=tc-legend-muted font-size=11 "3I0 · to 1.6 kA"
-[-] text 1126.0,231.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
-[-] line 1090.0,252.0..1116.0,252.0
-[-] text 1126.0,256.0 class=tc-legend font-size=12 font-weight=600 "33/11 kV incomer · Phase TOC"
-[-] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ABB REF615"
-[-] text 1126.0,287.0 class=tc-legend-muted font-size=11 "IEC VI · 260 A · TMS 0.4 · to 3.2 kA"
-[-] text 1126.0,302.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
-[-] text 1090.0,340.0 font-size=13 font-weight=600 "Faults"
-[-] line 1090.0,356.0..1116.0,356.0
-[-] text 1126.0,360.0 class=tc-legend font-size=11 "Earth max · 1.6 kA · MV · 11 kV"
-[-] line 1090.0,372.0..1116.0,372.0
-[-] text 1126.0,376.0 class=tc-legend font-size=11 "Board min · 2.1 kA · MV · 11 kV"
-[-] line 1090.0,388.0..1116.0,388.0
-[-] text 1126.0,392.0 class=tc-legend font-size=11 "Board max · 9.4 kA · MV · 11 kV"
-[-] text 1090.0,416.0 font-size=13 font-weight=600 "Times"
-[-] line 1090.0,432.0..1116.0,432.0
-[-] text 1126.0,436.0 class=tc-legend font-size=11 "Transformer withstand · 4 s"
-[-] text 1126.0,452.0 class=tc-legend-muted font-size=10 "ONAN 10 MVA, category II through-fault"
-[-] line 1090.0,461.0..1116.0,461.0
-[-] text 1126.0,465.0 class=tc-legend font-size=11 "Grid code clearance · 800 ms"
-[-] text 1126.0,481.0 class=tc-legend-muted font-size=10 "DNO connection agreement, 11 kV"
-[-] line 1090.0,490.0..1116.0,490.0
-[-] text 1126.0,494.0 class=tc-legend font-size=11 "Arc flash boundary · 500 ms"
-[-] text 1126.0,510.0 class=tc-legend-muted font-size=10 "Above this, PPE category rises a level"
+[chrome] rect 7.0,7.0 1386.0x956.0
+[chrome] line 7.0,902.0..1393.0,902.0
+[chrome] text 21.0,924.0 font-size=12 font-weight=600 "Kingsford 33/11 kV — clearance times"
+[chrome] text 21.0,942.0 font-size=12 "Feeder and incomer against arc-flash, grid-code and withstand limits"
+[chrome] text 1330.6,922.0 font-size=10 "REV"
+[chrome] text 1330.6,940.0 font-size=11 "C"
+[chrome] text 1242.6,922.0 font-size=10 "DATE"
+[chrome] text 1242.6,940.0 font-size=11 "2026-08-01"
+[chrome] text 1154.6,922.0 font-size=10 "ENGINEER"
+[chrome] text 1154.6,940.0 font-size=11 "R. Adeyemi"
+[chrome] text 1013.8,922.0 font-size=10 "PROJECT"
+[chrome] text 1013.8,940.0 font-size=11 "Kingsford 33/11 kV"
+[frame] rect 106.0,66.0 950.0x689.0
+[grid] line 208.9,66.0..208.9,755.0 class=tc-grid-major
+[grid] line 550.9,66.0..550.9,755.0 class=tc-grid-major
+[grid] line 892.8,66.0..892.8,755.0 class=tc-grid-major
+[grid] line 106.0,594.5..1056.0,594.5 class=tc-grid-major
+[grid] line 106.0,364.8..1056.0,364.8 class=tc-grid-major
+[grid] line 106.0,135.1..1056.0,135.1 class=tc-grid-major
+[axes] text 208.9,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
+[axes] text 550.9,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
+[axes] text 892.8,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
+[axes] text 96.0,598.5 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
+[axes] text 96.0,368.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
+[axes] text 96.0,139.1 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
+[axes] text 44.0,410.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
+[axes] text 581.0,875.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[pickups] line 502.1,755.0..502.1,759.0
+[pickups] line 236.0,755.0..236.0,759.0
+[pickups] line 514.0,755.0..514.0,759.0
+[faults] line 620.7,66.0..620.7,755.0 class=tc-fault data-fault=Earth max
+[faults] line 661.1,66.0..661.1,755.0 class=tc-fault data-fault=Board min
+[faults] line 883.7,66.0..883.7,755.0 class=tc-fault data-fault=Board max
+[curves] path n=82 bbox=505.0,-90.5..883.7,549.6 class=tc-curve data-curve=11 kV feeder · Phase TOC data-ref=R_FDR:51 data-voltage=MV
+[curves] path n=83 bbox=239.0,10.7..620.7,497.9 class=tc-curve data-curve=11 kV feeder · Ground TOC data-ref=R_FDR:51G data-voltage=MV
+[curves] path n=81 bbox=514.5,-369.9..885.0,437.2 class=tc-curve data-curve=33/11 kV incomer · Phase TOC data-ref=R_INC:51 data-voltage=HV
+[times] line 106.0,226.5..1056.0,226.5 class=tc-time data-time-name=Transformer withstand
+[times] line 106.0,387.1..1056.0,387.1 class=tc-time data-time-name=Grid code clearance
+[times] line 106.0,433.9..1056.0,433.9 class=tc-time data-time-name=Arc flash boundary
+[time-labels] text 488.9,215.9 text-anchor=start font-size=11 "Transformer withstand · 4 s"
+[time-labels] text 621.6,376.5 text-anchor=start font-size=11 "Grid code clearance · 800 ms"
+[time-labels] text 727.9,423.4 text-anchor=start font-size=11 "Arc flash boundary · 500 ms"
+[points] polygon 4 pts
+[points] polygon 4 pts
+[points] path n=2 bbox=568.0,226.5..578.0,260.0
+[points] text 568.0,262.3 text-anchor=end font-size=11 "Transformer withstand corner"
+[points] circle 680.9,594.5 r=6.8
+[points] circle 680.9,594.5 r=5.0
+[points] text 690.9,596.8 text-anchor=start font-size=11 "Transformer inrush, 12x for 100 ms"
+[annotations] text 731.9,537.0 text-anchor=start font-size=11 "Feeder clears the board fault (9.4 kA, 157 ms)"
+[annotations] circle 723.6,309.5 r=3.5
+[annotations] path n=3 bbox=723.6,309.5..747.6,309.5
+[annotations] text 747.6,311.8 text-anchor=start font-size=11 "Incomer backup"
+[annotations] line 883.7,549.6..883.7,436.2
+[annotations] polygon 3 pts
+[annotations] polygon 3 pts
+[annotations] line 877.7,549.6..889.7,549.6
+[annotations] line 877.7,436.2..889.7,436.2
+[annotations] text 893.7,495.2 text-anchor=start font-size=11 font-weight=600 "CTI 332 ms"
+[annotations] line 817.0,433.9..817.0,387.1
+[annotations] polygon 3 pts
+[annotations] polygon 3 pts
+[annotations] line 811.0,433.9..823.0,433.9
+[annotations] line 811.0,387.1..823.0,387.1
+[annotations] path n=2 bbox=807.0,410.5..817.0,511.0
+[annotations] text 807.0,513.3 text-anchor=end font-size=11 font-weight=600 "band available 300 ms"
+[annotations] line 578.0,226.5..723.6,226.5
+[annotations] polygon 3 pts
+[annotations] polygon 3 pts
+[annotations] line 578.0,220.5..578.0,232.5
+[annotations] line 723.6,220.5..723.6,232.5
+[annotations] text 584.8,243.7 text-anchor=start font-size=11 font-weight=600 "pickup window 266.7%"
+[fault-band] line 620.7,755.0..620.7,780.0 class=tc-fault
+[fault-band] text 622.7,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Earth max · 1.6 kA"
+[fault-band] line 661.1,755.0..661.1,794.0 class=tc-fault
+[fault-band] text 663.1,803.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board min · 2.1 kA"
+[fault-band] line 883.7,755.0..883.7,780.0 class=tc-fault
+[fault-band] text 885.7,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board max · 9.4 kA"
+[legend] text 1090.0,79.0 class=tc-legend font-size=13 font-weight=600 "Curves"
+[legend] line 1090.0,95.0..1116.0,95.0
+[legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "11 kV feeder · Phase TOC"
+[legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL 751"
+[legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC VI · 720 A · TMS 0.14 · to 9.4 kA"
+[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] line 1090.0,166.0..1116.0,166.0
+[legend] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "11 kV feeder · Ground TOC"
+[legend] text 1126.0,186.0 class=tc-legend-muted font-size=11 "SEL 751"
+[legend] text 1126.0,201.0 class=tc-legend-muted font-size=11 "IEC SI · 120 A · TMS 0.1 · vs residual"
+[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "3I0 · to 1.6 kA"
+[legend] text 1126.0,231.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] line 1090.0,252.0..1116.0,252.0
+[legend] text 1126.0,256.0 class=tc-legend font-size=12 font-weight=600 "33/11 kV incomer · Phase TOC"
+[legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ABB REF615"
+[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "IEC VI · 260 A · TMS 0.4 · to 3.2 kA"
+[legend] text 1126.0,302.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1090.0,340.0 font-size=13 font-weight=600 "Faults"
+[legend] line 1090.0,356.0..1116.0,356.0
+[legend] text 1126.0,360.0 class=tc-legend font-size=11 "Earth max · 1.6 kA · MV · 11 kV"
+[legend] line 1090.0,382.0..1116.0,382.0
+[legend] text 1126.0,386.0 class=tc-legend font-size=11 "Board min · 2.1 kA · MV · 11 kV"
+[legend] line 1090.0,408.0..1116.0,408.0
+[legend] text 1126.0,412.0 class=tc-legend font-size=11 "Board max · 9.4 kA · MV · 11 kV"
+[legend] text 1090.0,446.0 font-size=13 font-weight=600 "Times"
+[legend] line 1090.0,462.0..1116.0,462.0
+[legend] text 1126.0,466.0 class=tc-legend font-size=11 "Transformer withstand · 4 s"
+[legend] text 1126.0,482.0 class=tc-legend-muted font-size=10 "ONAN 10 MVA, category II through-fault"
+[legend] line 1090.0,501.0..1116.0,501.0
+[legend] text 1126.0,505.0 class=tc-legend font-size=11 "Grid code clearance · 800 ms"
+[legend] text 1126.0,521.0 class=tc-legend-muted font-size=10 "DNO connection agreement, 11 kV"
+[legend] line 1090.0,540.0..1116.0,540.0
+[legend] text 1126.0,544.0 class=tc-legend font-size=11 "Arc flash boundary · 500 ms"
+[legend] text 1126.0,560.0 class=tc-legend-muted font-size=10 "Above this, PPE category rises a level"

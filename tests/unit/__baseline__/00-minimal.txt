@@ -5,137 +5,137 @@ domain-i 10,100000
 domain-t 0.01,1000
 
 [-] rect 92.0,32.0 778.0x578.0
-[-] rect 92.0,32.0 778.0x578.0
-[-] line 92.0,32.0..92.0,610.0 class=tc-grid-major
-[-] text 92.0,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 A"
-[-] line 150.6,32.0..150.6,610.0 class=tc-grid-minor
-[-] text 150.6,630.0 text-anchor=middle font-size=10 "20 A"
-[-] line 184.8,32.0..184.8,610.0 class=tc-grid-minor
-[-] line 209.1,32.0..209.1,610.0 class=tc-grid-minor
-[-] line 227.9,32.0..227.9,610.0 class=tc-grid-minor
-[-] text 227.9,630.0 text-anchor=middle font-size=10 "50 A"
-[-] line 243.4,32.0..243.4,610.0 class=tc-grid-minor
-[-] line 256.4,32.0..256.4,610.0 class=tc-grid-minor
-[-] line 267.7,32.0..267.7,610.0 class=tc-grid-minor
-[-] line 277.6,32.0..277.6,610.0 class=tc-grid-minor
-[-] line 286.5,32.0..286.5,610.0 class=tc-grid-major
-[-] text 286.5,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
-[-] line 345.1,32.0..345.1,610.0 class=tc-grid-minor
-[-] text 345.1,630.0 text-anchor=middle font-size=10 "200 A"
-[-] line 379.3,32.0..379.3,610.0 class=tc-grid-minor
-[-] line 403.6,32.0..403.6,610.0 class=tc-grid-minor
-[-] line 422.4,32.0..422.4,610.0 class=tc-grid-minor
-[-] text 422.4,630.0 text-anchor=middle font-size=10 "500 A"
-[-] line 437.9,32.0..437.9,610.0 class=tc-grid-minor
-[-] line 450.9,32.0..450.9,610.0 class=tc-grid-minor
-[-] line 462.2,32.0..462.2,610.0 class=tc-grid-minor
-[-] line 472.1,32.0..472.1,610.0 class=tc-grid-minor
-[-] line 481.0,32.0..481.0,610.0 class=tc-grid-major
-[-] text 481.0,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
-[-] line 539.6,32.0..539.6,610.0 class=tc-grid-minor
-[-] text 539.6,630.0 text-anchor=middle font-size=10 "2 kA"
-[-] line 573.8,32.0..573.8,610.0 class=tc-grid-minor
-[-] line 598.1,32.0..598.1,610.0 class=tc-grid-minor
-[-] line 616.9,32.0..616.9,610.0 class=tc-grid-minor
-[-] text 616.9,630.0 text-anchor=middle font-size=10 "5 kA"
-[-] line 632.4,32.0..632.4,610.0 class=tc-grid-minor
-[-] line 645.4,32.0..645.4,610.0 class=tc-grid-minor
-[-] line 656.7,32.0..656.7,610.0 class=tc-grid-minor
-[-] line 666.6,32.0..666.6,610.0 class=tc-grid-minor
-[-] line 675.5,32.0..675.5,610.0 class=tc-grid-major
-[-] text 675.5,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
-[-] line 734.1,32.0..734.1,610.0 class=tc-grid-minor
-[-] text 734.1,630.0 text-anchor=middle font-size=10 "20 kA"
-[-] line 768.3,32.0..768.3,610.0 class=tc-grid-minor
-[-] line 792.6,32.0..792.6,610.0 class=tc-grid-minor
-[-] line 811.4,32.0..811.4,610.0 class=tc-grid-minor
-[-] text 811.4,630.0 text-anchor=middle font-size=10 "50 kA"
-[-] line 826.9,32.0..826.9,610.0 class=tc-grid-minor
-[-] line 839.9,32.0..839.9,610.0 class=tc-grid-minor
-[-] line 851.2,32.0..851.2,610.0 class=tc-grid-minor
-[-] line 861.1,32.0..861.1,610.0 class=tc-grid-minor
-[-] line 870.0,32.0..870.0,610.0 class=tc-grid-major
-[-] text 870.0,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 kA"
-[-] line 92.0,610.0..870.0,610.0 class=tc-grid-major
-[-] text 82.0,614.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 ms"
-[-] line 92.0,575.2..870.0,575.2 class=tc-grid-minor
-[-] text 82.0,578.2 text-anchor=end font-size=10 "20 ms"
-[-] line 92.0,554.8..870.0,554.8 class=tc-grid-minor
-[-] line 92.0,540.4..870.0,540.4 class=tc-grid-minor
-[-] line 92.0,529.2..870.0,529.2 class=tc-grid-minor
-[-] text 82.0,532.2 text-anchor=end font-size=10 "50 ms"
-[-] line 92.0,520.0..870.0,520.0 class=tc-grid-minor
-[-] line 92.0,512.3..870.0,512.3 class=tc-grid-minor
-[-] line 92.0,505.6..870.0,505.6 class=tc-grid-minor
-[-] line 92.0,499.7..870.0,499.7 class=tc-grid-minor
-[-] line 92.0,494.4..870.0,494.4 class=tc-grid-major
-[-] text 82.0,498.4 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
-[-] line 92.0,459.6..870.0,459.6 class=tc-grid-minor
-[-] text 82.0,462.6 text-anchor=end font-size=10 "200 ms"
-[-] line 92.0,439.2..870.0,439.2 class=tc-grid-minor
-[-] line 92.0,424.8..870.0,424.8 class=tc-grid-minor
-[-] line 92.0,413.6..870.0,413.6 class=tc-grid-minor
-[-] text 82.0,416.6 text-anchor=end font-size=10 "500 ms"
-[-] line 92.0,404.4..870.0,404.4 class=tc-grid-minor
-[-] line 92.0,396.7..870.0,396.7 class=tc-grid-minor
-[-] line 92.0,390.0..870.0,390.0 class=tc-grid-minor
-[-] line 92.0,384.1..870.0,384.1 class=tc-grid-minor
-[-] line 92.0,378.8..870.0,378.8 class=tc-grid-major
-[-] text 82.0,382.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
-[-] line 92.0,344.0..870.0,344.0 class=tc-grid-minor
-[-] text 82.0,347.0 text-anchor=end font-size=10 "2 s"
-[-] line 92.0,323.6..870.0,323.6 class=tc-grid-minor
-[-] line 92.0,309.2..870.0,309.2 class=tc-grid-minor
-[-] line 92.0,298.0..870.0,298.0 class=tc-grid-minor
-[-] text 82.0,301.0 text-anchor=end font-size=10 "5 s"
-[-] line 92.0,288.8..870.0,288.8 class=tc-grid-minor
-[-] line 92.0,281.1..870.0,281.1 class=tc-grid-minor
-[-] line 92.0,274.4..870.0,274.4 class=tc-grid-minor
-[-] line 92.0,268.5..870.0,268.5 class=tc-grid-minor
-[-] line 92.0,263.2..870.0,263.2 class=tc-grid-major
-[-] text 82.0,267.2 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
-[-] line 92.0,228.4..870.0,228.4 class=tc-grid-minor
-[-] text 82.0,231.4 text-anchor=end font-size=10 "20 s"
-[-] line 92.0,208.0..870.0,208.0 class=tc-grid-minor
-[-] line 92.0,193.6..870.0,193.6 class=tc-grid-minor
-[-] line 92.0,182.4..870.0,182.4 class=tc-grid-minor
-[-] text 82.0,185.4 text-anchor=end font-size=10 "50 s"
-[-] line 92.0,173.2..870.0,173.2 class=tc-grid-minor
-[-] line 92.0,165.5..870.0,165.5 class=tc-grid-minor
-[-] line 92.0,158.8..870.0,158.8 class=tc-grid-minor
-[-] line 92.0,152.9..870.0,152.9 class=tc-grid-minor
-[-] line 92.0,147.6..870.0,147.6 class=tc-grid-major
-[-] text 82.0,151.6 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
-[-] line 92.0,112.8..870.0,112.8 class=tc-grid-minor
-[-] text 82.0,115.8 text-anchor=end font-size=10 "200 s"
-[-] line 92.0,92.4..870.0,92.4 class=tc-grid-minor
-[-] line 92.0,78.0..870.0,78.0 class=tc-grid-minor
-[-] line 92.0,66.8..870.0,66.8 class=tc-grid-minor
-[-] text 82.0,69.8 text-anchor=end font-size=10 "500 s"
-[-] line 92.0,57.6..870.0,57.6 class=tc-grid-minor
-[-] line 92.0,49.9..870.0,49.9 class=tc-grid-minor
-[-] line 92.0,43.2..870.0,43.2 class=tc-grid-minor
-[-] line 92.0,37.3..870.0,37.3 class=tc-grid-minor
-[-] line 92.0,32.0..870.0,32.0 class=tc-grid-major
-[-] text 82.0,36.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
-[-] text 30.0,321.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[-] text 481.0,730.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
-[-] line 419.0,610.0..419.0,614.0
-[-] line 477.6,610.0..477.6,614.0
-[-] line 635.1,32.0..635.1,610.0 class=tc-fault data-fault=Board max
-[-] path n=117 bbox=422.7,32.0..870.0,483.5 class=tc-curve data-curve=R_FDR:51 data-ref=R_FDR:51 data-voltage=MV
-[-] path n=102 bbox=481.0,32.0..870.0,430.2 class=tc-curve data-curve=R_INC:51 data-ref=R_INC:51 data-voltage=MV
-[-] line 635.1,610.0..635.1,635.0 class=tc-fault
-[-] text 637.1,644.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board max · 6.2 kA"
-[-] text 904.0,45.0 class=tc-legend font-size=13 font-weight=600 "Curves"
-[-] line 904.0,61.0..930.0,61.0
-[-] text 940.0,65.0 class=tc-legend font-size=12 font-weight=600 "R_FDR:51"
-[-] text 940.0,81.0 class=tc-legend-muted font-size=11 "IEC SI · 480 A · TMS 0.1"
-[-] text 940.0,96.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
-[-] line 904.0,117.0..930.0,117.0
-[-] text 940.0,121.0 class=tc-legend font-size=12 font-weight=600 "R_INC:51"
-[-] text 940.0,137.0 class=tc-legend-muted font-size=11 "IEC SI · 960 A · TMS 0.25"
-[-] text 940.0,152.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
-[-] text 904.0,190.0 font-size=13 font-weight=600 "Faults"
-[-] line 904.0,206.0..930.0,206.0
-[-] text 940.0,210.0 class=tc-legend font-size=11 "Board max · 6.2 kA · MV · 11 kV"
+[frame] rect 92.0,32.0 778.0x578.0
+[grid] line 92.0,32.0..92.0,610.0 class=tc-grid-major
+[grid] line 150.6,32.0..150.6,610.0 class=tc-grid-minor
+[grid] line 184.8,32.0..184.8,610.0 class=tc-grid-minor
+[grid] line 209.1,32.0..209.1,610.0 class=tc-grid-minor
+[grid] line 227.9,32.0..227.9,610.0 class=tc-grid-minor
+[grid] line 243.4,32.0..243.4,610.0 class=tc-grid-minor
+[grid] line 256.4,32.0..256.4,610.0 class=tc-grid-minor
+[grid] line 267.7,32.0..267.7,610.0 class=tc-grid-minor
+[grid] line 277.6,32.0..277.6,610.0 class=tc-grid-minor
+[grid] line 286.5,32.0..286.5,610.0 class=tc-grid-major
+[grid] line 345.1,32.0..345.1,610.0 class=tc-grid-minor
+[grid] line 379.3,32.0..379.3,610.0 class=tc-grid-minor
+[grid] line 403.6,32.0..403.6,610.0 class=tc-grid-minor
+[grid] line 422.4,32.0..422.4,610.0 class=tc-grid-minor
+[grid] line 437.9,32.0..437.9,610.0 class=tc-grid-minor
+[grid] line 450.9,32.0..450.9,610.0 class=tc-grid-minor
+[grid] line 462.2,32.0..462.2,610.0 class=tc-grid-minor
+[grid] line 472.1,32.0..472.1,610.0 class=tc-grid-minor
+[grid] line 481.0,32.0..481.0,610.0 class=tc-grid-major
+[grid] line 539.6,32.0..539.6,610.0 class=tc-grid-minor
+[grid] line 573.8,32.0..573.8,610.0 class=tc-grid-minor
+[grid] line 598.1,32.0..598.1,610.0 class=tc-grid-minor
+[grid] line 616.9,32.0..616.9,610.0 class=tc-grid-minor
+[grid] line 632.4,32.0..632.4,610.0 class=tc-grid-minor
+[grid] line 645.4,32.0..645.4,610.0 class=tc-grid-minor
+[grid] line 656.7,32.0..656.7,610.0 class=tc-grid-minor
+[grid] line 666.6,32.0..666.6,610.0 class=tc-grid-minor
+[grid] line 675.5,32.0..675.5,610.0 class=tc-grid-major
+[grid] line 734.1,32.0..734.1,610.0 class=tc-grid-minor
+[grid] line 768.3,32.0..768.3,610.0 class=tc-grid-minor
+[grid] line 792.6,32.0..792.6,610.0 class=tc-grid-minor
+[grid] line 811.4,32.0..811.4,610.0 class=tc-grid-minor
+[grid] line 826.9,32.0..826.9,610.0 class=tc-grid-minor
+[grid] line 839.9,32.0..839.9,610.0 class=tc-grid-minor
+[grid] line 851.2,32.0..851.2,610.0 class=tc-grid-minor
+[grid] line 861.1,32.0..861.1,610.0 class=tc-grid-minor
+[grid] line 870.0,32.0..870.0,610.0 class=tc-grid-major
+[grid] line 92.0,610.0..870.0,610.0 class=tc-grid-major
+[grid] line 92.0,575.2..870.0,575.2 class=tc-grid-minor
+[grid] line 92.0,554.8..870.0,554.8 class=tc-grid-minor
+[grid] line 92.0,540.4..870.0,540.4 class=tc-grid-minor
+[grid] line 92.0,529.2..870.0,529.2 class=tc-grid-minor
+[grid] line 92.0,520.0..870.0,520.0 class=tc-grid-minor
+[grid] line 92.0,512.3..870.0,512.3 class=tc-grid-minor
+[grid] line 92.0,505.6..870.0,505.6 class=tc-grid-minor
+[grid] line 92.0,499.7..870.0,499.7 class=tc-grid-minor
+[grid] line 92.0,494.4..870.0,494.4 class=tc-grid-major
+[grid] line 92.0,459.6..870.0,459.6 class=tc-grid-minor
+[grid] line 92.0,439.2..870.0,439.2 class=tc-grid-minor
+[grid] line 92.0,424.8..870.0,424.8 class=tc-grid-minor
+[grid] line 92.0,413.6..870.0,413.6 class=tc-grid-minor
+[grid] line 92.0,404.4..870.0,404.4 class=tc-grid-minor
+[grid] line 92.0,396.7..870.0,396.7 class=tc-grid-minor
+[grid] line 92.0,390.0..870.0,390.0 class=tc-grid-minor
+[grid] line 92.0,384.1..870.0,384.1 class=tc-grid-minor
+[grid] line 92.0,378.8..870.0,378.8 class=tc-grid-major
+[grid] line 92.0,344.0..870.0,344.0 class=tc-grid-minor
+[grid] line 92.0,323.6..870.0,323.6 class=tc-grid-minor
+[grid] line 92.0,309.2..870.0,309.2 class=tc-grid-minor
+[grid] line 92.0,298.0..870.0,298.0 class=tc-grid-minor
+[grid] line 92.0,288.8..870.0,288.8 class=tc-grid-minor
+[grid] line 92.0,281.1..870.0,281.1 class=tc-grid-minor
+[grid] line 92.0,274.4..870.0,274.4 class=tc-grid-minor
+[grid] line 92.0,268.5..870.0,268.5 class=tc-grid-minor
+[grid] line 92.0,263.2..870.0,263.2 class=tc-grid-major
+[grid] line 92.0,228.4..870.0,228.4 class=tc-grid-minor
+[grid] line 92.0,208.0..870.0,208.0 class=tc-grid-minor
+[grid] line 92.0,193.6..870.0,193.6 class=tc-grid-minor
+[grid] line 92.0,182.4..870.0,182.4 class=tc-grid-minor
+[grid] line 92.0,173.2..870.0,173.2 class=tc-grid-minor
+[grid] line 92.0,165.5..870.0,165.5 class=tc-grid-minor
+[grid] line 92.0,158.8..870.0,158.8 class=tc-grid-minor
+[grid] line 92.0,152.9..870.0,152.9 class=tc-grid-minor
+[grid] line 92.0,147.6..870.0,147.6 class=tc-grid-major
+[grid] line 92.0,112.8..870.0,112.8 class=tc-grid-minor
+[grid] line 92.0,92.4..870.0,92.4 class=tc-grid-minor
+[grid] line 92.0,78.0..870.0,78.0 class=tc-grid-minor
+[grid] line 92.0,66.8..870.0,66.8 class=tc-grid-minor
+[grid] line 92.0,57.6..870.0,57.6 class=tc-grid-minor
+[grid] line 92.0,49.9..870.0,49.9 class=tc-grid-minor
+[grid] line 92.0,43.2..870.0,43.2 class=tc-grid-minor
+[grid] line 92.0,37.3..870.0,37.3 class=tc-grid-minor
+[grid] line 92.0,32.0..870.0,32.0 class=tc-grid-major
+[axes] text 92.0,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 A"
+[axes] text 150.6,630.0 text-anchor=middle font-size=10 "20 A"
+[axes] text 227.9,630.0 text-anchor=middle font-size=10 "50 A"
+[axes] text 286.5,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
+[axes] text 345.1,630.0 text-anchor=middle font-size=10 "200 A"
+[axes] text 422.4,630.0 text-anchor=middle font-size=10 "500 A"
+[axes] text 481.0,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
+[axes] text 539.6,630.0 text-anchor=middle font-size=10 "2 kA"
+[axes] text 616.9,630.0 text-anchor=middle font-size=10 "5 kA"
+[axes] text 675.5,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
+[axes] text 734.1,630.0 text-anchor=middle font-size=10 "20 kA"
+[axes] text 811.4,630.0 text-anchor=middle font-size=10 "50 kA"
+[axes] text 870.0,630.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 kA"
+[axes] text 82.0,614.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 ms"
+[axes] text 82.0,578.2 text-anchor=end font-size=10 "20 ms"
+[axes] text 82.0,532.2 text-anchor=end font-size=10 "50 ms"
+[axes] text 82.0,498.4 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
+[axes] text 82.0,462.6 text-anchor=end font-size=10 "200 ms"
+[axes] text 82.0,416.6 text-anchor=end font-size=10 "500 ms"
+[axes] text 82.0,382.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
+[axes] text 82.0,347.0 text-anchor=end font-size=10 "2 s"
+[axes] text 82.0,301.0 text-anchor=end font-size=10 "5 s"
+[axes] text 82.0,267.2 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
+[axes] text 82.0,231.4 text-anchor=end font-size=10 "20 s"
+[axes] text 82.0,185.4 text-anchor=end font-size=10 "50 s"
+[axes] text 82.0,151.6 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
+[axes] text 82.0,115.8 text-anchor=end font-size=10 "200 s"
+[axes] text 82.0,69.8 text-anchor=end font-size=10 "500 s"
+[axes] text 82.0,36.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
+[axes] text 30.0,321.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
+[axes] text 481.0,730.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[pickups] line 419.0,610.0..419.0,614.0
+[pickups] line 477.6,610.0..477.6,614.0
+[faults] line 635.1,32.0..635.1,610.0 class=tc-fault data-fault=Board max
+[curves] path n=117 bbox=422.7,32.0..870.0,483.5 class=tc-curve data-curve=R_FDR:51 data-ref=R_FDR:51 data-voltage=MV
+[curves] path n=102 bbox=481.0,32.0..870.0,430.2 class=tc-curve data-curve=R_INC:51 data-ref=R_INC:51 data-voltage=MV
+[fault-band] line 635.1,610.0..635.1,635.0 class=tc-fault
+[fault-band] text 637.1,644.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Board max · 6.2 kA"
+[legend] text 904.0,45.0 class=tc-legend font-size=13 font-weight=600 "Curves"
+[legend] line 904.0,61.0..930.0,61.0
+[legend] text 940.0,65.0 class=tc-legend font-size=12 font-weight=600 "R_FDR:51"
+[legend] text 940.0,81.0 class=tc-legend-muted font-size=11 "IEC SI · 480 A · TMS 0.1"
+[legend] text 940.0,96.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] line 904.0,117.0..930.0,117.0
+[legend] text 940.0,121.0 class=tc-legend font-size=12 font-weight=600 "R_INC:51"
+[legend] text 940.0,137.0 class=tc-legend-muted font-size=11 "IEC SI · 960 A · TMS 0.25"
+[legend] text 940.0,152.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 904.0,190.0 font-size=13 font-weight=600 "Faults"
+[legend] line 904.0,206.0..930.0,206.0
+[legend] text 940.0,210.0 class=tc-legend font-size=11 "Board max · 6.2 kA · MV · 11 kV"

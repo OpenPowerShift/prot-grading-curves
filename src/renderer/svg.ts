@@ -130,6 +130,66 @@ const LEGEND_GUTTER = 34;
 const CHAR_ADVANCE = 0.60;
 
 /**
+ * The semantic layers a sheet is drawn in, in paint order.
+ *
+ * Every drawn element sits inside a `<g data-layer="...">` naming what
+ * it is, so the output can be read and manipulated as a drawing rather
+ * than as a bag of shapes: hide the grid for a print, dim the furniture
+ * while a curve is hovered, export the plot without the study's own
+ * annotations, or count what a sheet contains without matching on
+ * class names and hoping.
+ *
+ * Listed here rather than left as string literals at the call sites so
+ * that the set is a contract -- something a viewer can build controls
+ * from and a test can check for drift -- instead of whatever the
+ * renderer happened to write.
+ *
+ * `times` appears twice in the output, once under the curves and once
+ * over them, because that is how the sheet is painted: a required time
+ * is context beneath the characteristics and a limit legible across
+ * them. Layers are a naming of the phases, not a re-ordering of them,
+ * so a repeated name is expected and correct.
+ */
+export const SVG_LAYERS = [
+  /** Sheet border, title block and drawing-office headings. */
+  'chrome',
+  /** The plot rectangle itself. */
+  'frame',
+  /** Gridlines, both axes. */
+  'grid',
+  /** Tick labels, mirrored scales and the two axis titles. */
+  'axes',
+  /** Pickup ticks, just below the current axis. */
+  'pickups',
+  /** Vertical fault-current rules. */
+  'faults',
+  /** Fuse and device bands, with their hatching. */
+  'bands',
+  /** The relay characteristics. */
+  'curves',
+  /** Horizontal required-time rules. */
+  'times',
+  /** Direct labels alongside the curves, when not using a legend. */
+  'curve-labels',
+  /** Captions naming each required-time rule. */
+  'time-labels',
+  /** Marked points and their captions. */
+  'points',
+  /** Margins, spans, percentages -- the study's own marks. */
+  'annotations',
+  /** Fault names and leaders in the band below the axis. */
+  'fault-band',
+  /** The legend, whether a column or a floating panel. */
+  'legend',
+  /** Page footer slots. */
+  'footer',
+  /** Diagonal watermark, over everything. */
+  'watermark',
+] as const;
+
+export type SvgLayer = typeof SVG_LAYERS[number];
+
+/**
  * Greedy word wrap to a pixel width.
  *
  * SVG has no text flow, so a long relay model or curve description
@@ -1895,6 +1955,55 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /* -------------------- compose SVG -------------------- */
   const out: string[] = [];
 
+  /**
+   * Wrap a phase of the drawing in a named group.
+   *
+   * A TCC sheet is a stack of independent things -- the scale, the
+   * characteristics, the fault rules, the study's own annotations --
+   * and until now the output said so nowhere: one flat run of elements
+   * whose only structure was the order they happened to be written in.
+   * That made the file unreadable to anything downstream. A reader
+   * wanting the curves without the grid, a viewer wanting to dim the
+   * furniture while a curve is hovered, an export dropping the
+   * annotations for a clean plot -- each had to pattern-match on
+   * classes and hope.
+   *
+   * Naming the phases costs one `<g>` each and changes no coordinate.
+   * Paint order is exactly what it was, because the group opens where
+   * the phase started and closes where it ended rather than gathering
+   * elements by kind: `times` appears twice, once under the curves and
+   * once over them, and that is the truth about how the sheet is
+   * painted, not a defect to be tidied away.
+   *
+   * A phase that drew nothing emits no group, so an empty layer never
+   * appears in the output and `[data-layer]` can be counted.
+   */
+  const openLayer = (name: SvgLayer): number => {
+    out.push(`<g data-layer="${name}">`);
+    return out.length - 1;
+  };
+
+  /** Close a layer, or erase it if the phase drew nothing. */
+  const closeLayer = (start: number): void => {
+    if (out.length === start + 1) {
+      out.length = start;
+      return;
+    }
+    out.push('</g>');
+  };
+
+  /*
+   * The same thing with the phase as a callback, for the phases that
+   * are self-contained. Most are not: they declare values the phases
+   * after them read, and a block scope would hide those, so those use
+   * the pair above rather than being restructured to suit the markup.
+   */
+  const layer = (name: SvgLayer, body: () => void): void => {
+    const start = openLayer(name);
+    body();
+    closeLayer(start);
+  };
+
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" style="background:${th.background};color:${th.foreground}">`);
 
   out.push(`<style>.tc-axis { stroke:${th.axis}; fill:none; } .tc-grid-major { stroke:${th.grid}; stroke-width:0.8; opacity:0.9; } .tc-grid-minor { stroke:${th.grid}; stroke-width:0.5; opacity:0.5; } .tc-label { fill:${th.label}; } .tc-legend { fill:${th.foreground}; } .tc-legend-muted { fill:${th.label}; opacity:0.6; } .tc-fault { stroke:${th.fault}; opacity:0.55; } .tc-fault-label { fill:${th.fault}; } .tc-pickup { stroke:${th.foreground}; stroke-width:1.5; } .tc-current-axis { fill:${th.label}; font-weight:600; } .tc-curve { fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; } .tc-overlay { fill:${th.background}; stroke:${th.axis}; stroke-width:0.8; }</style>`);
@@ -1921,6 +2030,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   );
 
   /* Sheet frame and title block. */
+  const chromeLayer = openLayer('chrome');
   if (bordered) {
     const fx = sheetInset / 2;
     const fy = sheetInset / 2;
@@ -2003,8 +2113,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * been ignored. Drawn here, both fit: the strip's own fields name
      * the drawing, the author's line says whatever they wanted said.
      */
+    /*
+     * Its own layer, nested inside the chrome.
+     *
+     * The same declaration draws in two places -- under the plot on a
+     * plain sheet, along the foot of the title block on a framed one
+     * -- and a reader turning the footer off means the footer, not
+     * whichever of the two placements they happened to get.
+     */
     const tbFooter = opts.page?.footer;
-    if (tbFooter) {
+    layer('footer', () => {
+      if (!tbFooter) return;
       const footY = tbY + titleBlockH - 6;
       const slots: Array<[string | undefined, number, string]> = [
         [tbFooter.left, fx + padX, 'start'],
@@ -2019,7 +2138,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           `fill="${tbFooter.color ?? th.label}">${escapeXml(expandMacros(raw, study))}</text>`,
         );
       }
-    }
+    });
   } else if (titleText) {
     /* Bounded by the sheet, so a long heading wraps instead of
      * running off the right-hand edge. */
@@ -2042,34 +2161,50 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
     }
   }
+  closeLayer(chromeLayer);
 
   /* plot frame */
     const showFrame = pageAxes?.frame !== false;
-  out.push(
-    `<rect x="${leftMargin}" y="${topMargin}" width="${plotW}" height="${plotH}" ` +
-    `fill="${th.background}" stroke="${showFrame ? th.axis : 'none'}" ` +
-    `stroke-width="1" shape-rendering="crispEdges"/>`,
-  );
+  layer('frame', () => {
+    out.push(
+      `<rect x="${leftMargin}" y="${topMargin}" width="${plotW}" height="${plotH}" ` +
+      `fill="${th.background}" stroke="${showFrame ? th.axis : 'none'}" ` +
+      `stroke-width="1" shape-rendering="crispEdges"/>`,
+    );
+  });
 
   /* ticks */
   /* `page { scale { tick_density } }`: sparse | normal | dense. */
   const tickDensity = opts.page?.scale?.tick_density ?? 'normal';
   const xTicks = ticks(I_min, I_max, tickDensity);
   const yTicks = ticks(t_min, t_max, tickDensity);
+  /*
+   * Gathered as they are computed and emitted as two layers, because a
+   * gridline and the number naming it are different things to a reader
+   * -- one is the recessive ruling the eye ignores, the other is the
+   * scale itself. Interleaved they could not be separated without
+   * matching on class names.
+   *
+   * The paint order is unchanged in any way that shows: all the ruling
+   * lies inside the plot, all the numbers lie outside it, and nothing
+   * in the two sets ever overlapped.
+   */
+  const gridLines: string[] = [];
+  const axisText: string[] = [];
   for (const t of xTicks) {
     const px = xScale.toPx(t.value);
     if (!Number.isFinite(px)) continue;
-    out.push(`<line x1="${px}" y1="${topMargin}" x2="${px}" y2="${topMargin + plotH}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
+    gridLines.push(`<line x1="${px}" y1="${topMargin}" x2="${px}" y2="${topMargin + plotH}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
     if (t.major) {
-      out.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
+      axisText.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
     } else if (isLabelledInterval(t.value)) {
       /* 2x and 5x of each decade: enough to read an intermediate
        * value off the chart without crowding the axis. */
-      out.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
+      axisText.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
     }
     /* `page { axes { mirror = true; } }` repeats the scale on top. */
     if (mirrorAxes && (t.major || isLabelledInterval(t.value))) {
-      out.push(
+      axisText.push(
         `<text x="${px}" y="${topMargin - 8}" text-anchor="middle" fill="${th.label}" ` +
         `${t.major ? `font-weight="600" font-size="${FONT_AXIS}"` : `fill-opacity="0.7" font-size="${FONT_AXIS - 2}"`}>` +
         `${escapeXml(axisTickLabel(t.value))}</text>`,
@@ -2079,38 +2214,42 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   for (const t of yTicks) {
     const py = yScale.toPx(t.value);
     if (!Number.isFinite(py)) continue;
-    out.push(`<line x1="${leftMargin}" y1="${py}" x2="${leftMargin + plotW}" y2="${py}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
+    gridLines.push(`<line x1="${leftMargin}" y1="${py}" x2="${leftMargin + plotW}" y2="${py}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
     if (t.major) {
-      out.push(`<text x="${leftMargin - 10}" y="${py + 4}" text-anchor="end" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${formatSi(t.value, 's')}</text>`);
+      axisText.push(`<text x="${leftMargin - 10}" y="${py + 4}" text-anchor="end" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${formatSi(t.value, 's')}</text>`);
     } else if (isLabelledInterval(t.value)) {
-      out.push(`<text x="${leftMargin - 10}" y="${py + 3}" text-anchor="end" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${formatSi(t.value, 's')}</text>`);
+      axisText.push(`<text x="${leftMargin - 10}" y="${py + 3}" text-anchor="end" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${formatSi(t.value, 's')}</text>`);
     }
     /* ...and down the right-hand edge. */
     if (mirrorAxes && (t.major || isLabelledInterval(t.value))) {
-      out.push(
+      axisText.push(
         `<text x="${leftMargin + plotW + 8}" y="${py + 4}" text-anchor="start" fill="${th.label}" ` +
         `${t.major ? `font-weight="600" font-size="${FONT_AXIS}"` : `fill-opacity="0.7" font-size="${FONT_AXIS - 2}"`}>` +
         `${escapeXml(formatSi(t.value, 's'))}</text>`,
       );
     }
   }
+  layer('grid', () => { out.push(...gridLines); });
 
   /* axis titles -- rotated Time label, "Current (A @ <voltage>)" label */
-    /*
-   * Y-axis title, set in from the sheet edge and close to the scale it
-   * names. Sitting hard against the border reads as page furniture
-   * rather than as part of the chart; the offset clears the widest
-   * tick label ("1000 s") and no more.
-   */
-  const yTitleX = Math.max(sheetInset + 16, leftMargin - 62);
-  out.push(
-    `<text transform="rotate(-90 ${yTitleX} ${topMargin + plotH / 2})" ` +
-    `x="${yTitleX}" y="${topMargin + plotH / 2}" text-anchor="middle" font-weight="600" ` +
-    `font-size="${FONT_AXIS_TITLE}" fill="${th.label}">Operating time (s)</text>`,
-  );
-  /* Sits above the title block when the sheet is framed. */
   const axisTitleY = H - 20 - sheetInset - titleBlockH;
-  out.push(`<text x="${leftMargin + plotW / 2}" y="${axisTitleY}" text-anchor="middle" font-weight="600" font-size="${FONT_AXIS_TITLE}" fill="${th.label}">${escapeXml(currentAxisTitle)}</text>`);
+  layer('axes', () => {
+    out.push(...axisText);
+    /*
+     * Y-axis title, set in from the sheet edge and close to the scale
+     * it names. Sitting hard against the border reads as page
+     * furniture rather than as part of the chart; the offset clears
+     * the widest tick label ("1000 s") and no more.
+     */
+    const yTitleX = Math.max(sheetInset + 16, leftMargin - 62);
+    out.push(
+      `<text transform="rotate(-90 ${yTitleX} ${topMargin + plotH / 2})" ` +
+      `x="${yTitleX}" y="${topMargin + plotH / 2}" text-anchor="middle" font-weight="600" ` +
+      `font-size="${FONT_AXIS_TITLE}" fill="${th.label}">Operating time (s)</text>`,
+    );
+    /* Sits above the title block when the sheet is framed. */
+    out.push(`<text x="${leftMargin + plotW / 2}" y="${axisTitleY}" text-anchor="middle" font-weight="600" font-size="${FONT_AXIS_TITLE}" fill="${th.label}">${escapeXml(currentAxisTitle)}</text>`);
+  });
 
   /*
    * Fault-marker styling (`page { faults { ... } }`).
@@ -2212,16 +2351,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const leaderGap = (fallback: number): number => leaderStyle?.label_offset_px ?? fallback;
 
   /* pickup ticks, just below the axis */
-  for (const c of curves) {
-    if (!Number.isFinite(c.pickupPx)) continue;
-    if (c.pickupPx < leftMargin || c.pickupPx > leftMargin + plotW) continue;
-    out.push(`<line x1="${c.pickupPx}" y1="${topMargin + plotH}" x2="${c.pickupPx}" y2="${topMargin + plotH + 4}" stroke="${c.color}" stroke-width="1.5"/>`);
-  }
+  layer('pickups', () => {
+    for (const c of curves) {
+      if (!Number.isFinite(c.pickupPx)) continue;
+      if (c.pickupPx < leftMargin || c.pickupPx > leftMargin + plotW) continue;
+      out.push(`<line x1="${c.pickupPx}" y1="${topMargin + plotH}" x2="${c.pickupPx}" y2="${topMargin + plotH + 4}" stroke="${c.color}" stroke-width="1.5"/>`);
+    }
+  });
 
   /* ---- clipped group: everything inside the axes ---- */
   out.push(`<g clip-path="url(#${clipId})">`);
 
   /* fault-current vertical markers */
+  const faultRuleLayer = openLayer('faults');
   for (const [i, f] of faults.entries()) {
     const I = f.I_view ?? f.I_A;
     if (!inDomain(I)) continue;
@@ -2240,6 +2382,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
   }
+  closeLayer(faultRuleLayer);
 
   /*
    * Required-time rules, drawn with the fault rules and under the
@@ -2280,6 +2423,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * characteristics being graded against it, so it must not obscure
    * them.
    */
+  const bandLayer = openLayer('bands');
   for (const [i, band] of deviceBands.entries()) {
     const clipId = `tc-band-${i}`;
     out.push(
@@ -2300,8 +2444,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `stroke-linejoin="round" stroke-linecap="round" data-curve="${escapeXml(band.id)}"/>`,
     );
   }
+  closeLayer(bandLayer);
 
   /* curves */
+  const curveLayer = openLayer('curves');
   const hlLabel = (opts.highlightLabel ?? '').trim();
   const hlVolt  = (opts.highlightVoltage ?? '').trim();
   for (const c of curves) {
@@ -2321,9 +2467,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const dash = dashValue ? ` stroke-dasharray="${dashValue}"` : '';
     out.push(`<path d="${c.pathD}" class="${cls}" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="${c.color}" stroke-width="${sw}"${dash} data-curve="${escapeXml(c.label)}" data-ref="${escapeXml(c.ref ?? '')}" data-voltage="${escapeXml(c.voltage ?? '')}"/>`);
   }
+  closeLayer(curveLayer);
 
   /* The limits, over the characteristics they judge. */
-  out.push(...timeRules);
+  layer('times', () => { out.push(...timeRules); });
 
   /*
    * Direct labels, drawn here rather than with the legend so that the
@@ -2380,7 +2527,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const direct = directLabels(curves, {
       leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground,
     });
-    out.push(...direct.markup);
+    layer('curve-labels', () => { out.push(...direct.markup); });
     /* The direct-label column is drawn first and must not be written
      * over by a point caption or a margin figure. */
     for (const box of direct.boxes) placer.reserve(box);
@@ -2465,6 +2612,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * it is put at the left-hand end, where the eye starts, and the
    * placer moves it clear of the curves and of anything already there.
    */
+  const timeLabelLayer = openLayer('time-labels');
   if (opts.page?.times?.labels !== false) {
     for (const t of timesOnPlot) {
       const py = yScale.toPx(t.t_s);
@@ -2512,7 +2660,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }));
     }
   }
+  closeLayer(timeLabelLayer);
 
+  const pointLayer = openLayer('points');
   for (const point of study.points) {
     if (!(point.t_s > 0)) continue;
     if (!onThisSheet(point)) continue;
@@ -2641,6 +2791,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
     out.push('</g>');
   }
+  closeLayer(pointLayer);
+
+  const annotationLayer = openLayer('annotations');
 
   /*
    * Annotations.
@@ -3277,6 +3430,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }));
     }
   }
+  closeLayer(annotationLayer);
 
   out.push('</g>');
 
@@ -3292,21 +3446,23 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   /* Rows were packed before the vertical margins were settled, so the
    * band below the axis could be sized to them. */
-  for (const { i, px, row, flipped, caption } of faultLayout) {
-    const labelY = faultBandY + row * (LINE_DETAIL - 1);
-    const dash = faultDash(i);
-    out.push(
-      `<line x1="${px}" y1="${topMargin + plotH}" x2="${px}" y2="${(labelY - 9).toFixed(1)}" ` +
-      `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
-      `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
-    );
-    out.push(
-      `<text x="${(px + (flipped ? -FAULT_LABEL_DX : FAULT_LABEL_DX)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
-      `text-anchor="${flipped ? 'end' : 'start'}" ` +
-      `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
-      `${escapeXml(caption)}</text>`,
-    );
-  }
+  layer('fault-band', () => {
+    for (const { i, px, row, flipped, caption } of faultLayout) {
+      const labelY = faultBandY + row * (LINE_DETAIL - 1);
+      const dash = faultDash(i);
+      out.push(
+        `<line x1="${px}" y1="${topMargin + plotH}" x2="${px}" y2="${(labelY - 9).toFixed(1)}" ` +
+        `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
+        `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
+      );
+      out.push(
+        `<text x="${(px + (flipped ? -FAULT_LABEL_DX : FAULT_LABEL_DX)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
+        `text-anchor="${flipped ? 'end' : 'start'}" ` +
+        `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
+        `${escapeXml(caption)}</text>`,
+      );
+    }
+  });
 
   /*
    * Legend.
@@ -3726,7 +3882,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           );
           cursorY += LINE_DETAIL;
         }
-        cursorY += LEGEND_ENTRY_GAP;
+        cursorY += entryGap;
       }
     }
 
@@ -3815,6 +3971,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       let faultsY = cursorY + FONT_HEADING;
       if (anchorFaultsToPlotBottom) {
         const wanted = topMargin + plotH - (faultLineCount * LINE_LABEL)
+          - shownFaults.length * entryGap
           - LINE_HEADING + FONT_HEADING - notesHeight - commentHeight;
         faultsY = Math.max(wanted, cursorY + 12);
       }
@@ -3861,6 +4018,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           );
           faultsY += LINE_DETAIL - 2;
         }
+        faultsY += entryGap;
       }
       cursorY = faultsY;
     }
@@ -3905,6 +4063,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
             cursorY += LINE_DETAIL - 2;
           }
         }
+        cursorY += entryGap;
       }
     }
 
@@ -3997,7 +4156,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * vertical and their names sit under the axis, so the block was
      * not lining up with anything it described.
      */
-    out.push(...fitLegend(legX, topMargin, legendWidth, false, columnBudget).lines);
+    layer('legend', () => {
+      out.push(...fitLegend(legX, topMargin, legendWidth, false, columnBudget).lines);
+    });
   } else if (legendMode === 'inside') {
     /*
      * Floated over the plot. Measured first, because a panel pinned to
@@ -4019,12 +4180,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const panelX = onLeft ? leftMargin + 14 : leftMargin + plotW - panelW - 2 * pad - 14;
     const panelY = onTop ? topMargin + 14 : topMargin + plotH - panelH - 14;
 
-    out.push(
-      `<rect x="${panelX.toFixed(1)}" y="${panelY.toFixed(1)}" ` +
-      `width="${(panelW + 2 * pad).toFixed(1)}" height="${panelH.toFixed(1)}" rx="4" ` +
-      `fill="${th.background}" fill-opacity="0.92" stroke="${th.axis}" stroke-width="0.8"/>`,
-    );
-    out.push(...fitLegend(panelX + pad, panelY + pad / 2, panelW, false, panelBudget).lines);
+    layer('legend', () => {
+      out.push(
+        `<rect x="${panelX.toFixed(1)}" y="${panelY.toFixed(1)}" ` +
+        `width="${(panelW + 2 * pad).toFixed(1)}" height="${panelH.toFixed(1)}" rx="4" ` +
+        `fill="${th.background}" fill-opacity="0.92" stroke="${th.axis}" stroke-width="0.8"/>`,
+      );
+      out.push(...fitLegend(panelX + pad, panelY + pad / 2, panelW, false, panelBudget).lines);
+    });
   }
 
   /*
@@ -4034,6 +4197,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * the same information.
    */
   const footer = opts.page?.footer;
+  const footerLayer = openLayer('footer');
   if (footer && !bordered) {
     const footerY = H - 6 - sheetInset;
     if (footer.border !== false) {
@@ -4056,11 +4220,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
     }
   }
+  closeLayer(footerLayer);
 
   /* watermark */
-  if (opts.page?.watermark) {
-    out.push(`<text transform="rotate(-30 ${W/2} ${H/2})" x="${W/2}" y="${H/2}" text-anchor="middle" font-size="64" fill="${th.fault}" opacity="0.08">${escapeXml(opts.page.watermark)}</text>`);
-  }
+  layer('watermark', () => {
+    if (opts.page?.watermark) {
+      out.push(`<text transform="rotate(-30 ${W/2} ${H/2})" x="${W/2}" y="${H/2}" text-anchor="middle" font-size="64" fill="${th.fault}" opacity="0.08">${escapeXml(opts.page.watermark)}</text>`);
+    }
+  });
 
   out.push('</svg>');
   return out.join('\n');

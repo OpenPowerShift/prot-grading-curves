@@ -130,6 +130,35 @@ const LEGEND_GUTTER = 34;
 const CHAR_ADVANCE = 0.60;
 
 /**
+ * A number written into the SVG, rounded so that two machines agree.
+ *
+ * ECMAScript does not require `Math.pow`, `Math.log10` or `**` to be
+ * correctly rounded, so their last bit is implementation-defined.
+ * V8 changed `Math.pow` between Node 22 and Node 24, and the axis
+ * domain of a decade-aligned sheet came out as
+ * `0.00009999999999999999` on one and `0.0001` on the other -- the
+ * same drawing, two different files, because a raw double was
+ * interpolated straight into an attribute at its full 17 digits.
+ *
+ * That matters beyond a failing test. A study is reissued and diffed,
+ * and a drawing that differs because of whose laptop rendered it makes
+ * the diff a liar. Everything geometric already goes through
+ * `toFixed(1)` and was never exposed; the machine-readable attributes
+ * did not, and are the whole of the leak.
+ *
+ * Ten significant figures is far more than any of these carry
+ * meaningfully -- a pixel on a four-decade log axis is about three
+ * decimal places of relative precision -- and it is comfortably clear
+ * of the last-bit disagreement, which lives at the sixteenth digit.
+ * `Number(...)` afterwards drops the trailing zeros `toPrecision`
+ * pads with, so the attribute stays short and readable.
+ */
+function attrNum(x: number): string {
+  if (!Number.isFinite(x)) return String(x);
+  return String(Number(x.toPrecision(10)));
+}
+
+/**
  * The semantic layers a sheet is drawn in, in paint order.
  *
  * Every drawn element sits inside a `<g data-layer="...">` naming what
@@ -2010,7 +2039,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   /* embedded data for the live overlay -- curves and faults projected
    * into the view frame */
-  out.push(`<desc class="tc-data" data-domain-i="${I_min},${I_max}" data-domain-t="${t_min},${t_max}" data-plot="${leftMargin},${topMargin},${plotW},${plotH}"/>`);
+  out.push(`<desc class="tc-data" data-domain-i="${attrNum(I_min)},${attrNum(I_max)}" data-domain-t="${attrNum(t_min)},${attrNum(t_max)}" data-plot="${attrNum(leftMargin)},${attrNum(topMargin)},${attrNum(plotW)},${attrNum(plotH)}"/>`);
 
   /*
    * Clip region for everything that lives *inside* the axes.
@@ -2094,11 +2123,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       fieldX -= width + 22;
       out.push(
-        `<text x="${fieldX}" y="${tbY + 20}" font-size="${FONT_DETAIL - 1}" ` +
+        `<text x="${fieldX.toFixed(1)}" y="${(tbY + 20).toFixed(1)}" font-size="${FONT_DETAIL - 1}" ` +
         `fill="${th.label}" opacity="0.7">${escapeXml(label.toUpperCase())}</text>`,
       );
       out.push(
-        `<text x="${fieldX}" y="${tbY + 38}" font-size="${FONT_DETAIL}" ` +
+        `<text x="${fieldX.toFixed(1)}" y="${(tbY + 38).toFixed(1)}" font-size="${FONT_DETAIL}" ` +
         `fill="${th.foreground}">${escapeXml(value)}</text>`,
       );
     }
@@ -2194,18 +2223,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   for (const t of xTicks) {
     const px = xScale.toPx(t.value);
     if (!Number.isFinite(px)) continue;
-    gridLines.push(`<line x1="${px}" y1="${topMargin}" x2="${px}" y2="${topMargin + plotH}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
+    gridLines.push(`<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
     if (t.major) {
-      axisText.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
+      axisText.push(`<text x="${px.toFixed(1)}" y="${(topMargin + plotH + AXIS_LABEL_DY).toFixed(1)}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
     } else if (isLabelledInterval(t.value)) {
       /* 2x and 5x of each decade: enough to read an intermediate
        * value off the chart without crowding the axis. */
-      axisText.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
+      axisText.push(`<text x="${px.toFixed(1)}" y="${(topMargin + plotH + AXIS_LABEL_DY).toFixed(1)}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
     }
     /* `page { axes { mirror = true; } }` repeats the scale on top. */
     if (mirrorAxes && (t.major || isLabelledInterval(t.value))) {
       axisText.push(
-        `<text x="${px}" y="${topMargin - 8}" text-anchor="middle" fill="${th.label}" ` +
+        `<text x="${px.toFixed(1)}" y="${(topMargin - 8).toFixed(1)}" text-anchor="middle" fill="${th.label}" ` +
         `${t.major ? `font-weight="600" font-size="${FONT_AXIS}"` : `fill-opacity="0.7" font-size="${FONT_AXIS - 2}"`}>` +
         `${escapeXml(axisTickLabel(t.value))}</text>`,
       );
@@ -2214,16 +2243,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   for (const t of yTicks) {
     const py = yScale.toPx(t.value);
     if (!Number.isFinite(py)) continue;
-    gridLines.push(`<line x1="${leftMargin}" y1="${py}" x2="${leftMargin + plotW}" y2="${py}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
+    gridLines.push(`<line x1="${leftMargin.toFixed(1)}" y1="${py.toFixed(1)}" x2="${(leftMargin + plotW).toFixed(1)}" y2="${py.toFixed(1)}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
     if (t.major) {
-      axisText.push(`<text x="${leftMargin - 10}" y="${py + 4}" text-anchor="end" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${formatSi(t.value, 's')}</text>`);
+      axisText.push(`<text x="${(leftMargin - 10).toFixed(1)}" y="${(py + 4).toFixed(1)}" text-anchor="end" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${formatSi(t.value, 's')}</text>`);
     } else if (isLabelledInterval(t.value)) {
-      axisText.push(`<text x="${leftMargin - 10}" y="${py + 3}" text-anchor="end" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${formatSi(t.value, 's')}</text>`);
+      axisText.push(`<text x="${(leftMargin - 10).toFixed(1)}" y="${(py + 3).toFixed(1)}" text-anchor="end" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${formatSi(t.value, 's')}</text>`);
     }
     /* ...and down the right-hand edge. */
     if (mirrorAxes && (t.major || isLabelledInterval(t.value))) {
       axisText.push(
-        `<text x="${leftMargin + plotW + 8}" y="${py + 4}" text-anchor="start" fill="${th.label}" ` +
+        `<text x="${(leftMargin + plotW + 8).toFixed(1)}" y="${(py + 4).toFixed(1)}" text-anchor="start" fill="${th.label}" ` +
         `${t.major ? `font-weight="600" font-size="${FONT_AXIS}"` : `fill-opacity="0.7" font-size="${FONT_AXIS - 2}"`}>` +
         `${escapeXml(formatSi(t.value, 's'))}</text>`,
       );
@@ -2355,7 +2384,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     for (const c of curves) {
       if (!Number.isFinite(c.pickupPx)) continue;
       if (c.pickupPx < leftMargin || c.pickupPx > leftMargin + plotW) continue;
-      out.push(`<line x1="${c.pickupPx}" y1="${topMargin + plotH}" x2="${c.pickupPx}" y2="${topMargin + plotH + 4}" stroke="${c.color}" stroke-width="1.5"/>`);
+      out.push(`<line x1="${c.pickupPx.toFixed(1)}" y1="${(topMargin + plotH).toFixed(1)}" x2="${c.pickupPx.toFixed(1)}" y2="${(topMargin + plotH + 4).toFixed(1)}" stroke="${c.color}" stroke-width="1.5"/>`);
     }
   });
 
@@ -2371,10 +2400,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (!Number.isFinite(px)) continue;
     const dash = faultDash(i);
     out.push(
-      `<line x1="${px}" y1="${topMargin}" x2="${px}" y2="${topMargin + plotH}" class="tc-fault" ` +
+      `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="tc-fault" ` +
       /* `data-fault` and `data-current` stay adjacent: they are scraped
        * as a pair, and a new attribute between them breaks that. */
-      `data-fault="${escapeXml(f.name)}" data-current="${I}" data-kind="${f.kind}" ` +
+      `data-fault="${escapeXml(f.name)}" data-current="${attrNum(I)}" data-kind="${f.kind}" ` +
       /* Full strength, matching the legend swatch. At 0.7 the rule read
        * as a fainter colour than the entry naming it, so the two did not
        * obviously belong together. */
@@ -2412,7 +2441,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     timeRules.push(
       `<line x1="${leftMargin}" y1="${py.toFixed(1)}" ` +
       `x2="${leftMargin + plotW}" y2="${py.toFixed(1)}" class="tc-time" ` +
-      `data-time-name="${escapeXml(t.name)}" data-time="${t.t_s}" ` +
+      `data-time-name="${escapeXml(t.name)}" data-time="${attrNum(t.t_s)}" ` +
       `stroke="${timeColour}" stroke-opacity="0.75" stroke-width="${timeWidth}"` +
       `${timeDash ? ` stroke-dasharray="${timeDash}"` : ''}/>`,
     );
@@ -2763,7 +2792,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const colour = point.color ?? pagePoints?.color ?? th.point;
     out.push(
       `<g class="tc-point" data-point="${escapeXml(oneLine(point.label ?? point.id))}" ` +
-      `data-current="${I_view}" data-time="${point.t_s}" ` +
+      `data-current="${attrNum(I_view)}" data-time="${attrNum(point.t_s)}" ` +
       `data-px="${px.toFixed(1)}" data-py="${py.toFixed(1)}">`,
     );
     /* Drawn after the curves, and haloed in the page colour, so a point
@@ -3451,7 +3480,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const labelY = faultBandY + row * (LINE_DETAIL - 1);
       const dash = faultDash(i);
       out.push(
-        `<line x1="${px}" y1="${topMargin + plotH}" x2="${px}" y2="${(labelY - 9).toFixed(1)}" ` +
+        `<line x1="${px.toFixed(1)}" y1="${(topMargin + plotH).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY - 9).toFixed(1)}" ` +
         `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
         `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
       );
@@ -3510,7 +3539,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const entryGap = density === 'full' ? LEGEND_ENTRY_GAP : 2;
     let dropped = 0;
     const lines: string[] = [];
-    const textX = originX + swatchW + 10;
+    /*
+     * Rounded once here rather than at each of the two dozen places a
+     * legend line is written. Plain addition is exactly specified by
+     * IEEE-754 and so does not vary between platforms the way `pow`
+     * does, but `996.1999999999999` in the output is noise either way,
+     * and a rule with no exceptions -- no number in a sheet carries
+     * more than a decimal place of position -- is worth more than one
+     * that has to be argued about per attribute.
+     */
+    const textX = Number((originX + swatchW + 10).toFixed(1));
     const textWidth = width - swatchW - 10;
 
     let cursorY = originY + FONT_HEADING;
@@ -4689,6 +4727,17 @@ function pointMarker(
   const r = size != null && size > 0 ? size / 2 : 5;
   const stroke = `stroke="${colour}" stroke-width="1.8" fill="none"`;
   const filled = `fill="${colour}" stroke="none"`;
+  /*
+   * One rounding for the whole marker.
+   *
+   * The branches below used to round to a decimal in some places and
+   * interpolate the raw double in others, so a diamond carried
+   * seventeen digits where a circle carried three -- and seventeen
+   * digits of a `log10` result is where two platforms disagree. `f`
+   * is applied to every coordinate a branch writes, so the shape does
+   * not decide the precision.
+   */
+  const f = (v: number): string => v.toFixed(1);
 
   /*
    * The halo is a second, larger copy of the same shape drawn
@@ -4704,29 +4753,29 @@ function pointMarker(
 
   switch (shape) {
     case 'circle':
-      return ring(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${hr}" ${haloFill}/>`)
-        + `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r}" ${filled}/>`;
+      return ring(`<circle cx="${f(px)}" cy="${f(py)}" r="${f(hr)}" ${haloFill}/>`)
+        + `<circle cx="${f(px)}" cy="${f(py)}" r="${f(r)}" ${filled}/>`;
     case 'square':
-      return ring(`<rect x="${(px - hr).toFixed(1)}" y="${(py - hr).toFixed(1)}" `
-        + `width="${(hr * 2).toFixed(1)}" height="${(hr * 2).toFixed(1)}" ${haloFill}/>`)
-        + `<rect x="${(px - r).toFixed(1)}" y="${(py - r).toFixed(1)}" `
-        + `width="${r * 2}" height="${r * 2}" ${filled}/>`;
+      return ring(`<rect x="${f(px - hr)}" y="${f(py - hr)}" `
+        + `width="${f(hr * 2)}" height="${f(hr * 2)}" ${haloFill}/>`)
+        + `<rect x="${f(px - r)}" y="${f(py - r)}" `
+        + `width="${f(r * 2)}" height="${f(r * 2)}" ${filled}/>`;
     case 'diamond':
-      return ring(`<polygon points="${px},${py - hr} ${px + hr},${py} ${px},${py + hr} ${px - hr},${py}" ${haloFill}/>`)
-        + `<polygon points="${px},${py - r} ${px + r},${py} ${px},${py + r} ${px - r},${py}" ${filled}/>`;
+      return ring(`<polygon points="${f(px)},${f(py - hr)} ${f(px + hr)},${f(py)} ${f(px)},${f(py + hr)} ${f(px - hr)},${f(py)}" ${haloFill}/>`)
+        + `<polygon points="${f(px)},${f(py - r)} ${f(px + r)},${f(py)} ${f(px)},${f(py + r)} ${f(px - r)},${f(py)}" ${filled}/>`;
     case 'triangle':
-      return ring(`<polygon points="${px},${(py - hr).toFixed(1)} ${(px + hr).toFixed(1)},${(py + hr).toFixed(1)} ${(px - hr).toFixed(1)},${(py + hr).toFixed(1)}" ${haloFill}/>`)
-        + `<polygon points="${px},${py - r} ${px + r},${py + r} ${px - r},${py + r}" ${filled}/>`;
+      return ring(`<polygon points="${f(px)},${f(py - hr)} ${f(px + hr)},${f(py + hr)} ${f(px - hr)},${f(py + hr)}" ${haloFill}/>`)
+        + `<polygon points="${f(px)},${f(py - r)} ${f(px + r)},${f(py + r)} ${f(px - r)},${f(py + r)}" ${filled}/>`;
     /* An open mark has no fill to hide the halo, so its ring is a wider
      * stroke along the same path. */
     case 'x': {
-      const d = `M${px - r} ${py - r} L${px + r} ${py + r} M${px + r} ${py - r} L${px - r} ${py + r}`;
+      const d = `M${f(px - r)} ${f(py - r)} L${f(px + r)} ${f(py + r)} M${f(px + r)} ${f(py - r)} L${f(px - r)} ${f(py + r)}`;
       return ring(`<path d="${d}" fill="none" stroke="${surface}" stroke-width="4.5" stroke-linecap="round"/>`)
         + `<path d="${d}" ${stroke}/>`;
     }
     case 'cross':
     default: {
-      const d = `M${px - r} ${py} L${px + r} ${py} M${px} ${py - r} L${px} ${py + r}`;
+      const d = `M${f(px - r)} ${f(py)} L${f(px + r)} ${f(py)} M${f(px)} ${f(py - r)} L${f(px)} ${f(py + r)}`;
       return ring(`<path d="${d}" fill="none" stroke="${surface}" stroke-width="4.5" stroke-linecap="round"/>`)
         + `<path d="${d}" ${stroke}/>`;
     }

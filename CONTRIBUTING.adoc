@@ -86,10 +86,26 @@ that tags the version and publishes to npm via trusted publishing. No manual
 
 == Visual regression
 
-`npm run test:visual` drives the playground with Playwright. It is not part of
-CI: baselines are a human judgement about what a plot should look like. Refresh
-them deliberately with `npx playwright test --update-snapshots` after reviewing
-the rendered output.
+`npm run test:visual` renders every shipped example, on every sheet, and
+compares it against a committed digest under `tests/unit/__baseline__/` --
+one line per drawn element, with its position, layer and identifying
+attributes.
+
+It is a text baseline rather than a screenshot on purpose. The renderer
+computes every coordinate itself, so the coordinates *are* the drawing:
+recording them is exact, needs no browser, is byte-identical on every
+machine, and a diff names what moved and by how much instead of colouring
+in a rectangle. It runs as part of `npm test`, so CI gates on it.
+
+Refresh deliberately, with `npm run test:visual:update`, and then *read the
+diff* -- a baseline updated without reading it converts a caught regression
+into a recorded one.
+
+Because it is byte-comparable, numbers written into the SVG are rounded to
+ten significant figures on the way out (`attrNum`). `Math.pow` and friends
+are not required to be correctly rounded, and V8 changed `Math.pow` between
+Node 22 and Node 24; without this a decade-aligned axis domain rendered as
+`0.0001` on one and `0.00009999999999999999` on the other.
 
 == License
 

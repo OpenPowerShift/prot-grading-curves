@@ -84,6 +84,32 @@ afterEach(() => {
   localStorage.clear();
 });
 
+describe('being removed', () => {
+  it('cancels a parse that is still settling', async () => {
+    /*
+     * The parse is debounced, so an app removed mid-keystroke used to
+     * leave a timer that woke up, re-parsed, and wrote to a component
+     * no longer in the document. Under test that lands after the DOM
+     * has been torn down and fails the run with a `document is not
+     * defined` naming no test -- which is how it reached CI.
+     *
+     * It surfaced when the upstream sweep became the default: grading
+     * grew by a sweep per pair, the debounced callback took longer,
+     * and a latent race started losing. The race was always there.
+     */
+    const el = await mount();
+    const pending = (): number | null =>
+      (el as unknown as { parseTimer: number | null }).parseTimer;
+
+    (el as unknown as { handleSourceChange(s: string): void })
+      .handleSourceChange('system { voltages { "MV" { V = 11 kV; } } }');
+    expect(pending(), 'an edit should have armed the debounce').not.toBeNull();
+
+    el.remove();
+    expect(pending(), 'removal should have disarmed it').toBeNull();
+  });
+});
+
 describe('starting up', () => {
   it('mounts with a study already loaded', async () => {
     app = await mount();

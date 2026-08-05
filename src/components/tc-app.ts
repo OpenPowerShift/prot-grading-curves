@@ -252,6 +252,7 @@ export class TcApp extends LitElement {
       // Defer until the cm-editor has finished mounting and any doc
       // replacement has settled.
       requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (!this.isConnected) return;
         const tceditor = this.renderRoot.querySelector('tc-editor') as any;
         const view = tceditor?.view;
         if (view && typeof offset === 'number' && offset <= view.state.doc.length) {
@@ -359,12 +360,30 @@ export class TcApp extends LitElement {
     // when the editor is not visible.
     this.parseSource(this.src, 0);
     // Restore cursor for the current example after mount completes.
-    requestAnimationFrame(() => this.restoreCursorForExample(this.exampleId));
+    requestAnimationFrame(() => { if (this.isConnected) this.restoreCursorForExample(this.exampleId); });
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.narrowObserver?.disconnect();
+    /*
+     * Stop the work that outlives the element.
+     *
+     * The parse is debounced, so removing the app while a keystroke is
+     * still settling left a timer that woke up, re-parsed, and wrote to
+     * a component no longer in the document. Harmless in a browser tab
+     * that is closing, and not harmless under test, where it lands
+     * after the DOM has been torn down and fails the run with a
+     * `document is not defined` that names no test.
+     *
+     * It surfaced when the upstream sweep became the default: grading
+     * grew by a sweep per pair, the debounced callback took longer, and
+     * a latent race started losing. The race was always there.
+     */
+    if (this.parseTimer != null) {
+      clearTimeout(this.parseTimer);
+      this.parseTimer = null;
+    }
   }
 
   /**
@@ -552,7 +571,7 @@ export class TcApp extends LitElement {
     try { localStorage.setItem(PANE_KEY, which); } catch { /* not essential */ }
     /* The plot sizes itself to its host, so tell it to re-measure
      * once the new layout has been applied. */
-    requestAnimationFrame(() => this.viewer()?.requestUpdate());
+    requestAnimationFrame(() => { if (this.isConnected) this.viewer()?.requestUpdate(); });
   }
 
   /**
@@ -597,7 +616,7 @@ export class TcApp extends LitElement {
     saveDraft(ex.source, id);
     // Schedule a cursor restore once tc-editor is re-mounted for the
     // new doc.
-    requestAnimationFrame(() => this.restoreCursorForExample(id));
+    requestAnimationFrame(() => { if (this.isConnected) this.restoreCursorForExample(id); });
   }
 
   /**

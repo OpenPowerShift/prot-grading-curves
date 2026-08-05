@@ -10,6 +10,7 @@
 import { LitElement, css, html, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, hoverTooltip } from '@codemirror/view';
+import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { EditorState, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentMore, indentLess } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
@@ -42,6 +43,19 @@ export class TcEditor extends LitElement {
 /** Plug-in callbacks for Ctrl+S / Ctrl+O while the editor has
  *  focus. Save a .ptc file or open one from disk. */
   @property({ attribute: false }) declare shortcuts: EditorShortcuts | null;
+  /**
+   * Where the caret should be put, when the app has an opinion.
+   *
+   * Ordinary edits keep the caret themselves. Formatting is the case
+   * that cannot: it rewrites indentation and spacing throughout, so
+   * the offset the caret held before points somewhere else after, and
+   * the reader is dropped mid-token several lines from where they were
+   * working. The app resolves the line it wants and asks for it here.
+   *
+   * Consumed once, so a later edit is not dragged back to it.
+   */
+  @property({ attribute: false }) declare caretRequest: number | null;
+
   /** Optional callback fired whenever the user moves the caret or
    *  extends the selection. The argument is the head's character
    *  offset into the editor, suitable for restoring later. */
@@ -157,11 +171,17 @@ export class TcEditor extends LitElement {
     const current = this.view.state.doc.toString();
     if (this.source === current) return;
 
-    /* Keep the caret where it was, clamped to the incoming text. */
-    const head = Math.min(this.view.state.selection.main.head, this.source.length);
+    /* An explicit request wins; otherwise keep the caret where it was,
+     * clamped to the incoming text. */
+    const asked = this.caretRequest;
+    const head = asked != null
+      ? Math.max(0, Math.min(asked, this.source.length))
+      : Math.min(this.view.state.selection.main.head, this.source.length);
+    this.caretRequest = null;
     this.view.dispatch({
       changes: { from: 0, to: current.length, insert: this.source },
       selection: { anchor: head },
+      scrollIntoView: true,
     });
   }
 
@@ -170,10 +190,25 @@ export class TcEditor extends LitElement {
       lineNumbers(),
       highlightActiveLine(),
       history(),
+      /*
+       * Find and replace on Ctrl-F, where every other editor puts it.
+       *
+       * A study runs to hundreds of lines and its identifiers repeat --
+       * `R_FDR_1:51` appears in a relay, a grade, and three
+       * annotations -- so finding the one you meant by eye is the slow
+       * part of editing one. `highlightSelectionMatches` also marks the
+       * other occurrences of whatever is selected, which answers "where
+       * else is this named" without a search at all.
+       */
+      search({ top: true }),
+      highlightSelectionMatches(),
       bracketMatching(),
       tcLanguage,
       tcEditorAppearance,
       keymap.of([
+        /* Ctrl-F / Cmd-F and the rest of the search bindings. Ahead of
+         * the default keymap, which does not carry them. */
+        ...searchKeymap,
         /*
          * Tab takes the highlighted completion, and indents when no
          * list is open. Bound ahead of the default keymap so it wins

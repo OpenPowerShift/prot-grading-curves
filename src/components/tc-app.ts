@@ -208,6 +208,7 @@ export class TcApp extends LitElement {
   };
   private readonly boundOnSelectionMove = (offset: number) => {
     try { localStorage.setItem(this.cursorKey(this.exampleId), String(offset)); } catch { /* */ }
+    this.caretOffset = offset;
     this.caretLine = lineAtOffset(this.src, offset);
   };
 
@@ -220,6 +221,10 @@ export class TcApp extends LitElement {
    * error on every assignment the engineer starts.
    */
   @state() private caretLine = 1;
+  /** Last caret offset the editor reported, for Format to work from. */
+  private caretOffset = 0;
+  /** Where Format wants the caret put; consumed by the editor. */
+  @state() private caretRequest: number | null = null;
 
   /** localStorage key per example id for the cursor we should
    *  restore when that example is loaded. */
@@ -836,8 +841,27 @@ export class TcApp extends LitElement {
    * no-op edit through the editor and disturb the caret.
    */
   private formatSource(): void {
-    const formatted = formatSource(this.latestSrc || this.src);
+    const before = this.latestSrc || this.src;
+    const formatted = formatSource(before);
     if (formatted === this.src) return;
+
+    /*
+     * Put the caret back on the line it was on.
+     *
+     * Not on the same *offset*: formatting rewrites indentation and
+     * spacing throughout, so the offset held before points somewhere
+     * else after -- the reader is dropped mid-token, often several
+     * lines from what they were working on, and has to find their
+     * place again. Which is enough to stop anyone using Format on a
+     * file they are in the middle of.
+     *
+     * The line is matched by its text where that is unambiguous, since
+     * exploding a brace-heavy block changes the line count; by index
+     * otherwise. Either way the caret lands at the start of the line,
+     * which is what was asked for and is stable under reflow.
+     */
+    this.caretRequest = caretAfterFormat(before, formatted, this.caretOffset);
+
     this.src = formatted;
     saveDraft(formatted, this.exampleId);
     this.parseSource(formatted, 0);
@@ -1026,6 +1050,7 @@ export class TcApp extends LitElement {
                 .onChange=${this.boundOnChange}
                 .onSelectionMove=${this.boundOnSelectionMove}
                 .onHelp=${this.boundOnHelp}
+                .caretRequest=${this.caretRequest}
                 .shortcuts=${this.boundShortcuts}></tc-editor>
             ${this.help && !this.helpHidden ? html`
               <aside class="help-dock" aria-label="What this means">
@@ -1169,6 +1194,52 @@ function readStoredHelpHidden(): boolean {
     /* Storage unavailable: show it, which is the useful default. */
     return false;
   }
+}
+
+/**
+ * Where the caret belongs after a reflow.
+ *
+ * Formatting rewrites indentation and spacing throughout, so the raw
+ * offset is meaningless afterwards. The *line* is not: the formatter
+ * is line-based and only ever splits a line, never merges or reorders
+ * two.
+ *
+ * Matched by the line's own text where that text appears exactly once
+ * in the result, which survives the line-count change that exploding a
+ * brace-heavy block causes. Falls back to the same line index, and
+ * then to the start of the document. Always the start of a line --
+ * that is what was asked for, and it is the one position in a
+ * reflowed line that is stable.
+ */
+export function caretAfterFormat(
+  before: string,
+  after: string,
+  offset: number,
+): number {
+  const beforeLines = before.split('\n');
+  const idx = Math.min(
+    lineAtOffset(before, offset) - 1,
+    Math.max(0, beforeLines.length - 1),
+  );
+  const wanted = (beforeLines[idx] ?? '').trim();
+
+  const afterLines = after.split('\n');
+  const startOf = (n: number): number => {
+    let at = 0;
+    for (let i = 0; i < n && i < afterLines.length; i++) at += afterLines[i].length + 1;
+    return Math.min(at, after.length);
+  };
+
+  if (wanted !== '') {
+    const hits: number[] = [];
+    for (const [i, line] of afterLines.entries()) {
+      if (line.trim() === wanted) hits.push(i);
+      if (hits.length > 1) break;
+    }
+    if (hits.length === 1) return startOf(hits[0]);
+  }
+
+  return startOf(Math.min(idx, Math.max(0, afterLines.length - 1)));
 }
 
 function readStoredTheme(): 'light' | 'dark' {

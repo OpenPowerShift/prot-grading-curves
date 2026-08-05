@@ -138,3 +138,34 @@ relay R_FDR { voltage = "MV"; ct_ratio = 400/5;
     expect(boost('R_FDR:51')).toBeGreaterThan(boost('R_FDR:51/main'));
   });
 });
+
+describe('a marked point referenced from an annotate', () => {
+  /*
+   * A point is referenced by the id in its header, not by its `label`
+   * -- and the two are usually near-identical sentences, so the label
+   * gets written where the id belongs and the annotation silently has
+   * nowhere to go. Offering the ids is the fix for the mistake as well
+   * as the convenience.
+   */
+  const STUDY = `
+point "Inrush I2 below 46 pickup" { I2 = 75 A; t = 240 ms;
+  label = "Inrush I2 falls below 46 pickup, 240 ms"; }
+point "External fault I2" { I2 = 49 A; t = 100 ms; label = "Ext fault"; }
+`;
+
+  it('offers the declared ids', () => {
+    const found = labels(at(`${STUDY}annotate { point = |`));
+    expect(found).toContain('Inrush I2 below 46 pickup');
+    expect(found).toContain('External fault I2');
+  });
+
+  it('offers the id, not the label', () => {
+    const found = labels(at(`${STUDY}annotate { point = |`));
+    expect(found).not.toContain('Inrush I2 falls below 46 pickup, 240 ms');
+  });
+
+  it('inserts it quoted', () => {
+    const r = at(`${STUDY}annotate { point = |`);
+    expect(applied(r, 'External fault I2')).toBe('"External fault I2"');
+  });
+});

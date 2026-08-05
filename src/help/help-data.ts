@@ -18,7 +18,7 @@ export interface HelpEntry {
   /** Where in the .ptc source this construct lives. */
   scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'times' | 'scenario' | 'relay'
        | 'element' | 'stage' | 'device' | 'grade' | 'solve' | 'annotate' | 'point'
-       | 'view' | 'page';
+       | 'combine' | 'view' | 'page';
   /** One-line summary for the hover tooltip. */
   summary: string;
   /** Example value or fragment. */
@@ -160,6 +160,71 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   time_pad_high: M('view', 'Extra room above the fitted time range, as a factor.', 'time_pad_high = 2;'),
   sees:        M('scenario', 'What share of this condition a named relay carries, in percent -- for parallel circuits, where each end feeds part of the fault.', 'sees R_FDR_A { share = 50; }'),
   current_max: M('view', 'Largest current drawn. On a view it is the right-hand end of the X-axis; on an element or a stage it is where that curve stops -- past the maximum fault the bus can deliver the curve describes a current that cannot flow, and drawing it invites a margin to be read at a fault that does not exist. A stage falls back to its element’s.', 'current_max = 50 kA;'),
+
+  /* ------------------------------------------------------------------ */
+  /* `page` sub-blocks, and the keys inside them.                        */
+  /*                                                                     */
+  /* All of these were offered by completions and listed in the spec     */
+  /* while having no hover entry at all, so putting the caret on         */
+  /* `legend` or `footer` -- the two most-reached-for blocks on the      */
+  /* page -- explained nothing.                                          */
+  /* ------------------------------------------------------------------ */
+  legend:      M('page', 'The identification panel: which curves are drawn, their settings, the conditions marked, and the tool\u2019s notes. `style` decides whether it is a gutter, floated over the plot, direct labels, or absent.', 'legend = { style = "column"; currents = "both"; };'),
+  footer:      M('page', 'Three text slots along the foot of the sheet -- left, center, right. Each expands [meta.*] macros, so a drawing number written once in `meta` appears here.', 'footer = { left = "[meta.reference]"; right = "Rev [meta.revision]"; };'),
+  axes:        M('page', 'Ink and weight for the axis furniture: frame, gridlines, tick labels. Kept recessive so the curves carry the eye.', 'axes = { color = "#8a8983"; grid_color = "#cfcec8"; };'),
+  curves:      M('page', 'How the characteristics are drawn as a set: which palette, and the default line weight. An individual curve overrides both.', 'curves = { palette = "okabe_ito"; line_width_px = 2.0; };'),
+  points:      M('page', 'Default marker style for every `point` on the sheet. A point may override any of it.', 'points = { shape = "circle"; size_px = 9; outline = true; };'),
+  leaders:     M('page', 'Leader lines from a legend swatch or an annotation to the curve it names.', 'leaders = { show = true; style = "arrow"; };'),
+  scale:       M('page', 'An explicit axis window, replacing the automatic fit. `auto = false` is what makes the bounds binding.', 'scale = { auto = false; x_min = 100; x_max = 40000; };'),
+  title:       M('page', 'Sheet heading. A bare string, or a block carrying a subtitle, colour, alignment and size.', 'title = { text = "Northgate 33/11 kV"; subtitle = "Feeder grading"; };'),
+
+  /* Keys inside those blocks. */
+  show:        M('page', 'Draw this element of the furniture at all.', 'show = true;'),
+  position:    M('page', 'Where a floated legend sits: a corner for style = "inside", or a side for a column.', 'position = "top_right";'),
+  swatch:      M('page', 'Shape of the colour sample beside each legend entry.', 'swatch = "line";'),
+  palette:     M('page', 'Named colour scheme for the curves. `okabe_ito` is colour-blind safe; `grayscale` and `monochrome` are for print.', 'palette = "okabe_ito";'),
+  line_width_px: M('page', 'Default stroke weight for every characteristic. One curve\u2019s own `width_px` overrides it.', 'line_width_px = 2.0;'),
+  auto_color:  M('page', 'Assign palette hues in the order the elements are declared, so a curve keeps its colour as the study grows.', 'auto_color = true;'),
+  frame:       M('page', 'Draw the box around the plot area.', 'frame = true;'),
+  mirror:      M('page', 'Repeat the tick labels on the opposite axes, so a value can be read from either edge.', 'mirror = true;'),
+  grid_color:  M('page', 'Ink for the gridlines.', 'grid_color = "#cfcec8";'),
+  label_color: M('page', 'Ink for the axis tick labels.', 'label_color = "#52514e";'),
+  label_size_px: M('page', 'Type size for the axis tick labels.', 'label_size_px = 11;'),
+  tick_size_px: M('page', 'Length of the tick marks, in pixels.', 'tick_size_px = 4;'),
+  shape:       M('point', 'Marker drawn at the coordinate: circle, square, diamond, triangle, cross or x.', 'shape = "cross";'),
+  size_px:     M('page', 'Marker size, in pixels.', 'size_px = 9;'),
+  outline:     M('page', 'Draw the marker outlined in the curve\u2019s colour rather than filled.', 'outline = true;'),
+  label_offset_px: M('page', 'How far a leader line holds its label off the curve.', 'label_offset_px = 14;'),
+  text:        M('page', 'The heading itself, inside a structured `title` block.', 'text = "Northgate 33/11 kV";'),
+  align:       M('page', 'Horizontal placement of the heading: left, center or right.', 'align = "center";'),
+  font_size_px: M('page', 'Type size for this block\u2019s text. The title block grows to fit, so a larger footer moves the subtitle up rather than colliding with it.', 'font_size_px = 10;'),
+  border:      M('page', 'Draw a drawing-office frame with a title block along the foot, filled from `meta`.', 'border = true;'),
+  size:        M('page', 'Paper size: A0..A5, Letter, Legal, Tabloid, or a { width_mm, height_mm } clause.', 'size = "A4";'),
+  left:        M('page', 'Left-hand slot, or the left margin.', 'left = "Drawing NG-TCC-0021";'),
+  right:       M('page', 'Right-hand slot, or the right margin.', 'right = "Rev B";'),
+  center:      M('page', 'Centre slot of the footer.', 'center = "[meta.project]";'),
+
+  /* Elsewhere. */
+  name:        M('relay', 'Display name. Free text shown on the drawing; the id stays what references resolve against, so renaming for a reader never breaks a `grade`.', 'name = "Feeder 4 (Mill Road)";'),
+  voltage:     M('relay', 'Named level from `system.voltages`. On a `fault` it is the level the current was *measured* at, not where the fault is.', 'voltage = "HV";'),
+  label:       M('point', 'Text drawn beside the mark. A \\n breaks the line.', 'label = "Transformer inrush";'),
+  t:           M('point', 'Time coordinate. On a `times` entry, the required clearance.', 't = 100 ms;'),
+  I1:          M('faults', 'Positive-sequence component.', 'I1 = 1.2 kA;'),
+  at_I1:       M('annotate', 'Position the mark at a positive-sequence current.', 'at_I1 = 800 A;'),
+  at_I2:       M('annotate', 'Position the mark at a negative-sequence current.', 'at_I2 = 225 A;'),
+  at_I0:       M('annotate', 'Position the mark at a zero-sequence component.', 'at_I0 = 150 A;'),
+  at_residual: M('annotate', 'Position the mark at the residual 3*I0.', 'at_residual = 2.4 kA;'),
+  as:          M('combine', 'How the source curves are combined: envelope_min, envelope_max, sum or select_first.', 'as = envelope_min;'),
+  sources:     M('combine', 'The curves being combined, by reference.', 'sources = [R_FDR:51, R_INC:51];'),
+  default:     M('view', 'Draw this sheet when nothing else names one.', 'default = true;'),
+  reference:   M('relay', 'Free text: a panel reference, a drawing number, a cubicle.', 'reference = "Panel 3B, relay 2";'),
+  project:     M('meta', 'Project name, shown in the title block.', 'project = "Northgate 11 kV";'),
+  study:       M('meta', 'What this particular sheet is of.', 'study = "Feeder grading";'),
+  engineer:    M('meta', 'Who prepared it.', 'engineer = "A. Cooper";'),
+  date:        M('meta', 'Date of issue.', 'date = "2026-07-30";'),
+  revision:    M('meta', 'Revision letter or number.', 'revision = "B";'),
+  standard:    M('meta', 'The standard the study is worked to.', 'standard = "IEC 60255-151";'),
+  stage:       M('stage', 'One stage of a multi-stage element: its own curve, pickup and delay. The element trips at whichever stage is fastest at the current in question.', 'stage inst { curve = definite; I_pickup = 4 kA; t_delay = 50 ms; }'),
   from:        M('annotate', 'One end of a span: a dimension between two figures the study names, with no curve at either end. The unit decides the orientation -- two times draw a vertical span (anchored by at_I or a condition), two currents a horizontal one (anchored by at_t).', 'from = 300 ms; to = 800 ms; at_I = 2 kA;'),
   to:          M('annotate', 'The far end of a from/to span. Must be the same quantity as `from` -- there is no distance between a current and a time.', 'to = 800 ms;'),
   color:       M('element', 'Ink for this one curve, overriding the palette -- for a house standard, or a figure whose colours are fixed by the report around it. The palette slot is still consumed, so the other curves keep their hues.', 'color = "#884400";'),

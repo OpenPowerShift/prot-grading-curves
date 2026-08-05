@@ -215,3 +215,50 @@ describe('the readout box', () => {
     expect(firstNumber).toBeGreaterThan(lastName);
   });
 });
+
+describe('a marked point sitting on a curve', () => {
+  /*
+   * Points are usually placed *on* a characteristic -- that is what
+   * makes them worth marking -- so the two are within a pixel of each
+   * other and the curve won by being tested first. The point is the
+   * more specific answer: a curve is continuous and says the same
+   * thing either side of the cursor, where a point is a single
+   * coordinate the study asserts.
+   */
+  const ON_CURVE = `
+system { voltages { "MV" { V = 11 kV; } } }
+relay R { voltage = "MV"; ct_ratio = 400/5;
+  element 51 { function = "phase_oc"; curve = definite;
+               I_pickup = 400 A; t_delay = 500 ms; } }
+point "Inrush" { I = 2 kA; t = 500 ms; voltage = "MV"; label = "Inrush"; }
+view { voltage = "MV"; current_min = 100 A; current_max = 40 kA;
+       time_min = 10 ms; time_max = 100 s; }
+`;
+
+  /** Hover the marker the renderer drew, wherever it put it. */
+  const hoverThePoint = (el: TcViewer): Hover => {
+    const move = (el as unknown as Record<string, (e: MouseEvent) => void>).handleMouseMove;
+    const group = el.querySelector('g[data-point]');
+    const x = Number(group?.getAttribute('data-px'));
+    const y = Number(group?.getAttribute('data-py'));
+    expect(Number.isFinite(x) && Number.isFinite(y), 'the point was drawn').toBe(true);
+    move.call(el, new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
+    return (el as unknown as Record<string, Hover>).hover;
+  };
+
+  it('reports the point, not the curve under it', async () => {
+    const el = await mount(ON_CURVE);
+    const state = hoverThePoint(el);
+    expect(state).not.toBeNull();
+    expect(state!.ref).toBe('Inrush');
+  });
+
+  it('still names the curve it displaced', async () => {
+    /* The curve is under the cursor too, and losing by a pixel is no
+     * reason to drop it. */
+    const el = await mount(ON_CURVE);
+    const state = hoverThePoint(el);
+    const also = (state!.alsoHere ?? []).map((o) => o.ref);
+    expect(also).toContain('R:51');
+  });
+});

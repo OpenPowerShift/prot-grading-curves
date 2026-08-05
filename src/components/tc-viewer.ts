@@ -33,9 +33,20 @@ import { sheetSize } from '../renderer/sheet.js';
 /*
  * Snap radius. Tight enough that the readout tracks the curve the
  * pointer is actually near, rather than grabbing a neighbour several
- * pixels away.
+ * pixels away. Halved from 24: on a sheet with several curves in a
+ * band, a radius that wide latched onto whichever was nearest rather
+ * than the one being pointed at.
  */
-const SNAP_RADIUS_PX = 24;
+const SNAP_RADIUS_PX = 12;
+
+/**
+ * How close two things must be to count as being in the same place.
+ *
+ * Judged on position, not on distance from the cursor: two curves
+ * equidistant either side of the pointer are two answers, not one
+ * coincidence.
+ */
+const COINCIDENT_PX = 3;
 const ZOOM_STEP = 1.25;
 
 /**
@@ -380,7 +391,6 @@ export class TcViewer extends LitElement {
        * two curves equidistant from the pointer but on opposite sides
        * of it are two different answers, not one coincidence.
        */
-      const COINCIDENT_PX = 3;
       best.alsoHere = perCurve.slice(1)
         .filter((c) => Math.hypot(c.state.pxI - best!.pxI, c.state.pxT - best!.pxT) <= COINCIDENT_PX)
         .map((c) => ({
@@ -445,8 +455,21 @@ export class TcViewer extends LitElement {
       if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
 
       const distSq = (cursorPxI - x) ** 2 + (cursorPxT - y) ** 2;
-      if (distSq < bestDist) {
-        bestDist = distSq;
+      /*
+       * A marked point wins a tie against a curve it sits on.
+       *
+       * Points are usually placed *on* a characteristic -- that is
+       * what makes them worth marking -- so the two are within a pixel
+       * of each other and the curve won by being tested first. The
+       * point is the more specific answer: a curve is continuous and
+       * says the same thing either side of the cursor, where a point
+       * is a single coordinate the study asserts.
+       *
+       * `<=` rather than a distance bias, so it only takes precedence
+       * where it is genuinely at least as close.
+       */
+      if (distSq <= bestDist) {
+        const displaced = best;
         best = {
           pxI: x,
           pxT: y,
@@ -459,6 +482,22 @@ export class TcViewer extends LitElement {
           pathD: '',
           target: 'point',
         };
+        /*
+         * The curve it displaced is still under the cursor and still
+         * worth naming, so it joins whatever else was coincident
+         * rather than being dropped for having lost by a pixel.
+         */
+        const alsoWas = displaced?.alsoHere ?? [];
+        const carried = displaced != null
+          && Math.hypot(displaced.pxI - x, displaced.pxT - y) <= COINCIDENT_PX
+          ? [{
+            curveLabel: displaced.curveLabel,
+            ref: displaced.ref,
+            voltage: displaced.voltage,
+          }, ...alsoWas]
+          : [];
+        best.alsoHere = carried.length > 0 ? carried : undefined;
+        bestDist = distSq;
       }
     }
 

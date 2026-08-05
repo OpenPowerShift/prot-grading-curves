@@ -168,6 +168,25 @@ function curveCompletions(): Completion[] {
  * text rather than the AST so completion still works while the file
  * is mid-edit and does not parse.
  */
+/**
+ * Marked points declared in the document, for `annotate { point }`.
+ *
+ * A point is referenced by the id in its header, not by its `label` --
+ * and the two are usually near-identical sentences ("Inrush I2 below
+ * 46 pickup" against "Inrush I2 falls below\n46 pickup, 240 ms"), so
+ * the label gets written where the id belongs and the annotation
+ * silently has nowhere to go. Offering the ids is the fix for the
+ * mistake as well as the convenience.
+ */
+function pointCompletions(src: string): Completion[] {
+  const out: Completion[] = [];
+  const re = /\bpoint\s+"([^"]+)"\s*\{/g;
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    out.push(namedValue(m[1], 'marked point', 4));
+  }
+  return out;
+}
+
 function refCompletions(src: string): Completion[] {
   const out: Completion[] = [];
 
@@ -486,6 +505,8 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
              || target === 'scenarios' || target === 'condition') {
       options = faultCompletions(src);
     }
+    /* `point` inside an annotate names a marked coordinate. */
+    else if (target === 'point') options = pointCompletions(src);
     else if (target === 'voltage') {
       /* `voltage` names a level everywhere except inside a fault or a
        * device rating, so offer the declared levels first and fall

@@ -1112,6 +1112,28 @@ function validateAnnotations(ctx: Ctx): void {
         item.loc);
     }
 
+    /*
+     * A `point` naming a marker the study does not declare.
+     *
+     * The commonest way to get this wrong is to write the marker's
+     * *label* where its id belongs -- they are usually near-identical
+     * sentences, and only one of them resolves. The sheet reports the
+     * mark as unplaceable, but that is a note on a drawing; the editor
+     * said nothing at all, so the typo survived until someone noticed
+     * an annotation missing.
+     */
+    if (item.pointRef != null) {
+      const known = ctx.study.points.some(
+        (pt) => pt.id === item.pointRef || pt.label === item.pointRef);
+      if (!known) {
+        const names = ctx.study.points.map((pt) => pt.id);
+        add(ctx, 'UNRESOLVED_REFERENCE', 'error',
+          `annotate names point "${item.pointRef}", which this study does not declare`
+          + didYouMean(suggest(item.pointRef, names, 8)),
+          item.loc);
+      }
+    }
+
     if ((item.conditions?.length ?? 0) > 0 && item.at_I_A != null) {
       add(ctx, 'ANNOTATE_CURRENT_AND_CONDITION', 'error',
         'annotate declares at_I and names a condition; they are alternatives -- ' +

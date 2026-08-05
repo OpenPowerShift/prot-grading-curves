@@ -1,0 +1,399 @@
+=== sheet: view-1 ===
+viewBox 0 0 1400 970
+plot 106,66,950,689
+domain-i 100,60000
+domain-t 0.01,1000
+
+[-] rect 106.0,66.0 950.0x689.0
+[-] rect 7.0,7.0 1386.0x956.0
+[-] line 7.0,902.0..1393.0,902.0
+[-] text 21.0,924.0 font-size=12 font-weight=600 "Halgarth pumping station — device library"
+[-] text 21.0,942.0 font-size=12 "Published tables, synthetic envelopes, and the relays graded against them"
+[-] text 1330.6,922.0 font-size=10 "REV"
+[-] text 1330.6,940.0 font-size=11 "A"
+[-] text 1242.6,922.0 font-size=10 "DATE"
+[-] text 1242.6,940.0 font-size=11 "2026-08-01"
+[-] text 1161.2,922.0 font-size=10 "ENGINEER"
+[-] text 1161.2,940.0 font-size=11 "T. Okafor"
+[-] text 980.8,922.0 font-size=10 "PROJECT"
+[-] text 980.8,940.0 font-size=11 "Halgarth pumping station"
+[-] rect 106.0,66.0 950.0x689.0
+[-] line 106.0,66.0..106.0,755.0 class=tc-grid-major
+[-] text 106.0,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
+[-] line 208.9,66.0..208.9,755.0 class=tc-grid-minor
+[-] text 208.9,775.0 text-anchor=middle font-size=10 "200 A"
+[-] line 269.2,66.0..269.2,755.0 class=tc-grid-minor
+[-] line 311.9,66.0..311.9,755.0 class=tc-grid-minor
+[-] line 345.0,66.0..345.0,755.0 class=tc-grid-minor
+[-] text 345.0,775.0 text-anchor=middle font-size=10 "500 A"
+[-] line 372.1,66.0..372.1,755.0 class=tc-grid-minor
+[-] line 395.0,66.0..395.0,755.0 class=tc-grid-minor
+[-] line 414.8,66.0..414.8,755.0 class=tc-grid-minor
+[-] line 432.3,66.0..432.3,755.0 class=tc-grid-minor
+[-] line 448.0,66.0..448.0,755.0 class=tc-grid-major
+[-] text 448.0,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
+[-] line 550.9,66.0..550.9,755.0 class=tc-grid-minor
+[-] text 550.9,775.0 text-anchor=middle font-size=10 "2 kA"
+[-] line 611.1,66.0..611.1,755.0 class=tc-grid-minor
+[-] line 653.8,66.0..653.8,755.0 class=tc-grid-minor
+[-] line 687.0,66.0..687.0,755.0 class=tc-grid-minor
+[-] text 687.0,775.0 text-anchor=middle font-size=10 "5 kA"
+[-] line 714.0,66.0..714.0,755.0 class=tc-grid-minor
+[-] line 736.9,66.0..736.9,755.0 class=tc-grid-minor
+[-] line 756.8,66.0..756.8,755.0 class=tc-grid-minor
+[-] line 774.3,66.0..774.3,755.0 class=tc-grid-minor
+[-] line 789.9,66.0..789.9,755.0 class=tc-grid-major
+[-] text 789.9,775.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
+[-] line 892.8,66.0..892.8,755.0 class=tc-grid-minor
+[-] text 892.8,775.0 text-anchor=middle font-size=10 "20 kA"
+[-] line 953.1,66.0..953.1,755.0 class=tc-grid-minor
+[-] line 995.8,66.0..995.8,755.0 class=tc-grid-minor
+[-] line 1028.9,66.0..1028.9,755.0 class=tc-grid-minor
+[-] text 1028.9,775.0 text-anchor=middle font-size=10 "50 kA"
+[-] line 1056.0,66.0..1056.0,755.0 class=tc-grid-minor
+[-] line 106.0,755.0..1056.0,755.0 class=tc-grid-major
+[-] text 96.0,759.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 ms"
+[-] line 106.0,713.5..1056.0,713.5 class=tc-grid-minor
+[-] text 96.0,716.5 text-anchor=end font-size=10 "20 ms"
+[-] line 106.0,689.3..1056.0,689.3 class=tc-grid-minor
+[-] line 106.0,672.0..1056.0,672.0 class=tc-grid-minor
+[-] line 106.0,658.7..1056.0,658.7 class=tc-grid-minor
+[-] text 96.0,661.7 text-anchor=end font-size=10 "50 ms"
+[-] line 106.0,647.8..1056.0,647.8 class=tc-grid-minor
+[-] line 106.0,638.5..1056.0,638.5 class=tc-grid-minor
+[-] line 106.0,630.6..1056.0,630.6 class=tc-grid-minor
+[-] line 106.0,623.5..1056.0,623.5 class=tc-grid-minor
+[-] line 106.0,617.2..1056.0,617.2 class=tc-grid-major
+[-] text 96.0,621.2 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
+[-] line 106.0,575.7..1056.0,575.7 class=tc-grid-minor
+[-] text 96.0,578.7 text-anchor=end font-size=10 "200 ms"
+[-] line 106.0,551.5..1056.0,551.5 class=tc-grid-minor
+[-] line 106.0,534.2..1056.0,534.2 class=tc-grid-minor
+[-] line 106.0,520.9..1056.0,520.9 class=tc-grid-minor
+[-] text 96.0,523.9 text-anchor=end font-size=10 "500 ms"
+[-] line 106.0,510.0..1056.0,510.0 class=tc-grid-minor
+[-] line 106.0,500.7..1056.0,500.7 class=tc-grid-minor
+[-] line 106.0,492.8..1056.0,492.8 class=tc-grid-minor
+[-] line 106.0,485.7..1056.0,485.7 class=tc-grid-minor
+[-] line 106.0,479.4..1056.0,479.4 class=tc-grid-major
+[-] text 96.0,483.4 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
+[-] line 106.0,437.9..1056.0,437.9 class=tc-grid-minor
+[-] text 96.0,440.9 text-anchor=end font-size=10 "2 s"
+[-] line 106.0,413.7..1056.0,413.7 class=tc-grid-minor
+[-] line 106.0,396.4..1056.0,396.4 class=tc-grid-minor
+[-] line 106.0,383.1..1056.0,383.1 class=tc-grid-minor
+[-] text 96.0,386.1 text-anchor=end font-size=10 "5 s"
+[-] line 106.0,372.2..1056.0,372.2 class=tc-grid-minor
+[-] line 106.0,362.9..1056.0,362.9 class=tc-grid-minor
+[-] line 106.0,355.0..1056.0,355.0 class=tc-grid-minor
+[-] line 106.0,347.9..1056.0,347.9 class=tc-grid-minor
+[-] line 106.0,341.6..1056.0,341.6 class=tc-grid-major
+[-] text 96.0,345.6 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
+[-] line 106.0,300.1..1056.0,300.1 class=tc-grid-minor
+[-] text 96.0,303.1 text-anchor=end font-size=10 "20 s"
+[-] line 106.0,275.9..1056.0,275.9 class=tc-grid-minor
+[-] line 106.0,258.6..1056.0,258.6 class=tc-grid-minor
+[-] line 106.0,245.3..1056.0,245.3 class=tc-grid-minor
+[-] text 96.0,248.3 text-anchor=end font-size=10 "50 s"
+[-] line 106.0,234.4..1056.0,234.4 class=tc-grid-minor
+[-] line 106.0,225.1..1056.0,225.1 class=tc-grid-minor
+[-] line 106.0,217.2..1056.0,217.2 class=tc-grid-minor
+[-] line 106.0,210.1..1056.0,210.1 class=tc-grid-minor
+[-] line 106.0,203.8..1056.0,203.8 class=tc-grid-major
+[-] text 96.0,207.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
+[-] line 106.0,162.3..1056.0,162.3 class=tc-grid-minor
+[-] text 96.0,165.3 text-anchor=end font-size=10 "200 s"
+[-] line 106.0,138.1..1056.0,138.1 class=tc-grid-minor
+[-] line 106.0,120.8..1056.0,120.8 class=tc-grid-minor
+[-] line 106.0,107.5..1056.0,107.5 class=tc-grid-minor
+[-] text 96.0,110.5 text-anchor=end font-size=10 "500 s"
+[-] line 106.0,96.6..1056.0,96.6 class=tc-grid-minor
+[-] line 106.0,87.3..1056.0,87.3 class=tc-grid-minor
+[-] line 106.0,79.4..1056.0,79.4 class=tc-grid-minor
+[-] line 106.0,72.3..1056.0,72.3 class=tc-grid-minor
+[-] line 106.0,66.0..1056.0,66.0 class=tc-grid-major
+[-] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
+[-] text 44.0,410.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
+[-] text 581.0,875.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · LV · 0.4 kV)"
+[-] line 517.8,755.0..517.8,759.0
+[-] line 578.0,755.0..578.0,759.0
+[-] line 764.0,66.0..764.0,755.0 class=tc-fault data-fault=LV board min
+[-] line 900.1,66.0..900.1,755.0 class=tc-fault data-fault=LV board max
+[-] path n=8 bbox=208.9,313.5..517.8,707.8
+[-] path n=8 bbox=208.9,313.5..517.8,707.8
+[-] line -583.0,755.0..106.0,66.0
+[-] line -574.0,755.0..115.0,66.0
+[-] line -565.0,755.0..124.0,66.0
+[-] line -556.0,755.0..133.0,66.0
+[-] line -547.0,755.0..142.0,66.0
+[-] line -538.0,755.0..151.0,66.0
+[-] line -529.0,755.0..160.0,66.0
+[-] line -520.0,755.0..169.0,66.0
+[-] line -511.0,755.0..178.0,66.0
+[-] line -502.0,755.0..187.0,66.0
+[-] line -493.0,755.0..196.0,66.0
+[-] line -484.0,755.0..205.0,66.0
+[-] line -475.0,755.0..214.0,66.0
+[-] line -466.0,755.0..223.0,66.0
+[-] line -457.0,755.0..232.0,66.0
+[-] line -448.0,755.0..241.0,66.0
+[-] line -439.0,755.0..250.0,66.0
+[-] line -430.0,755.0..259.0,66.0
+[-] line -421.0,755.0..268.0,66.0
+[-] line -412.0,755.0..277.0,66.0
+[-] line -403.0,755.0..286.0,66.0
+[-] line -394.0,755.0..295.0,66.0
+[-] line -385.0,755.0..304.0,66.0
+[-] line -376.0,755.0..313.0,66.0
+[-] line -367.0,755.0..322.0,66.0
+[-] line -358.0,755.0..331.0,66.0
+[-] line -349.0,755.0..340.0,66.0
+[-] line -340.0,755.0..349.0,66.0
+[-] line -331.0,755.0..358.0,66.0
+[-] line -322.0,755.0..367.0,66.0
+[-] line -313.0,755.0..376.0,66.0
+[-] line -304.0,755.0..385.0,66.0
+[-] line -295.0,755.0..394.0,66.0
+[-] line -286.0,755.0..403.0,66.0
+[-] line -277.0,755.0..412.0,66.0
+[-] line -268.0,755.0..421.0,66.0
+[-] line -259.0,755.0..430.0,66.0
+[-] line -250.0,755.0..439.0,66.0
+[-] line -241.0,755.0..448.0,66.0
+[-] line -232.0,755.0..457.0,66.0
+[-] line -223.0,755.0..466.0,66.0
+[-] line -214.0,755.0..475.0,66.0
+[-] line -205.0,755.0..484.0,66.0
+[-] line -196.0,755.0..493.0,66.0
+[-] line -187.0,755.0..502.0,66.0
+[-] line -178.0,755.0..511.0,66.0
+[-] line -169.0,755.0..520.0,66.0
+[-] line -160.0,755.0..529.0,66.0
+[-] line -151.0,755.0..538.0,66.0
+[-] line -142.0,755.0..547.0,66.0
+[-] line -133.0,755.0..556.0,66.0
+[-] line -124.0,755.0..565.0,66.0
+[-] line -115.0,755.0..574.0,66.0
+[-] line -106.0,755.0..583.0,66.0
+[-] line -97.0,755.0..592.0,66.0
+[-] line -88.0,755.0..601.0,66.0
+[-] line -79.0,755.0..610.0,66.0
+[-] line -70.0,755.0..619.0,66.0
+[-] line -61.0,755.0..628.0,66.0
+[-] line -52.0,755.0..637.0,66.0
+[-] line -43.0,755.0..646.0,66.0
+[-] line -34.0,755.0..655.0,66.0
+[-] line -25.0,755.0..664.0,66.0
+[-] line -16.0,755.0..673.0,66.0
+[-] line -7.0,755.0..682.0,66.0
+[-] line 2.0,755.0..691.0,66.0
+[-] line 11.0,755.0..700.0,66.0
+[-] line 20.0,755.0..709.0,66.0
+[-] line 29.0,755.0..718.0,66.0
+[-] line 38.0,755.0..727.0,66.0
+[-] line 47.0,755.0..736.0,66.0
+[-] line 56.0,755.0..745.0,66.0
+[-] line 65.0,755.0..754.0,66.0
+[-] line 74.0,755.0..763.0,66.0
+[-] line 83.0,755.0..772.0,66.0
+[-] line 92.0,755.0..781.0,66.0
+[-] line 101.0,755.0..790.0,66.0
+[-] line 110.0,755.0..799.0,66.0
+[-] line 119.0,755.0..808.0,66.0
+[-] line 128.0,755.0..817.0,66.0
+[-] line 137.0,755.0..826.0,66.0
+[-] line 146.0,755.0..835.0,66.0
+[-] line 155.0,755.0..844.0,66.0
+[-] line 164.0,755.0..853.0,66.0
+[-] line 173.0,755.0..862.0,66.0
+[-] line 182.0,755.0..871.0,66.0
+[-] line 191.0,755.0..880.0,66.0
+[-] line 200.0,755.0..889.0,66.0
+[-] line 209.0,755.0..898.0,66.0
+[-] line 218.0,755.0..907.0,66.0
+[-] line 227.0,755.0..916.0,66.0
+[-] line 236.0,755.0..925.0,66.0
+[-] line 245.0,755.0..934.0,66.0
+[-] line 254.0,755.0..943.0,66.0
+[-] line 263.0,755.0..952.0,66.0
+[-] line 272.0,755.0..961.0,66.0
+[-] line 281.0,755.0..970.0,66.0
+[-] line 290.0,755.0..979.0,66.0
+[-] line 299.0,755.0..988.0,66.0
+[-] line 308.0,755.0..997.0,66.0
+[-] line 317.0,755.0..1006.0,66.0
+[-] line 326.0,755.0..1015.0,66.0
+[-] line 335.0,755.0..1024.0,66.0
+[-] line 344.0,755.0..1033.0,66.0
+[-] line 353.0,755.0..1042.0,66.0
+[-] line 362.0,755.0..1051.0,66.0
+[-] line 371.0,755.0..1060.0,66.0
+[-] line 380.0,755.0..1069.0,66.0
+[-] line 389.0,755.0..1078.0,66.0
+[-] line 398.0,755.0..1087.0,66.0
+[-] line 407.0,755.0..1096.0,66.0
+[-] line 416.0,755.0..1105.0,66.0
+[-] line 425.0,755.0..1114.0,66.0
+[-] line 434.0,755.0..1123.0,66.0
+[-] line 443.0,755.0..1132.0,66.0
+[-] line 452.0,755.0..1141.0,66.0
+[-] line 461.0,755.0..1150.0,66.0
+[-] line 470.0,755.0..1159.0,66.0
+[-] line 479.0,755.0..1168.0,66.0
+[-] line 488.0,755.0..1177.0,66.0
+[-] line 497.0,755.0..1186.0,66.0
+[-] line 506.0,755.0..1195.0,66.0
+[-] line 515.0,755.0..1204.0,66.0
+[-] line 524.0,755.0..1213.0,66.0
+[-] line 533.0,755.0..1222.0,66.0
+[-] line 542.0,755.0..1231.0,66.0
+[-] line 551.0,755.0..1240.0,66.0
+[-] line 560.0,755.0..1249.0,66.0
+[-] line 569.0,755.0..1258.0,66.0
+[-] line 578.0,755.0..1267.0,66.0
+[-] line 587.0,755.0..1276.0,66.0
+[-] line 596.0,755.0..1285.0,66.0
+[-] line 605.0,755.0..1294.0,66.0
+[-] line 614.0,755.0..1303.0,66.0
+[-] line 623.0,755.0..1312.0,66.0
+[-] line 632.0,755.0..1321.0,66.0
+[-] line 641.0,755.0..1330.0,66.0
+[-] line 650.0,755.0..1339.0,66.0
+[-] line 659.0,755.0..1348.0,66.0
+[-] line 668.0,755.0..1357.0,66.0
+[-] line 677.0,755.0..1366.0,66.0
+[-] line 686.0,755.0..1375.0,66.0
+[-] line 695.0,755.0..1384.0,66.0
+[-] line 704.0,755.0..1393.0,66.0
+[-] line 713.0,755.0..1402.0,66.0
+[-] line 722.0,755.0..1411.0,66.0
+[-] line 731.0,755.0..1420.0,66.0
+[-] line 740.0,755.0..1429.0,66.0
+[-] line 749.0,755.0..1438.0,66.0
+[-] line 758.0,755.0..1447.0,66.0
+[-] line 767.0,755.0..1456.0,66.0
+[-] line 776.0,755.0..1465.0,66.0
+[-] line 785.0,755.0..1474.0,66.0
+[-] line 794.0,755.0..1483.0,66.0
+[-] line 803.0,755.0..1492.0,66.0
+[-] line 812.0,755.0..1501.0,66.0
+[-] line 821.0,755.0..1510.0,66.0
+[-] line 830.0,755.0..1519.0,66.0
+[-] line 839.0,755.0..1528.0,66.0
+[-] line 848.0,755.0..1537.0,66.0
+[-] line 857.0,755.0..1546.0,66.0
+[-] line 866.0,755.0..1555.0,66.0
+[-] line 875.0,755.0..1564.0,66.0
+[-] line 884.0,755.0..1573.0,66.0
+[-] line 893.0,755.0..1582.0,66.0
+[-] line 902.0,755.0..1591.0,66.0
+[-] line 911.0,755.0..1600.0,66.0
+[-] line 920.0,755.0..1609.0,66.0
+[-] line 929.0,755.0..1618.0,66.0
+[-] line 938.0,755.0..1627.0,66.0
+[-] line 947.0,755.0..1636.0,66.0
+[-] line 956.0,755.0..1645.0,66.0
+[-] line 965.0,755.0..1654.0,66.0
+[-] line 974.0,755.0..1663.0,66.0
+[-] line 983.0,755.0..1672.0,66.0
+[-] line 992.0,755.0..1681.0,66.0
+[-] line 1001.0,755.0..1690.0,66.0
+[-] line 1010.0,755.0..1699.0,66.0
+[-] line 1019.0,755.0..1708.0,66.0
+[-] line 1028.0,755.0..1717.0,66.0
+[-] line 1037.0,755.0..1726.0,66.0
+[-] line 1046.0,755.0..1735.0,66.0
+[-] line 1055.0,755.0..1744.0,66.0
+[-] path n=4 bbox=208.9,341.6..517.8,707.8
+[-] path n=4 bbox=208.9,313.5..517.8,665.0 data-curve=spur_fuse_100T
+[-] path n=83 bbox=519.3,66.0..900.1,610.8 class=tc-curve data-curve=MCC incomer · Phase TOC data-ref=R_MCC:51 data-voltage=LV
+[-] path n=70 bbox=581.0,66.0..900.1,529.1 class=tc-curve data-curve=LV board incomer · Phase TOC data-ref=R_BOARD:51 data-voltage=LV
+[-] path n=100 bbox=590.5,66.0..1056.0,258.6 class=tc-curve data-curve=LV board incomer · Thermal overload data-ref=R_BOARD:49 data-voltage=LV
+[-] path n=4 bbox=653.8,254.3..962.6,503.4 class=tc-curve data-curve=sub_main_cable
+[-] path n=4 bbox=638.2,138.1..947.0,386.8 class=tc-curve data-curve=tx_damage_1250
+[-] path n=2 bbox=464.8,347.9..464.8,658.7 class=tc-curve data-curve=sump_motor_start
+[-] path n=2 bbox=106.0,658.7..1056.0,658.7 class=tc-curve data-curve=acb_operating
+[-] path n=3 bbox=887.2,510.0..1206.2,665.0 class=tc-curve data-curve=recloser_R1
+[-] path n=115 bbox=519.3,66.0..1056.0,676.7 class=tc-curve data-curve=Fastest LV protection (envelope)
+[-] path n=102 bbox=581.0,66.0..1056.0,596.8 class=tc-curve data-curve=Worst case to grade against
+[-] path n=102 bbox=581.0,66.0..1056.0,578.6 class=tc-curve data-curve=Relay + ACB total clearing time
+[-] path n=115 bbox=519.3,66.0..1056.0,676.7 class=tc-curve data-curve=Whichever element picks up first
+[-] polygon 3 pts
+[-] polygon 3 pts
+[-] text 454.8,350.2 text-anchor=end font-size=11 "DOL start, 6.2x FLC for 9 s"
+[-] line 900.1,610.8..900.1,529.1
+[-] polygon 3 pts
+[-] polygon 3 pts
+[-] line 894.1,610.8..906.1,610.8
+[-] line 894.1,529.1..906.1,529.1
+[-] path n=2 bbox=900.1,570.0..910.1,586.7
+[-] text 910.1,589.0 text-anchor=start font-size=11 font-weight=600 "CTI 324 ms"
+[-] circle 764.0,461.4 r=3.5
+[-] path n=3 bbox=740.0,461.4..764.0,545.2
+[-] text 740.0,547.5 text-anchor=end font-size=11 "Board incomer at minimum fault"
+[-] line 764.0,755.0..764.0,780.0 class=tc-fault
+[-] text 766.0,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "LV board min · 8.4 kA"
+[-] line 900.1,755.0..900.1,794.0 class=tc-fault
+[-] text 902.1,803.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "LV board max · 21 kA"
+[-] text 1090.0,79.0 class=tc-legend font-size=13 font-weight=600 "Devices and curves"
+[-] line 1090.0,95.0..1116.0,95.0
+[-] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "MCC incomer · Phase TOC"
+[-] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL 751"
+[-] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC VI · 1.6 kA · TMS 0.1 · to 21 kA"
+[-] text 1126.0,145.0 class=tc-legend-muted font-size=11 "LV · 0.4 kV"
+[-] line 1090.0,166.0..1116.0,166.0
+[-] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "LV board incomer · Phase TOC"
+[-] text 1126.0,186.0 class=tc-legend-muted font-size=11 "IEC VI · 2.4 kA · TMS 0.25 · to 21 kA"
+[-] text 1126.0,201.0 class=tc-legend-muted font-size=11 "LV · 0.4 kV"
+[-] line 1090.0,222.0..1116.0,222.0
+[-] text 1126.0,226.0 class=tc-legend font-size=12 font-weight=600 "LV board incomer · Thermal overload"
+[-] text 1126.0,242.0 class=tc-legend-muted font-size=11 "FlexCurve (3 pts)"
+[-] text 1126.0,257.0 class=tc-legend-muted font-size=11 "LV · 0.4 kV"
+[-] rect 1090.0,273.5 26.0x9.0
+[-] rect 1090.0,273.5 26.0x9.0
+[-] line 1081.0,282.5..1090.0,273.5
+[-] line 1086.0,282.5..1095.0,273.5
+[-] line 1091.0,282.5..1100.0,273.5
+[-] line 1096.0,282.5..1105.0,273.5
+[-] line 1101.0,282.5..1110.0,273.5
+[-] line 1106.0,282.5..1115.0,273.5
+[-] line 1111.0,282.5..1120.0,273.5
+[-] text 1126.0,282.0 class=tc-legend font-size=12 font-weight=600 "spur_fuse_100T"
+[-] text 1126.0,298.0 class=tc-legend-muted font-size=11 "Mersen 100T"
+[-] text 1126.0,313.0 class=tc-legend-muted font-size=11 "Fuse · 100 A"
+[-] text 1126.0,328.0 class=tc-legend-muted font-size=11 "min melt -&gt; total clear"
+[-] line 1090.0,349.0..1116.0,349.0
+[-] text 1126.0,353.0 class=tc-legend font-size=12 font-weight=600 "sub_main_cable"
+[-] text 1126.0,369.0 class=tc-legend-muted font-size=11 "Cable withstand · 400 A"
+[-] line 1090.0,390.0..1116.0,390.0
+[-] text 1126.0,394.0 class=tc-legend font-size=12 font-weight=600 "tx_damage_1250"
+[-] text 1126.0,410.0 class=tc-legend-muted font-size=11 "Wilson 1250 kVA ONAN"
+[-] text 1126.0,425.0 class=tc-legend-muted font-size=11 "Transformer damage"
+[-] line 1090.0,446.0..1116.0,446.0
+[-] text 1126.0,450.0 class=tc-legend font-size=12 font-weight=600 "sump_motor_start"
+[-] text 1126.0,466.0 class=tc-legend-muted font-size=11 "Motor starting · 180 A"
+[-] line 1090.0,487.0..1116.0,487.0
+[-] text 1126.0,491.0 class=tc-legend font-size=12 font-weight=600 "acb_operating"
+[-] text 1126.0,507.0 class=tc-legend-muted font-size=11 "Schneider NW20"
+[-] text 1126.0,522.0 class=tc-legend-muted font-size=11 "Breaker · 2 kA · clearing 50 ms"
+[-] line 1090.0,543.0..1116.0,543.0
+[-] text 1126.0,547.0 class=tc-legend font-size=12 font-weight=600 "recloser_R1"
+[-] text 1126.0,563.0 class=tc-legend-muted font-size=11 "Schneider N-Series"
+[-] text 1126.0,578.0 class=tc-legend-muted font-size=11 "Recloser · 630 A"
+[-] line 1090.0,599.0..1116.0,599.0
+[-] text 1126.0,603.0 class=tc-legend font-size=12 font-weight=600 "Fastest LV protection (envelope)"
+[-] text 1126.0,619.0 class=tc-legend-muted font-size=11 "Combine · envelope_min"
+[-] line 1090.0,640.0..1116.0,640.0
+[-] text 1126.0,644.0 class=tc-legend font-size=12 font-weight=600 "Worst case to grade against"
+[-] text 1126.0,660.0 class=tc-legend-muted font-size=11 "Combine · envelope_max"
+[-] line 1090.0,681.0..1116.0,681.0
+[-] text 1126.0,685.0 class=tc-legend font-size=12 font-weight=600 "Relay + ACB total clearing time"
+[-] text 1126.0,701.0 class=tc-legend-muted font-size=11 "Combine · sum"
+[-] line 1090.0,722.0..1116.0,722.0
+[-] text 1126.0,726.0 class=tc-legend font-size=12 font-weight=600 "Whichever element picks up first"
+[-] text 1126.0,742.0 class=tc-legend-muted font-size=11 "Combine · select_first"
+[-] text 1090.0,780.0 font-size=13 font-weight=600 "Faults"
+[-] line 1090.0,796.0..1116.0,796.0
+[-] text 1126.0,800.0 class=tc-legend font-size=11 "LV board min · 8.4 kA · LV · 0.4 kV"
+[-] line 1090.0,812.0..1116.0,812.0
+[-] text 1126.0,816.0 class=tc-legend font-size=11 "LV board max · 21 kA · LV · 0.4 kV"

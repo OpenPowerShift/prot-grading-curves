@@ -1,0 +1,364 @@
+=== sheet: view-1 ===
+viewBox 0 0 1400 1057
+plot 106,66,950,776
+domain-i 5.623413251903491,177827.94100389228
+domain-t 0.01,1000
+
+[-] rect 106.0,66.0 950.0x776.0
+[-] rect 7.0,7.0 1386.0x1043.0
+[-] line 7.0,989.0..1393.0,989.0
+[-] text 21.0,1011.0 font-size=12 font-weight=600 "11 kV spur — fuse / relay coordination"
+[-] text 21.0,1029.0 font-size=12 "Mersen 100T against an SEL-751 feeder element"
+[-] text 1291.0,1009.0 font-size=10 "DATE"
+[-] text 1291.0,1027.0 font-size=11 "2026-07-28"
+[-] text 1209.6,1009.0 font-size=10 "ENGINEER"
+[-] text 1209.6,1027.0 font-size=11 "B. Singh"
+[-] text 1042.4,1009.0 font-size=10 "PROJECT"
+[-] text 1042.4,1027.0 font-size=11 "Spur fuse coordination"
+[-] rect 106.0,66.0 950.0x776.0
+[-] line 111.9,66.0..111.9,842.0 class=tc-grid-minor
+[-] line 126.1,66.0..126.1,842.0 class=tc-grid-minor
+[-] line 138.3,66.0..138.3,842.0 class=tc-grid-minor
+[-] line 149.1,66.0..149.1,842.0 class=tc-grid-minor
+[-] line 158.8,66.0..158.8,842.0 class=tc-grid-major
+[-] text 158.8,862.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 A"
+[-] line 222.3,66.0..222.3,842.0 class=tc-grid-minor
+[-] text 222.3,862.0 text-anchor=middle font-size=10 "20 A"
+[-] line 259.5,66.0..259.5,842.0 class=tc-grid-minor
+[-] line 285.9,66.0..285.9,842.0 class=tc-grid-minor
+[-] line 306.3,66.0..306.3,842.0 class=tc-grid-minor
+[-] text 306.3,862.0 text-anchor=middle font-size=10 "50 A"
+[-] line 323.1,66.0..323.1,842.0 class=tc-grid-minor
+[-] line 337.2,66.0..337.2,842.0 class=tc-grid-minor
+[-] line 349.4,66.0..349.4,842.0 class=tc-grid-minor
+[-] line 360.2,66.0..360.2,842.0 class=tc-grid-minor
+[-] line 369.9,66.0..369.9,842.0 class=tc-grid-major
+[-] text 369.9,862.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
+[-] line 433.4,66.0..433.4,842.0 class=tc-grid-minor
+[-] text 433.4,862.0 text-anchor=middle font-size=10 "200 A"
+[-] line 470.6,66.0..470.6,842.0 class=tc-grid-minor
+[-] line 497.0,66.0..497.0,842.0 class=tc-grid-minor
+[-] line 517.4,66.0..517.4,842.0 class=tc-grid-minor
+[-] text 517.4,862.0 text-anchor=middle font-size=10 "500 A"
+[-] line 534.2,66.0..534.2,842.0 class=tc-grid-minor
+[-] line 548.3,66.0..548.3,842.0 class=tc-grid-minor
+[-] line 560.5,66.0..560.5,842.0 class=tc-grid-minor
+[-] line 571.3,66.0..571.3,842.0 class=tc-grid-minor
+[-] line 581.0,66.0..581.0,842.0 class=tc-grid-major
+[-] text 581.0,862.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
+[-] line 644.6,66.0..644.6,842.0 class=tc-grid-minor
+[-] text 644.6,862.0 text-anchor=middle font-size=10 "2 kA"
+[-] line 681.7,66.0..681.7,842.0 class=tc-grid-minor
+[-] line 708.1,66.0..708.1,842.0 class=tc-grid-minor
+[-] line 728.6,66.0..728.6,842.0 class=tc-grid-minor
+[-] text 728.6,862.0 text-anchor=middle font-size=10 "5 kA"
+[-] line 745.3,66.0..745.3,842.0 class=tc-grid-minor
+[-] line 759.4,66.0..759.4,842.0 class=tc-grid-minor
+[-] line 771.7,66.0..771.7,842.0 class=tc-grid-minor
+[-] line 782.5,66.0..782.5,842.0 class=tc-grid-minor
+[-] line 792.1,66.0..792.1,842.0 class=tc-grid-major
+[-] text 792.1,862.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
+[-] line 855.7,66.0..855.7,842.0 class=tc-grid-minor
+[-] text 855.7,862.0 text-anchor=middle font-size=10 "20 kA"
+[-] line 892.8,66.0..892.8,842.0 class=tc-grid-minor
+[-] line 919.2,66.0..919.2,842.0 class=tc-grid-minor
+[-] line 939.7,66.0..939.7,842.0 class=tc-grid-minor
+[-] text 939.7,862.0 text-anchor=middle font-size=10 "50 kA"
+[-] line 956.4,66.0..956.4,842.0 class=tc-grid-minor
+[-] line 970.5,66.0..970.5,842.0 class=tc-grid-minor
+[-] line 982.8,66.0..982.8,842.0 class=tc-grid-minor
+[-] line 993.6,66.0..993.6,842.0 class=tc-grid-minor
+[-] line 1003.2,66.0..1003.2,842.0 class=tc-grid-major
+[-] text 1003.2,862.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 kA"
+[-] line 106.0,842.0..1056.0,842.0 class=tc-grid-major
+[-] text 96.0,846.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 ms"
+[-] line 106.0,795.3..1056.0,795.3 class=tc-grid-minor
+[-] text 96.0,798.3 text-anchor=end font-size=10 "20 ms"
+[-] line 106.0,768.0..1056.0,768.0 class=tc-grid-minor
+[-] line 106.0,748.6..1056.0,748.6 class=tc-grid-minor
+[-] line 106.0,733.5..1056.0,733.5 class=tc-grid-minor
+[-] text 96.0,736.5 text-anchor=end font-size=10 "50 ms"
+[-] line 106.0,721.2..1056.0,721.2 class=tc-grid-minor
+[-] line 106.0,710.8..1056.0,710.8 class=tc-grid-minor
+[-] line 106.0,701.8..1056.0,701.8 class=tc-grid-minor
+[-] line 106.0,693.9..1056.0,693.9 class=tc-grid-minor
+[-] line 106.0,686.8..1056.0,686.8 class=tc-grid-major
+[-] text 96.0,690.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
+[-] line 106.0,640.1..1056.0,640.1 class=tc-grid-minor
+[-] text 96.0,643.1 text-anchor=end font-size=10 "200 ms"
+[-] line 106.0,612.8..1056.0,612.8 class=tc-grid-minor
+[-] line 106.0,593.4..1056.0,593.4 class=tc-grid-minor
+[-] line 106.0,578.3..1056.0,578.3 class=tc-grid-minor
+[-] text 96.0,581.3 text-anchor=end font-size=10 "500 ms"
+[-] line 106.0,566.0..1056.0,566.0 class=tc-grid-minor
+[-] line 106.0,555.6..1056.0,555.6 class=tc-grid-minor
+[-] line 106.0,546.6..1056.0,546.6 class=tc-grid-minor
+[-] line 106.0,538.7..1056.0,538.7 class=tc-grid-minor
+[-] line 106.0,531.6..1056.0,531.6 class=tc-grid-major
+[-] text 96.0,535.6 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1 s"
+[-] line 106.0,484.9..1056.0,484.9 class=tc-grid-minor
+[-] text 96.0,487.9 text-anchor=end font-size=10 "2 s"
+[-] line 106.0,457.6..1056.0,457.6 class=tc-grid-minor
+[-] line 106.0,438.2..1056.0,438.2 class=tc-grid-minor
+[-] line 106.0,423.1..1056.0,423.1 class=tc-grid-minor
+[-] text 96.0,426.1 text-anchor=end font-size=10 "5 s"
+[-] line 106.0,410.8..1056.0,410.8 class=tc-grid-minor
+[-] line 106.0,400.4..1056.0,400.4 class=tc-grid-minor
+[-] line 106.0,391.4..1056.0,391.4 class=tc-grid-minor
+[-] line 106.0,383.5..1056.0,383.5 class=tc-grid-minor
+[-] line 106.0,376.4..1056.0,376.4 class=tc-grid-major
+[-] text 96.0,380.4 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10 s"
+[-] line 106.0,329.7..1056.0,329.7 class=tc-grid-minor
+[-] text 96.0,332.7 text-anchor=end font-size=10 "20 s"
+[-] line 106.0,302.4..1056.0,302.4 class=tc-grid-minor
+[-] line 106.0,283.0..1056.0,283.0 class=tc-grid-minor
+[-] line 106.0,267.9..1056.0,267.9 class=tc-grid-minor
+[-] text 96.0,270.9 text-anchor=end font-size=10 "50 s"
+[-] line 106.0,255.6..1056.0,255.6 class=tc-grid-minor
+[-] line 106.0,245.2..1056.0,245.2 class=tc-grid-minor
+[-] line 106.0,236.2..1056.0,236.2 class=tc-grid-minor
+[-] line 106.0,228.3..1056.0,228.3 class=tc-grid-minor
+[-] line 106.0,221.2..1056.0,221.2 class=tc-grid-major
+[-] text 96.0,225.2 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
+[-] line 106.0,174.5..1056.0,174.5 class=tc-grid-minor
+[-] text 96.0,177.5 text-anchor=end font-size=10 "200 s"
+[-] line 106.0,147.2..1056.0,147.2 class=tc-grid-minor
+[-] line 106.0,127.8..1056.0,127.8 class=tc-grid-minor
+[-] line 106.0,112.7..1056.0,112.7 class=tc-grid-minor
+[-] text 96.0,115.7 text-anchor=end font-size=10 "500 s"
+[-] line 106.0,100.4..1056.0,100.4 class=tc-grid-minor
+[-] line 106.0,90.0..1056.0,90.0 class=tc-grid-minor
+[-] line 106.0,81.0..1056.0,81.0 class=tc-grid-minor
+[-] line 106.0,73.1..1056.0,73.1 class=tc-grid-minor
+[-] line 106.0,66.0..1056.0,66.0 class=tc-grid-major
+[-] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
+[-] text 44.0,454.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
+[-] text 581.0,962.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[-] line 433.4,842.0..433.4,846.0
+[-] line 571.3,66.0..571.3,842.0 class=tc-fault data-fault=Spur fault
+[-] line 712.6,66.0..712.6,842.0 class=tc-fault data-fault=Bus fault
+[-] path n=10 bbox=433.4,217.9..681.7,810.3
+[-] path n=10 bbox=433.4,217.9..681.7,810.3
+[-] line -670.0,842.0..106.0,66.0
+[-] line -661.0,842.0..115.0,66.0
+[-] line -652.0,842.0..124.0,66.0
+[-] line -643.0,842.0..133.0,66.0
+[-] line -634.0,842.0..142.0,66.0
+[-] line -625.0,842.0..151.0,66.0
+[-] line -616.0,842.0..160.0,66.0
+[-] line -607.0,842.0..169.0,66.0
+[-] line -598.0,842.0..178.0,66.0
+[-] line -589.0,842.0..187.0,66.0
+[-] line -580.0,842.0..196.0,66.0
+[-] line -571.0,842.0..205.0,66.0
+[-] line -562.0,842.0..214.0,66.0
+[-] line -553.0,842.0..223.0,66.0
+[-] line -544.0,842.0..232.0,66.0
+[-] line -535.0,842.0..241.0,66.0
+[-] line -526.0,842.0..250.0,66.0
+[-] line -517.0,842.0..259.0,66.0
+[-] line -508.0,842.0..268.0,66.0
+[-] line -499.0,842.0..277.0,66.0
+[-] line -490.0,842.0..286.0,66.0
+[-] line -481.0,842.0..295.0,66.0
+[-] line -472.0,842.0..304.0,66.0
+[-] line -463.0,842.0..313.0,66.0
+[-] line -454.0,842.0..322.0,66.0
+[-] line -445.0,842.0..331.0,66.0
+[-] line -436.0,842.0..340.0,66.0
+[-] line -427.0,842.0..349.0,66.0
+[-] line -418.0,842.0..358.0,66.0
+[-] line -409.0,842.0..367.0,66.0
+[-] line -400.0,842.0..376.0,66.0
+[-] line -391.0,842.0..385.0,66.0
+[-] line -382.0,842.0..394.0,66.0
+[-] line -373.0,842.0..403.0,66.0
+[-] line -364.0,842.0..412.0,66.0
+[-] line -355.0,842.0..421.0,66.0
+[-] line -346.0,842.0..430.0,66.0
+[-] line -337.0,842.0..439.0,66.0
+[-] line -328.0,842.0..448.0,66.0
+[-] line -319.0,842.0..457.0,66.0
+[-] line -310.0,842.0..466.0,66.0
+[-] line -301.0,842.0..475.0,66.0
+[-] line -292.0,842.0..484.0,66.0
+[-] line -283.0,842.0..493.0,66.0
+[-] line -274.0,842.0..502.0,66.0
+[-] line -265.0,842.0..511.0,66.0
+[-] line -256.0,842.0..520.0,66.0
+[-] line -247.0,842.0..529.0,66.0
+[-] line -238.0,842.0..538.0,66.0
+[-] line -229.0,842.0..547.0,66.0
+[-] line -220.0,842.0..556.0,66.0
+[-] line -211.0,842.0..565.0,66.0
+[-] line -202.0,842.0..574.0,66.0
+[-] line -193.0,842.0..583.0,66.0
+[-] line -184.0,842.0..592.0,66.0
+[-] line -175.0,842.0..601.0,66.0
+[-] line -166.0,842.0..610.0,66.0
+[-] line -157.0,842.0..619.0,66.0
+[-] line -148.0,842.0..628.0,66.0
+[-] line -139.0,842.0..637.0,66.0
+[-] line -130.0,842.0..646.0,66.0
+[-] line -121.0,842.0..655.0,66.0
+[-] line -112.0,842.0..664.0,66.0
+[-] line -103.0,842.0..673.0,66.0
+[-] line -94.0,842.0..682.0,66.0
+[-] line -85.0,842.0..691.0,66.0
+[-] line -76.0,842.0..700.0,66.0
+[-] line -67.0,842.0..709.0,66.0
+[-] line -58.0,842.0..718.0,66.0
+[-] line -49.0,842.0..727.0,66.0
+[-] line -40.0,842.0..736.0,66.0
+[-] line -31.0,842.0..745.0,66.0
+[-] line -22.0,842.0..754.0,66.0
+[-] line -13.0,842.0..763.0,66.0
+[-] line -4.0,842.0..772.0,66.0
+[-] line 5.0,842.0..781.0,66.0
+[-] line 14.0,842.0..790.0,66.0
+[-] line 23.0,842.0..799.0,66.0
+[-] line 32.0,842.0..808.0,66.0
+[-] line 41.0,842.0..817.0,66.0
+[-] line 50.0,842.0..826.0,66.0
+[-] line 59.0,842.0..835.0,66.0
+[-] line 68.0,842.0..844.0,66.0
+[-] line 77.0,842.0..853.0,66.0
+[-] line 86.0,842.0..862.0,66.0
+[-] line 95.0,842.0..871.0,66.0
+[-] line 104.0,842.0..880.0,66.0
+[-] line 113.0,842.0..889.0,66.0
+[-] line 122.0,842.0..898.0,66.0
+[-] line 131.0,842.0..907.0,66.0
+[-] line 140.0,842.0..916.0,66.0
+[-] line 149.0,842.0..925.0,66.0
+[-] line 158.0,842.0..934.0,66.0
+[-] line 167.0,842.0..943.0,66.0
+[-] line 176.0,842.0..952.0,66.0
+[-] line 185.0,842.0..961.0,66.0
+[-] line 194.0,842.0..970.0,66.0
+[-] line 203.0,842.0..979.0,66.0
+[-] line 212.0,842.0..988.0,66.0
+[-] line 221.0,842.0..997.0,66.0
+[-] line 230.0,842.0..1006.0,66.0
+[-] line 239.0,842.0..1015.0,66.0
+[-] line 248.0,842.0..1024.0,66.0
+[-] line 257.0,842.0..1033.0,66.0
+[-] line 266.0,842.0..1042.0,66.0
+[-] line 275.0,842.0..1051.0,66.0
+[-] line 284.0,842.0..1060.0,66.0
+[-] line 293.0,842.0..1069.0,66.0
+[-] line 302.0,842.0..1078.0,66.0
+[-] line 311.0,842.0..1087.0,66.0
+[-] line 320.0,842.0..1096.0,66.0
+[-] line 329.0,842.0..1105.0,66.0
+[-] line 338.0,842.0..1114.0,66.0
+[-] line 347.0,842.0..1123.0,66.0
+[-] line 356.0,842.0..1132.0,66.0
+[-] line 365.0,842.0..1141.0,66.0
+[-] line 374.0,842.0..1150.0,66.0
+[-] line 383.0,842.0..1159.0,66.0
+[-] line 392.0,842.0..1168.0,66.0
+[-] line 401.0,842.0..1177.0,66.0
+[-] line 410.0,842.0..1186.0,66.0
+[-] line 419.0,842.0..1195.0,66.0
+[-] line 428.0,842.0..1204.0,66.0
+[-] line 437.0,842.0..1213.0,66.0
+[-] line 446.0,842.0..1222.0,66.0
+[-] line 455.0,842.0..1231.0,66.0
+[-] line 464.0,842.0..1240.0,66.0
+[-] line 473.0,842.0..1249.0,66.0
+[-] line 482.0,842.0..1258.0,66.0
+[-] line 491.0,842.0..1267.0,66.0
+[-] line 500.0,842.0..1276.0,66.0
+[-] line 509.0,842.0..1285.0,66.0
+[-] line 518.0,842.0..1294.0,66.0
+[-] line 527.0,842.0..1303.0,66.0
+[-] line 536.0,842.0..1312.0,66.0
+[-] line 545.0,842.0..1321.0,66.0
+[-] line 554.0,842.0..1330.0,66.0
+[-] line 563.0,842.0..1339.0,66.0
+[-] line 572.0,842.0..1348.0,66.0
+[-] line 581.0,842.0..1357.0,66.0
+[-] line 590.0,842.0..1366.0,66.0
+[-] line 599.0,842.0..1375.0,66.0
+[-] line 608.0,842.0..1384.0,66.0
+[-] line 617.0,842.0..1393.0,66.0
+[-] line 626.0,842.0..1402.0,66.0
+[-] line 635.0,842.0..1411.0,66.0
+[-] line 644.0,842.0..1420.0,66.0
+[-] line 653.0,842.0..1429.0,66.0
+[-] line 662.0,842.0..1438.0,66.0
+[-] line 671.0,842.0..1447.0,66.0
+[-] line 680.0,842.0..1456.0,66.0
+[-] line 689.0,842.0..1465.0,66.0
+[-] line 698.0,842.0..1474.0,66.0
+[-] line 707.0,842.0..1483.0,66.0
+[-] line 716.0,842.0..1492.0,66.0
+[-] line 725.0,842.0..1501.0,66.0
+[-] line 734.0,842.0..1510.0,66.0
+[-] line 743.0,842.0..1519.0,66.0
+[-] line 752.0,842.0..1528.0,66.0
+[-] line 761.0,842.0..1537.0,66.0
+[-] line 770.0,842.0..1546.0,66.0
+[-] line 779.0,842.0..1555.0,66.0
+[-] line 788.0,842.0..1564.0,66.0
+[-] line 797.0,842.0..1573.0,66.0
+[-] line 806.0,842.0..1582.0,66.0
+[-] line 815.0,842.0..1591.0,66.0
+[-] line 824.0,842.0..1600.0,66.0
+[-] line 833.0,842.0..1609.0,66.0
+[-] line 842.0,842.0..1618.0,66.0
+[-] line 851.0,842.0..1627.0,66.0
+[-] line 860.0,842.0..1636.0,66.0
+[-] line 869.0,842.0..1645.0,66.0
+[-] line 878.0,842.0..1654.0,66.0
+[-] line 887.0,842.0..1663.0,66.0
+[-] line 896.0,842.0..1672.0,66.0
+[-] line 905.0,842.0..1681.0,66.0
+[-] line 914.0,842.0..1690.0,66.0
+[-] line 923.0,842.0..1699.0,66.0
+[-] line 932.0,842.0..1708.0,66.0
+[-] line 941.0,842.0..1717.0,66.0
+[-] line 950.0,842.0..1726.0,66.0
+[-] line 959.0,842.0..1735.0,66.0
+[-] line 968.0,842.0..1744.0,66.0
+[-] line 977.0,842.0..1753.0,66.0
+[-] line 986.0,842.0..1762.0,66.0
+[-] line 995.0,842.0..1771.0,66.0
+[-] line 1004.0,842.0..1780.0,66.0
+[-] line 1013.0,842.0..1789.0,66.0
+[-] line 1022.0,842.0..1798.0,66.0
+[-] line 1031.0,842.0..1807.0,66.0
+[-] line 1040.0,842.0..1816.0,66.0
+[-] line 1049.0,842.0..1825.0,66.0
+[-] path n=5 bbox=433.4,255.6..681.7,810.3
+[-] path n=5 bbox=433.4,217.9..681.7,772.6 data-curve=fuse_100T
+[-] path n=133 bbox=433.8,43.6..1056.0,884.5 class=tc-curve data-curve=R_FEEDER:51 data-ref=R_FEEDER:51 data-voltage=MV
+[-] line 571.3,842.0..571.3,867.0 class=tc-fault
+[-] text 573.3,876.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Spur fault · 900 A"
+[-] line 712.6,842.0..712.6,867.0 class=tc-fault
+[-] text 714.6,876.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Bus fault · 4.2 kA"
+[-] text 1090.0,79.0 class=tc-legend font-size=13 font-weight=600 "Curves"
+[-] line 1090.0,95.0..1116.0,95.0
+[-] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "R_FEEDER:51"
+[-] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL SEL-751"
+[-] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC VI · 200 A · TMS 0.35"
+[-] text 1126.0,145.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[-] rect 1090.0,161.5 26.0x9.0
+[-] rect 1090.0,161.5 26.0x9.0
+[-] line 1081.0,170.5..1090.0,161.5
+[-] line 1086.0,170.5..1095.0,161.5
+[-] line 1091.0,170.5..1100.0,161.5
+[-] line 1096.0,170.5..1105.0,161.5
+[-] line 1101.0,170.5..1110.0,161.5
+[-] line 1106.0,170.5..1115.0,161.5
+[-] line 1111.0,170.5..1120.0,161.5
+[-] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "fuse_100T"
+[-] text 1126.0,186.0 class=tc-legend-muted font-size=11 "Mersen 100T"
+[-] text 1126.0,201.0 class=tc-legend-muted font-size=11 "Fuse · 100 A"
+[-] text 1126.0,216.0 class=tc-legend-muted font-size=11 "min melt -&gt; total clear"
+[-] text 1090.0,254.0 font-size=13 font-weight=600 "Faults"
+[-] line 1090.0,270.0..1116.0,270.0
+[-] text 1126.0,274.0 class=tc-legend font-size=11 "Spur fault · 900 A"
+[-] line 1090.0,286.0..1116.0,286.0
+[-] text 1126.0,290.0 class=tc-legend font-size=11 "Bus fault · 4.2 kA"

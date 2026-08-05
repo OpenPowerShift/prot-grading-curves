@@ -191,12 +191,43 @@ function refCompletions(src: string): Completion[] {
         detail: `element ${e[1]} on ${relayId}`,
         boost: 4,
       });
+
+      /*
+       * The element's stages, addressable in their own right.
+       *
+       * `R:51/inst` is a reference the language accepts everywhere
+       * `R:51` is -- a `grade` against one stage, an annotation to the
+       * stage that is armed under the condition being drawn -- and it
+       * was offered nowhere, so it had to be known already to be used.
+       *
+       * Scanned from this element's own body, so a stage named `main`
+       * on two different elements is offered against each.
+       */
+      const elemBody = ((): string => {
+        let depth2 = 0;
+        let j = body.indexOf('{', e.index);
+        const from = j;
+        for (; j < body.length; j++) {
+          if (body[j] === '{') depth2++;
+          else if (body[j] === '}') { depth2--; if (depth2 === 0) break; }
+        }
+        return body.slice(from, j);
+      })();
+      const stageRe = /\bstage\s+([A-Za-z0-9_]+)\s*\{/g;
+      for (let st = stageRe.exec(elemBody); st; st = stageRe.exec(elemBody)) {
+        out.push({
+          label: `${relayId}:${e[1]}/${st[1]}`,
+          type: 'variable',
+          detail: `stage ${st[1]} of ${e[1]} on ${relayId}`,
+          boost: 3,
+        });
+      }
     }
   }
 
   const deviceRe = /\bdevice\s+"([^"]+)"\s*\{/g;
   for (let m = deviceRe.exec(src); m; m = deviceRe.exec(src)) {
-    out.push({ label: m[1], type: 'variable', detail: 'device', boost: 3 });
+    out.push(namedValue(m[1], 'device', 3));
   }
 
   return out;
@@ -210,14 +241,31 @@ function refCompletions(src: string): Completion[] {
  * `annotate`, `point`, `view { condition }` -- accepts either, so
  * offering only the faults hides half the answer.
  */
+/**
+ * A declared name, inserted the way the language expects to read it.
+ *
+ * Level and condition names are declared quoted -- `"MV"`,
+ * `"Board max"` -- and referenced quoted everywhere in the language
+ * and in every example. The completion inserted the bare word, so
+ * accepting one produced `fault = Board max;`: a parse error for any
+ * name with a space in it, and a bare identifier for the rest, which
+ * is not what the author picked from the list.
+ *
+ * `label` stays bare so the dropdown reads cleanly; `apply` is what
+ * lands in the document.
+ */
+function namedValue(name: string, detail: string, boost: number): Completion {
+  return { label: name, apply: `"${name}"`, type: 'variable', detail, boost };
+}
+
 function faultCompletions(src: string): Completion[] {
   const out: Completion[] = [];
 
-  const faultsBlock = src.match(/\bfaults\s*\{([\s\S]*?)\n\}/);
-  if (faultsBlock) {
+  const faultsBody = blockBody(src, /\bfaults\s*\{/);
+  if (faultsBody != null) {
     const nameRe = /"([^"]+)"\s*\{/g;
-    for (let m = nameRe.exec(faultsBlock[1]); m; m = nameRe.exec(faultsBlock[1])) {
-      out.push({ label: m[1], type: 'variable', detail: 'fault', boost: 4 });
+    for (let m = nameRe.exec(faultsBody); m; m = nameRe.exec(faultsBody)) {
+      out.push(namedValue(m[1], 'fault', 4));
     }
   }
 
@@ -225,7 +273,7 @@ function faultCompletions(src: string): Completion[] {
    * directly rather than inside an enclosing one. */
   const scenarioRe = /\bscenario\s+"([^"]+)"\s*\{/g;
   for (let m = scenarioRe.exec(src); m; m = scenarioRe.exec(src)) {
-    out.push({ label: m[1], type: 'variable', detail: 'scenario', boost: 4 });
+    out.push(namedValue(m[1], 'scenario', 4));
   }
 
   return out;
@@ -234,13 +282,40 @@ function faultCompletions(src: string): Completion[] {
 /** Voltage level names declared in `system { voltages { ... } }`. */
 function voltageCompletions(src: string): Completion[] {
   const out: Completion[] = [];
-  const block = src.match(/\bvoltages\s*\{([\s\S]*?)\n\s*\}/);
-  if (!block) return out;
+  const body = blockBody(src, /\bvoltages\s*\{/);
+  if (body == null) return out;
   const nameRe = /"([^"]+)"\s*\{/g;
-  for (let m = nameRe.exec(block[1]); m; m = nameRe.exec(block[1])) {
-    out.push({ label: m[1], type: 'variable', detail: 'voltage level', boost: 4 });
+  for (let m = nameRe.exec(body); m; m = nameRe.exec(body)) {
+    out.push(namedValue(m[1], 'voltage level', 4));
   }
   return out;
+}
+
+/**
+ * The text between a block's braces, found by matching them.
+ *
+ * The `voltages` and `faults` bodies were matched with
+ * `\{([\s\S]*?)\n\s*\}`, which requires the closing brace to sit on
+ * its own line -- so a block written on one line offered nothing, and
+ * a nested `}` ended the match early. Counting braces has neither
+ * problem, and an unclosed block still yields what has been written so
+ * far, which is the usual state of a file being typed into.
+ */
+function blockBody(src: string, opener: RegExp): string | null {
+  const m = opener.exec(src);
+  if (!m) return null;
+  const start = src.indexOf('{', m.index);
+  if (start < 0) return null;
+
+  let depth = 0;
+  for (let i = start; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') {
+      depth--;
+      if (depth === 0) return src.slice(start + 1, i);
+    }
+  }
+  return src.slice(start + 1);
 }
 
 /**
@@ -316,10 +391,63 @@ function valueCompletions(field: string, block?: string): Completion[] {
   return [];
 }
 
+/**
+ * Whether an offset sits inside a comment or a string.
+ *
+ * The completion source fired anywhere, so typing an explanation in a
+ * `#` comment raised the field list on every word and Enter accepted
+ * one into the middle of the prose. A comment is the one place in a
+ * source file where the language has nothing to suggest.
+ *
+ * Strings are included for the same reason: a relay's name is free
+ * text, and the keyword list has no business in it.
+ *
+ * Scanned from the start of the document rather than the line, because
+ * `/* ... *\/` spans lines and a line-local test cannot see the opener.
+ */
+function scanContext(src: string, pos: number): { comment: boolean; string: boolean } {
+  let inLine = false;
+  let inBlock = false;
+  let inString = false;
+
+  for (let i = 0; i < pos; i++) {
+    const c = src[i];
+    const next = src[i + 1];
+
+    if (inLine) {
+      if (c === '\n') inLine = false;
+      continue;
+    }
+    if (inBlock) {
+      if (c === '*' && next === '/') { inBlock = false; i++; }
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') { i++; continue; }
+      if (c === '"') inString = false;
+      continue;
+    }
+
+    if (c === '"') { inString = true; continue; }
+    if (c === '#' || (c === '/' && next === '/')) { inLine = true; continue; }
+    if (c === '/' && next === '*') { inBlock = true; i++; continue; }
+  }
+
+  return { comment: inLine || inBlock, string: inString };
+}
+
 export function tcCompletionSource(ctx: CompletionContext): CompletionResult | null {
   const word = ctx.matchBefore(/[A-Za-z_][\w.:]*/);
   const src = ctx.state.doc.toString();
   const pos = ctx.pos;
+
+  /*
+   * Nothing to suggest inside a comment. Explicit or not: pressing `?`
+   * mid-sentence in a note should type a question mark, not raise the
+   * field list over the prose.
+   */
+  const where = scanContext(src, pos);
+  if (where.comment) return null;
 
   /*
    * Unit position first: `I_pickup = 5.0 ` wants amperes, not field names.
@@ -373,6 +501,15 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
       return { from, options, validFor: /[\w.:]*/ };
     }
   }
+
+  /*
+   * Inside a string that is not a value position -- a `label`, a
+   * `name`, a `comment` -- the text is the engineer's own words and
+   * the keyword list has no business in it. Checked here rather than
+   * at the top, so a quote just opened after `voltage =` still offers
+   * the declared levels.
+   */
+  if (where.string) return null;
 
   /*
    * Asking outright is always answered.

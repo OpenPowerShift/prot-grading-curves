@@ -852,6 +852,22 @@ export class TcApp extends LitElement {
     document.documentElement.dataset.theme = this.theme;
   }
 
+  /**
+   * Which theme the *plot* is drawn in.
+   *
+   * A study that declares `page { theme }` gets it. The UI toggle used
+   * to override the source unconditionally, so setting `theme = "dark"`
+   * in a file did nothing on screen and the sheet you were looking at
+   * was not the sheet you would export -- with no indication which one
+   * you were seeing.
+   *
+   * The toggle still drives the chrome, and still drives the plot for
+   * a study that declares no theme, which is most of them.
+   */
+  private plotTheme(): 'light' | 'dark' | 'monochrome' | 'print' {
+    return this.study?.page?.theme ?? this.theme;
+  }
+
   private toggleTheme(): void {
     this.theme = this.theme === 'dark' ? 'light' : 'dark';
     this.applyTheme();
@@ -1083,7 +1099,9 @@ export class TcApp extends LitElement {
                 ${mode === 'plot' ? '⇲ Split' : '⇥ Hide'}
               </button>` : null}
             <button class="side-btn"
-                    title=${`Switch to the ${this.theme === 'dark' ? 'light' : 'dark'} theme`}
+                    title=${this.study?.page?.theme
+                      ? `This study declares theme = "${this.study.page.theme}", which the plot follows; this switches the editor`
+                      : `Switch to the ${this.theme === 'dark' ? 'light' : 'dark'} theme`}
                     @click=${() => this.toggleTheme()}>
               ${this.theme === 'dark' ? '☀ Light' : '☾ Dark'}
             </button>
@@ -1093,7 +1111,7 @@ export class TcApp extends LitElement {
               .document=${this.ast}
               .study=${this.study}
               .viewIndex=${this.viewIndex}
-              .theme=${this.theme}
+              .theme=${this.plotTheme()}
               .errors=${this.errors}></tc-viewer>
         </div>
       </div>

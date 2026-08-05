@@ -811,7 +811,34 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const bordered = opts.page?.border === true;
   const sheetInset = bordered ? 14 : 0;
-  const titleBlockH = bordered ? 54 : 0;
+  /*
+   * The title block holds a stack: heading, optional subtitle, and an
+   * optional author's footer along its foot.
+   *
+   * It was a flat 54 px whatever was in it, with the footer pinned 6 px
+   * above the bottom edge. A block carrying both a subtitle and a
+   * footer put their baselines 8 px apart -- overlapping at the default
+   * size and plainly colliding at any larger `font_size_px`, which is
+   * why setting one looked like it did nothing: the text grew into the
+   * line above it rather than into space of its own.
+   *
+   * Measured from what is actually there, so the strip is as tall as it
+   * needs to be and no taller.
+   */
+  const tbFooterSize = opts.page?.footer
+    ? Math.max(1, opts.page.footer.font_size_px ?? FONT_DETAIL - 1)
+    : 0;
+  const tbHasSubtitle = ((): boolean => {
+    const title = opts.page?.title;
+    return typeof title === 'object' && title != null && !!title.subtitle;
+  })();
+  const titleBlockH = bordered
+    ? 22                                        /* top pad to the first baseline */
+      + FONT_LABEL + 4                          /* the heading */
+      + (tbHasSubtitle ? 2 + FONT_SUBTITLE + 3 : 0)
+      + (tbFooterSize > 0 ? tbFooterSize + 8 : 0)
+      + 6                                       /* bottom pad */
+    : 0;
 
   /*
    * Plot margins. The legend column is sized to hold a relay

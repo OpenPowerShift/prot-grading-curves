@@ -294,7 +294,18 @@ tc-app .diag-where {
 }
 tc-app .diag-where:hover { opacity: 1; }
 tc-app .diag-code { opacity: 0.75; }
-tc-app .diag-msg { color: var(--tc-fg); }
+tc-app .diag-msg {
+  color: var(--tc-fg);
+  /*
+   * A grid item's default `min-width: auto` refuses to shrink below
+   * its content, so one long message widened the whole row past the
+   * viewport -- and `body { overflow: hidden }` then clipped it rather
+   * than offering a scrollbar. On a phone that put the end of every
+   * diagnostic off the side of the screen.
+   */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 /*
  * The toolbar row grows rather than clipping what will not fit.
@@ -615,6 +626,19 @@ tc-app .pane-switch button.on {
   /* Room is scarce enough that the counts and the label go. */
   tc-app .side-title-label { display: none; }
   tc-app .counts { flex: 1 1 100%; }
+
+  /*
+   * A diagnostic is a sentence, and four columns of one leave the
+   * sentence about a third of a phone's width. Stacked, the location
+   * and code sit on their own line above the message, which then has
+   * the full width to wrap into.
+   */
+  tc-app .diagnostics li {
+    grid-template-columns: 14px 1fr;
+    row-gap: 2px;
+  }
+  tc-app .diag-code { grid-column: 2; }
+  tc-app .diag-msg { grid-column: 2; }
 }
 
 /* Touch devices: the plot's hover readout never fires, so the

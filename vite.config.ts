@@ -23,6 +23,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    /*
+     * jsdom has no layout engine, and CodeMirror measures on any
+     * dispatch that asks to scroll. `tests/setup.ts` supplies the two
+     * `Range` methods it calls, which jsdom does not define -- without
+     * them the measure throws inside a requestAnimationFrame callback,
+     * every assertion still passes, and the run still exits non-zero.
+     */
+    setupFiles: ['tests/setup.ts'],
     include: ['tests/unit/**/*.spec.ts'],
     exclude: ['tests/visual/**/*.spec.ts'],
     coverage: {

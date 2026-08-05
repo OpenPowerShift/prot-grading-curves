@@ -1,5 +1,5 @@
 /**
- * Rewrite a `.tc` source into the units-everywhere vocabulary.
+ * Rewrite a `.ptc` source into the units-everywhere vocabulary.
  *
  * No key carries its own unit any more, so two things change together:
  * the key is renamed, and where the old key *implied* a unit the value
@@ -12,7 +12,7 @@
  * name occurring inside a string or a comment is left alone. Run it,
  * then read the diff.
  *
- *   node scripts/migrate-tc.mjs <file>...
+ *   node scripts/migrate-ptc.mjs <file>...
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -102,7 +102,7 @@ export function migrate(source) {
 
 const files = process.argv.slice(2);
 if (files.length === 0) {
-  console.error('usage: node scripts/migrate-tc.mjs <file>...');
+  console.error('usage: node scripts/migrate-ptc.mjs <file>...');
   process.exit(2);
 }
 for (const file of files) {

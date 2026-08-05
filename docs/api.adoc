@@ -9,7 +9,7 @@ toc::[]
 
 == Pipeline
 
-A `.tc` source goes through four stages. Each is separately callable, but most
+A `.ptc` source goes through four stages. Each is separately callable, but most
 consumers want `process()`, which runs all of them.
 
 [cols="1,3",options="header"]

@@ -1,5 +1,5 @@
 /**
- * .tc parser -- hand-rolled recursive-descent with a precise tokenizer.
+ * .ptc parser -- hand-rolled recursive-descent with a precise tokenizer.
  *
  * Why handwritten: the language has a single grammar author (you),
  * ~150 productions, and lex-time errors benefit from a tighter
@@ -390,7 +390,7 @@ class Parser {
    * Lexer errors are *copied in*, not aliased. Assigning the caller's
    * array here made `parser.errors` and the lexer's array the same
    * object, so `parse` spreading both reported every error twice --
-   * and a `.tc` file with one stray brace listed the same complaint
+   * and a `.ptc` file with one stray brace listed the same complaint
    * two lines running.
    */
   constructor(tokens: Token[], lexErrors: readonly ParseError[] = []) {

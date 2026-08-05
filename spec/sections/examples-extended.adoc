@@ -6,7 +6,7 @@ the *extended* forms: `stages`, `combine`, and `view`.
 
 === Page / theme / colour configuration
 
-The following `.tc` file produces a publication-grade A4 landscape
+The following `.ptc` file produces a publication-grade A4 landscape
 PDF with the Okabe-Ito colour-blind-friendly palette, a centred
 title with subtitle, a footer showing project / engineer / date /
 page numbers, and a `DRAFT` watermark diagonal across the page:
@@ -118,7 +118,7 @@ language defaults at render time. The CLI flags:
 
 [source,console]
 ----
-$ tc-curves render riverside.tc --pdf \
+$ tc-curves render riverside.ptc --pdf \
     --page-size A3 \
     --orientation landscape \
     --theme dark \
@@ -127,7 +127,7 @@ $ tc-curves render riverside.tc --pdf \
     --watermark "FINAL -- NOT FOR CONSTRUCTION"
 ----
 
-The CLI flags take precedence over the `.tc` file's `page { ... }`
+The CLI flags take precedence over the `.ptc` file's `page { ... }`
 block but are *not* written back into the source file; the
 regenerated SVG/PNG/PDF reflects the runtime choice.
 

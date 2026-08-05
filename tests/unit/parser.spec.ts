@@ -171,7 +171,7 @@ describe('number literals', () => {
 
 describe('shipped examples', () => {
   const dir = join(repoRoot(), 'examples');
-  const files = readdirSync(dir).filter((f) => f.endsWith('.tc'));
+  const files = readdirSync(dir).filter((f) => f.endsWith('.ptc'));
 
   it('finds example files to check', () => {
     expect(files.length).toBeGreaterThan(0);

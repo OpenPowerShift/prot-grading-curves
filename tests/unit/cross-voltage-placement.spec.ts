@@ -204,7 +204,7 @@ describe('example 12, the case that surfaced this', () => {
   it('puts the LV breaker where its report says it operates', async () => {
     const { readFileSync } = await import('node:fs');
     const svg = renderStudy(
-      process(readFileSync('examples/12-sequence-scenario.tc', 'utf8')),
+      process(readFileSync('examples/12-sequence-scenario.ptc', 'utf8')),
       { theme: 'light' },
     );
     const rule = Number(/x1="([\d.]+)"[^>]*data-fault="LV earth fault"/.exec(svg)![1]);

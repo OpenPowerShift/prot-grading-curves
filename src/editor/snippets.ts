@@ -1,5 +1,5 @@
 /**
- * Snippet catalogue for the `.tc` editor.
+ * Snippet catalogue for the `.ptc` editor.
  *
  * Each snippet expands a block keyword into a skeleton carrying its
  * *required* fields, so the shape a new author types is valid by

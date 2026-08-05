@@ -1,5 +1,5 @@
 /**
- * CodeMirror syntax highlighting for `.tc`.
+ * CodeMirror syntax highlighting for `.ptc`.
  *
  * A hand-written `StreamParser` rather than a Lezer grammar: the
  * language is small and line-oriented, the token classes are decided
@@ -161,6 +161,6 @@ const parser: StreamParser<TcState> = {
   },
 };
 
-/** The `.tc` language, ready to hand to an `EditorState`. */
+/** The `.ptc` language, ready to hand to an `EditorState`. */
 export const tcLanguage = StreamLanguage.define(parser);
 

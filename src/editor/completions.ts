@@ -1,5 +1,5 @@
 /**
- * CodeMirror 6 autocomplete source for the .tc language.
+ * CodeMirror 6 autocomplete source for the .ptc language.
  *
  * - At top level (or when the cursor is on an empty line), suggest
  *   the top-level block keywords (meta, system, faults, ...).

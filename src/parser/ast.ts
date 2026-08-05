@@ -1,5 +1,5 @@
 /**
- * AST types for the .tc (time-current grading) language.
+ * AST types for the .ptc (time-current grading) language.
  *
  * The AST is *pure data* with no behaviour -- resolution, computation,
  * and rendering are separate phases over the same shape.

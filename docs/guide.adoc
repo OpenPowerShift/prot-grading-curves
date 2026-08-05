@@ -6,7 +6,7 @@
 :sectanchors:
 :revdate: 2026-07-30
 
-A practical guide to writing `.tc` files: protection-relay time-current
+A practical guide to writing `.ptc` files: protection-relay time-current
 grading studies as plain text.
 
 This document is self-contained and example-led. It is the reference to
@@ -19,7 +19,7 @@ toc::[]
 
 == Before anything else
 
-A `.tc` file declares four things and asks one question:
+A `.ptc` file declares four things and asks one question:
 
 . the *voltage levels* in the study,
 . the *fault currents* (or scenarios) the study is judged against,
@@ -122,11 +122,11 @@ are named, not whichever the tool happened to find first.
 
 [source,bash]
 ----
-tc-curves check  study.tc              # parse + validate only
-tc-curves report study.tc              # margin report to stdout
-tc-curves render study.tc --svg -o study.svg
-tc-curves render study.tc --png -o study.png --width 1600
-tc-curves render study.tc --pdf -o study.pdf
+tc-curves check  study.ptc              # parse + validate only
+tc-curves report study.ptc              # margin report to stdout
+tc-curves render study.ptc --svg -o study.svg
+tc-curves render study.ptc --png -o study.png --width 1600
+tc-curves render study.ptc --pdf -o study.pdf
 ----
 
 == Syntax essentials
@@ -1369,7 +1369,7 @@ one of three ways, most specific first:
 
 [source,bash]
 ----
-tc-curves render study.tc --svg -o out.svg --view "I2 grading"
+tc-curves render study.ptc --svg -o out.svg --view "I2 grading"
 ----
 
 [source,tc]

@@ -1,7 +1,7 @@
 /**
  * The command-line interface.
  *
- * The CLI is a shipped entry point -- `tc-curves study.tc -o study.svg`
+ * The CLI is a shipped entry point -- `tc-curves study.ptc -o study.svg`
  * is how the tool is used outside the playground -- and it had no tests
  * at all. Its exit status is the contract: 0 clean, 1 validation
  * errors, 2 usage or I/O failure, and a build script somewhere is
@@ -58,8 +58,8 @@ const write = (name: string, text: string): string => {
 
 describe('argument parsing', () => {
   it('reads the output path and format flags', () => {
-    const o = parseArgs(['render', 'study.tc', '--pdf', '-o', 'out.pdf', '--size', 'A3', '--portrait']);
-    expect(o.input).toBe('study.tc');
+    const o = parseArgs(['render', 'study.ptc', '--pdf', '-o', 'out.pdf', '--size', 'A3', '--portrait']);
+    expect(o.input).toBe('study.ptc');
     expect(o.format).toBe('pdf');
     expect(o.output).toBe('out.pdf');
     expect(o.size).toBe('A3');
@@ -67,20 +67,20 @@ describe('argument parsing', () => {
   });
 
   it('reads the PNG sizing flags', () => {
-    const o = parseArgs(['render', 's.tc', '--png', '--width', '1600', '--scale', '3']);
+    const o = parseArgs(['render', 's.ptc', '--png', '--width', '1600', '--scale', '3']);
     expect(o.format).toBe('png');
     expect(o.width).toBe(1600);
     expect(o.scale).toBe(3);
   });
 
   it('names the subcommand it was given', () => {
-    expect(parseArgs(['check', 's.tc']).command).toBe('check');
-    expect(parseArgs(['report', 's.tc']).command).toBe('report');
-    expect(parseArgs(['render', 's.tc']).command).toBe('render');
+    expect(parseArgs(['check', 's.ptc']).command).toBe('check');
+    expect(parseArgs(['report', 's.ptc']).command).toBe('report');
+    expect(parseArgs(['render', 's.ptc']).command).toBe('render');
   });
 
   it('takes a view by name, and the quiet flag', () => {
-    const o = parseArgs(['render', 's.tc', '--view', 'Sheet B', '-q']);
+    const o = parseArgs(['render', 's.ptc', '--view', 'Sheet B', '-q']);
     expect(o.view).toBe('Sheet B');
     expect(o.quiet).toBe(true);
   });
@@ -93,12 +93,12 @@ describe('argument parsing', () => {
 
 describe('exit status', () => {
   it('is 0 for a study that validates', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     expect(await main(['render', file, '-o', join(dir, 'out.svg')])).toBe(0);
   });
 
   it('is 1 when the study has validation errors', async () => {
-    const file = write('bad.tc', BAD_SETTING);
+    const file = write('bad.ptc', BAD_SETTING);
     expect(await main(['render', file, '-o', join(dir, 'out.svg')])).toBe(1);
     expect(err.join('\n')).toMatch(/UNKNOWN_SETTING/);
   });
@@ -110,17 +110,17 @@ describe('exit status', () => {
   });
 
   it('is 2 for a subcommand it does not know', async () => {
-    expect(await main(['frobnicate', 'x.tc'])).toBe(2);
+    expect(await main(['frobnicate', 'x.ptc'])).toBe(2);
     expect(err.join('\n')).toMatch(/unknown command/);
   });
 
   it('is 2 for an option it does not know', async () => {
-    expect(await main(['render', 'x.tc', '--wat'])).toBe(2);
+    expect(await main(['render', 'x.ptc', '--wat'])).toBe(2);
     expect(err.join('\n')).toMatch(/unknown option/);
   });
 
   it('is 2 when the input cannot be read', async () => {
-    expect(await main(['render', join(dir, 'nothing-here.tc')])).toBe(2);
+    expect(await main(['render', join(dir, 'nothing-here.ptc')])).toBe(2);
     expect(err.join('\n')).toMatch(/cannot read/);
   });
 
@@ -137,8 +137,8 @@ describe('rendering', () => {
     const cwd = process.cwd();
     try {
       process.chdir(dir);
-      write('good.tc', GOOD);
-      expect(await main(['render', 'good.tc'])).toBe(0);
+      write('good.ptc', GOOD);
+      expect(await main(['render', 'good.ptc'])).toBe(0);
       expect(existsSync(join(dir, 'good.svg'))).toBe(true);
       expect(readFileSync(join(dir, 'good.svg'), 'utf8')).toContain('<svg');
     } finally {
@@ -147,21 +147,21 @@ describe('rendering', () => {
   });
 
   it('honours an explicit output path', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     const target = join(dir, 'named.svg');
     expect(await main(['render', file, '-o', target])).toBe(0);
     expect(existsSync(target)).toBe(true);
   });
 
   it('report prints the margins and writes nothing', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     expect(await main(['report', file])).toBe(0);
     expect(out.join('\n')).toMatch(/achieved margin/);
     expect(existsSync(join(dir, 'good.svg'))).toBe(false);
   });
 
   it('check says so when a study is clean, and is quiet on request', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     expect(await main(['check', file])).toBe(0);
     expect(out.join('\n')).toMatch(/no errors/);
 
@@ -171,7 +171,7 @@ describe('rendering', () => {
   });
 
   it('check reports a broken study without writing a sheet', async () => {
-    const file = write('bad.tc', BAD_SETTING);
+    const file = write('bad.ptc', BAD_SETTING);
     expect(await main(['check', file])).toBe(1);
   });
 
@@ -181,21 +181,21 @@ describe('rendering', () => {
      * wrong sheet is not an error the output announces, so the title
      * is checked rather than merely that something was written.
      */
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     const target = join(dir, 'b.svg');
     expect(await main(['render', file, '--view', 'Sheet B', '-o', target])).toBe(0);
     expect(readFileSync(target, 'utf8')).toContain('Second sheet');
   });
 
   it('falls back to the default view when none is named', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     const target = join(dir, 'a.svg');
     await main(['render', file, '-o', target]);
     expect(readFileSync(target, 'utf8')).toContain('First sheet');
   });
 
   it('reports a view name the study does not declare', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     const code = await main(['render', file, '--view', 'Sheet Z', '-o', join(dir, 'z.svg')]);
     expect([1, 2]).toContain(code);
     expect(err.join('\n')).toMatch(/Sheet Z/);
@@ -209,7 +209,7 @@ describe('a study that parses but says nothing', () => {
      * has declared their voltages and not yet added a relay -- and it
      * should not be treated as a failure.
      */
-    const file = write('bare.tc', 'system { voltages { "MV" { V = 11 kV; } } }\n');
+    const file = write('bare.ptc', 'system { voltages { "MV" { V = 11 kV; } } }\n');
     expect(await main(['render', file, '-o', join(dir, 'bare.svg')])).toBe(0);
     expect(existsSync(join(dir, 'bare.svg'))).toBe(true);
   });
@@ -223,7 +223,7 @@ describe('a study with errors', () => {
    * reads it, and the file outlives the shell that made it.
    */
   it('is not drawn', async () => {
-    const file = write('bad.tc', BAD_SETTING);
+    const file = write('bad.ptc', BAD_SETTING);
     const target = join(dir, 'bad.svg');
     expect(await main(['render', file, '-o', target])).toBe(1);
     expect(existsSync(target)).toBe(false);
@@ -231,7 +231,7 @@ describe('a study with errors', () => {
   });
 
   it('is drawn on request, and stamped when it is', async () => {
-    const file = write('bad.tc', BAD_SETTING);
+    const file = write('bad.ptc', BAD_SETTING);
     const target = join(dir, 'forced.svg');
     expect(await main(['render', file, '-o', target, '--force'])).toBe(1);
     expect(existsSync(target)).toBe(true);
@@ -241,14 +241,14 @@ describe('a study with errors', () => {
   });
 
   it('names how many errors the forced sheet was drawn from', async () => {
-    const file = write('bad.tc', BAD_SETTING);
+    const file = write('bad.ptc', BAD_SETTING);
     const target = join(dir, 'forced2.svg');
     await main(['render', file, '-o', target, '--force']);
     expect(readFileSync(target, 'utf8')).toMatch(/WITH \d+ ERROR/);
   });
 
   it('leaves a clean study unstamped', async () => {
-    const file = write('good.tc', GOOD);
+    const file = write('good.ptc', GOOD);
     const target = join(dir, 'good.svg');
     await main(['render', file, '-o', target]);
     expect(readFileSync(target, 'utf8')).not.toMatch(/NOT VALID/);

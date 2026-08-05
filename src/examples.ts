@@ -6,7 +6,7 @@
  * source behind it without matching filenames by eye. `?example=<id>`
  * on the URL opens one directly, which is what those README links use.
  *
- * The sources are imported *from the `.tc` files themselves* with
+ * The sources are imported *from the `.ptc` files themselves* with
  * Vite's `?raw` suffix, rather than being pasted in as template
  * literals. Those files are the ones the CLI renders and the test
  * suite validates, so importing them means the playground cannot drift
@@ -14,24 +14,24 @@
  * missing a `view` block that the file version had gained.
  */
 
-import minimal from '../examples/00-minimal.tc?raw';
-import riverside from '../examples/01-riverside.tc?raw';
-import singleRelay from '../examples/02-single-relay.tc?raw';
-import mixed from '../examples/03-mixed-ansi-iec.tc?raw';
-import multistage from '../examples/04-multistage.tc?raw';
-import transformer from '../examples/05-transformer-inrush.tc?raw';
-import secondary from '../examples/06-secondary-amps.tc?raw';
-import miscoordination from '../examples/07-upstream-miscoordination.tc?raw';
-import fuseRelay from '../examples/08-fuse-relay.tc?raw';
-import capabilityTour from '../examples/09-capability-tour.tc?raw';
-import cascade from '../examples/10-substation-cascade.tc?raw';
-import portraitDirect from '../examples/11-portrait-direct-labels.tc?raw';
-import sequenceScenario from '../examples/12-sequence-scenario.tc?raw';
-import clearanceTimes from '../examples/13-clearance-times.tc?raw';
-import devices from '../examples/14-devices-and-combine.tc?raw';
-import parallelFeeders from '../examples/15-parallel-feeders.tc?raw';
-import drawingStyle from '../examples/16-drawing-style.tc?raw';
-import sequenceSheets from '../examples/17-sequence-sheets.tc?raw';
+import minimal from '../examples/00-minimal.ptc?raw';
+import riverside from '../examples/01-riverside.ptc?raw';
+import singleRelay from '../examples/02-single-relay.ptc?raw';
+import mixed from '../examples/03-mixed-ansi-iec.ptc?raw';
+import multistage from '../examples/04-multistage.ptc?raw';
+import transformer from '../examples/05-transformer-inrush.ptc?raw';
+import secondary from '../examples/06-secondary-amps.ptc?raw';
+import miscoordination from '../examples/07-upstream-miscoordination.ptc?raw';
+import fuseRelay from '../examples/08-fuse-relay.ptc?raw';
+import capabilityTour from '../examples/09-capability-tour.ptc?raw';
+import cascade from '../examples/10-substation-cascade.ptc?raw';
+import portraitDirect from '../examples/11-portrait-direct-labels.ptc?raw';
+import sequenceScenario from '../examples/12-sequence-scenario.ptc?raw';
+import clearanceTimes from '../examples/13-clearance-times.ptc?raw';
+import devices from '../examples/14-devices-and-combine.ptc?raw';
+import parallelFeeders from '../examples/15-parallel-feeders.ptc?raw';
+import drawingStyle from '../examples/16-drawing-style.ptc?raw';
+import sequenceSheets from '../examples/17-sequence-sheets.ptc?raw';
 
 export interface Example {
   /** Stable key, also the value in the picker. */

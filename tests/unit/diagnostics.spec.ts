@@ -224,7 +224,7 @@ describe('a number written without its unit', () => {
 
   it('leaves every shipped example clean', async () => {
     const { readdirSync, readFileSync } = await import('node:fs');
-    for (const f of readdirSync('examples').filter((x) => x.endsWith('.tc'))) {
+    for (const f of readdirSync('examples').filter((x) => x.endsWith('.ptc'))) {
       const r = process(readFileSync(`examples/${f}`, 'utf8'));
       const errs = [...r.parseErrors, ...r.diagnostics].filter((d) => d.severity === 'error');
       expect(errs.map((e) => e.code), f).toEqual([]);

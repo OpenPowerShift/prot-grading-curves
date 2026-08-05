@@ -157,7 +157,7 @@ describe('at_t on a point annotation', () => {
 describe('the shipped sequence sample', () => {
   it('places every annotation it declares, on every sheet', async () => {
     const { readFileSync } = await import('node:fs');
-    const src = readFileSync('examples/17-sequence-sheets.tc', 'utf8');
+    const src = readFileSync('examples/17-sequence-sheets.ptc', 'utf8');
     const result = process(src);
     const sheets = result.study?.views ?? [];
     expect(sheets.length, 'the sample declares four sheets').toBe(4);

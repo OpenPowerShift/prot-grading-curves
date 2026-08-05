@@ -15,7 +15,7 @@
 import { CURVES } from '../constants/curves.js';
 
 export interface HelpEntry {
-  /** Where in the .tc source this construct lives. */
+  /** Where in the .ptc source this construct lives. */
   scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'times' | 'scenario' | 'relay'
        | 'element' | 'stage' | 'device' | 'grade' | 'solve' | 'annotate' | 'point'
        | 'view' | 'page';
@@ -203,7 +203,7 @@ export const CURVE_HELP: Record<string, string> = (() => {
 
 /**
  * List of complete top-level block keywords (the user typed at the
- * left margin of a .tc file).
+ * left margin of a .ptc file).
  */
 export const TOP_BLOCK_KEYWORDS = [
   'meta', 'system', 'faults', 'times', 'scenario', 'relay', 'element', 'device',

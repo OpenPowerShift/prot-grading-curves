@@ -35,7 +35,7 @@ export interface ProcessResult {
 }
 
 /**
- * Parse, resolve, validate, and grade a `.tc` source in one call.
+ * Parse, resolve, validate, and grade a `.ptc` source in one call.
  *
  * The solver runs as part of grading, so any `tms` it computes is
  * already recorded on the returned study by the time this returns --

@@ -40,7 +40,7 @@ IED settings.
 
 === What tc-curves _does_
 
-Given a `.tc` source file, the processor:
+Given a `.ptc` source file, the processor:
 
 . Parses and validates.
 . Builds the AST.

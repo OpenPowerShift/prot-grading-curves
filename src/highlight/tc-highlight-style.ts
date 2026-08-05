@@ -1,5 +1,5 @@
 /**
- * Editor colour scheme for `.tc`.
+ * Editor colour scheme for `.ptc`.
  *
  * Every colour is a `var(--tc-syn-*)` reference rather than a literal,
  * so the same highlight style serves both themes: flipping

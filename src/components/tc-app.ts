@@ -675,7 +675,7 @@ export class TcApp extends LitElement {
   /**
    * A filename stem for downloads.
    *
-   * The same rule the plot exports use, so a study's `.tc`, `.svg`,
+   * The same rule the plot exports use, so a study's `.ptc`, `.svg`,
    * and `.pdf` land in a folder next to each other under one name
    * rather than under three unrelated ones. The saved-study name wins
    * where there is one, since that is what the engineer called it.
@@ -691,9 +691,9 @@ export class TcApp extends LitElement {
       || 'grading';
   }
 
-  /** Download the current source text as a .tc file. */
+  /** Download the current source text as a .ptc file. */
   private saveSource(): void {
-    const ext = '.tc';
+    const ext = '.ptc';
     const stem = this.exportStem();
     const blob = new Blob([this.src], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -706,11 +706,11 @@ export class TcApp extends LitElement {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /** Open a saved .tc file from disk and load it into the editor. */
+  /** Open a saved .ptc file from disk and load it into the editor. */
   private async openSourceViaPicker(): Promise<void> {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.tc,.txt,text/plain';
+    input.accept = '.ptc,.txt,text/plain';
     input.style.position = 'fixed';
     input.style.left = '-10000px';
     document.body.appendChild(input);
@@ -955,14 +955,14 @@ export class TcApp extends LitElement {
             <span class="counts">${this.issueSummary()}</span>
             <button class="side-btn" title="Reflow the source with standard indentation"
                     @click=${() => this.formatSource()}>Format</button>
-            <button class="side-btn" title="Open a .tc file from disk"
+            <button class="side-btn" title="Open a .ptc file from disk"
                     @click=${() => { void this.openSourceViaPicker(); }}>Open…</button>
             <button class="side-btn" title="Save this study in the browser, under a name"
                     @click=${() => this.saveToBrowser()}>Save</button>
             ${this.savedName ? html`
               <button class="side-btn" title=${`Delete "${this.savedName}" from this browser`}
                       @click=${() => this.deleteSaved()}>Delete</button>` : null}
-            <button class="side-btn" title="Download the current source as a .tc file"
+            <button class="side-btn" title="Download the current source as a .ptc file"
                     @click=${() => this.saveSource()}>Download…</button>
             <button class="side-btn"
                     title="Copy a link containing this whole study (kept in the URL fragment, never sent to a server)"

@@ -30,7 +30,7 @@ not need to be designed in phase 2.
   standard tables in `spec/sections/worked-examples.adoc`
   _Worked numerical examples_.
 
-*Acceptance*: `parser('tests/conformance/examples/01.tc')` returns
+*Acceptance*: `parser('tests/conformance/examples/01.ptc')` returns
 the expected AST and zero diagnostics. The numerical values in
 _Operate time_ match within `+/- 0.005 s`.
 
@@ -80,7 +80,7 @@ the spec tolerance.
   `multiples`) and `two_axes` toggle.
 * `tests/unit/palette.spec.ts`, `tests/unit/theme.spec.ts`,
   `tests/unit/page.spec.ts` -- palettes, themes, page-block parsing.
-* `playwright visual regression` -- render every `examples/*.tc` to
+* `playwright visual regression` -- render every `examples/*.ptc` to
   PNG; diff against `tests/visual/*.png` baselines.
 
 *Acceptance*: `npm run test:visual` shows zero diffs vs baselines
@@ -100,7 +100,7 @@ anti-aliasing.
   library call from playground and CLI.
 * `playground UI`: an "Export" menu with SVG / PNG / PDF choices
   wired to the library functions.
-* `CLI`: `tc-curves render <file.tc> --png` and `--pdf` and
+* `CLI`: `tc-curves render <file.ptc> --png` and `--pdf` and
   `--svg`; uses the same library functions -- no separate
   rendering pipeline.
 * `asciidoctor extension`: trivial wrapper calling
@@ -146,7 +146,7 @@ playground, the CLI, or an Asciidoctor extension.
 
 *Acceptance*: the playground loaded at `npm run dev` correctly
 parses, renders, exports and highlights every example in
-`examples/*.tc`. Hovering a keyword (e.g. `tms`) shows a tooltip
+`examples/*.ptc`. Hovering a keyword (e.g. `tms`) shows a tooltip
 with its default unit and spec section. Typing `curve = iec.`
 and pressing `Ctrl-Space` lists `si / vi / ei / lti / sti`.
 Keyboard shortcuts: `Ctrl-Enter` to commit, `Ctrl-Space` to
@@ -176,7 +176,7 @@ trigger autocompletion, `Ctrl-S` to download SVG.
 * [x] Visual-regression *harness* written
   (`playwright.config.ts`, `tests/visual/visual-regression.spec.ts`).
 * [ ] Visual-regression baselines *not* frozen -- see below.
-* [ ] Style guide for `.tc` reviewed against the spec.
+* [ ] Style guide for `.ptc` reviewed against the spec.
 
 [NOTE]
 .Why the baselines are not committed

@@ -5,7 +5,7 @@ The `tc-curves` project ships three artefacts under one repository,
 
 . *Library* (`@openpowershift/time-current-grading-language`,
   nickname `tc-curves`) -- a TypeScript ESM module that parses a
-  `.tc` source file into an AST, validates it, resolves it against
+  `.ptc` source file into an AST, validates it, resolves it against
   the standard constants table, computes the TCC, and emits SVG,
   PNG, or PDF (PNG and PDF produced by the library itself via
   `@resvg/resvg-js` and lazy `jspdf`, *not* via the browser).
@@ -14,7 +14,7 @@ The `tc-curves` project ships three artefacts under one repository,
   CodeMirror 6 editor on one tab and the rendered SVG on the other.
   The playground is a thin consumer of the library; it does *not*
   have a separate rasterisation pipeline.
-. *Node CLI* (`tc-curves`) -- runs the parser from a `.tc` source
+. *Node CLI* (`tc-curves`) -- runs the parser from a `.ptc` source
   file, prints the margin report to stdout, and writes SVG/PNG/PDF
   in headless mode using the same library calls as the playground.
   The CLI's PNG and PDF paths therefore do not require a browser

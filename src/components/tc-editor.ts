@@ -40,7 +40,7 @@ export class TcEditor extends LitElement {
   /** Fires on every change. */
   @property({ attribute: false }) declare onChange: (src: string) => void;
 /** Plug-in callbacks for Ctrl+S / Ctrl+O while the editor has
- *  focus. Save a .tc file or open one from disk. */
+ *  focus. Save a .ptc file or open one from disk. */
   @property({ attribute: false }) declare shortcuts: EditorShortcuts | null;
   /** Optional callback fired whenever the user moves the caret or
    *  extends the selection. The argument is the head's character

@@ -1,7 +1,7 @@
 /**
  * SVG composer.
  *
- * Produces a self-contained `<svg>` for a parsed `.tc` document.
+ * Produces a self-contained `<svg>` for a parsed `.ptc` document.
  *
  * v0.1.0 conventions:
  *   - Log-log axes (current vs time), minor ticks at 1..9 / decade

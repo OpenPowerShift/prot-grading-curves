@@ -43,12 +43,12 @@ test.describe('exporting', () => {
     expect(file.suggestedFilename()).toMatch(/\.pdf$/);
   });
 
-  test('downloads the source as a .tc file', async ({ page }) => {
+  test('downloads the source as a .ptc file', async ({ page }) => {
     await open(page);
     const download = page.waitForEvent('download');
-    await page.click('[title="Download the current source as a .tc file"]');
+    await page.click('[title="Download the current source as a .ptc file"]');
     const file = await download;
-    expect(file.suggestedFilename()).toMatch(/\.tc$/);
+    expect(file.suggestedFilename()).toMatch(/\.ptc$/);
   });
 
   test('rasterises the plot to a PNG for the clipboard', async ({ page, context }) => {

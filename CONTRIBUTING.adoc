@@ -28,7 +28,7 @@ Two rules follow from that:
   `tests/unit/curves.spec.ts`, `margins.spec.ts`, and `solver.spec.ts`, to the
   tolerances the spec states. Do not relax a tolerance to make a change pass.
 * *The canonical example is a live fixture.* `tests/unit/parser.spec.ts` reads
-  the `.tc` block straight out of `spec/sections/example-file.adoc` and parses
+  the `.ptc` block straight out of `spec/sections/example-file.adoc` and parses
   it. If you add a language construct, add it to that example — the spec says
   every construct appears there at least once, and the test enforces it.
 

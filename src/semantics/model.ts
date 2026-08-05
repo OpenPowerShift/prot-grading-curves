@@ -1,5 +1,5 @@
 /**
- * Study model -- the resolved form of a parsed `.tc` document.
+ * Study model -- the resolved form of a parsed `.ptc` document.
  *
  * The AST is a faithful record of what the engineer *wrote*; the study
  * model is what those words *mean*. Resolution happens once, here, so

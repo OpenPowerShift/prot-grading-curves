@@ -70,7 +70,7 @@ This is the *primary gate* for tagging a release.
 
 === Visual regression
 
-Playwright renders the playground for every `examples/*.tc` file and
+Playwright renders the playground for every `examples/*.ptc` file and
 captures the resulting PNG. `tests/visual/*.png` baselines. Updates
 require an explicit `vitest -u` and a human reviewer.
 
@@ -78,12 +78,12 @@ require an explicit `vitest -u` and a human reviewer.
 
 * `npm pack` followed by a `node` smoke test of `./lib/index.js`
   exercises the published library entry.
-* `tc-curves render tests/conformance/examples/01.tc --png` exits
+* `tc-curves render tests/conformance/examples/01.ptc --png` exits
   with code 0 and writes the expected PNG.
 
 === Test-data
 
-* `tests/conformance/examples/*.tc` is the *test bed*: one example
+* `tests/conformance/examples/*.ptc` is the *test bed*: one example
   per spec section that exercises a non-obvious path.
 * Curated table-driven tests keep small mismatches visible (the
   margin report for any specific fault becomes a single tap-of-the-

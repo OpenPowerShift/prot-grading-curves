@@ -2,16 +2,16 @@
 /**
  * `tc-curves` command-line interface.
  *
- * Renders a `.tc` study to SVG, PNG, or PDF, and prints the grading
+ * Renders a `.ptc` study to SVG, PNG, or PDF, and prints the grading
  * margin report. Every format goes through the same library functions
  * the playground and the Asciidoctor extension call, so a study
  * rendered here is byte-identical to one rendered in the browser.
  *
- *   tc-curves render study.tc                  # SVG to study.svg
- *   tc-curves render study.tc --png -o out.png
- *   tc-curves render study.tc --pdf --size A3 --portrait
- *   tc-curves report study.tc                  # margin report only
- *   tc-curves check  study.tc                  # diagnostics only
+ *   tc-curves render study.ptc                  # SVG to study.svg
+ *   tc-curves render study.ptc --png -o out.png
+ *   tc-curves render study.ptc --pdf --size A3 --portrait
+ *   tc-curves report study.ptc                  # margin report only
+ *   tc-curves check  study.ptc                  # diagnostics only
  *
  * Exit status: 0 clean, 1 diagnostics of `error` severity, 2 usage or
  * I/O failure. `check` is therefore usable as a CI gate.
@@ -48,9 +48,9 @@ interface Options {
 const USAGE = `tc-curves -- render protection-relay time-current grading studies
 
 Usage:
-  tc-curves render <file.tc> [--svg|--png|--pdf] [options]
-  tc-curves report <file.tc>
-  tc-curves check  <file.tc>
+  tc-curves render <file.ptc> [--svg|--png|--pdf] [options]
+  tc-curves report <file.ptc>
+  tc-curves check  <file.ptc>
 
 Options:
   -o, --output <path>   Output file (default: input name with the format's suffix)

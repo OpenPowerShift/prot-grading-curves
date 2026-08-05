@@ -1,5 +1,5 @@
 /**
- * Source formatter for `.tc`.
+ * Source formatter for `.ptc`.
  *
  * Reflows a study to the house style: two-space indentation per brace
  * level, one space either side of `=`, one statement per line, and
@@ -227,7 +227,7 @@ export interface FormatOptions {
 }
 
 /**
- * Format a `.tc` source.
+ * Format a `.ptc` source.
  *
  * Idempotent: formatting an already-formatted document returns it
  * unchanged, which `tests/unit/format.spec.ts` pins.

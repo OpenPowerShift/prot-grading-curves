@@ -1,6 +1,6 @@
 == Example file (annotated)
 
-The following example file (`riverside-33kv.tc`) is the canonical
+The following example file (`riverside-33kv.ptc`) is the canonical
 example for the language. All language constructs in this specification
 appear at least once in this file.
 

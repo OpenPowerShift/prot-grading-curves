@@ -4,7 +4,7 @@
 A `tc-curves` implementation is *conformant* with this specification
 when it satisfies the following four numerical criteria.
 
-. It parses every `.tc` example in the `examples/` directory of the
+. It parses every `.ptc` example in the `examples/` directory of the
   processor repository with no warnings other than those explicitly
   listed per-example.
 . It rejects every example in *Validation* (above) with the

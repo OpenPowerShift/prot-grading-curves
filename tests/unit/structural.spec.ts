@@ -89,7 +89,7 @@ describe('the shipped examples', () => {
       'examples',
     );
 
-    for (const file of readdirSync(dir).filter((f) => f.endsWith('.tc'))) {
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.ptc'))) {
       const found = errors(readFileSync(join(dir, file), 'utf8'));
       expect(found, `${file}: ${JSON.stringify(found)}`).toHaveLength(0);
     }

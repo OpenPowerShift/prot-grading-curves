@@ -26,7 +26,7 @@ const repoRoot = (): string =>
   (globalThis as { process?: { cwd(): string } }).process!.cwd();
 
 const exampleDir = () => join(repoRoot(), 'examples');
-const exampleFiles = () => readdirSync(exampleDir()).filter((f) => f.endsWith('.tc'));
+const exampleFiles = () => readdirSync(exampleDir()).filter((f) => f.endsWith('.ptc'));
 
 /**
  * Example sources with comments stripped.
@@ -120,7 +120,7 @@ describe('the offered vocabulary is documented', () => {
 
 describe('the playground offers every example', () => {
   /*
-   * `src/examples.ts` imports each `.tc` file by name, so a new example
+   * `src/examples.ts` imports each `.ptc` file by name, so a new example
    * is not in the picker until someone adds a line. Five were written,
    * validated, tested and documented before anyone noticed they could
    * not be opened from the app.
@@ -131,7 +131,7 @@ describe('the playground offers every example', () => {
   it('imports every file in examples/', () => {
     const registry = readFileSync(join(repoRoot(), 'src', 'examples.ts'), 'utf8');
     const missing = readdirSync(join(repoRoot(), 'examples'))
-      .filter((f) => f.endsWith('.tc'))
+      .filter((f) => f.endsWith('.ptc'))
       .filter((f) => !registry.includes(f));
     expect(missing, 'written but not offered in the playground').toEqual([]);
   });
@@ -184,7 +184,7 @@ describe('every example still means something', () => {
    * Coverage is worthless if the file that provides it does not parse.
    * A key could be "demonstrated" by a line the processor rejects.
    */
-  for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.tc'))) {
+  for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.ptc'))) {
     it(`${file} processes without an error`, () => {
       const result = process(readFileSync(join(repoRoot(), 'examples', file), 'utf8'));
       const errors = [...result.parseErrors, ...result.diagnostics]

@@ -1,6 +1,6 @@
 == Style guide / conventions
 
-* One `.tc` file is one *study*. Multiple studies produce a directory
+* One `.ptc` file is one *study*. Multiple studies produce a directory
   (and the multi-file mode is a v0.2 feature).
 * Names match the *device number* where possible: `element 51`,
   `element 67N`, `element 50`.

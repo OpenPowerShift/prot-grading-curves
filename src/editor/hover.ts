@@ -1,5 +1,5 @@
 /**
- * CodeMirror 6 hover source for the .tc language.
+ * CodeMirror 6 hover source for the .ptc language.
  *
  * When the user hovers over a token, we look it up in `help-data`:
  *   - If the token is a top-level keyword, surface its summary.

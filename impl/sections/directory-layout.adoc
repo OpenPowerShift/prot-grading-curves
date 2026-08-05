@@ -18,12 +18,12 @@ time-current-grading-language/
 ├── eslint.config.js
 ├── vite.config.ts
 ├── index.html                   # playground
-├── examples/                    # .tc sample files used by tests + playground
-│   ├── 01-riverside-33kv.tc
-│   ├── 02-multi-stage.tc
-│   ├── 03-solve-tms.tc
-│   ├── 04-combine-or.tc
-│   └── 05-two-axes.tc
+├── examples/                    # .ptc sample files used by tests + playground
+│   ├── 01-riverside-33kv.ptc
+│   ├── 02-multi-stage.ptc
+│   ├── 03-solve-tms.ptc
+│   ├── 04-combine-or.ptc
+│   └── 05-two-axes.ptc
 ├── spec/                        # the AsciiDoc language spec
 │   ├── spec.adoc
 │   └── sections/*.adoc          # includes
@@ -105,7 +105,7 @@ time-current-grading-language/
     │   └── renderer.spec.ts
     ├── conformance/             # exhaustive spec rules (auto)
     │   ├── examples/
-    │   │   └── *.tc             # one per spec section
+    │   │   └── *.ptc             # one per spec section
     │   └── conformance.spec.ts
     └── visual/                  # playwright
         └── visual-regression.spec.ts

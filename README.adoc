@@ -10,7 +10,7 @@ a publication-quality log-log TCC — as SVG, PNG, or PDF.
 [TIP]
 ====
 *Try it in the browser: https://openpowershift.github.io/time-current-grading-language/[openpowershift.github.io/time-current-grading-language]*
-— a live playground: type `.tc` on the left, see the curves and the margin report
+— a live playground: type `.ptc` on the left, see the curves and the margin report
 on the right.
 
 Published as `@openpowershift/time-current-grading-language`. See
@@ -94,11 +94,11 @@ Full API and the options tables are in the link:docs/api.adoc[API Reference].
 
 [source,bash]
 ----
-npx tc-curves render study.tc              # → study.svg
-npx tc-curves render study.tc --png -o out.png
-npx tc-curves render study.tc --pdf --size A3 --landscape
-npx tc-curves report study.tc              # margin report only
-npx tc-curves check  study.tc              # diagnostics only
+npx tc-curves render study.ptc              # → study.svg
+npx tc-curves render study.ptc --png -o out.png
+npx tc-curves render study.ptc --pdf --size A3 --landscape
+npx tc-curves report study.ptc              # margin report only
+npx tc-curves check  study.ptc              # diagnostics only
 ----
 
 `check` exits `0` when clean and `1` on any error-severity finding, so it works
@@ -129,13 +129,13 @@ grade against, secondary amps, multi-stage elements, earth faults,
 fuses, annotations, required times, the drawing itself, several sheets
 -- and finishes by introducing scenarios, which is where a study stops
 being one number per fault. Every step is a file you can paste into the
-playground. Read this first if you have not written a `.tc` file
+playground. Read this first if you have not written a `.ptc` file
 before.
 
 `docs/guide.adoc`:: The *user guide*. Example-led, about writing
 studies, and a single self-contained file -- so it can be read
 straight through, or handed whole to a language model asked to produce
-a `.tc` study. The playground's *Guide* button opens both,
+a `.ptc` study. The playground's *Guide* button opens both,
 converted by Asciidoctor at build time (`scripts/guide-plugin.js`),
 with a contents list and a filter; a *Tutorial* / *Reference* switch in
 the header picks between them, and the tutorial is what opens first.
@@ -229,7 +229,7 @@ image::media/minimal.png[Two graded curves and the fault they are checked at,ali
 
 TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=minimal[Gallery 1 — try it]. It is also in the picker, listed as *Gallery 1*.
 
-.Source — `examples/00-minimal.tc`
+.Source — `examples/00-minimal.ptc`
 [%collapsible]
 ====
 [source,tc]
@@ -298,7 +298,7 @@ image::media/cascade.png[Six curves cascading, with CTI arrows and a fuse band,a
 
 TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=cascade[Gallery 2 — try it]. It is also in the picker, listed as *Gallery 2*.
 
-.Source — `examples/10-substation-cascade.tc`
+.Source — `examples/10-substation-cascade.ptc`
 [%collapsible]
 ====
 [source,tc]
@@ -553,7 +553,7 @@ image::media/clearance-times.png[Curves against arc-flash, grid-code and withsta
 
 TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=clearance[Gallery 3 — try it]. It is also in the picker, listed as *Gallery 3*.
 
-.Source — `examples/13-clearance-times.tc`
+.Source — `examples/13-clearance-times.ptc`
 [%collapsible]
 ====
 [source,tc]
@@ -829,7 +829,7 @@ image::media/devices.png[A device library: fuse band, damage curves, motor start
 
 TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=devices[Gallery 4 — try it]. It is also in the picker, listed as *Gallery 4*.
 
-.Source — `examples/14-devices-and-combine.tc`
+.Source — `examples/14-devices-and-combine.ptc`
 [%collapsible]
 ====
 [source,tc]
@@ -1135,7 +1135,7 @@ image::media/sequence-sheets.png[The same study drawn against negative-sequence 
 
 TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=sheets[Gallery 5 — try it]. It is also in the picker, listed as *Gallery 5*.
 
-.Source — `examples/17-sequence-sheets.tc`
+.Source — `examples/17-sequence-sheets.ptc`
 [%collapsible]
 ====
 [source,tc]
@@ -1510,7 +1510,7 @@ view "Residual" {
 | Node CLI entry (`tc-curves`)
 
 | `src/parser/`
-| Tokeniser, recursive-descent parser, and AST for `.tc` source
+| Tokeniser, recursive-descent parser, and AST for `.ptc` source
 
 | `src/constants/`
 | Curve constants tables and the device catalog
@@ -1535,7 +1535,7 @@ view "Residual" {
 | AsciiDoc language specification (`spec/spec.adoc`)
 
 | `examples/`
-| Sample `.tc` studies, used by the playground and the tests
+| Sample `.ptc` studies, used by the playground and the tests
 
 | `tests/`
 | Vitest unit tests, including the spec's normative worked examples

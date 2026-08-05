@@ -27,7 +27,7 @@ later versions; the spec leaves room for them.
 [NOTE]
 ====
 This is **draft 0.1.0**. The language is wide open to changes in this
-phase. Once 0.2.0 ships, the file extension `.tc` will be frozen for
+phase. Once 0.2.0 ships, the file extension `.ptc` will be frozen for
 that major version.
 ====
 

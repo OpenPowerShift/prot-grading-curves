@@ -145,7 +145,7 @@ date = "2026-01-01";
   });
 
   it('is idempotent', () => {
-    for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.tc'))) {
+    for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.ptc'))) {
       const src = readFileSync(join(repoRoot(), 'examples', file), 'utf8');
       const once = formatSource(src);
       expect(formatSource(once), `${file} is not stable under reformatting`).toBe(once);
@@ -153,7 +153,7 @@ date = "2026-01-01";
   });
 
   it('preserves meaning for every shipped example', () => {
-    for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.tc'))) {
+    for (const file of readdirSync(join(repoRoot(), 'examples')).filter((f) => f.endsWith('.ptc'))) {
       const src = readFileSync(join(repoRoot(), 'examples', file), 'utf8');
       const before = processStudy(src);
       const after = processStudy(formatSource(src));

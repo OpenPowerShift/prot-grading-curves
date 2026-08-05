@@ -129,6 +129,71 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
 }
 
 /* ------------------------------------------------------------------ */
+/* Piecewise tables                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A hand-entered time-current table.
+ *
+ * Shared by stages and by devices, because the failure is the same
+ * wherever the table came from and only stages were being checked. A
+ * device carries up to three tables -- `flex_points`, `min_melt`,
+ * `total_clear` -- and none of them was looked at, so a fuse with a
+ * repeated current or a one-row band validated clean. A fuse is the
+ * thing most likely to be typed straight off a datasheet, so it is the
+ * one that most needed checking.
+ *
+ * Row *order* is not checked, because `buildStudy` sorts every table by
+ * current before anything sees it (`sortPoints`). A datasheet printed
+ * highest-current-first can therefore be typed in as it is read. The
+ * entries are a set and their order carries no meaning, so normalising
+ * rather than refusing is right -- and it means the only ordering fault
+ * left is a repeated current, which sorting cannot resolve.
+ *
+ * Whether that is a fault depends on what the table *is*. A curve that
+ * answers "how long at this current?" -- a relay stage, a fuse melting
+ * or clearing, a damage curve -- is multi-valued at a repeated current
+ * and therefore wrong. An envelope that is drawn rather than evaluated
+ * is not: a direct-on-line motor start is a vertical line at the
+ * starting current, held from the accelerating time down to nothing,
+ * and `examples/14` says so deliberately. `allowVertical` marks the
+ * second kind, and it is the caller that knows which it has.
+ */
+function checkFlexTable(
+  ctx: Ctx,
+  pts: ReadonlyArray<{ I_A: number; t_s: number }>,
+  where: string,
+  field: string,
+  loc: SourceLocation | undefined,
+  allowVertical = false,
+): void {
+  if (pts.length < 2) {
+    add(ctx, 'FLEX_TOO_FEW_POINTS', 'error',
+      `${where} declares ${field} with ${pts.length} entry; at least 2 are required`,
+      loc);
+    return;
+  }
+
+  for (let i = 1; i < pts.length && !allowVertical; i++) {
+    if (pts[i].I_A !== pts[i - 1].I_A) continue;
+    add(ctx, 'FLEX_NOT_MONOTONE', 'error',
+      `${where} declares ${field} with a repeated current (${pts[i].I_A} A); `
+      + 'the table must be strictly increasing in current, and two times at one '
+      + 'current leave the curve undefined there -- drop one row, or move it to '
+      + 'the current it belongs at',
+      loc);
+    break;
+  }
+
+  if (pts.some((p) => !(p.t_s > 0))) {
+    add(ctx, 'FLEX_TIME_NOT_POSITIVE', 'warning',
+      `${where} declares a ${field} entry with a non-positive time; ` +
+      'log-log interpolation falls back to linear across that segment',
+      loc);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Stage references                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -677,27 +742,7 @@ function validateStage(
 
   /* ---- flex points ------------------------------------------------ */
   if (stage.producer?.kind === 'flex') {
-    const pts = stage.producer.points;
-    if (pts.length < 2) {
-      add(ctx, 'FLEX_TOO_FEW_POINTS', 'error',
-        `${where} declares flex_points with ${pts.length} entry; at least 2 are required`,
-        loc);
-    }
-    for (let i = 1; i < pts.length; i++) {
-      if (pts[i].I_A === pts[i - 1].I_A) {
-        add(ctx, 'FLEX_NOT_MONOTONE', 'error',
-          `${where} declares flex_points with a repeated current (${pts[i].I_A} A); ` +
-          'the table must be strictly increasing in I',
-          loc);
-        break;
-      }
-    }
-    if (pts.some((p) => !(p.t_s > 0))) {
-      add(ctx, 'FLEX_TIME_NOT_POSITIVE', 'warning',
-        `${where} declares a flex_points entry with a non-positive time; ` +
-        'log-log interpolation falls back to linear across that segment',
-        loc);
-    }
+    checkFlexTable(ctx, stage.producer.points, where, 'flex_points', loc);
   }
 
   /* ---- formula ---------------------------------------------------- */
@@ -794,6 +839,28 @@ function validateDevices(ctx: Ctx): void {
       add(ctx, 'DEVICE_NO_CURVE', 'error',
         `device "${device.id}" declares no flex_points; device TCCs are piecewise by definition`,
         undefined);
+    }
+
+    /*
+     * The tables themselves. A device carries up to three and none of
+     * them was checked, so a fuse band typed off a datasheet in
+     * descending order drew and graded as though the fuse never blew.
+     */
+    const tables: Array<[string, ReadonlyArray<{ I_A: number; t_s: number }> | undefined]> = [
+      ['flex_points', device.flex_points],
+      ['min_melt', device.min_melt],
+      ['total_clear', device.total_clear],
+    ];
+    /*
+     * A motor start is an envelope the relay must sit above, not a
+     * characteristic anyone reads a time off, so its vertical segment
+     * at the starting current is meaningful rather than malformed.
+     */
+    const allowVertical = device.kind === 'motor_startup';
+    for (const [field, pts] of tables) {
+      if (pts) {
+        checkFlexTable(ctx, pts, `device "${device.id}"`, field, undefined, allowVertical);
+      }
     }
   }
 }

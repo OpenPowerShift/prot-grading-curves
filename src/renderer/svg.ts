@@ -91,11 +91,25 @@ const AXIS_LABEL_DY = 20;
 /**
  * First row of fault names, below the axis labels.
  *
- * `AXIS_LABEL_DY` puts a 12 px label's baseline at +20, so its
- * descenders reach about +24. Four more clears them without the
- * centimetre of empty band the old fixed 44 left.
+ * `AXIS_LABEL_DY` puts a 12 px label's baseline at +20 and its
+ * descenders reach about +24, so clearing it is only the floor. The
+ * band is a different kind of thing from the scale and wants reading
+ * as one, which takes a visible gap rather than a technical one --
+ * eight pixels between baselines left about five between the ink, and
+ * the two rows ran together.
+ *
+ * Still well short of the fixed 44 this started at.
  */
-const FAULT_BAND_DY = AXIS_LABEL_DY + FONT_AXIS - 4;
+const FAULT_BAND_DY = AXIS_LABEL_DY + FONT_AXIS + 2;
+
+/**
+ * How far a fault's caption sits from its own rule.
+ *
+ * Close enough to read as belonging to it. At four the name floated
+ * between its rule and the next one along on a crowded sheet, which
+ * is exactly when knowing which is which matters.
+ */
+const FAULT_LABEL_DX = 2;
 const FONT_AXIS_TITLE = 13;
 
 const LINE_HEADING = 20;
@@ -3287,7 +3301,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
     out.push(
-      `<text x="${(px + (flipped ? -4 : 4)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
+      `<text x="${(px + (flipped ? -FAULT_LABEL_DX : FAULT_LABEL_DX)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
       `text-anchor="${flipped ? 'end' : 'start'}" ` +
       `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
       `${escapeXml(caption)}</text>`,

@@ -57,6 +57,25 @@ describe('the current beside the name', () => {
   });
 });
 
+describe('a caption beside its rule', () => {
+  it('sits close enough to read as belonging to it', () => {
+    /* At four it floated between its own rule and the next one along
+     * on a crowded sheet, which is when knowing which is which is the
+     * whole point. */
+    const svg = sheet(TWO);
+    const rules = [...svg.matchAll(
+      /<line x1="([\d.]+)" y1="[\d.]+" x2="\1" y2="[\d.]+" class="tc-fault"/g,
+    )].map((m) => Number(m[1]));
+    expect(rules.length).toBeGreaterThan(0);
+
+    for (const label of labels(svg)) {
+      const nearest = rules.reduce(
+        (a, b) => (Math.abs(b - label.x) < Math.abs(a - label.x) ? b : a), rules[0]);
+      expect(Math.abs(label.x - nearest), label.text).toBeLessThanOrEqual(3);
+    }
+  });
+});
+
 describe('the packer', () => {
   it('measures the caption it will draw, not the name alone', () => {
     /*
@@ -106,7 +125,18 @@ describe('where the band sits', () => {
      * name that could as easily have touched the rule. */
     const svg = sheet(TWO);
     const first = Math.min(...labels(svg).map((l) => l.y));
-    expect(first - plotBottom(svg)).toBeLessThanOrEqual(32);
+    expect(first - plotBottom(svg)).toBeLessThanOrEqual(36);
+  });
+
+  it('leaves a gap the eye reads as a gap, not merely a clearance', () => {
+    /*
+     * The band is a different kind of thing from the scale and wants
+     * reading as one. Eight pixels between baselines left about five
+     * between the ink, and the two rows ran together.
+     */
+    const svg = sheet(TWO);
+    const first = Math.min(...labels(svg).map((l) => l.y));
+    expect(first - lowestAxisLabel(svg)).toBeGreaterThanOrEqual(12);
   });
 
   it('clears the axis scale rather than printing over it', () => {

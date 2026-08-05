@@ -151,8 +151,9 @@ include::impl/sections/open-questions.adoc[]
 [[current-state]]
 == Current state and outstanding work
 
-Reconciled 2026-07-31 against the tree at `e1fb906`. 657 tests, clean
-typecheck, lint and both builds; all twelve examples parse and render.
+Reconciled 2026-08-06 against the tree at `a08fd56`. 1,838 tests, clean
+typecheck, lint and both builds; all eighteen examples parse and render
+on every sheet, and every sheet is frozen in `tests/unit/__baseline__/`.
 
 === Landed since the 0.1.0 plan
 
@@ -176,22 +177,297 @@ typecheck, lint and both builds; all twelve examples parse and render.
 
 === Outstanding, most serious first
 
-Reconciled again 2026-07-31. The two entries that wanted a decision
-have had one; what is left is chores.
+Reconciled 2026-08-06 after a three-part review -- usability, language
+capability, and output/integration -- each conducted against a running
+build rather than against the source alone. Findings below are marked
+[VERIFIED] where they were reproduced directly, and [REPORTED] where
+they rest on the review's own evidence and have not been re-run here.
 
-. *Range sweep does nothing for sequence elements* but still prints a
-  range-check table implying it ran.
+The ordering principle is the project's own: a wrong answer given
+confidently outranks a missing feature, and a promise the documentation
+makes that the code breaks outranks a promise never made.
 
+==== Silently wrong answers
 
-. *Twelve diagnostic codes carry no source location* and report at 1:1.
+. *A stage reference in `grade` is ignored, and the composite is graded
+  instead.* [VERIFIED] `Ref.stageId` (`parser/ast.ts`) is honoured by
+  the renderer (`renderer/svg.ts`) and dropped by `resolveRef`
+  (`semantics/model.ts`), so `grades.ts` and `combine.ts` see the
+  element. `grade { primary = R_A:51/toc; ... }` against a study whose
+  `toc` stage is IEC VI and whose `inst` stage is a 40 ms definite-time
+  high-set reports `t_primary = 0.040 s` -- the high-set -- and labels
+  the row `R_A:51`, dropping the stage from the name. The sheet and the
+  report therefore disagree about what was graded. No diagnostic.
+  `docs/guide.adoc` documents the syntax.
+
+. *Unsorted `flex_points` are accepted and mis-evaluated.* [REPORTED]
+  `semantics/validate.ts` rejects a repeated current but not a
+  decreasing one. A table read top-down off a datasheet returns
+  `Infinity` where the table gives 32 s, and a linearly interpolated
+  figure elsewhere. `check` reports no errors. The monotonicity check
+  should be strict-increasing and an error.
+
+. *The upstream sweep runs past the largest declared fault and reports
+  a FAIL that cannot occur.* [REPORTED] The ceiling in
+  `semantics/grades.ts` is the largest of the declared fault, twenty
+  times primary pickup, and twice `from`. A study declaring a 9.4 kA
+  board maximum was swept to 18.8 kA and failed at 12 kA -- a current
+  the board cannot deliver. A false FAIL on the headline verdict is
+  worse than no check.
+
+. *Cross-voltage referral is ratio-only and understates the HV current
+  by 15.5% for a phase-phase fault through a delta-star.* [REPORTED]
+  `semantics/xvoltage.ts` applies `I x V_from/V_to` unconditionally.
+  This holds for sequence magnitudes; the delta-side phase currents for
+  a star-side two-phase fault distribute 2:1:1, so the largest HV phase
+  is `2/sqrt(3)` times the ratio referral. The backup therefore looks
+  slower than it is on the standard minimum-fault check. A `scenario`
+  with declared per-level figures is a correct workaround and nothing
+  says so.
+
+==== The playground does not apply the CLI's own policy
+
+. *A study with hard errors is drawn and exported unmarked.*
+  [VERIFIED by review] `cli.ts` refuses to write a sheet when the study
+  has errors and stamps a `--force` sheet `NOT VALID`; the comment
+  there is right that the file is what gets emailed. `tc-app.ts` passes
+  the viewer only parse errors, so semantic diagnostics never reach it.
+  A study with nine errors drew a clean sheet at a thousand times and a
+  thousandth of the intended settings with all four export buttons
+  enabled.
+
+. *Thirteen diagnostic codes report at 1:1*, including both unit
+  errors -- and 1:1 is a clickable go-to-line that lands at the top of
+  the file. `validateUnits` computes the correct highlight width and
+  discards the anchor. (Was "twelve" on the previous reconciliation;
+  recounted.)
+
+. *No inline error marking.* `@codemirror/lint` is a declared
+  dependency and `linter()` is never called, though `validate.ts` says
+  codes are stable so the lint gutter can key off them. With the
+  locations above, the only channel is a list whose line numbers are
+  often wrong.
+
+. *`info` diagnostics are dropped in the GUI* while the CLI prints
+  them, so the two disagree about what the same file contains.
+
+. *"1 fail" is shown when nothing could be evaluated.* A pair where
+  neither side operates sets `pass = false`; the engineer reads a
+  margin problem and goes looking in the wrong place. Wants a third
+  verdict state.
+
+. *The report prints `no-op s`* -- a non-finite branch returning a word
+  where callers append a unit.
+
+==== Documented, and absent
+
+Each of these is a promise the documentation makes that the code
+breaks. They want one decision: implement, or delete the claim.
+
+. *The device catalogue is dead code.* [VERIFIED] `constants/catalog.ts`
+  holds eight sourced entries and `grammar.adoc` publishes a normative
+  shorthand table with an equivalent expansion. `lookupCatalog` and
+  `isKnownShorthand` have no callers outside their own module; the
+  shorthands produce `DEVICE_NO_CURVE`. The spec table also names
+  `tx_25mva_11kv` where the code key is `tx_25mva_33_11kv`.
+
+. *`view { axis = "multiples" }` is a no-op.* [VERIFIED] `axisMode` is
+  read once in `renderer/svg.ts` and thereafter only compared to
+  `'secondary'`. `semantics.adoc` names it as the answer to
+  cross-voltage plotting and `guide.adoc` repeats it; the same study
+  renders byte-identically with `multiples` and with `primary`.
+
+. *`two_axes` is parsed, validated, documented two contradictory ways,
+  and rendered by nothing.* `semantics.adoc` calls it a secondary
+  *horizontal* axis; `guide.adoc` calls it a repeat of the *time* scale
+  on the right-hand edge.
+
+. *Device-model generation does not exist.* `semantics.adoc` promises
+  transformer damage points generated from `rating_S` / `rating_V` per
+  C57.109, and recloser `number_of_shots` / `reclosing_time_s`
+  metadata. All are `UNKNOWN_KEY` or `DEVICE_NO_CURVE`.
+
+. *Dead settings offered in completions.* `directional`, `char_angle`,
+  relay `direction` and `system { I_base }` are parsed, stored and read
+  by nothing. Either mark them informational on the sheet, or remove
+  them as `frequency_Hz` and `grounding` were. `I_base` belongs with
+  the multiples axis above.
 
 . *`linting-rules.adoc` states 13 rules as processor behaviour*; two
   are implemented. Five codes named in the spec are never emitted;
   around forty implemented codes appear nowhere in it.
 
-. *`svg.ts` decomposition.* Not 3,722 lines but one 2,874-line function
-  holding ~40 closures. Split in this order or the captures merely
-  move: sheet model, legend, annotations, frame.
+==== Output and integration
+
+. *`check` is advertised as a CI gate and gates only syntax and
+  semantics.* [VERIFIED] A study that fails coordination exits 0.
+  `README.adoc` and `cli.ts` both claim CI usability. Wants a distinct
+  exit status for "valid study, failing grade".
+
+. *Nothing is machine-readable.* `GradeReport` is already a clean
+  structured type reachable only through a text formatter. No JSON
+  anywhere. Blocks every downstream consumer.
+
+. *The PDF is the least faithful of the three formats*, and it is the
+  one that gets issued and filed. `cli.ts` forces `theme: 'light'`,
+  discarding declared `monochrome` and `print`; there is no
+  pagination, so a four-view study makes one page and `[page]`/`[of]`
+  print a literal `?` on a sheet stamped for issue; and non-WinAnsi
+  text is silently substituted (`Lodz` with its diacritics becomes
+  `?od?`). No document metadata, no embedded fonts, so not archival.
+
+. *Extra CLI arguments are silently discarded.* [VERIFIED]
+  `check a.ptc b.ptc` reads only the first and exits 0. No stdin, no
+  stdout, no glob, no `--watch`, no all-views render.
+
+. *The sheet never says whether the study passed.* The verdict lives
+  only in console output that does not travel with the file.
+
+. *No physical size on any output.* No `pHYs` chunk in the PNGs;
+  px-only SVG root. An A3 study lands in a document at 740 mm wide.
+
+. *`--size` with an unknown keyword silently yields A4*, where the
+  study path correctly raises `PAGE_SIZE_UNKNOWN`.
+
+. *The `--force` NOT VALID stamp carries no `data-layer`*, being
+  appended by string surgery on `</svg>`. A layer-aware consumer
+  recomposing the sheet drops the one mark saying it is invalid.
+
+. *`process` is exported at top level* (`index.ts`), shadowing the
+  global in any module that imports it by name -- the CLI has to alias
+  around the project's own export. Internals (`lex`, `tokenize`,
+  `levenshtein`, `readNumber`, ...) are exported with no version
+  discipline, and there are no subpath exports, though `renderer/sheet.ts`
+  exists precisely because importing the barrel drags in the Node PNG
+  exporter.
+
+. *`[date]` resolves at render time* [VERIFIED], so the same study
+  renders differently on different days -- narrower than the
+  determinism guarantee stated in `renderer/svg.ts`. No shipped example
+  uses it, so the baseline is unaffected. Prefer `meta.date` or honour
+  `SOURCE_DATE_EPOCH`.
+
+. *No `<title>`, no `role="img"`, no `aria-label` on any sheet*, and
+  the one `<desc>` is a self-closed data carrier with no text -- worse
+  than absent, since a screen reader announces an empty string.
+
+. *Palette CVD claims cannot be reproduced.* `renderer/theme.ts` cites
+  `scripts/validate_palette.js`, which does not exist [VERIFIED], so
+  neither CI nor a reader can check them. The stated metric is worst
+  *adjacent* delta-E, but adjacency in palette order is not adjacency
+  on a drawing: an independent check put slots 0 and 6 of the dark
+  palette at delta-E ~ 2.2 under protanopia, and tritanopia is not
+  covered at all (worst all-pairs ~ 1.1-1.5 across the three palettes).
+  Bounded by dash encoding and legend naming, so real but not acute.
+
+==== Opportunities, ranked by value to a practising engineer
+
+. *Topology is the missing concept.* Nothing says which device is
+  upstream of which, or what a transformer is beyond two voltage names.
+  That single absence forces the pairwise `grade` explosion -- a
+  ten-relay feeder across three configurations, phase and earth, is
+  around sixty hand-written blocks kept in sync by hand -- and blocks
+  vector-group correctness and generated damage curves alike. An
+  equipment layer (`transformer`, `cable`, `chain`) with the present
+  pairwise `grade` retained as the escape hatch.
+
+. *No arithmetic and no named constants.* `I_pickup = 1.25 * 262.4 A`
+  is a lexer error. Engineers set from a multiple of full-load current,
+  so today the reasoning lives in a comment and never re-derives when
+  the rating changes. A `let` binding, the four operators, and an
+  `flc(S, V)` builtin.
+
+. *`grade` has the right shape and the wrong granularity.* A list of
+  conditions per grade, and a `chain` declaring radial order so pairs
+  enumerate themselves. `grade { fault = [...] }` currently parses and
+  silently drops both entries.
+
+. *CTI is atomic where practice is compositional.* Breaker interrupting
+  time, relay overshoot, CT error, timing tolerance and safety, summed
+  and reported in parts; and IDMT tolerance bands drawn on the sheet.
+
+. *Missing device models:* thermal replica (49, IEC 60255-149 -- a
+  closed form that fits the existing `CurveForm`), voltage-controlled
+  and voltage-restrained overcurrent (51V), a CT model with knee-point
+  and ALF, and autoreclose sequences -- which is the one place `reset`
+  and `t_reset` stop being decorative and become load-bearing.
+
+. *Curve families engineers will look for:* GE/Westinghouse IAC and the
+  CO-2 to CO-9 electromechanical families, which are exactly what a
+  retrofit study grades against. Also `G_D` is documented as off for
+  every standard curve with per-element override deferred, so above
+  M ~ 20 every IDMT curve is drawn unclamped.
+
+. *`share` is capped at 100%*, so a current magnification -- a
+  delta-star distribution factor, parallel-transformer inrush, a CT
+  ratio error -- has no expression but a hand-computed scenario. Wants
+  a `factor` with no upper bound alongside it.
+
+. *Auto-scale blows the current axis out when any element has a
+  definite-time high-set.* The twenty-times-pickup widening is right
+  for an IDMT curve and meaningless for a shelf, which carries no
+  information above pickup. Half the sheet comes out empty.
+
+. *A settings group*, so a study comparing as-found against proposed
+  does not duplicate the whole relay.
+
+. *Onboarding: a "Try this" button on each guide code block*, loading
+  the snippet into the editor. The tutorial says "paste it into the
+  playground" and gives no way to; thirteen steps become thirteen
+  one-click experiments.
+
+. *Report as a deliverable:* a header naming the study, a summary line,
+  and `--report-format text|markdown|csv|json`. The monospace alignment
+  collapses when pasted into a proportional font.
+
+. *Diagnostics the tool could give and does not:* naming the swapped
+  primary/backup on an all-negative margin (the guide already tells the
+  reader this; the message does not), and suppressing `STAGE_NO_CURVE`
+  when a `curve` key was written but unresolved -- currently a curve
+  typo yields two errors, one of them untrue.
+
+==== Smaller, and worth doing when nearby
+
+. *`svg.ts` decomposition.* One large function holding around forty
+  closures. Split in this order or the captures merely move: sheet
+  model, legend, annotations, frame.
+
+. *Range sweep does nothing for sequence elements* but still prints a
+  range-check table implying it ran.
+
+. *Ctrl+S is bound to Download, not to the button labelled Save*, and
+  no shortcut is documented outside the source.
+
+. *No time-axis zoom, and pan is middle-drag only* -- so inspecting
+  whether a 0.30 s margin is met near 0.3 s means editing the source.
+  The plot is not keyboard-reachable at all.
+
+. *A share link pasted into an already-open tab does nothing*: the
+  fragment is read only in `connectedCallback`, and there is no
+  `hashchange` listener.
+
+. *A study opened from a link with no `meta` block is labelled as an
+  unrelated example* in the picker.
+
+. *`examples/03-mixed-ansi-iec.ptc` ships a `MARGIN_NO_SOLVE` warning
+  and a grade that cannot be evaluated*, and it is fourth in the
+  picker.
+
+. *The report panel opens above the whole application*, unstyled,
+  shrinking the plot it describes.
+
+. *PNG/PDF export can abort the process* on at least one valid study
+  via a native resvg panic; the reviewer preserved a repro but did not
+  isolate the trigger. Worth running the rasteriser out of process so a
+  panic is an error rather than a killed CLI.
+
+. *Band hatching is ~175 stroked lines per band behind a clip path.*
+  An SVG `<pattern>` would be one element and clip-independent; some
+  importers drop `<defs>` and spray hatching across the sheet.
+
+. *PDF wrapping is computed against the monospace advance* and then set
+  in proportional Helvetica, so legend lines break early. Nothing
+  overflows -- the substitution is strictly narrower -- just loose.
 
 === Closed 2026-07-31
 

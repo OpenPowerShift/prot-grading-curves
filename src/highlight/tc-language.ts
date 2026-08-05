@@ -93,7 +93,35 @@ const parser: StreamParser<TcState> = {
     if (stream.match('//') || stream.match('#')) { stream.skipToEnd(); return 'comment'; }
 
     /* ---- strings -------------------------------------------------- */
-    if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) return 'string';
+    /*
+     * A value closes the value position.
+     *
+     * `afterEquals` was only cleared by a `;` or a brace, so a
+     * statement written without its semicolon left the flag set and
+     * the *next* field was drawn as a value: in a block with
+     * `fault = "F"` and no semicolon, `label` on the following line
+     * came out a different colour from `fault` above it. The
+     * highlighter cannot fix the missing semicolon, but it should not
+     * mislead about the line after it.
+     */
+    if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) { state.afterEquals = false; return 'string'; }
+
+    /*
+     * ---- device numbers ------------------------------------------
+     *
+     * `50G`, `67N`, `51X` are single identifiers, not a number
+     * followed by a letter. The number rule below matched the digits
+     * and left the suffix to the identifier rule, so an element id was
+     * drawn in two colours -- orange digits, plain letters -- while
+     * `51` beside it was drawn in one.
+     *
+     * The spec has this rule already: a digit-leading identifier
+     * absorbs the letters that follow it with no space between, which
+     * is what keeps `67N` from reading as `67` and `N`. Whitespace is
+     * still what separates a value from its unit, so `480 A` is
+     * unaffected.
+     */
+    if (stream.match(/^\d[\d_]*[A-Za-z_]\w*/)) return 'variableName';
 
     /* ---- numbers, with an optional unit suffix -------------------- */
     if (stream.match(/^-?\d[\d_]*(?:\.\d+)?(?:[eE][-+]?\d+)?/)) {
@@ -104,12 +132,13 @@ const parser: StreamParser<TcState> = {
         stream.eatSpace();
         if (stream.match(/^[A-Za-z]+/, false)) {
           const word = stream.match(/^[A-Za-z]+/) as RegExpMatchArray | null;
-          if (word && UNITS.has(word[0])) return 'unit';
+          if (word && UNITS.has(word[0])) { state.afterEquals = false; return 'unit'; }
           stream.pos = save;
         } else {
           stream.pos = save;
         }
       }
+      state.afterEquals = false;
       return 'number';
     }
 

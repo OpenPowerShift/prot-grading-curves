@@ -200,8 +200,10 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   font_size_px: M('page', 'Type size for this block\u2019s text. The title block grows to fit, so a larger footer moves the subtitle up rather than colliding with it.', 'font_size_px = 10;'),
   border:      M('page', 'Draw a drawing-office frame with a title block along the foot, filled from `meta`.', 'border = true;'),
   size:        M('page', 'Paper size: A0..A5, Letter, Legal, Tabloid, or a { width_mm, height_mm } clause.', 'size = "A4";'),
-  left:        M('page', 'Left-hand slot, or the left margin.', 'left = "Drawing NG-TCC-0021";'),
-  right:       M('page', 'Right-hand slot, or the right margin.', 'right = "Rev B";'),
+  left:        M('page', 'Left-hand footer slot, or the left page margin in millimetres.', 'left = "Drawing NG-TCC-0021";'),
+  top:         M('page', 'Top page margin, in millimetres. 0 fills the sheet to its edge.', 'top = 12;'),
+  bottom:      M('page', 'Bottom page margin, in millimetres.', 'bottom = 12;'),
+  right:       M('page', 'Right-hand footer slot, or the right page margin in millimetres.', 'right = "Rev B";'),
   center:      M('page', 'Centre slot of the footer.', 'center = "[meta.project]";'),
 
   /* Elsewhere. */
@@ -329,6 +331,11 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   leaders:     ['show', 'style', 'width_px', 'color', 'label_offset_px'],
   title:       ['text', 'subtitle', 'font_size_px', 'color', 'align'],
   footer:      ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
+  /* The four sides of the page margin. Absent from this table, `top`
+   * and `bottom` were not field names anywhere in the language, so the
+   * highlighter drew them as values while `left` and `right` -- which
+   * the footer also uses -- came out as fields. */
+  margins_mm:  ['top', 'right', 'bottom', 'left'],
   combined:    ['name', 'sources', 'as', 'color', 'style', 'label'],
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */

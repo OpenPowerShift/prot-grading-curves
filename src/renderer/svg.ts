@@ -3267,11 +3267,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
+    /*
+     * The current, beside the name.
+     *
+     * A rule was labelled "Board max" and nothing else, so reading the
+     * figure it stands at meant finding the same name in the legend --
+     * or reading it off the axis by eye, which is the thing a log
+     * scale is worst at. The number is the reason the rule is drawn.
+     *
+     * On the axis quantity where the two differ, since that is where
+     * the rule was placed.
+     */
+    const shown = f.I_view ?? f.I_A;
+    const caption = Number.isFinite(shown)
+      ? `${f.name} \u00b7 ${formatSi(shown, 'A')}`
+      : f.name;
     out.push(
       `<text x="${(px + (flipped ? -4 : 4)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
       `text-anchor="${flipped ? 'end' : 'start'}" ` +
       `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
-      `${escapeXml(f.name)}</text>`,
+      `${escapeXml(caption)}</text>`,
     );
   }
 

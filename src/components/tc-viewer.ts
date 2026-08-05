@@ -132,7 +132,7 @@ interface SnapState {
    * a fault marker reports its declared current; a marked point
    * reports the coordinate it asserts.
    */
-  target?: 'curve' | 'fault' | 'point';
+  target?: 'curve' | 'fault' | 'point' | 'time';
   /**
    * Which form declared a condition rule: a `fault` is one current at
    * one level, a `scenario` the same condition at every level. The
@@ -445,6 +445,43 @@ export class TcViewer extends LitElement {
           pathD: '',
           target: 'fault',
           conditionKind: line.getAttribute('data-kind') === 'scenario' ? 'scenario' : 'fault',
+        };
+      }
+    }
+
+    /*
+     * Required-time rules are interrogable too.
+     *
+     * A `times` rule asserts a clearance the study is judged against,
+     * exactly as a fault asserts a current -- and the fault rules could
+     * be latched onto while these could not, so the one figure a
+     * reader most wants to check had to be read off the axis by eye.
+     */
+    for (const line of Array.from(svg.querySelectorAll('line[data-time-name]'))) {
+      const y = Number(line.getAttribute('y1'));
+      const seconds = Number(line.getAttribute('data-time'));
+      if (!Number.isFinite(y) || !Number.isFinite(seconds)) continue;
+
+      /* A horizontal rule: the distance is vertical, anywhere along
+       * it, mirroring how a fault's vertical rule is measured. */
+      const x1 = Number(line.getAttribute('x1'));
+      const x2 = Number(line.getAttribute('x2'));
+      if (cursorPxI < Math.min(x1, x2) || cursorPxI > Math.max(x1, x2)) continue;
+
+      const distSq = (cursorPxT - y) ** 2;
+      if (distSq < bestDist) {
+        bestDist = distSq;
+        best = {
+          pxI: cursorPxI,
+          pxT: y,
+          I_A: NaN,
+          t_s: seconds,
+          curveLabel: line.getAttribute('data-time-name') ?? 'time',
+          ref: line.getAttribute('data-time-name') || undefined,
+          voltage: '',
+          protocol: 'snap',
+          pathD: '',
+          target: 'time',
         };
       }
     }
@@ -1240,9 +1277,12 @@ render() {
       for (const other of hover.alsoHere ?? []) describe(other);
     }
 
-    lines.push({ text: `I = ${prettyNum(hover.I_A)}` });
-    /* A fault marker asserts a current, not a time. */
+    /* A fault rule asserts a current; a required-time rule asserts a
+     * time. Each is drawn for one figure, and quoting the other would
+     * be quoting wherever the cursor happened to be. */
+    if (hover.target !== 'time') lines.push({ text: `I = ${prettyNum(hover.I_A)}` });
     if (hover.target !== 'fault') lines.push({ text: `t = ${prettyTime(hover.t_s)}` });
+    if (hover.target === 'time') lines.push({ text: 'required time' });
     if (hover.target === 'fault') {
       /* A scenario's figure was declared for this level, not referred
        * to it, so calling it a fault level would misstate where it

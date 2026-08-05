@@ -173,7 +173,9 @@ describe('a required time and a fault rule together', () => {
     /* Both kinds of furniture are present and distinguishable. */
     expect(both).toContain('class="tc-time"');
     expect(both).toContain('class="tc-fault"');
-    expect(both).toContain('>Bus max</text>');
+    /* The fault's caption carries its current beside the name, which
+     * is the figure the rule is drawn for. */
+    expect(both).toMatch(/>Bus max \u00b7 [\d.]+ ?k?A</);
   });
 
   it('styles them apart, so the axis each belongs to is obvious', () => {

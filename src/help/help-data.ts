@@ -29,6 +29,20 @@ const M = (scope: HelpEntry['scope'], summary: string, example: string): HelpEnt
   ({ scope, summary, example });
 
 /**
+ * The entry for a word, preferring the one scoped to the block it is
+ * written in.
+ *
+ * Several words mean different things in different places: `point` is
+ * a top-level marked coordinate and also the field inside `annotate`
+ * that names one; `style` is a legend layout, an annotation's drawing
+ * mode, and a curve's stroke. A flat table can hold only one of each,
+ * so asking about the others explained the wrong thing.
+ */
+export function helpFor(word: string, block?: string | null): HelpEntry | undefined {
+  return (block ? KEYWORD_HELP[`${block}.${word}`] : undefined) ?? KEYWORD_HELP[word];
+}
+
+/**
  * Top-level keyword help.
  */
 export const KEYWORD_HELP: Record<string, HelpEntry> = {
@@ -64,15 +78,15 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   I_max:       M('faults', 'Maximum fault current for this entry.', 'I_max = 6.4 kA;'),
   I0:        M('faults', 'Zero-sequence current component.', 'I0 = 4.5 kA;'),
   I2:        M('faults', 'Negative-sequence current component.', 'I2 = 1.5 kA;'),
-  fault_voltage: M('faults', 'Voltage level name that this fault is declared at (must exist in system.voltages).', 'voltage = "LV";'),
+  'faults.voltage': M('faults', 'Voltage level name that this fault is declared at (must exist in system.voltages).', 'voltage = "LV";'),
 
   // relay
-  relay_voltage: M('relay', "A relay's voltage level (must exist in system.voltages).", 'voltage = "LV";'),
+  'relay.voltage': M('relay', "A relay's voltage level (must exist in system.voltages).", 'voltage = "LV";'),
   maker:       M('relay', 'Vendor / maker name shown in reports.', 'maker = "ABB";'),
   model:       M('relay', 'Model name shown in reports.', 'model = "REL-615";'),
   ct_ratio:    M('relay', 'Current-transformer ratio (primary/secondary).', 'ct_ratio = 600/5;'),
   direction:   M('relay', 'Direction control: "forward", "reverse", or "none".', 'direction = "forward";'),
-  relay_faults: M('relay', 'List of faults this relay explicitly considers. Optional.', 'faults = ["F1", "F2"];'),
+  'relay.faults': M('relay', 'List of faults this relay explicitly considers. Optional.', 'faults = ["F1", "F2"];'),
   comment:     M('relay', 'Inline documentation. Free text. Inside page { legend } it is standing text drawn on the sheet under a "Comment" heading -- one string, or a list of lines -- as distinct from "Notes", which the tool writes about what it could not draw.', 'comment = "primary OC element";'),
 
   // element
@@ -81,7 +95,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   formula:     M('element', 'Custom IDMT formula: k [s], c [s], alpha.', 'formula = { k = 0.14 s; c = 0; alpha = 0.02; }'),
   flex_points: M('element', 'Piecewise (I, t) pairs for a flex curve.', 'flex_points = [(100 A, 10 s), (1 kA, 0.1 s)];'),
   I_pickup:        M('element', 'Pickup current. Give the unit: A, kA, A_sec for the settings-sheet figure, or pu / xCT for a multiple.', 'I_pickup = 480 A;'),
-  element_I_units: M('element', "Element's per-element current-units override.", 'I_units = "secondary";'),
+  'element.I_units': M('element', "Element's per-element current-units override.", 'I_units = "secondary";'),
   tms:         M('element', 'Time Multiplier Setting -- scales an IDMT curve uniformly.', 'tms = 0.30;'),
   t_delay:     M('element', 'Definite-time delay in seconds.', 't_delay = 0.10 s;'),
   char_angle:  M('element', 'Characteristic angle in degrees.', 'char_angle = 60 deg;'),
@@ -90,7 +104,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   stages:      M('element', 'Sub-block listing named stages for a multi-stage element.', 'stages { stage main { ... } stage inst { ... } }'),
 
   // stage
-  stage_curve_id: M('stage', 'Stage delimiter keyword.', ''),
+  'stage.curve': M('stage', 'Stage delimiter keyword.', ''),
 
   // device
   kind:        M('device', 'Device kind: fuse, recloser, cable, transformer_damage, motor_startup, breaker.', 'kind = "fuse";'),
@@ -145,11 +159,11 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   free:        M('solve', 'List of free variables for the solver: tms, t_delay, I_pickup.', 'free = ["tms", "I_pickup"];'),
 
   // view
-  view_voltage: M('view', 'Voltage frame for the rendered plot. Named level or "<n> kV" or "pickup".', 'voltage = "HV";'),
+  'view.voltage': M('view', 'Voltage frame for the rendered plot. Named level or "<n> kV" or "pickup".', 'voltage = "HV";'),
   axis:        M('view', 'Axis mode: primary, secondary, or multiples.', 'axis = "primary";'),
   two_axes:    M('view', 'Toggle a secondary axis below the primary.', 'two_axes = true;'),
   reference_ct:M('view', 'Curve whose CT anchors the secondary axis.', 'reference_ct = R_FDR:51;'),
-  view_stages: M('view', 'Composite (default) renders the pointwise-min of all stages; individual draws each.', 'stages = "composite";'),
+  'view.stages': M('view', 'Composite (default) renders the pointwise-min of all stages; individual draws each.', 'stages = "composite";'),
   current_min: M('view', 'Minimum displayed current on the X-axis.', 'current_min = 100 A;'),
   views:       M('faults', 'Sheets this belongs to, as a list -- the same key as `view`, spelled for more than one.', 'views = ["Phase", "Earth"];'),
   current_pad: M('view', 'Extra room beyond the fitted current range, as a factor: 1.5 leaves half a decade of air on both ends. Use current_pad_low / current_pad_high for one end only.', 'current_pad = 1.5;'),
@@ -227,6 +241,29 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   revision:    M('meta', 'Revision letter or number.', 'revision = "B";'),
   standard:    M('meta', 'The standard the study is worked to.', 'standard = "IEC 60255-151";'),
   stage:       M('stage', 'One stage of a multi-stage element: its own curve, pickup and delay. The element trips at whichever stage is fastest at the current in question.', 'stage inst { curve = definite; I_pickup = 4 kA; t_delay = 50 ms; }'),
+  /*
+   * Scoped entries, addressed `block.field`.
+   *
+   * `point` means two different things -- a top-level marked
+   * coordinate, and the field inside an `annotate` that names one --
+   * and the flat table could hold only the first, so asking about the
+   * second explained the wrong thing. Same for `style`, `label` and
+   * `voltage`, each of which reads differently depending on where the
+   * caret is.
+   *
+   * These were once written `page_size`, `view_voltage` and so on.
+   * Nothing ever read them: the lookup is by the word under the caret,
+   * and nobody types `page_size`. Dotted, they are reachable.
+   */
+  'annotate.point': M('annotate', 'Names a marked `point` to measure to. With `at_t` it is the far end of a current margin; without, a time margin at the point\u2019s own current. Referenced by the id in the point\u2019s header, not by its label.', 'point = "TX inrush";'),
+  'annotate.style': M('annotate', 'How the mark is drawn: `leader` (elbowed line to the text), `tag` (text alone), `pin` (marker only, and so no label).', 'style = leader;'),
+  'annotate.label': M('annotate', 'Text drawn beside the mark. The computed figure -- a margin, a percentage -- is appended to it.', 'label = "CTI";'),
+  'annotate.voltage': M('annotate', 'The level a bare `at_I` was read at. Defaults to the view\u2019s, which is the axis in front of you.', 'voltage = "HV";'),
+  'point.label': M('point', 'Text drawn beside the marker. A \\n breaks the line.', 'label = "Transformer inrush";'),
+  'legend.style': M('page', 'How the panel is laid out: `column` (a gutter), `inside` (floated over the plot), `direct` (no panel, each curve labelled in place), `none`.', 'style = "column";'),
+  'legend.comment': M('page', 'Your own standing text at the foot of the panel, under a `Comment` heading -- distinct from `Notes`, which the tool writes about what it could not draw. One string, or a list of lines.', 'comment = ["Checked against issue D."];'),
+  'faults.type': M('faults', 'What kind of fault, which fixes the ratios between phase current and the sequence components -- so a component you did not declare can be derived.', 'type = single_phase_earth;'),
+  'element.view': M('element', 'Sheets this curve belongs on, by `view` name. Absent means every sheet.', 'views = ["Phase", "Negative sequence"];'),
   from:        M('annotate', 'One end of a span: a dimension between two figures the study names, with no curve at either end. The unit decides the orientation -- two times draw a vertical span (anchored by at_I or a condition), two currents a horizontal one (anchored by at_t).', 'from = 300 ms; to = 800 ms; at_I = 2 kA;'),
   to:          M('annotate', 'The far end of a from/to span. Must be the same quantity as `from` -- there is no distance between a current and a time.', 'to = 800 ms;'),
   color:       M('element', 'Ink for this one curve, overriding the palette -- for a house standard, or a figure whose colours are fixed by the report around it. The palette slot is still consumed, so the other curves keep their hues.', 'color = "#884400";'),
@@ -236,12 +273,12 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   time_max:    M('view', 'Maximum displayed time on the Y-axis.', 'time_max = 1000 s;'),
 
   // page
-  page_size:        M('page', 'Paper size keyword or custom { width_mm, height_mm } clause.', 'size = "A4";'),
+  'page.size':        M('page', 'Paper size keyword or custom { width_mm, height_mm } clause.', 'size = "A4";'),
   orientation: M('page', 'Portrait or landscape.', 'orientation = "landscape";'),
   theme:       M('page', 'Theme preset: light, dark, monochrome, print.', 'theme = "light";'),
   watermark:   M('page', 'Diagonal watermark text drawn across the page.', 'watermark = "DRAFT";'),
-  page_title:        M('page', 'Chart title (printed at the top).', 'title = "Riverside 33/11";'),
-  page_footer: M('page', 'Footer bar text.', 'footer = "<date> -- <engineer>";'),
+  'page.title':        M('page', 'Chart title (printed at the top).', 'title = "Riverside 33/11";'),
+  'page.footer': M('page', 'Footer bar text.', 'footer = "<date> -- <engineer>";'),
   margins_mm:  M('page', 'Sub-block of page margins in millimetres.', 'margins_mm = { top = 12; right = 12; ... };'),
 
   // common (already declared above in scope-specific entries)

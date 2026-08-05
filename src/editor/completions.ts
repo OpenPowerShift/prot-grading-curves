@@ -62,7 +62,7 @@ function blockKeywordAt(src: string, braceIndex: number): string {
  * The stack also gives nesting for free, which the old code had to
  * special-case by searching for the nearest `stages` or `voltages`.
  */
-function detectActiveBlock(src: string, pos: number): string | null {
+export function detectActiveBlock(src: string, pos: number): string | null {
   const stack: string[] = [];
   for (let i = 0; i < pos && i < src.length; i++) {
     if (src[i] === '{') stack.push(blockKeywordAt(src, i));

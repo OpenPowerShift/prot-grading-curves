@@ -11,7 +11,8 @@
 
 import type { EditorView, Tooltip } from '@codemirror/view';
 
-import { KEYWORD_HELP, CURVE_HELP } from '../help/help-data.js';
+import { CURVE_HELP, helpFor } from '../help/help-data.js';
+import { detectActiveBlock } from './completions.js';
 
 type HoverPos = { view: EditorView; pos: number };
 
@@ -95,7 +96,10 @@ export function helpAt(view: EditorView, pos: number): {
   if (pos < 0 || pos > view.state.doc.length) return null;
   const w = wordAt(view, pos);
   if (!w) return null;
-  const e = KEYWORD_HELP[w.text] ?? CURVE_HELP[w.text];
+  /* Scoped to the block the caret is in, so `point` inside an
+   * `annotate` explains the field rather than the top-level block. */
+  const block = detectActiveBlock(view.state.doc.toString(), pos);
+  const e = helpFor(w.text, block) ?? CURVE_HELP[w.text];
   if (!e) return null;
   return typeof e === 'string'
     ? { name: w.text, summary: e }
@@ -108,7 +112,8 @@ export function tcHoverSource({ view, pos }: HoverPos): Tooltip | null {
   if (pos < 0 || pos > view.state.doc.length) return null;
   const w = wordAt(view, pos);
   if (!w) return null;
-  const e = KEYWORD_HELP[w.text] ?? CURVE_HELP[w.text];
+  const block = detectActiveBlock(view.state.doc.toString(), pos);
+  const e = helpFor(w.text, block) ?? CURVE_HELP[w.text];
   if (!e) return null;
 
   const dom = new HelpTooltipView(w.from).dom;

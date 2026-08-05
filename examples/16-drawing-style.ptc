@@ -209,7 +209,12 @@ page {
     style = "dotted";
     color = "#555555";
     width_px = 1.2;
-    labels = true;
+    labels = true; # draw the names under the axis at all
+    # Each name is captioned with its current — the figure the rule is
+    # drawn for. Turn this off where a dozen conditions at similar
+    # currents would make a band of numbers and the legend already
+    # quotes them.
+    currents = true;
   };
   times  = {
     style = "dashed";

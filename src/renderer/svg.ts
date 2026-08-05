@@ -943,10 +943,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const stretch = opts.page?.stretch === true;
   const faultLayout = packFaultLabels(
     faults, xScale, I_min, I_max, opts.page?.faults?.labels !== false, leftMargin + plotW,
+    opts.page?.faults?.currents !== false,
   );
   const faultRows = faultLayout.reduce((n, f) => Math.max(n, f.row + 1), 0);
 
-  const faultBandH = faultRows > 0 ? 44 + (faultRows - 1) * (LINE_DETAIL - 1) + 6 : 26;
+  /*
+   * The first caption sits close under the axis.
+   *
+   * It was 44 px down, so every rule dropped a leader most of a
+   * centimetre long to a name that could as easily have touched it --
+   * and on a sheet with one condition that band is simply empty. 22
+   * clears the axis tick labels and no more.
+   */
+  const faultBandH = faultRows > 0 ? 22 + (faultRows - 1) * (LINE_DETAIL - 1) + 6 : 26;
   const bottomMargin = (stretch ? faultBandH + 34 : 140) + sheetInset + titleBlockH;
   const plotH = H - topMargin - bottomMargin;
 
@@ -3255,11 +3264,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * currents -- which is the normal case in a cascade -- otherwise
    * produces an unreadable pile of overlapping text.
    */
-  const faultBandY = topMargin + plotH + 44;
+  const faultBandY = topMargin + plotH + 22;
 
   /* Rows were packed before the vertical margins were settled, so the
    * band below the axis could be sized to them. */
-  for (const { f, i, px, row, flipped } of faultLayout) {
+  for (const { i, px, row, flipped, caption } of faultLayout) {
     const labelY = faultBandY + row * (LINE_DETAIL - 1);
     const dash = faultDash(i);
     out.push(
@@ -3267,21 +3276,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
-    /*
-     * The current, beside the name.
-     *
-     * A rule was labelled "Board max" and nothing else, so reading the
-     * figure it stands at meant finding the same name in the legend --
-     * or reading it off the axis by eye, which is the thing a log
-     * scale is worst at. The number is the reason the rule is drawn.
-     *
-     * On the axis quantity where the two differ, since that is where
-     * the rule was placed.
-     */
-    const shown = f.I_view ?? f.I_A;
-    const caption = Number.isFinite(shown)
-      ? `${f.name} \u00b7 ${formatSi(shown, 'A')}`
-      : f.name;
     out.push(
       `<text x="${(px + (flipped ? -4 : 4)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
       `text-anchor="${flipped ? 'end' : 'start'}" ` +
@@ -4118,6 +4112,16 @@ interface PlacedFault {
   /** Drawn to the left of its rule, because a right-hand label would
    * have run past the frame. */
   flipped: boolean;
+  /**
+   * The text as drawn -- name, and the current where it is shown.
+   *
+   * Carried rather than rebuilt at the drawing site, because the
+   * packer has to measure the same string it will later place. It
+   * measured `f.name` alone while the caption gained the current
+   * beside it, so every label was under-measured by the width of its
+   * own figure and the rows overlapped.
+   */
+  caption: string;
 }
 
 /**
@@ -4135,6 +4139,8 @@ function packFaultLabels(
   showLabels: boolean,
   /** Right-hand edge of the plot; labels may not cross it. */
   plotRight: number,
+  /** Print each current beside its name. */
+  showCurrents: boolean,
 ): PlacedFault[] {
   if (!showLabels) return [];
 
@@ -4156,7 +4162,16 @@ function packFaultLabels(
      * the maximum fault current does it every time -- so the label
      * flips and hangs to the left of the rule instead.
      */
-    const width = f.name.length * FONT_DETAIL * CHAR_ADVANCE + 10;
+    /*
+     * The figure is the reason the rule is drawn, so it goes beside
+     * the name -- and it is measured here, with the name, because
+     * this is what decides which row the label lands on.
+     */
+    const caption = showCurrents && Number.isFinite(I)
+      ? `${f.name} \u00b7 ${formatSi(I, 'A')}`
+      : f.name;
+
+    const width = caption.length * FONT_DETAIL * CHAR_ADVANCE + 10;
     const flipped = px + width > plotRight;
     const left = flipped ? px - width : px;
     const right = left + width;
@@ -4165,7 +4180,7 @@ function packFaultLabels(
     let row = 0;
     while (taken.some((p) => p.row === row && p.right > left && p.left < right)) row++;
     taken.push({ left, right, row });
-    placed.push({ f, i, px, row, flipped });
+    placed.push({ f, i, px, row, flipped, caption });
   }
   return placed;
 }

@@ -113,7 +113,7 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
   leaders: ['show', 'style', 'width_px', 'color', 'label_offset_px'],
   scale: ['auto', 'x_min', 'x_max', 'y_min', 'y_max', 'tick_density'],
   margins_mm: ['top', 'right', 'bottom', 'left'],
-  faults: ['width_px', 'color', 'style', 'labels'],
+  faults: ['width_px', 'color', 'style', 'labels', 'currents'],
   times: ['width_px', 'color', 'style', 'labels'],
   footer: ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
 };
@@ -2786,6 +2786,7 @@ function applyPageSubBlock(
         color: str('color'),
         style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
         labels: bool('labels'),
+        currents: bool('currents'),
       };
       break;
     case 'times':

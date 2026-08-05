@@ -385,6 +385,10 @@ still writes its name, at the left-hand end -- and says so in the
 notes, because otherwise it is indistinguishable from having asked for
 no anchor at all.
 
+Each rule is captioned with its name *and its current* --
+`Board max · 6.2 kA`, the figure it is drawn for. Turn that off with
+`page { faults = { currents = false; }; }`.
+
 Style them with `page { times = { color = ...; width_px = ...; style =
 "solid" | "dashed" | "dotted"; labels = false; }; }`, which mirrors
 `page { faults }`. They are drawn in a different ink from the fault
@@ -1649,9 +1653,8 @@ not drawn in, a scenario with nothing to say at this level. It sits at
 the foot because the list of characteristics is what a reader wants
 first; the caveats are what they come back for.
 
-It takes its space from the panel rather than running off the page, is
-dropped as the legend tightens on a crowded sheet, and can be turned
-off outright:
+It takes its space from the panel, is dropped as the legend tightens,
+and can be turned off:
 
 [source,tc]
 ----

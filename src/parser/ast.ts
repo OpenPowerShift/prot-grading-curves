@@ -720,6 +720,15 @@ export interface PageFaults extends BaseNode {
    * explicitly makes them uniform.
    */
   style?: 'solid' | 'dashed' | 'dotted';
+  /**
+   * Print each fault's current beside its name. Defaults to true.
+   *
+   * The figure is the reason the rule is drawn, so it belongs on the
+   * sheet -- but a study with a dozen conditions at similar currents
+   * is a band of numbers, and an office that quotes them in the
+   * legend instead wants the band back.
+   */
+  currents?: boolean;
   /** Draw the marker labels below the axis. Defaults to true. */
   labels?: boolean;
 }

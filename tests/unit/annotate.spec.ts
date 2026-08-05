@@ -371,3 +371,63 @@ view { voltage = "HV"; }
     expect(parseAndRender(cross, { theme: 'light' }).svg).toContain('CTI 1.64 s');
   });
 });
+
+describe('a margin from a curve to a marked point', () => {
+  /*
+   * A point asserts a coordinate the study is sure of -- an inrush
+   * peak, a withstand corner, a figure off a data sheet -- and the gap
+   * between a characteristic and one of those is as much a margin as
+   * the gap between two relays.
+   *
+   * `primary` with a `point` and no `at_t` used to fall through to the
+   * point form, which needs an `on_curve` it does not have, so it drew
+   * nothing and said nothing.
+   */
+  const STUDY = `
+system { voltages { "MV" { V = 11 kV; } } }
+relay R { voltage = "MV"; ct_ratio = 400/5;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A; tms = 0.20; } }
+point "Inrush" { I = 2 kA; t = 100 ms; label = "Transformer inrush"; }
+view { voltage = "MV"; current_min = 100 A; current_max = 40 kA;
+       time_min = 10 ms; time_max = 100 s; }
+`;
+
+  const drawn = (annotation: string): string =>
+    parseAndRender(`${STUDY}${annotation}`, { theme: 'light' }).svg;
+
+  it('is drawn', () => {
+    const svg = drawn('annotate { primary = R:51; point = "Inrush"; label = "m"; }');
+    expect(svg).toMatch(/m [\d.]+ ?m?s/);
+    expect(svg).not.toContain('could not place');
+  });
+
+  it('measures to the point\'s own time, at the point\'s own current', () => {
+    /*
+     * IEC SI at 2 kA on a 400 A pickup is M = 5, so
+     * t = 0.20 * 0.14 / (5^0.02 - 1) = 0.8559 s. The point sits at
+     * 100 ms, so the gap is 756 ms.
+     */
+    const expected = (0.2 * 0.14) / (Math.pow(5, 0.02) - 1) - 0.1;
+    expect(expected).toBeCloseTo(0.756, 3);
+    expect(drawn('annotate { primary = R:51; point = "Inrush"; label = "m"; }'))
+      .toContain('m 756 ms');
+  });
+
+  it('needs no at_I, the point having said where it is', () => {
+    const codes = process(`${STUDY}annotate { primary = R:51; point = "Inrush"; }`)
+      .diagnostics.filter((d) => d.severity === 'error').map((d) => d.code);
+    expect(codes).toEqual([]);
+  });
+
+  it('says so when the point is not declared', () => {
+    expect(drawn('annotate { primary = R:51; point = "nonesuch"; label = "m"; }'))
+      .toContain('could not place');
+  });
+
+  it('is still a current margin when at_t is given', () => {
+    /* `at_t` is what makes it horizontal; the point is then the far
+     * end of a current span rather than a time. */
+    const svg = drawn('annotate { primary = R:51; at_t = 1 s; point = "Inrush"; label = "m"; }');
+    expect(svg).toMatch(/m [\d.]+%/);
+  });
+});

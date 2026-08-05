@@ -731,11 +731,24 @@ export function buildStudy(doc: Document): Study {
              * asking about `primary` before `from` would file one as a
              * point with no position.
              */
+            /*
+             * A span names both its ends outright, so it is decided
+             * first: it needs neither a curve nor a reference, and
+             * asking about `primary` before `from` would file one as a
+             * point with no position.
+             *
+             * `primary` with a marked `point` and no `at_t` is a
+             * *time* margin measured at the point's own current -- the
+             * gap between a characteristic and a coordinate the study
+             * asserts. It used to fall through to the point form,
+             * which needs an `on_curve` it does not have, and so drew
+             * nothing at all.
+             */
             kind: spanOf(item) != null
               ? 'span'
               : item.at_t_s != null && item.primary
                 ? 'current_margin'
-                : (item.primary && item.backup ? 'margin' : 'point'),
+                : (item.primary && (item.backup || item.pointRef) ? 'margin' : 'point'),
             span: spanOf(item),
             on_curve: item.on_curve,
             primary: item.primary,

@@ -156,6 +156,21 @@ annotate {
   label = "through-fault headroom";
 }
 
+# ---- A margin whose far end is not a curve. ---------------------------
+#      Drop the `at_t` and the same pair reads vertically instead: the
+#      gap in *time* between the relay and a coordinate the study
+#      asserts. The point supplies both the current the arrow stands at
+#      and the time of its far end, so neither has to be repeated.
+#
+#      This is the inrush check stated as a number rather than left to
+#      the reader's eye: how long the HV relay takes at the inrush
+#      current, against the 100 ms the inrush lasts.
+annotate {
+  primary = R_TRF_HV:51;
+  point = "TX1_inrush";
+  label = "clear of inrush by";
+}
+
 page {
   size = "A4";
   orientation = "landscape";

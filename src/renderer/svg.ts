@@ -2875,7 +2875,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * absent.
        */
       const marginName = annotation.label
-        ?? `${annotation.primary?.text ?? '?'} to ${annotation.backup?.text ?? '?'} margin`;
+        ?? `${annotation.primary?.text ?? '?'} to `
+          + `${annotation.backup?.text ?? annotation.pointRef ?? '?'} margin`;
+
+      /*
+       * The far end may be a marked point rather than a curve.
+       *
+       * A point asserts a coordinate the study is sure of -- an inrush
+       * peak, a withstand corner, a figure from a data sheet -- and the
+       * gap between a characteristic and one of those is as much a
+       * margin as the gap between two relays. Its current is where the
+       * arrow stands and its time is one end of the span, so nothing
+       * has to be solved for it.
+       */
+      const marker = annotation.pointRef == null ? undefined
+        : study.points.find(
+          (pt) => pt.id === annotation.pointRef || pt.label === annotation.pointRef);
+      if (annotation.pointRef != null && marker == null) {
+        unplaceableAnnotations.push(marginName);
+        continue;
+      }
 
       /*
        * Each side is evaluated at the current *it* measures, exactly as
@@ -2890,12 +2909,24 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const qOf = (q: ReturnType<typeof elementQuantity>): MeasuredQuantity =>
         q == null || q === 'mixed' ? 'phase' : q;
 
-      const I = annotationCurrent(
-        study, annotation, primary.element?.voltage, qOf(primaryQ),
-      );
-      const I_backup = annotationCurrent(
-        study, annotation, backup.element?.voltage, qOf(backupQ),
-      );
+      /*
+       * A marked point supplies the current as well as the far time,
+       * so an annotation naming one needs no `at_I` and no condition.
+       */
+      const markerI = marker == null ? null
+        : marker.condition
+          ? conditionCurrentAt(marker.condition, marker.voltage ?? viewLevelName, qOf(primaryQ))
+          : resolveCurrent(qOf(primaryQ), {
+            phase: marker.I_A, I1: marker.I1_A, I2: marker.I2_A,
+            I0: marker.I0_A, residual: marker.earth_A,
+          }, marker.type)?.value ?? null;
+
+      const I = marker != null
+        ? markerI
+        : annotationCurrent(study, annotation, primary.element?.voltage, qOf(primaryQ));
+      const I_backup = marker != null
+        ? markerI
+        : annotationCurrent(study, annotation, backup.element?.voltage, qOf(backupQ));
       if (I == null || I_backup == null) {
         unplaceableAnnotations.push(marginName);
         continue;
@@ -2947,7 +2978,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       };
 
       const primaryTimes = stageTimes(primary, I, 'primary');
-      const backupTimes = stageTimes(backup, I_backup, 'backup');
+      /* A point's own declared time is the far end; there is no curve
+       * there to evaluate. */
+      const backupTimes = marker != null
+        ? (marker.t_s > 0 ? [marker.t_s] : [])
+        : stageTimes(backup, I_backup, 'backup');
       if (primaryTimes.length === 0 || backupTimes.length === 0) {
         /* One side never operates at this current, so there is no gap
          * between them to draw. */

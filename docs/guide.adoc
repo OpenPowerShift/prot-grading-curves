@@ -957,6 +957,21 @@ which is what a study whose stages are alternatives under different
 conditions needs: one inrush-blocked, one not, and the margin that
 matters is to the one that is armed.
 
+The far end need not be a curve. A marked `point` asserts a coordinate
+the study is sure of -- an inrush peak, a withstand corner, a figure
+off a data sheet -- and the gap between a characteristic and one of
+those is as much a margin as the gap between two relays:
+
+[source,tc]
+----
+annotate { primary = R_INC:51; point = "Inrush"; label = "above inrush"; }
+----
+
+The point supplies both the current the arrow stands at and the time
+of its far end, so no `at_I` and no condition are needed. Add an
+`at_t` and it becomes a *current* margin instead, with the point as
+the far end of a horizontal span.
+
 Where an element's stages are drawn separately
 (`view { stages = "individual" }`), a margin to the element as a whole
 measures the *closest* pair of stages, that being the binding gap. Where

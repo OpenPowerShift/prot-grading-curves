@@ -1334,6 +1334,21 @@ in phase amps, a clearance that applies only to the earth-fault story.
 Without this the choices were to draw them on every sheet or split the
 study into two files, and two files drift apart.
 
+An `element` takes it too, which keeps a whole *curve* to the sheets it
+belongs on rather than only the marks around it:
+
+[source,tc]
+----
+element 51P { function = "phase_oc"; measures = I1;
+              curve = iec.si; I_pickup = 500 A; tms = 0.30;
+              views = ["Phase", "Negative sequence"]; }
+----
+
+A curve kept off a sheet is not fitted into that sheet's axes either,
+so it cannot widen the scale for something that is not drawn. Nor is
+it counted among the curves the sheet could not place: being on
+another sheet is a choice the study made, not a failure to report.
+
 Leaving `view` off means every sheet, so nothing written before this
 changes.
 

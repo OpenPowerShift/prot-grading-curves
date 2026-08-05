@@ -146,6 +146,16 @@ export interface Stage {
 }
 
 export interface Element {
+  /**
+   * Sheets this curve belongs on, by `view` name. Absent means every
+   * sheet, so nothing written before this changes.
+   *
+   * The marks -- faults, times, points, annotations -- were scoped
+   * first; a study drawing a phase sheet and a sequence sheet still
+   * had to put every *curve* on both, which is the case the scoping
+   * was wanted for.
+   */
+  views?: string[];
   id: string;
   /** Display name, as for {@link Relay.name}. */
   name?: string;
@@ -909,6 +919,10 @@ function resolveElement(
     stages: [],
     staged,
     current_max_A: currentCeiling(member(node, 'current_max')),
+    views: ((): string[] | undefined => {
+      const raw = member(node, 'views');
+      return Array.isArray(raw) && raw.length > 0 ? raw as string[] : undefined;
+    })(),
     ...drawingOverrides((key) => member(node, key)),
     voltage: relay?.voltage,
     voltage_kV: relay?.voltage_kV,

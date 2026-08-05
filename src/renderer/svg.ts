@@ -742,6 +742,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   /* Widen the domain to hold every pickup in the study. */
   for (const element of allElements(study)) {
+    /* A curve kept off this sheet must not stretch its axes either. */
+    if (!onThisSheet(element)) continue;
     for (const stage of element.stages) {
       if (stage.I_pu_A == null || !Number.isFinite(stage.I_pu_A)) continue;
       const pu = project(stage.I_pu_A, element.voltage_kV);
@@ -1656,6 +1658,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   for (const element of allElements(study)) {
+    /*
+     * Scoped out of this sheet entirely: not drawn, and not counted
+     * among the elements the sheet could not place. Being on another
+     * sheet is a choice the study made, not a failure to report.
+     */
+    if (!onThisSheet(element)) continue;
     const blockedBefore = blockedElements.size;
     const placement = placementFor(element);
     if (placement == null) {

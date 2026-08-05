@@ -1284,6 +1284,11 @@ relay R_RING {
   # Positive sequence. Unlike phase current it is unaffected by the
   # unbalance itself, so it makes a backup that reads the same figure
   # whichever phase the fault is on.
+  # A curve can be kept to the sheets it belongs on, the same way a
+  # mark can. Positive sequence has nothing to say on the residual
+  # sheet, and drawing it there invites a comparison against curves it
+  # shares no axis with. `view` takes one name, `views` a list; leave
+  # both off and the curve is drawn on every sheet.
   element 51P {
     name = "Positive sequence backup";
     function = "phase_oc";
@@ -1291,6 +1296,7 @@ relay R_RING {
     curve = iec.si;
     I_pickup = 500 A;
     tms = 0.30;
+    views = ["Phase", "Negative sequence"];
   }
 }
 

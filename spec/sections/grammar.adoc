@@ -226,6 +226,7 @@ element-member  ::= name-asg
                   | directional-asg
                   | current_max-asg
                   | curve-drawing-asg
+                  | scoped-view-asg
                   | comment-asg
                   | stages-block ;
 

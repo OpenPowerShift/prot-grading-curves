@@ -107,7 +107,7 @@ export const KEYWORDS = new Set([
   // top-level blocks
   'meta', 'system', 'faults', 'times', 'scenario', 'level', 'sees',
   'relay', 'element', 'device', 'grade',
-  'annotate', 'combine', 'view', 'page', 'notes', 'stage', 'stages', 'point',
+  'annotate', 'combine', 'view', 'views', 'page', 'notes', 'stage', 'stages', 'point',
   // system sub-block header
   'voltages',
   // solve / grades
@@ -1215,7 +1215,7 @@ if (kwName === 'flex_points') {
       message: `unknown setting "${at.image}"; ${what} accepts function, measures, `
         + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
         + 't_reset, char_angle, reset, directional, name, comment, current_max, '
-        + 'color, style, width_px'
+        + 'color, style, width_px, view, views'
         + (what === 'an element' ? ', stages' : ''),
       line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
       severity: 'error', code: 'UNKNOWN_SETTING',
@@ -1367,6 +1367,22 @@ if (kwName === 'flex_points') {
         return k.image;
       }
       /*
+       * Which sheets this curve belongs on, by `view` name.
+       *
+       * The marks -- faults, times, points, annotations -- have taken
+       * this since they were scoped; the curves themselves had not, so
+       * a study with a phase sheet and a sequence sheet drew every
+       * element on both and the only way to separate them was two
+       * files.
+       */
+      case 'view':
+      case 'views': {
+        const names = this.parseNameList();
+        this.eat('SEMI');
+        el.members.push({ kind: 'scalar', key: 'views', value: names as never });
+        return k.image;
+      }
+      /*
        * Enum-ish members, written bare or quoted. `style` is here with
        * them because it is the same shape: a word from a closed set.
        * It says how the curve is *drawn* rather than how the element
@@ -1399,6 +1415,8 @@ if (kwName === 'flex_points') {
           'current_max',
           /* How the curve is drawn, as opposed to how it operates. */
           'color', 'style', 'width_px',
+          /* Which sheets it belongs on. */
+          'view', 'views',
         ], /* strict */ true);
         const v = this.parseScalarValue();
         this.eat('SEMI');

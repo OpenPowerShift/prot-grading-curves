@@ -233,7 +233,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   element:     ['name', 'function', 'measures', 'curve', 'formula', 'flex_points',
                'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
                'char_angle', 'reset', 'directional', 'stages', 'current_max',
-               'color', 'style', 'width_px',
+               'color', 'style', 'width_px', 'view', 'views',
                'comment'],
   stage:       ['function', 'measures', 'curve', 'formula', 'flex_points', 'I_pickup',
                'I_units', 'share', 'tms', 't_delay', 'char_angle', 'reset',

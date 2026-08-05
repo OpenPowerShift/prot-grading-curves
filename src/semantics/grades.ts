@@ -436,10 +436,23 @@ function backupRatio(
  * How far up the curve the upstream sweep should run.
  *
  * An explicit `upstream_to` wins. Otherwise the ceiling is the largest
- * fault declared anywhere in the study (referred to the primary's
- * frame) -- that is the most severe current the study contemplates --
- * with a floor of 20x the primary's pick-up so a study whose faults
- * are all modest still gets a meaningful sweep.
+ * fault declared anywhere in the study, referred to the primary's
+ * frame: that is the study's own statement about the most severe
+ * current available, and it is not the tool's place to overrule it.
+ *
+ * It used to take the largest of that, twenty times the primary's
+ * pick-up, and twice the starting current -- so a study declaring a
+ * 9.4 kA board maximum was swept to 18.8 kA and failed at 12 kA, a
+ * current its own data says cannot flow. A failure reported at an
+ * impossible fault is its own kind of wrong answer, and a louder one
+ * than the gap it was meant to close: it is unfalsifiable from inside
+ * the study, since no setting the engineer can change will make an
+ * impossible current coordinate.
+ *
+ * The floor survives only where no declared fault projects into the
+ * primary's frame at all. There the tool has nothing to respect, so
+ * twenty times pick-up is a guess made in the absence of data rather
+ * than one made over the top of it.
  */
 function upstreamCeiling(
   study: Study,
@@ -451,15 +464,23 @@ function upstreamCeiling(
     return grade.upstream_to_A;
   }
 
-  let largest = from;
+  let declared = 0;
   for (const f of study.faults.values()) {
     const projected = faultCurrentAt(study, f, primary.voltage, 'max').I_A;
-    if (Number.isFinite(projected) && projected > largest) largest = projected;
+    if (Number.isFinite(projected) && projected > declared) declared = projected;
   }
+  /*
+   * A declared ceiling at or below where the sweep starts is not an
+   * error and not a reason to invent headroom: it means the study says
+   * there is nothing above the fault being graded, so there is nothing
+   * to sweep. The caller reports a sweep of no points rather than a
+   * pass earned over currents that cannot occur.
+   */
+  if (declared > 0) return declared;
 
   const stage = primary.element ? primary.element.stages[0] : undefined;
   const byPickup = stage?.I_pu_A != null ? stage.I_pu_A * 20 : 0;
-  return Math.max(largest, byPickup, from * 2);
+  return Math.max(byPickup, from * 2);
 }
 
 function multipleOf(side: Side, I_A: number): number | undefined {

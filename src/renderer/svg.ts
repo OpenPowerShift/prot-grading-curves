@@ -2120,6 +2120,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const unplaceableAnnotations: string[] = [];
 
+  /**
+   * Times whose caption anchor named a component this sheet is not
+   * drawn in, so the caption fell back to the left-hand end.
+   *
+   * The fallback is right -- the rule still spans the plot and still
+   * carries its name -- but it is indistinguishable from having asked
+   * for no anchor, so the author would never learn the figure they
+   * wrote was being ignored.
+   */
+  const unanchoredTimes: string[] = [];
+
 
   /*
    * House style for leader lines. The `page { leaders }` block was
@@ -2398,8 +2409,34 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * the plotted currents would put the text off the sheet, so it
        * falls back rather than drawing into the margin.
        */
-      const anchorX = t.at_I_A != null && t.at_I_A >= I_min && t.at_I_A <= I_max
-        ? xScale.toPx(t.at_I_A)
+      /*
+       * The anchor is read in the quantity the sheet is drawn in.
+       *
+       * `at_I` alone means phase current, and on an `I2` or `3I0`
+       * abscissa that is a figure from a different axis -- so the
+       * caption sat beside a current that means nothing there.
+       * Naming the component (`at_I2`, `at_residual`) says which, on
+       * the same vocabulary a fault, a point and an annotate use.
+       */
+      const anchorI = resolveCurrent(viewQuantity, {
+        phase: t.at_I_A, I1: t.at_I1_A, I2: t.at_I2_A,
+        I0: t.at_I0_A, residual: t.at_earth_A,
+      }, t.type)?.value ?? null;
+
+      /*
+       * No anchor at all means the left-hand end, which is the
+       * documented default. An anchor that *was* given and could not
+       * be resolved onto this axis is a different thing: the caption
+       * lands at the default and looks deliberate, so it is said.
+       */
+      const anchorDeclared = t.at_I_A != null || t.at_I1_A != null || t.at_I2_A != null
+        || t.at_I0_A != null || t.at_earth_A != null;
+      if (anchorDeclared && anchorI == null) {
+        unanchoredTimes.push(t.name);
+      }
+
+      const anchorX = anchorI != null && anchorI >= I_min && anchorI <= I_max
+        ? xScale.toPx(anchorI)
         : leftMargin + 6;
       out.push(...placeLabel(caption, { x: anchorX, y: py }, timeColour, {
         prefer: ['above', 'below', 'right'],
@@ -3249,6 +3286,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * Named, unlike the off-plot count: no amount of zooming brings
      * these back, so the reader needs to know which mark is absent.
      */
+    if (unanchoredTimes.length > 0) {
+      axisNotes.push(
+        `caption anchor not in ${quantityLabel(viewQuantity)}, drawn at the left: `
+        + unanchoredTimes.join(', '),
+      );
+    }
     if (unplaceableAnnotations.length > 0) {
       axisNotes.push(
         `could not place ${unplaceableAnnotations.length === 1 ? 'annotation' : 'annotations'}: `

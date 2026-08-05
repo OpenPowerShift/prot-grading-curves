@@ -15,7 +15,6 @@ top-level       ::= meta-block
                   | system-block
                   | faults-block
                   | times-block
-                  | times-block
                   | scenario-block
                   | relay-block
                   | device-block
@@ -105,8 +104,25 @@ voltage level, a second being a second at every level.
 times-block     ::= "times" "{" { time-asg } "}" ;
 time-asg        ::= string "{" { time-member } "}" ;
 time-member     ::= "t"         "=" number time-unit ";"
-                  | "at_I"      "=" number current-unit ";"
+                  | time-anchor-asg
+                  | "type"      "=" fault-type-keyword ";"
+                  | scoped-view-asg
                   | "description" "=" string ";" ;
+
+(* Where along the rule to write its caption. A rule spans the whole
+   plot, so the name has no natural anchor and goes at the left-hand
+   end without one. `at_I` alone is a *phase* current; on an abscissa
+   in another quantity the component is named, on the same vocabulary
+   a `fault`, a `point` and an `annotate` use. *)
+time-anchor-asg ::= ( "at_I" | "at_I1" | "at_I2" | "at_I0" | "at_residual" )
+                    "=" number current-unit ";" ;
+
+(* Which sheets a mark belongs to, by `view` name. Absent means every
+   sheet. Accepted on `faults`, `times`, `point` and `annotate`: a
+   study with a phase sheet and a sequence sheet routinely carries
+   marks that mean something on one and nothing on the other. *)
+scoped-view-asg ::= ( "view" | "views" ) "=" name-or-list ";" ;
+name-or-list    ::= string | "[" [ string { "," string } [ "," ] ] "]" ;
 ----
 
 === Relay

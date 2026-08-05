@@ -323,7 +323,7 @@ holding the number in their head.
 
 A time needs no voltage level -- a second is a second on every winding
 -- which is the one way this is simpler than a fault. Each rule is
-labelled on the plot, listed in a *Required times* legend section, and
+labelled on the plot, listed in a *Times* legend section, and
 widens the time axis so a requirement can never fall off the sheet that
 is meant to show it being met. One declared outside an explicit
 `view { time_min / time_max }` says so rather than disappearing.
@@ -342,6 +342,23 @@ times {
 The figure is read off the sheet's own axis. One outside the plotted
 currents falls back to the left-hand end rather than writing the caption
 into the margin.
+
+`at_I` alone means *phase* current, so on a sheet drawn in `I2` or
+`3I0` name the component -- `at_I1`, `at_I2`, `at_I0`, `at_residual`,
+or a `type` to derive the rest -- exactly as a `point` or an
+`annotate` does:
+
+[source,tc]
+----
+times {
+    "Earth-fault clearance" { t = 800 ms; at_residual = 1.2 kA; }
+}
+----
+
+An anchor the sheet's quantity cannot resolve still draws the rule and
+still writes its name, at the left-hand end -- and says so in the
+notes, because otherwise it is indistinguishable from having asked for
+no anchor at all.
 
 Style them with `page { times = { color = ...; width_px = ...; style =
 "solid" | "dashed" | "dotted"; labels = false; }; }`, which mirrors

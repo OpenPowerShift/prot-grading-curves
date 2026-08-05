@@ -1055,6 +1055,17 @@ class Parser {
           switch (k.image) {
             case 't': t.t_s = this.parseNumberWithUnit_s('t'); break;
             case 'at_I': t.at_I_A = this.parseNumberWithUnit_A('at_I'); break;
+            case 'at_I1': t.at_I1_A = this.parseNumberWithUnit_A('at_I1'); break;
+            case 'at_I2': t.at_I2_A = this.parseNumberWithUnit_A('at_I2'); break;
+            case 'at_I0': t.at_I0_A = this.parseNumberWithUnit_A('at_I0'); break;
+            case 'at_residual':
+              t.at_earth_A = this.parseNumberWithUnit_A('at_residual'); break;
+            case 'type': {
+              const kw = this.matchKeyword(
+                'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+              if (kw) t.faultType = kw as import('./ast.js').FaultTypeKeyword;
+              break;
+            }
             case 'view':
             case 'views': {
               const names = this.parseNameList();
@@ -1068,7 +1079,9 @@ class Parser {
             }
             default:
               this.parseScalarValue();
-              this.noteUnknownKey('a time', k, ['t', 'at_I', 'view', 'views', 'description']);
+              this.noteUnknownKey('a time', k, [
+                't', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'type',
+                'view', 'views', 'description']);
           }
           this.eat('SEMI');
         }

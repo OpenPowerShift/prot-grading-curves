@@ -1404,10 +1404,21 @@ point "Phase inrush" {
 }
 
 times {
+  # `at_I` says where along the rule to write its name. A bare `at_I`
+  # is a *phase* current, which on these sheets is a figure from
+  # another axis — so the component is named, exactly as a `point` or
+  # an `annotate` names one. Written the wrong way the caption still
+  # appears, at the left-hand end, and the sheet says why.
   "Earth-fault clearance" {
     t = 800 ms;
-    at_I = 400 A;
-    views = ["Residual", "Negative sequence"];
+    at_residual = 1.2 kA;
+    views = ["Residual"];
+  }
+
+  "Negative-sequence clearance" {
+    t = 900 ms;
+    at_I2 = 600 A;
+    views = ["Negative sequence", "Three times I2"];
   }
 }
 

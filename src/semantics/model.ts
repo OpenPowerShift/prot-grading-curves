@@ -320,6 +320,16 @@ export interface RequiredTime {
   t_s: number;
   /** Caption anchor along the rule, in the sheet's own axis current. */
   at_I_A?: number;
+  /**
+   * The anchor named by component, for a sheet whose abscissa is not
+   * phase current. Resolved against the view's quantity exactly as a
+   * `point` or an `annotate` is.
+   */
+  at_I1_A?: number;
+  at_I2_A?: number;
+  at_I0_A?: number;
+  at_earth_A?: number;
+  type?: FaultType;
   description?: string;
   loc?: SourceLocation;
 }
@@ -546,6 +556,11 @@ export function buildStudy(doc: Document): Study {
             name: t.name,
             t_s: t.t_s,
             at_I_A: t.at_I_A,
+            at_I1_A: t.at_I1_A,
+            at_I2_A: t.at_I2_A,
+            at_I0_A: t.at_I0_A,
+            at_earth_A: t.at_earth_A,
+            type: isFaultType(t.faultType) ? t.faultType : undefined,
             views: t.views,
             description: t.description,
             loc: t.loc,

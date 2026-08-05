@@ -172,6 +172,19 @@ export interface TimeDecl extends BaseNode {
    * not always where there is room or where the reader is looking.
    */
   at_I_A?: number;
+  /**
+   * The same component vocabulary a `fault`, a `point` and an
+   * `annotate` use, because the abscissa is not always phase current.
+   *
+   * A caption anchored at a phase figure lands in the wrong place on
+   * an `I2` or `3I0` sheet -- not off the rule, which spans the plot,
+   * but beside a current that means nothing there.
+   */
+  at_I1_A?: number;
+  at_I2_A?: number;
+  at_I0_A?: number;
+  at_earth_A?: number;
+  faultType?: FaultTypeKeyword;
   description?: string;
 }
 

@@ -168,3 +168,82 @@ describe('the shipped sequence sample', () => {
     }
   });
 });
+
+describe('a margin that cannot be computed', () => {
+  /*
+   * Every exit from the two margin paths was a bare `continue`, so a
+   * pair that never operates at the current asked for drew nothing and
+   * said nothing. The study looked complete and the argument it was
+   * written to make was simply absent.
+   */
+  const MARGIN = `${SYS}
+faults { "F" { I = 6 kA; type = three_phase; voltage = "HV"; } }
+relay R_A { voltage = "HV"; ct_ratio = 600/5;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 600 A; tms = 0.55; } }
+relay R_B { voltage = "HV"; ct_ratio = 600/5;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A; tms = 0.35; } }
+view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
+`;
+
+  it('says so when neither side operates at the current given', () => {
+    /* 400 A is below R_A's 600 A pickup, so there is no gap to draw. */
+    const svg = parseAndRender(
+      `${MARGIN}annotate { primary = R_A:51; backup = R_B:51; at_I = 0.4 kA; }`,
+      { theme: 'light' },
+    ).svg;
+    expect(svg).toContain('could not place');
+  });
+
+  it('names the pair, so the reader knows which margin is missing', () => {
+    const svg = parseAndRender(
+      `${MARGIN}annotate { primary = R_A:51; backup = R_B:51; at_I = 0.4 kA; }`,
+      { theme: 'light' },
+    ).svg;
+    expect(svg).toContain('R_A:51');
+    expect(svg).toContain('R_B:51');
+  });
+
+  it('draws it, and says nothing, where both sides do operate', () => {
+    const svg = parseAndRender(
+      `${MARGIN}annotate { primary = R_A:51; backup = R_B:51; at_I = 6 kA; }`,
+      { theme: 'light' },
+    ).svg;
+    expect(svg).not.toContain('could not place');
+  });
+});
+
+describe('a mark past the end of the curve it marks', () => {
+  /*
+   * `current_max` says where the characteristic stops, because past
+   * the largest fault the network can deliver the curve describes a
+   * current that cannot flow. A mark beyond it floated off the end of
+   * its own curve, at an impossible current, looking exactly like a
+   * reading taken from the line.
+   */
+  const bounded = (at: string): string => parseAndRender(`${SYS}
+relay R { voltage = "HV"; ct_ratio = 600/5;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A;
+               tms = 0.35; current_max = 3 kA; } }
+annotate { on_curve = R:51; ${at} label = "MARK"; style = leader; }
+view { voltage = "HV"; current_min = 100 A; current_max = 50 kA; }
+`, { theme: 'light' }).svg;
+
+  const hasMarker = (svg: string): boolean =>
+    /<circle cx="[\d.]+" cy="[\d.]+" r="3\.5"/.test(svg);
+
+  it('is drawn when it sits within the ceiling', () => {
+    const svg = bounded('at_I = 2 kA;');
+    expect(hasMarker(svg)).toBe(true);
+    expect(svg).not.toContain('could not place');
+  });
+
+  it('is suppressed when it sits beyond it', () => {
+    expect(hasMarker(bounded('at_I = 20 kA;'))).toBe(false);
+  });
+
+  it('says where the curve stops, not merely that it failed', () => {
+    const svg = bounded('at_I = 20 kA;');
+    expect(svg).toContain('could not place');
+    expect(svg).toContain('3 kA');
+  });
+});

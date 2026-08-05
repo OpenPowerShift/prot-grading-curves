@@ -924,9 +924,16 @@ say where on it to sit: a current, a time or a condition, or else
 `tag` for text.
 
 Where a mark cannot be placed for reasons that depend on the sheet --
-a curve that never reaches the time asked for -- the sheet names it in
-its notes. That is distinct from the *count* of annotations outside the
-plotted range, which changes as you zoom.
+a curve that never reaches the time asked for, a pair that does not
+operate at the current given, a mark beyond the `current_max` of the
+curve it marks -- the sheet names it in its notes. That is distinct
+from the *count* of annotations outside the plotted range, which
+changes as you zoom.
+
+A mark past a curve's `current_max` is dropped rather than drawn
+floating off the end of it: the study has already said that current
+cannot flow, and a marker sitting out there reads as one taken from
+the line.
 
 `voltage` names the level the figure is read at, defaulting to the
 view's. Without it a bare current was taken in *each* referenced

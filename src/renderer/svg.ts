@@ -2731,10 +2731,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const primary = atStage(resolveRef(study, annotation.primary), annotation.primary);
       const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
       const t = annotation.at_t_s!;
+      /* As for the time margin: every failure here was silent. */
+      const spanName = annotation.label
+        ?? `${annotation.primary?.text ?? '?'} current margin`;
 
 
       const Ip = currentAtTime(primary, t, 'primary');
-      if (Ip == null) continue;
+      if (Ip == null) {
+        /* The primary is never that fast anywhere on the sheet. */
+        unplaceableAnnotations.push(spanName);
+        continue;
+      }
 
       /*
        * The far end: another characteristic, a declared condition, or a
@@ -2770,7 +2777,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         }
         return null;
       })();
-      if (farEnd == null) continue;
+      if (farEnd == null) {
+        unplaceableAnnotations.push(spanName);
+        continue;
+      }
 
       /*
        * Both put on the sheet's own axis before they are compared. Two
@@ -2779,14 +2789,23 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * actually spans.
        */
       const viewP = onAxisCurrent(primary.element, Ip, primary.device?.voltage_kV);
-      if (viewP == null) continue;
+      if (viewP == null) {
+        unplaceableAnnotations.push(spanName);
+        continue;
+      }
       const viewB = farEnd;
-      if (!(viewP > 0) || !(viewB > 0)) continue;
+      if (!(viewP > 0) || !(viewB > 0)) {
+        unplaceableAnnotations.push(spanName);
+        continue;
+      }
 
       const pxP = xScale.toPx(viewP);
       const pxB = xScale.toPx(viewB);
       const py = yScale.toPx(t);
-      if (![pxP, pxB, py].every(Number.isFinite)) continue;
+      if (![pxP, pxB, py].every(Number.isFinite)) {
+        unplaceableAnnotations.push(spanName);
+        continue;
+      }
 
       /*
        * The larger over the smaller, unsigned, and nothing else.
@@ -2838,6 +2857,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (annotation.kind === 'margin') {
       const primary = atStage(resolveRef(study, annotation.primary), annotation.primary);
       const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
+      /*
+       * Every way out of this block used to be a bare `continue`, so a
+       * margin that could not be computed drew nothing and said
+       * nothing -- a pair that never operates at the current asked
+       * for, a reference the study does not declare, a fault that
+       * resolves to no figure at this level. The study looked
+       * complete and the argument it was written to make was simply
+       * absent.
+       */
+      const marginName = annotation.label
+        ?? `${annotation.primary?.text ?? '?'} to ${annotation.backup?.text ?? '?'} margin`;
 
       /*
        * Each side is evaluated at the current *it* measures, exactly as
@@ -2858,7 +2888,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const I_backup = annotationCurrent(
         study, annotation, backup.element?.voltage, qOf(backupQ),
       );
-      if (I == null || I_backup == null) continue;
+      if (I == null || I_backup == null) {
+        unplaceableAnnotations.push(marginName);
+        continue;
+      }
 
       /*
        * The *smallest* separation, across every pair of stages.
@@ -2907,7 +2940,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
       const primaryTimes = stageTimes(primary, I, 'primary');
       const backupTimes = stageTimes(backup, I_backup, 'backup');
-      if (primaryTimes.length === 0 || backupTimes.length === 0) continue;
+      if (primaryTimes.length === 0 || backupTimes.length === 0) {
+        /* One side never operates at this current, so there is no gap
+         * between them to draw. */
+        unplaceableAnnotations.push(marginName);
+        continue;
+      }
 
       let tP = primaryTimes[0];
       let tB = backupTimes[0];
@@ -2920,12 +2958,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           if (gap < closest) { closest = gap; tP = p; tB = b; }
         }
       }
-      if (!Number.isFinite(tP) || !Number.isFinite(tB)) continue;
+      if (!Number.isFinite(tP) || !Number.isFinite(tB)) {
+        unplaceableAnnotations.push(marginName);
+        continue;
+      }
 
       /* The arrow stands where the primary's current falls on *this*
        * axis, so it lines up with the curves it spans. */
       const I_view = onAxisCurrent(primary.element, I);
-      if (I_view == null) continue;
+      if (I_view == null) {
+        unplaceableAnnotations.push(marginName);
+        continue;
+      }
       /* Both ends of the arrow have to be somewhere the reader can see,
        * or it measures a gap between two curves that are not on the
        * sheet. */
@@ -2936,7 +2980,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const px = xScale.toPx(I_view);
       const pyP = yScale.toPx(tP);
       const pyB = yScale.toPx(tB);
-      if (![px, pyP, pyB].every(Number.isFinite)) continue;
+      if (![px, pyP, pyB].every(Number.isFinite)) {
+        unplaceableAnnotations.push(marginName);
+        continue;
+      }
 
       const margin = tB - tP;
       const text = annotation.label
@@ -3017,6 +3064,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           : Infinity;
     if (!Number.isFinite(t)) {
       unplaceableAnnotations.push(annotation.label ?? annotation.on_curve?.text ?? 'an annotation');
+      continue;
+    }
+
+    /*
+     * Past the end of the curve it marks.
+     *
+     * `current_max` says where the characteristic stops, because past
+     * the largest fault the network can deliver the curve describes a
+     * current that cannot flow. A mark placed beyond it was still
+     * drawn -- floating off the end of its own curve, at a current the
+     * study has already said is impossible, looking exactly like a
+     * reading taken from the line.
+     *
+     * A stage may stop earlier than its element, so the ceiling is the
+     * largest of the stages actually drawn.
+     */
+    const ceiling = element
+      ? (element.stages.some((s) => s.current_max_A == null)
+        ? element.current_max_A
+        : Math.max(...element.stages.map((s) => s.current_max_A ?? 0)))
+      : undefined;
+    if (ceiling != null && I > ceiling) {
+      unplaceableAnnotations.push(
+        `${annotation.label ?? annotation.on_curve?.text ?? 'an annotation'} `
+        + `(past ${formatSi(ceiling, 'A')}, where that curve stops)`,
+      );
       continue;
     }
 

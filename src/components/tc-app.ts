@@ -1111,6 +1111,8 @@ export class TcApp extends LitElement {
                     @click=${() => { void this.viewer()?.copyPngToClipboard(); }}>Copy PNG</button>
             <button class="side-btn" title="Download the plot as an SVG file"
                     @click=${() => this.viewer()?.saveSvg()}>Save SVG</button>
+            <button class="side-btn" title="Download the plot as a PNG image"
+                    @click=${() => { void this.viewer()?.savePng(); }}>Save PNG</button>
             <button class="side-btn" title="Download the plot as a PDF (always light, for printing)"
                     @click=${() => { void this.viewer()?.savePdf(); }}>Save PDF</button>
             <button class="side-btn" title="Show the plot controls"

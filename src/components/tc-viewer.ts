@@ -894,6 +894,80 @@ export class TcViewer extends LitElement {
   }
 
   /**
+   * Save the sheet as a PNG file.
+   *
+   * `Copy PNG` puts one on the clipboard, which suits pasting into an
+   * email and does not suit filing it beside the study -- and on a
+   * browser without `ClipboardItem` it silently degrades to a line of
+   * text. A raster on disk is what goes into a report.
+   *
+   * Rendered at the declared sheet size like the SVG and the PDF, so
+   * the three exports of one study agree with each other rather than
+   * with whatever shape the pane happened to be.
+   */
+  async savePng(): Promise<void> {
+    const onScreen = this.querySelector('svg') as SVGSVGElement | null;
+    if (!onScreen) return;
+
+    const page = this.study?.page;
+    const sized = page?.size || page?.orientation;
+    const { width, height } = this.exportSize();
+    const xml = sized
+      ? renderSvg(this.document, {
+        page: page ?? null,
+        system: null,
+        faults: null,
+        view: this.currentView(),
+        study: this.study ?? null,
+        theme: this.theme,
+        width,
+        height,
+      })
+      : new XMLSerializer().serializeToString(onScreen);
+
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.decoding = 'async';
+      img.src = url;
+      await img.decode();
+
+      /* 2x, so the file stands up to being placed in a document and
+       * printed rather than only viewed at its natural size. */
+      const SCALE = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(320, width) * SCALE;
+      canvas.height = Math.max(200, height) * SCALE;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('no 2D context');
+      /*
+       * Painted opaque first. A PNG of a sheet whose background never
+       * got drawn is transparent, and transparent reads as white
+       * until it is placed on anything dark.
+       */
+      ctx.fillStyle = this.theme === 'dark' ? '#111111' : '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const png: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob null'))), 'image/png');
+      });
+      const href = URL.createObjectURL(png);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `${this.exportStem()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  /**
    * Export the plot as a PDF.
    *
    * Goes through the library's `exportPdf`, the same call the CLI
@@ -961,8 +1035,17 @@ export class TcViewer extends LitElement {
    * what the engineer is looking at.
    */
   private currentView(): import('../parser/index.js').ViewBlock | null {
-    const declared =
-      (this.document?.items.find((i) => i.type === 'view') as
+    /*
+     * The sheet the picker has open, not the first one declared.
+     *
+     * This took `items.find(i => i.type === 'view')` while the screen
+     * drew `selectedView()`, so an export of a multi-sheet study gave
+     * whichever sheet happened to be written first -- and appeared to
+     * work whenever that was the one being looked at, which is what
+     * made it read as intermittent rather than as always wrong.
+     */
+    const declared = this.selectedView()
+      ?? (this.document?.items.find((i) => i.type === 'view') as
         import('../parser/index.js').ViewBlock | undefined) ?? null;
     if (this.currentMin == null && this.currentMax == null) return declared;
     return {

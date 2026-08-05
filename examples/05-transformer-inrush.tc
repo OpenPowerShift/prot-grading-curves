@@ -145,9 +145,10 @@ annotate {
 #      point of the through-fault check.
 #
 #      The figure is the larger current over the smaller, unsigned, and
-#      names the smaller. A signed difference against one nominated end
-#      would give the same gap two different magnitudes depending on
-#      which way round it happened to be written.
+#      nothing else — the arrow and the legend already say which end is
+#      which. A signed difference against one nominated end would give
+#      the same gap two different magnitudes depending on which way
+#      round it happened to be written.
 annotate {
   primary = R_TRF_HV:51;
   at_t = 2.0 s;

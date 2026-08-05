@@ -377,11 +377,10 @@ annotate {
 }
 ----
 
-That prints something like `headroom 535.6% of R_INC:51`: the larger
-current over the smaller, unsigned, naming the smaller. The name is
-what tells you which way round it goes, so there is no `+` or `-` to
-read backwards, and the figure is the same whichever end you write
-first.
+That prints something like `headroom 535.6%`: the larger current over
+the smaller, unsigned. There is no `+` or `-` to read backwards, the
+figure is the same whichever end you write first, and which way round
+it runs is what the arrow and the legend are for.
 
 *A dimension between two plain numbers.* Sometimes neither end is a
 curve at all -- a band an authority requires, a window your pickup has

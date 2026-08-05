@@ -2752,8 +2752,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       if (![pxP, pxB, py].every(Number.isFinite)) continue;
 
       /*
-       * Quoted as the larger over the smaller, unsigned, with the
-       * smaller named.
+       * The larger over the smaller, unsigned, and nothing else.
        *
        * It used to be a signed difference against the primary,
        * `(B - A) / A`. Two things were wrong with that. The magnitude
@@ -2764,24 +2763,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * reader is most likely to take the wrong way round on a sheet
        * where the arrow already shows it.
        *
-       * A ratio is symmetric, so there is only one number for a gap.
-       * Naming the base carries the direction in words instead:
-       * "140% of R_FDR:51" is how a current grading is quoted aloud,
-       * and cannot be read backwards.
+       * A ratio is symmetric, so a gap has one figure however it is
+       * written. The base was named for a while -- "140% of R_FDR:51"
+       * -- which is how the figure is quoted aloud, but on the sheet it
+       * doubles the length of every margin label to repeat what the
+       * legend and the drawn arrow already say. The number alone.
        */
       const larger = Math.max(viewP, viewB);
       const smaller = Math.min(viewP, viewB);
       const pct = (larger / smaller) * 100;
 
-      const primaryName = annotation.primary?.text ?? 'the primary';
-      const farName = annotation.backup?.text
-        ?? annotation.pointRef
-        ?? annotation.condition
-        ?? 'the far end';
-      /* The base is whichever end is the smaller current. */
-      const baseName = viewP <= viewB ? primaryName : farName;
-
-      const figure = `${trimZeros(Number(pct.toFixed(1)))}% of ${baseName}`;
+      const figure = `${trimZeros(Number(pct.toFixed(1)))}%`;
       const text = annotation.label ? `${annotation.label} ${figure}` : figure;
 
       out.push(

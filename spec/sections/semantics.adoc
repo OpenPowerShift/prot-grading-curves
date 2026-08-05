@@ -1738,8 +1738,7 @@ compared, so that the reported figure is the one the drawn arrow
 spans.
 
 The separation SHALL be reported as the ratio of the *larger* current
-to the *smaller*, expressed as a percentage and unsigned, together
-with the name of the end carrying the smaller current:
+to the *smaller*, expressed as a percentage and unsigned:
 
 [stem]
 ++++
@@ -1747,10 +1746,16 @@ with the name of the end carrying the smaller current:
 ++++
 
 The figure is therefore never below `100%`, and is independent of
-which end is declared as the `primary`. Direction is carried by the
-named base rather than by a sign, a signed difference against one
-nominated end being neither symmetric -- one gap yields two magnitudes
--- nor safe to read quickly on a drawing.
+which end is declared as the `primary`. Neither end SHALL be named in
+the label: the drawn arrow and the legend already identify them, and
+repeating either doubles the length of every margin label on the
+sheet.
+
+A signed difference against one nominated end SHALL NOT be used. It is
+not symmetric -- one gap yields two magnitudes according to which end
+was written first -- and it places the direction in a `+` or `-`,
+which is the element of a drawing most easily read the wrong way
+round.
 
 *Span form* -- `from` and `to` -- draws a dimension between two figures
 the study names outright, with no characteristic at either end. A

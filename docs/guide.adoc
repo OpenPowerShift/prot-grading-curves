@@ -113,6 +113,10 @@ Two ways, both in the playground:
   and the reference is the one you can type. Faults and marked points
   answer with their declared names, which are already their
   references.
++
+Where several curves lie on the same spot -- two feeders set
+identically, a composite and the stage that forms it -- *all* of them
+are named, not whichever the tool happened to find first.
 
 === Running it
 
@@ -956,14 +960,14 @@ annotate {                          # curve to a fault level
     primary = R_RMU:50;
     at_t    = 20 ms;
     fault   = "2ph min";
-    label   = "min 2ph";            # -> "min 2ph 152.9% of R_RMU:50"
+    label   = "min 2ph";            # -> "min 2ph 152.9%"
 }
 
 annotate {                          # curve to a marked point
     primary = R_RMU:50;
     at_t    = 20 ms;
     point   = "TX inrush";
-    label   = "inrush";             # -> "inrush 120.3% of TX inrush"
+    label   = "inrush";             # -> "inrush 120.3%"
 }
 ----
 
@@ -975,10 +979,12 @@ put on the sheet's own axis before they are compared, so the figure is
 the one the drawn arrow spans.
 
 The percentage is *the larger current over the smaller*, unsigned, and
-the smaller one is named. So a 255 A pickup against a 390 A fault reads
-`152.9% of R_RMU:50`, and the same pickup against a 212 A inrush reads
-`120.3% of TX inrush` -- the base changes because the pickup is now the
-larger of the two.
+nothing else. A 255 A pickup against a 390 A fault reads `152.9%`; the
+same pickup against a 212 A inrush reads `120.3%`. Never below 100%,
+and identical whichever end you declare as the `primary`.
+
+Which way round it runs is left to the arrow and the legend, both of
+which are already on the sheet saying it.
 
 [NOTE]
 ====
@@ -989,9 +995,7 @@ call the primary -- one gap read `+52.9%` written one way round and
 about how big it was. And the direction lived in a `+` or `-`, which is
 the easiest thing on a drawing to read backwards.
 
-A ratio is symmetric, so a gap has one figure however you write it; and
-naming the base says the direction in words, which is how a current
-grading is quoted aloud anyway.
+A ratio is symmetric, so a gap has one figure however you write it.
 ====
 
 A current is read as *the smallest current whose operate time is at or

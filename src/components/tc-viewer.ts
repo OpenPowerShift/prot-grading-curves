@@ -102,6 +102,16 @@ interface SnapState {
    * type; the drawing's own words for it are no help.
    */
   ref?: string;
+  /**
+   * Other curves whose nearest point is the same spot.
+   *
+   * Curves coincide often -- two feeders set identically, a composite
+   * and the stage that forms it, an element that appears on two sheets
+   * -- and reporting only the first one found gave an arbitrary answer
+   * with an authoritative look. Naming all of them is the honest
+   * reading of "what is under the cursor".
+   */
+  alsoHere?: Array<{ curveLabel: string; ref?: string; voltage: string }>;
   voltage: string;
   protocol: 'snap' | 'free';
   /** polyline SVG path string */
@@ -306,10 +316,24 @@ export class TcViewer extends LitElement {
       ? geom.scale
       : { xMin: 0, xMax: Infinity, yMin: 0, yMax: Infinity };
 
+    /*
+     * The closest point on *each* curve, kept separately.
+     *
+     * Curves routinely lie on top of one another -- two feeders with
+     * identical settings, a composite and the stage that forms it, an
+     * element drawn on two sheets -- and taking only the nearest named
+     * whichever happened to be first in the document. Which is worse
+     * than useless when the question is "what is here": the answer was
+     * arbitrary, and looked authoritative.
+     */
+    const perCurve: Array<{ state: SnapState; distSq: number }> = [];
+
     for (const p of paths) {
       const points = navFromPath(p);
       const proj = projectDomain(p);
       if (!proj) continue;
+
+      let nearest: { state: SnapState; distSq: number } | null = null;
       for (let i = 0; i < points.length; i++) {
         const a = points[i];
         const b = points[i + 1] ?? points[i];
@@ -322,10 +346,13 @@ export class TcViewer extends LitElement {
         const projX = a.pxI + t * dx;
         const projY = a.pxT + t * dy;
         const distSq = (cursorPxI - projX) ** 2 + (cursorPxT - projY) ** 2;
-        if (distSq < bestDist) {
-          const I_at_x = proj.domain.I_min * Math.pow(10, (projX - proj.scale.xMin) / (proj.scale.xMax - proj.scale.xMin) * (Math.log10(proj.domain.I_max) - Math.log10(proj.domain.I_min)));
-          const t_at_y = proj.domain.t_max * Math.pow(10, -(projY - proj.scale.yMin) / (proj.scale.yMax - proj.scale.yMin) * (Math.log10(proj.domain.t_max) - Math.log10(proj.domain.t_min)));
-          best = {
+        if (nearest != null && distSq >= nearest.distSq) continue;
+
+        const I_at_x = proj.domain.I_min * Math.pow(10, (projX - proj.scale.xMin) / (proj.scale.xMax - proj.scale.xMin) * (Math.log10(proj.domain.I_max) - Math.log10(proj.domain.I_min)));
+        const t_at_y = proj.domain.t_max * Math.pow(10, -(projY - proj.scale.yMin) / (proj.scale.yMax - proj.scale.yMin) * (Math.log10(proj.domain.t_max) - Math.log10(proj.domain.t_min)));
+        nearest = {
+          distSq,
+          state: {
             pxI: projX,
             pxT: projY,
             I_A: I_at_x,
@@ -335,10 +362,33 @@ export class TcViewer extends LitElement {
             voltage: p.getAttribute('data-voltage') ?? '',
             protocol: 'snap',
             pathD: '',
-          };
-          bestDist = distSq;
-        }
+          },
+        };
       }
+      if (nearest) perCurve.push(nearest);
+    }
+
+    perCurve.sort((a, b) => a.distSq - b.distSq);
+    if (perCurve.length > 0) {
+      best = perCurve[0].state;
+      bestDist = perCurve[0].distSq;
+
+      /*
+       * Everything else whose nearest point lands on the same spot.
+       *
+       * Judged on *position* rather than on distance from the cursor:
+       * two curves equidistant from the pointer but on opposite sides
+       * of it are two different answers, not one coincidence.
+       */
+      const COINCIDENT_PX = 3;
+      best.alsoHere = perCurve.slice(1)
+        .filter((c) => Math.hypot(c.state.pxI - best!.pxI, c.state.pxT - best!.pxT) <= COINCIDENT_PX)
+        .map((c) => ({
+          curveLabel: c.state.curveLabel,
+          ref: c.state.ref,
+          voltage: c.state.voltage,
+        }));
+      if (best.alsoHere.length === 0) best.alsoHere = undefined;
     }
 
     if (best == null) {
@@ -1043,6 +1093,17 @@ render() {
      */
     if (snapped && hover.ref && hover.ref !== hover.curveLabel) {
       lines.push(hover.ref);
+    }
+    /*
+     * Anything else lying on the same spot, each named the same way.
+     *
+     * Listed before the coordinates because the identity is the part
+     * that was wrong: the numbers are shared by everything here, and
+     * it is *which curves* they belong to that the reader cannot infer.
+     */
+    for (const other of hover.alsoHere ?? []) {
+      lines.push(other.curveLabel);
+      if (other.ref && other.ref !== other.curveLabel) lines.push(other.ref);
     }
     lines.push(`I = ${prettyNum(hover.I_A)}`);
     /* A fault marker asserts a current, not a time. */

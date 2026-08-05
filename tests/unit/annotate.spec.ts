@@ -239,47 +239,55 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
     parseAndRender(STUDY(annotations), { theme: 'light' }).svg;
 
   /*
-   * Quoted as the larger over the smaller, unsigned, naming the
-   * smaller. A signed difference against the primary gave the same gap
-   * two different magnitudes depending on which end was called the
-   * primary -- +52.9% one way, -34.6% the other -- and put the
-   * direction in a `+`/`-` that is easy to read backwards.
+   * The larger over the smaller, unsigned, and nothing else.
+   *
+   * A signed difference against the primary gave the same gap two
+   * different magnitudes depending on which end was called the primary
+   * -- +52.9% one way, -34.6% the other -- and put the direction in a
+   * `+`/`-` that is easy to read backwards.
+   *
+   * The base was named for a while ("152.9% of R:50"), which is how the
+   * figure is quoted aloud but doubles the length of every margin label
+   * on the sheet to repeat what the legend and the drawn arrow already
+   * say.
    */
   it('measures to a declared fault level', () => {
     /* A 255 A pickup against a 390 A fault: 390 / 255 = 1.529. */
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
-    expect(svg).toContain('m 152.9% of R:50');
+    expect(svg).toContain('m 152.9%');
   });
 
-  it('names the smaller end, which is what carries the direction', () => {
+  it('reports the far end below the primary the same way as above it', () => {
     /*
-     * The inrush is *below* the pickup, so here it is the far end that
-     * is the base: the pickup stands at 120.3% of the inrush. Naming
-     * the base is what the sign used to do, and cannot be misread.
+     * The inrush is *below* the pickup. The ratio is of the larger to
+     * the smaller either way, so the figure is a plain 120.3% and the
+     * arrow shows which way it runs.
      */
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; point = "TX inrush"; label = "m"; }');
-    expect(svg).toContain('m 120.3% of TX inrush');
+    expect(svg).toContain('m 120.3%');
+  });
+
+  it('names neither end, the legend and the arrow having said it', () => {
+    const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
+    expect(svg).not.toMatch(/m [\d.]+% of/);
   });
 
   it('gives one gap one figure, whichever end is called the primary', () => {
-    /*
-     * The property the signed form did not have. Swapping the two
-     * references must not change the number, only which one is named.
-     */
+    /* The property the signed form did not have. */
     const one = drawn('annotate { primary = R:50; backup = R:51; at_t   = 1 s; label = "m"; }');
     const other = drawn('annotate { primary = R:51; backup = R:50; at_t   = 1 s; label = "m"; }');
-    const figure = (svg: string): string => svg.match(/m ([\d.]+)% of/)![1];
+    const figure = (svg: string): string => svg.match(/m ([\d.]+)%/)![1];
     expect(figure(one)).toBe(figure(other));
   });
 
   it('measures between two characteristics', () => {
     const svg = drawn('annotate { primary = R:50; backup = R:51; at_t   = 1 s; label = "m"; }');
-    expect(svg).toMatch(/m [\d.]+% of R:5\d/);
+    expect(svg).toMatch(/m [\d.]+%/);
   });
 
   it('is never below 100%, being a ratio of the larger to the smaller', () => {
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; point = "TX inrush"; label = "m"; }');
-    expect(Number(svg.match(/m ([\d.]+)% of/)![1])).toBeGreaterThanOrEqual(100);
+    expect(Number(svg.match(/m ([\d.]+)%/)![1])).toBeGreaterThanOrEqual(100);
   });
 
   it('takes a definite-time stage at its pickup, not somewhere on its shelf', () => {
@@ -290,7 +298,7 @@ view { voltage = "HV"; current_min = 100 A; current_max = 5 kA;
      * pickup -- and that is what makes the 152.9% above exact.
      */
     const svg = drawn('annotate { primary = R:50; at_t   = 20 ms; fault = "2ph min"; label = "m"; }');
-    expect(svg).toContain('m 152.9% of R:50');
+    expect(svg).toContain('m 152.9%');
   });
 
   it('draws a horizontal span with arrowheads', () => {

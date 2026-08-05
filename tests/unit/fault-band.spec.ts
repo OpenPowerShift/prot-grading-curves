@@ -91,17 +91,57 @@ describe('the packer', () => {
 });
 
 describe('where the band sits', () => {
+  /** Baseline of the lowest x-axis tick label, below the plot. */
+  const lowestAxisLabel = (svg: string): number => {
+    const bottom = plotBottom(svg);
+    const ys = [...svg.matchAll(
+      /<text x="[\d.]+" y="([\d.]+)"[^>]*class="tc-current-axis"[^>]*>/g,
+    )].map((m) => Number(m[1])).filter((y) => y > bottom);
+    expect(ys.length, 'the axis is labelled below the plot').toBeGreaterThan(0);
+    return Math.max(...ys);
+  };
+
   it('is close under the axis', () => {
     /* It was 44 px down -- a leader most of a centimetre long to a
      * name that could as easily have touched the rule. */
     const svg = sheet(TWO);
     const first = Math.min(...labels(svg).map((l) => l.y));
-    expect(first - plotBottom(svg)).toBeLessThanOrEqual(24);
+    expect(first - plotBottom(svg)).toBeLessThanOrEqual(32);
   });
 
-  it('still clears the axis, rather than sitting on it', () => {
+  it('clears the axis scale rather than printing over it', () => {
+    /*
+     * Moving the band up to 22 put it two pixels *above* the tick
+     * labels, which sit at 20 -- so the fault names printed through
+     * the current scale. The offset is derived from that row now
+     * rather than guessed against it.
+     */
     const svg = sheet(TWO);
     const first = Math.min(...labels(svg).map((l) => l.y));
-    expect(first).toBeGreaterThan(plotBottom(svg));
+    expect(first).toBeGreaterThan(lowestAxisLabel(svg));
+  });
+
+  it('clears it on every shipped example, on every sheet', async () => {
+    /*
+     * A sheet in secondary amps draws a second row of axis labels, so
+     * a clearance that holds on the default study does not
+     * necessarily hold on all of them -- which is how this was missed.
+     */
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const files = readdirSync('examples').filter((f) => f.endsWith('.ptc'));
+    expect(files.length).toBeGreaterThan(10);
+
+    for (const file of files) {
+      const result = process(readFileSync(`examples/${file}`, 'utf8'));
+      const views = result.study?.views.length ? result.study.views : [undefined];
+      for (const view of views) {
+        const svg = renderStudy(result, { theme: 'light', view });
+        const drawn = labels(svg);
+        if (drawn.length === 0) continue;
+        const first = Math.min(...drawn.map((l) => l.y));
+        expect(first, `${file}${view ? ` (${view.name})` : ''}`)
+          .toBeGreaterThan(lowestAxisLabel(svg));
+      }
+    }
   });
 });

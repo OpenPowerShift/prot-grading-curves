@@ -80,6 +80,22 @@ const FONT_HEADING = 13;
 const FONT_LABEL = 12;
 const FONT_DETAIL = 11;
 const FONT_AXIS = 12;
+/**
+ * Baseline of the x-axis tick labels, below the plot.
+ *
+ * Named because the fault band has to clear it, and clearing it by a
+ * guessed constant is how the band came to overlap the scale: the
+ * labels are at +20 and the band was moved to +22.
+ */
+const AXIS_LABEL_DY = 20;
+/**
+ * First row of fault names, below the axis labels.
+ *
+ * `AXIS_LABEL_DY` puts a 12 px label's baseline at +20, so its
+ * descenders reach about +24. Four more clears them without the
+ * centimetre of empty band the old fixed 44 left.
+ */
+const FAULT_BAND_DY = AXIS_LABEL_DY + FONT_AXIS - 4;
 const FONT_AXIS_TITLE = 13;
 
 const LINE_HEADING = 20;
@@ -947,15 +963,9 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   );
   const faultRows = faultLayout.reduce((n, f) => Math.max(n, f.row + 1), 0);
 
-  /*
-   * The first caption sits close under the axis.
-   *
-   * It was 44 px down, so every rule dropped a leader most of a
-   * centimetre long to a name that could as easily have touched it --
-   * and on a sheet with one condition that band is simply empty. 22
-   * clears the axis tick labels and no more.
-   */
-  const faultBandH = faultRows > 0 ? 22 + (faultRows - 1) * (LINE_DETAIL - 1) + 6 : 26;
+  const faultBandH = faultRows > 0
+    ? FAULT_BAND_DY + (faultRows - 1) * (LINE_DETAIL - 1) + 6
+    : 26;
   const bottomMargin = (stretch ? faultBandH + 34 : 140) + sheetInset + titleBlockH;
   const plotH = H - topMargin - bottomMargin;
 
@@ -2037,11 +2047,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (!Number.isFinite(px)) continue;
     out.push(`<line x1="${px}" y1="${topMargin}" x2="${px}" y2="${topMargin + plotH}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
     if (t.major) {
-      out.push(`<text x="${px}" y="${topMargin + plotH + 20}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
+      out.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
     } else if (isLabelledInterval(t.value)) {
       /* 2x and 5x of each decade: enough to read an intermediate
        * value off the chart without crowding the axis. */
-      out.push(`<text x="${px}" y="${topMargin + plotH + 20}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
+      out.push(`<text x="${px}" y="${topMargin + plotH + AXIS_LABEL_DY}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
     }
     /* `page { axes { mirror = true; } }` repeats the scale on top. */
     if (mirrorAxes && (t.major || isLabelledInterval(t.value))) {
@@ -3264,7 +3274,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * currents -- which is the normal case in a cascade -- otherwise
    * produces an unreadable pile of overlapping text.
    */
-  const faultBandY = topMargin + plotH + 22;
+  const faultBandY = topMargin + plotH + FAULT_BAND_DY;
 
   /* Rows were packed before the vertical margins were settled, so the
    * band below the axis could be sized to them. */

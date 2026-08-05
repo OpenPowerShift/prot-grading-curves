@@ -1077,44 +1077,58 @@ render() {
      * the numbers are where the eye already is. It flips to the other
      * side of the crosshair near an edge so it never leaves the plot.
      */
-    const lines: string[] = [];
-    if (snapped && hover.curveLabel) lines.push(hover.curveLabel);
     /*
-     * The reference, when it is not simply the label again.
+     * One block per curve, then the coordinates they share.
      *
-     * A relay that declares a `name` is drawn as "Feeder 4 (Mill Road)
-     * 51" and referred to as `R_FDR:51`, and only the second can be
-     * typed into a `grade` or an `annotate`. Someone building a file
-     * has the curve under the cursor and no way to get from one to the
-     * other without going back to the source and reading relay blocks.
-     *
-     * Suppressed when they match, which is the case for a study that
-     * names nothing -- there a second identical line would be noise.
+     * Each block is identical in shape -- name in bold, then its
+     * reference and level -- so two coincident curves are
+     * read the same way and compared line against line. Before this
+     * only the first name was bold and the second curve's identity ran
+     * on underneath it as though it belonged to the first.
      */
-    if (snapped && hover.ref && hover.ref !== hover.curveLabel) {
-      lines.push(hover.ref);
+    interface Line { text: string; bold?: boolean }
+    const lines: Line[] = [];
+
+    const describe = (curve: {
+      curveLabel: string; ref?: string; voltage: string;
+    }): void => {
+      lines.push({ text: curve.curveLabel, bold: true });
+      /*
+       * The reference, when it is not simply the label again. A relay
+       * that declares a `name` is drawn as "Feeder 4 (Mill Road) 51"
+       * and referred to as `R_FDR:51`, and only the second can be
+       * typed into a `grade`. Suppressed when they match, since a
+       * study that names nothing would otherwise repeat itself.
+       */
+      if (curve.ref && curve.ref !== curve.curveLabel) lines.push({ text: curve.ref });
+      /* The level, per curve rather than once at the foot: two
+       * coincident curves may sit on different windings, and a single
+       * trailing line could only name one of them. */
+      if (curve.voltage) lines.push({ text: curve.voltage });
+    };
+
+    if (snapped && hover.curveLabel) {
+      describe(hover);
+      /*
+       * Anything else lying on the same spot, described identically.
+       * Listed before the coordinates because the numbers are shared
+       * by all of them; it is which curves they belong to that a
+       * reader cannot infer.
+       */
+      for (const other of hover.alsoHere ?? []) describe(other);
     }
-    /*
-     * Anything else lying on the same spot, each named the same way.
-     *
-     * Listed before the coordinates because the identity is the part
-     * that was wrong: the numbers are shared by everything here, and
-     * it is *which curves* they belong to that the reader cannot infer.
-     */
-    for (const other of hover.alsoHere ?? []) {
-      lines.push(other.curveLabel);
-      if (other.ref && other.ref !== other.curveLabel) lines.push(other.ref);
-    }
-    lines.push(`I = ${prettyNum(hover.I_A)}`);
+
+    lines.push({ text: `I = ${prettyNum(hover.I_A)}` });
     /* A fault marker asserts a current, not a time. */
-    if (hover.target !== 'fault') lines.push(`t = ${prettyTime(hover.t_s)}`);
+    if (hover.target !== 'fault') lines.push({ text: `t = ${prettyTime(hover.t_s)}` });
     if (hover.target === 'fault') {
       /* A scenario's figure was declared for this level, not referred
        * to it, so calling it a fault level would misstate where it
        * came from. */
-      lines.push(hover.conditionKind === 'scenario' ? 'scenario, this level' : 'fault level');
+      lines.push({
+        text: hover.conditionKind === 'scenario' ? 'scenario, this level' : 'fault level',
+      });
     }
-    if (snapped && hover.voltage) lines.push(hover.voltage);
 
     const lineH = 13;
     const padX = 7;
@@ -1139,26 +1153,26 @@ render() {
     const MAX_CHARS = 34;
     const wrapped: string[] = [];
     const bold = new Set<number>();
-    for (const [i, line] of lines.entries()) {
-      const isLabel = i === 0 && snapped && hover.curveLabel != null;
-      if (line.length <= MAX_CHARS) {
-        if (isLabel) bold.add(wrapped.length);
-        wrapped.push(line);
+    for (const line of lines) {
+      /* Every wrapped fragment of a bold line stays bold, so a relay
+       * name long enough to run over does not half-fade. */
+      const emit = (text: string): void => {
+        if (line.bold) bold.add(wrapped.length);
+        wrapped.push(text);
+      };
+      if (line.text.length <= MAX_CHARS) {
+        emit(line.text);
         continue;
       }
-      let rest = line;
+      let rest = line.text;
       while (rest.length > MAX_CHARS) {
         /* Break at a space where there is one, so a word is not split. */
         const cut = rest.lastIndexOf(' ', MAX_CHARS);
         const at = cut > MAX_CHARS / 2 ? cut : MAX_CHARS;
-        if (isLabel) bold.add(wrapped.length);
-        wrapped.push(rest.slice(0, at).trimEnd());
+        emit(rest.slice(0, at).trimEnd());
         rest = rest.slice(at).trimStart();
       }
-      if (rest) {
-        if (isLabel) bold.add(wrapped.length);
-        wrapped.push(rest);
-      }
+      if (rest) emit(rest);
     }
 
     const boxW = Math.max(...wrapped.map((l) => l.length)) * charW + padX * 2;

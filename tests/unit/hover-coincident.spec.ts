@@ -173,6 +173,37 @@ describe('the readout box', () => {
     expect(lines).toContain('R_B:51');
   });
 
+  it('bolds every relay name, not only the first', async () => {
+    /*
+     * The second curve's identity used to run on underneath the
+     * first's in ordinary weight, reading as though it belonged to it.
+     */
+    const el = await mount(TWINS);
+    hoverACurve(el);
+    const draw = (el as unknown as Record<string, (s: string) => string>).renderWithOverlay;
+    const base = el.querySelector('svg')?.outerHTML ?? '';
+    const added = draw.call(el, base).slice(base.length - '</svg>'.length);
+    const bolded = [...added.matchAll(/<text[^>]*font-weight="600"[^>]*>([^<]*)</g)]
+      .map((m) => m[1]);
+    expect(bolded).toHaveLength(2);
+    expect(bolded.every((b) => b.includes('Feeder'))).toBe(true);
+  });
+
+  it('describes each curve in the same shape', async () => {
+    /* name, reference, level -- per curve, so the two read line
+     * against line rather than as one run-on list. */
+    const el = await mount(TWINS);
+    hoverACurve(el);
+    const lines = readout(el);
+    const a = lines.indexOf('R_A:51');
+    const b = lines.indexOf('R_B:51');
+    expect(a).toBeGreaterThan(-1);
+    expect(b).toBeGreaterThan(-1);
+    /* Each reference is preceded by its own name and followed by its
+     * own level, so the blocks are the same length. */
+    expect(b - a).toBe(3);
+  });
+
   it('puts the identities above the coordinates', async () => {
     /* The numbers are shared by everything here; which curves they
      * belong to is the part a reader cannot infer. */

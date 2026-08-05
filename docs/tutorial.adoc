@@ -121,6 +121,17 @@ The report now says:
 The fault is drawn on the sheet as a vertical rule, so you can see
 where the numbers were read.
 
+The verdict covers more than that one current. Two characteristics can
+be comfortably apart at the declared fault and converge above it, so
+`grade` also sweeps upward -- as far as the largest fault you have
+declared at that voltage -- and takes the worst point it finds. A pair
+that only coordinates at the current you happened to check is not
+coordinated, and you should not have to know to ask.
+
+Where a pair genuinely cannot be driven that high -- a fuse at the end
+of a spur never carries the busbar fault -- say so with `upstream_to`,
+or turn the sweep off for that pair with `upstream = false`.
+
 `type` matters more than it looks. It tells the tool what kind of fault
 this is, which fixes the relationship between phase current and the
 sequence components -- and that becomes important in section 12.

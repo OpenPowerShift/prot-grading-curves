@@ -436,9 +436,18 @@ function backupRatio(
  * How far up the curve the upstream sweep should run.
  *
  * An explicit `upstream_to` wins. Otherwise the ceiling is the largest
- * fault declared anywhere in the study, referred to the primary's
- * frame: that is the study's own statement about the most severe
- * current available, and it is not the tool's place to overrule it.
+ * fault the primary can actually see: that is the study's own statement
+ * about the most severe current available, and it is not the tool's
+ * place to overrule it.
+ *
+ * "Can see" means declared at the primary's own voltage level, or
+ * declaring no level at all. Referring every fault in the study into
+ * the primary's frame is wrong, and wrong in the direction that
+ * invents current: a 33 kV bus fault of 18.4 kA becomes 55.2 kA when
+ * carried across a 3:1 transformer onto an 11 kV feeder, and the
+ * feeder was then judged at a current more than eight times the
+ * board maximum its own study declares. A fault somewhere else in the
+ * network is not a current that flows through this pair.
  *
  * It used to take the largest of that, twenty times the primary's
  * pick-up, and twice the starting current -- so a study declaring a
@@ -466,6 +475,11 @@ function upstreamCeiling(
 
   let declared = 0;
   for (const f of study.faults.values()) {
+    /*
+     * A fault with no level belongs to whatever is grading it; a fault
+     * at another level is somewhere else in the network.
+     */
+    if (f.voltage && primary.voltage && f.voltage !== primary.voltage) continue;
     const projected = faultCurrentAt(study, f, primary.voltage, 'max').I_A;
     if (Number.isFinite(projected) && projected > declared) declared = projected;
   }
@@ -719,26 +733,24 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
    * worth examining and reports the worst point found.
    */
   /*
-   * Opt-in, for now, and that is a known weakness.
+   * On by default.
    *
-   * A reviewer's point stands: a pair that grades at the declared fault
-   * routinely fails above it, the example written to demonstrate that
-   * says "delete the one line and watch the study go green while
-   * remaining wrong", and a check nobody knows to ask for is not much
-   * of a check.
+   * A pair that grades at the declared fault routinely fails above it,
+   * and a check nobody knows to ask for is not much of a check -- the
+   * example written to demonstrate the problem said "delete the one
+   * line and watch the study go green while remaining wrong".
    *
-   * Turning it on by default was tried and backed out. `upstreamCeiling`
-   * runs to twice the declared fault, so six of the eighteen examples
-   * began failing at currents their own studies say cannot occur --
-   * sample 13 declares a 9.4 kA board maximum and sets `current_max` to
-   * match, and the sweep judged it at 18.8 kA. Reporting a failure at
-   * an impossible fault is its own kind of wrong answer, and a noisier
-   * one than the gap it closes.
+   * It was opt-in until the ceiling was trustworthy. `upstreamCeiling`
+   * used to run to twice the declared fault, so studies failed at
+   * currents their own data says cannot flow; that is a wrong answer
+   * of its own, and a louder one than the gap it closed. The ceiling is
+   * now the largest fault the study declares and nothing above it, so
+   * the reason for hiding the check is gone.
    *
-   * The default should change once the ceiling respects what the study
-   * has already said about the largest current available.
+   * `upstream = false` turns it off for a pair where it is not wanted.
    */
-  if (grade.upstream || grade.upstream_to_A != null) {
+  const askedForSweep = grade.upstream === true || grade.upstream_to_A != null;
+  if (grade.upstream !== false) {
     const from = faultCurrentAt(study, fault, primary.voltage, 'max').I_A;
     const to = upstreamCeiling(study, grade, primary, from);
     if (to > from) {
@@ -766,7 +778,18 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
         report.rows.push(row);
       }
       report.upstream_to_A = to;
-    } else {
+    } else if (askedForSweep) {
+      /*
+       * Only said to someone who asked for the sweep.
+       *
+       * Grading at the largest fault a study declares is the normal
+       * case, and there is nothing above it to walk -- so with the
+       * check on by default this fires on most sound studies, which
+       * would turn a useful warning into background noise. Where the
+       * author wrote `upstream = true` or named a ceiling, the empty
+       * range is genuinely news: they asked a question the study
+       * cannot answer.
+       */
       diagnostics.push({
         code: 'UPSTREAM_RANGE_EMPTY',
         severity: 'warning',

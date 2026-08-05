@@ -50,7 +50,25 @@ describe('grading a multi-stage element', () => {
     const backup = result.study!.relays.get('R_UP')!.elements[0];
     expect(controllingStage(backup, 2000)!.id).toBe('main');
     expect(result.reports[0].rows[0].t_backup_s).toBeCloseTo(1.494, 2);
-    expect(result.reports[0].pass).toBe(true);
+    /* At the declared fault the pair is comfortable. */
+    expect(result.reports[0].rows[0].pass).toBe(true);
+  });
+
+  it('still fails overall, because it fails above the declared fault', () => {
+    /*
+     * The verdict used to be a pass, because only the declared point
+     * was judged. The sweep is on by default now and walks from 2 kA up
+     * to the 9 kA this study declares, where the backup's 8 kA
+     * instantaneous undercuts the primary -- the same undercut the next
+     * test calls a real fault when it is graded head-on. A pair that
+     * coordinates at one current and not above it is not coordinated,
+     * and this is precisely the case the default exists to surface.
+     */
+    expect(result.reports[0].pass).toBe(false);
+    const swept = result.reports[0].rows.filter((r) => r.at === 'upstream');
+    expect(swept.length).toBeGreaterThan(0);
+    const worst = swept.reduce((a, b) => (b.margin_s < a.margin_s ? b : a));
+    expect(worst.I_f_A).toBeGreaterThan(8000);
   });
 
   it('lets the definite stage govern above it, and catches the undercut', () => {

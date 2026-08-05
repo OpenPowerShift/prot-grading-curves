@@ -6,9 +6,11 @@
 # 12 kA the *backup* becomes faster than the *primary*, and an incomer
 # trip would take out the whole board for a feeder fault.
 #
-# Checking only the declared fault current cannot see this. The
-# `upstream = true` sweep is what surfaces it — try deleting that line
-# and watch the study go green while remaining wrong.
+# Checking only the declared fault current cannot see this. The upstream
+# sweep is what surfaces it, and it runs by default — write
+# `upstream = false;` in the grade below and watch the study go green
+# while remaining wrong. That is what this check is worth, and it is why
+# it is no longer something you have to know to ask for.
 #
 # In the playground, press ? (or Ctrl-Space) for completions: on a blank
 # line it lists what the enclosing block accepts, and after an `=` it
@@ -72,6 +74,11 @@ grade {
   backup = R_INCOMER:51;
   fault = "Bus fault";
   margin = 0.30 s;
+
+  # Left in, though it is now the default, because this study is about
+  # the sweep and the reader should see the name of the thing being
+  # demonstrated. `upstream = false` turns it off for a pair that
+  # cannot be driven above its fault — see sample 10's spur fuse.
   upstream = true;
 }
 

@@ -189,32 +189,6 @@ makes that the code breaks outranks a promise never made.
 
 ==== Silently wrong answers
 
-. *A stage reference in `grade` is ignored, and the composite is graded
-  instead.* [VERIFIED] `Ref.stageId` (`parser/ast.ts`) is honoured by
-  the renderer (`renderer/svg.ts`) and dropped by `resolveRef`
-  (`semantics/model.ts`), so `grades.ts` and `combine.ts` see the
-  element. `grade { primary = R_A:51/toc; ... }` against a study whose
-  `toc` stage is IEC VI and whose `inst` stage is a 40 ms definite-time
-  high-set reports `t_primary = 0.040 s` -- the high-set -- and labels
-  the row `R_A:51`, dropping the stage from the name. The sheet and the
-  report therefore disagree about what was graded. No diagnostic.
-  `docs/guide.adoc` documents the syntax.
-
-. *Unsorted `flex_points` are accepted and mis-evaluated.* [REPORTED]
-  `semantics/validate.ts` rejects a repeated current but not a
-  decreasing one. A table read top-down off a datasheet returns
-  `Infinity` where the table gives 32 s, and a linearly interpolated
-  figure elsewhere. `check` reports no errors. The monotonicity check
-  should be strict-increasing and an error.
-
-. *The upstream sweep runs past the largest declared fault and reports
-  a FAIL that cannot occur.* [REPORTED] The ceiling in
-  `semantics/grades.ts` is the largest of the declared fault, twenty
-  times primary pickup, and twice `from`. A study declaring a 9.4 kA
-  board maximum was swept to 18.8 kA and failed at 12 kA -- a current
-  the board cannot deliver. A false FAIL on the headline verdict is
-  worse than no check.
-
 . *Cross-voltage referral is ratio-only and understates the HV current
   by 15.5% for a phase-phase fault through a delta-star.* [REPORTED]
   `semantics/xvoltage.ts` applies `I x V_from/V_to` unconditionally.
@@ -468,6 +442,46 @@ breaks. They want one decision: implement, or delete the claim.
 . *PDF wrapping is computed against the monospace advance* and then set
   in proportional Helvetica, so legend lines break early. Nothing
   overflows -- the substitution is strictly narrower -- just loose.
+
+=== Closed 2026-08-06
+
+* *A stage reference in `grade` was ignored and the composite graded.*
+  `resolveRef` dropped `stageId`; only the renderer honoured it, so the
+  sheet drew the stage that was named and the report graded something
+  else. The narrowing moved into `resolveRef` and the renderer's copy
+  was deleted. A stage name matching nothing was also silent, and is
+  now `UNRESOLVED_STAGE`; giving that diagnostic somewhere to point
+  gave `Ref` a source location, which two combine diagnostics now use.
+
+* *Device tables were not validated at all.* An element's `flex_points`
+  were checked and a device's three tables were not, so a fuse could
+  declare a repeated current or a one-row band and validate clean. One
+  checker now serves both. The reported version of this finding -- that
+  unsorted tables are silently mis-evaluated -- was wrong: `buildStudy`
+  sorts every table before anything reads it, and a test now pins that.
+
+* *The upstream sweep judged studies at impossible currents.* Its
+  ceiling was the largest of the declared fault, twenty times pick-up
+  and twice the start, and it referred faults across voltage levels --
+  so an 18.4 kA fault on a 33 kV bus became 55.2 kA on the 11 kV feeder
+  below it. The ceiling is now the largest fault declared at the
+  primary's own level and nothing more.
+
+* *The sweep now runs by default*, the ceiling being trustworthy. Of
+  the shipped examples only sample 07 fails, which is its purpose;
+  sample 11 needed a genuine setting change (its bus relay graded at
+  0.22 and converged 26 ms short at 13.5 kA) and sample 10's spur fuse
+  declares `upstream = false`, because a fuse at the end of a spur
+  cannot carry the busbar fault and nothing in the language says so.
+  The empty-range warning is now raised only where the sweep was asked
+  for explicitly, since grading at a study's largest fault is the
+  normal case and would otherwise warn on most sound studies.
+
+  That last point is the interesting residue: the sweep bounds itself
+  by *voltage level* because voltage level is all the language knows.
+  Position on the network -- which device is downstream of which -- is
+  the missing concept, and it is the same absence that forces the
+  pairwise `grade` explosion.
 
 === Closed 2026-07-31
 

@@ -105,15 +105,15 @@ domain-t 0.02,100
 [faults] line 706.6,66.0..706.6,1237.0 class=tc-fault data-fault=Feeder fault
 [faults] line 794.9,66.0..794.9,1237.0 class=tc-fault data-fault=Bus fault
 [curves] path n=124 bbox=418.4,66.0..907.0,753.3 class=tc-curve data-curve=Incomer · 51 data-ref=R_INC:51 data-voltage=MV
-[curves] path n=136 bbox=370.3,66.0..907.0,830.4 class=tc-curve data-curve=Bus section · 51 data-ref=R_BUS:51 data-voltage=MV
+[curves] path n=136 bbox=370.3,66.0..907.0,818.4 class=tc-curve data-curve=Bus section · 51 data-ref=R_BUS:51 data-voltage=MV
 [curves] path n=161 bbox=270.2,22.6..907.0,937.4 class=tc-curve data-curve=Feeder 4 (Mill Road) · 51 data-ref=R_FDR:51 data-voltage=MV
 [curves] path n=45 bbox=737.9,66.0..907.0,1086.0 class=tc-curve data-curve=Feeder 4 (Mill Road) · Inst data-ref=R_FDR:50 data-voltage=MV
 [curve-labels] path n=3 bbox=885.0,753.3..907.0,753.3
 [curve-labels] rect 784.6,743.3 100.4x20.0
 [curve-labels] text 791.6,757.3 class=tc-legend font-size=12 font-weight=600 "Incomer · 51"
-[curve-labels] path n=3 bbox=885.0,830.4..907.0,830.4
-[curve-labels] rect 755.8,820.4 129.2x20.0
-[curve-labels] text 762.8,834.4 class=tc-legend font-size=12 font-weight=600 "Bus section · 51"
+[curve-labels] path n=3 bbox=885.0,818.4..907.0,818.4
+[curve-labels] rect 755.8,808.4 129.2x20.0
+[curve-labels] text 762.8,822.4 class=tc-legend font-size=12 font-weight=600 "Bus section · 51"
 [curve-labels] path n=3 bbox=885.0,937.4..907.0,937.4
 [curve-labels] rect 691.0,927.4 194.0x20.0
 [curve-labels] text 698.0,941.4 class=tc-legend font-size=12 font-weight=600 "Feeder 4 (Mill Road) · 51"
@@ -124,12 +124,12 @@ domain-t 0.02,100
 [points] polygon 3 pts
 [points] path n=2 bbox=501.9,413.3..511.9,809.8
 [points] text 501.9,814.3 text-anchor=end font-size=11 "Largest motor start6 x FLC for 8 s (1.8 kA, 8 s)"
-[annotations] line 706.6,883.6..706.6,764.7
+[annotations] line 706.6,883.6..706.6,752.7
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
 [annotations] line 700.6,883.6..712.6,883.6
-[annotations] line 700.6,764.7..712.6,764.7
-[annotations] text 696.6,826.4 text-anchor=end font-size=11 font-weight=600 "CTI 360 ms"
+[annotations] line 700.6,752.7..712.6,752.7
+[annotations] text 696.6,820.4 text-anchor=end font-size=11 font-weight=600 "CTI 416 ms"
 [fault-band] line 552.3,1237.0..552.3,1262.0 class=tc-fault
 [fault-band] text 554.3,1271.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Spur fault · 2.4 kA"
 [fault-band] line 706.6,1237.0..706.6,1262.0 class=tc-fault

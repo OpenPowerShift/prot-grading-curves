@@ -127,8 +127,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   solve:       M('grade', 'Sub-block: directive to compute tms that hits the target.', 'solve { strategy = "tight"; tolerance_pct = 5; }'),
 
   // grade -- the sweep
-  upstream:    M('grade', 'Sweep the margin *above* the declared fault as well. Grading that holds at the fault can still fail further up, where the two characteristics converge.', 'upstream = true;'),
-  upstream_to: M('grade', 'Ceiling for the upstream sweep, in primary amps at the fault\u2019s level.', 'upstream_to = 20 kA;'),
+  upstream:    M('grade', 'Sweep the margin *above* the declared fault as well. On by default \u2014 grading that holds at the fault can still fail further up, where the two characteristics converge. Set false for a pair that cannot be driven above its fault, such as a fuse on a spur.', 'upstream = false;'),
+  upstream_to: M('grade', 'Ceiling for the upstream sweep, in primary amps at the fault\u2019s level. Overrides the default, which is the largest fault declared at the primary\u2019s own voltage.', 'upstream_to = 20 kA;'),
 
   // element -- what it measures
   measures:    M('element', 'Which current the pickup is expressed in: phase, I1, I2, 3I2, I0, 3I0. Required for neg_seq, where IEDs differ over the factor of three.', 'measures = "I2";'),

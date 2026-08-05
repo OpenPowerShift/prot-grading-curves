@@ -457,12 +457,14 @@ grade {
   upstream = true;
 }
 
-# The sweep's default ceiling is the largest fault anywhere in the
-# study — here the 8.2 kA bus fault. A sub-feeder can never see that:
-# its own maximum is 3.1 kA. Left unbounded the sweep runs into the
-# feeder's 7 kA high-set and reports a margin inversion for a current
-# this pair cannot experience. `upstream_to` bounds the sweep to what
-# is physically reachable.
+# The sweep runs by default, and its ceiling is the largest fault
+# declared at the primary's own voltage — here the 8.2 kA bus fault. A
+# sub-feeder can never see that: its own maximum is 3.1 kA. Unbounded,
+# the sweep runs into the feeder's 7 kA high-set and reports a margin
+# inversion for a current this pair cannot experience.
+#
+# Voltage level is all the tool knows. Where the device sits on the
+# network is what `upstream_to` tells it.
 grade {
   primary = R_SUB:51;
   backup = R_FDR:51;
@@ -476,6 +478,23 @@ grade {
   backup = R_SUB:51;
   fault = "Spur max";
   margin = 0.15 s; # fuse-relay pairs run tighter
+
+  # The one pair in this study that is not swept above its fault, and
+  # the reason is topology rather than protection.
+  #
+  # The sweep normally walks from the graded fault up to the largest
+  # fault declared at that voltage, on the reasoning that the study
+  # said that current is available. Here it is not available *to this
+  # pair*: the fuse is at the far end of a spur, and the 8.2 kA bus
+  # fault flows through R_SUB and every relay above it without ever
+  # passing through the fuse. The most this fuse can carry is a fault
+  # immediately downstream of it, which is "Spur max" — so there is
+  # nothing above it to check.
+  #
+  # The language has no way to know that: nothing here says which
+  # device is downstream of which. Until it does, a pair whose ceiling
+  # is set by where it sits rather than by the fault levels says so.
+  upstream = false;
 }
 
 # ---- each margin, on the sheet ---------------------------------------

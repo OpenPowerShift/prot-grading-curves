@@ -95,7 +95,18 @@ relay R_BUS {
     function = "phase_oc";
     curve = iec.si;
     I_pickup = 640 A;
-    tms = 0.22;
+
+    # 0.24, not 0.22, and the difference is only visible above the
+    # declared fault. At 13.5 kA the two curves converge to 274 ms at
+    # 0.22 — a pass at every current anyone checks by hand, and 26 ms
+    # short of the margin this study asks for. The upstream sweep is
+    # what catches it.
+    #
+    # It cannot simply be raised, either: past about 0.27 this relay
+    # stops grading against the incomer above it. 0.24 sits in the
+    # window, which is what makes the middle relay of a cascade the
+    # awkward one.
+    tms = 0.24;
   }
 }
 

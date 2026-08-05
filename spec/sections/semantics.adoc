@@ -386,26 +386,30 @@ grade {
     fault       = "F_FDR1_max";
     margin      = 0.30 s;
 
-    upstream    = true;          // sweep above the declared fault
-    // upstream_to = 25 kA;      // explicit ceiling (optional)
+    // upstream = false;       // opt out for this pair (see below)
+    // upstream_to = 25 kA;     // explicit ceiling (optional)
 }
 ----
 
-`upstream = true` sweeps logarithmically from the highest declared
-fault current up to a ceiling, evaluating the margin at each sample
-exactly as at a declared point, and reports the *tightest* margin
-found together with the current at which it occurs. Samples
-participate in the `margin` verdict, so a pair that inverts
-anywhere in the swept band fails the grade.
+The sweep runs *by default*. It walks logarithmically from the
+declared fault current up to a ceiling, evaluating the margin at each
+sample exactly as at a declared point, and reports the *tightest*
+margin found together with the current at which it occurs. Samples
+participate in the `margin` verdict, so a pair that inverts anywhere
+in the swept band fails the grade.
+
+A pair that grades at its declared fault routinely fails above it, and
+a check that must be asked for is not run by the engineers who most
+need it. `upstream = false` turns it off for one pair.
 
 The ceiling is, in order of precedence:
 
 . `upstream_to`, when declared;
-. otherwise the largest fault current declared anywhere in the study,
-  referred to the primary's level -- the most severe current the
-  study contemplates;
-. with a floor of `20 * I_pu_primary`, so a study whose declared
-  faults are all modest still gets a meaningful sweep.
+. otherwise the largest fault declared at the *primary's own voltage
+  level*, or declaring no level -- the study's own statement of the
+  most severe current available there;
+. with a floor of `20 * I_pu_primary`, used only where no declared
+  fault applies to the primary at all.
 
 [NOTE]
 ====
@@ -418,17 +422,28 @@ downstream fault.
 
 [IMPORTANT]
 ====
-The default ceiling is the largest fault *anywhere in the study*,
-which for a pair deep in a cascade may be a current that pair can
-never experience. A sub-feeder graded against a feeder will be swept
-up to the busbar fault level, and can be reported as failing against
-the feeder's high-set at a current no sub-feeder fault could reach.
+A processor shall not sweep above what the study says is available.
+Two bounds follow, and both were once got wrong in ways that produced
+confident failures at impossible currents:
 
-Declare `upstream_to` with the maximum fault the *primary* can
-actually see whenever the study's largest fault belongs to a
-different part of the network. The default is deliberately
-conservative -- it would rather ask the question than miss a real
-inversion -- but a bounded sweep is the more meaningful check.
+*Do not scale the ceiling past the declared faults.* Taking the larger
+of the declared fault, a multiple of pick-up, and a multiple of the
+starting current means a study declaring a 9.4 kA board maximum is
+judged at 18.8 kA. No setting the engineer can change will make an
+impossible current coordinate, so the failure cannot be acted on.
+
+*Do not refer faults across voltage levels into the ceiling.* An
+18.4 kA fault on a 33 kV bus is not 55.2 kA on the 11 kV feeder below
+it; it is a fault somewhere else in the network. Only faults the
+primary can actually carry bound the sweep.
+
+What a processor cannot know is *topology*: nothing in the language
+says which device is downstream of which, so a fault declared at the
+primary's own level may still be one the primary never sees. A fuse on
+a spur cannot carry the busbar fault, however the spur is drawn.
+Where that is so, the study says it -- with `upstream_to` for the
+current the pair can actually reach, or `upstream = false` where there
+is nothing above the graded fault at all.
 ====
 
 ==== Margin target vs CTI minimum

@@ -791,10 +791,11 @@ grade {
 side is evaluated at the current *it* sees: a fault on one side of a
 transformer is referred to the other by the turns ratio, per relay.
 
-`upstream = true` is worth using. Grading that holds at the declared
+The upstream sweep runs by default: grading that holds at the declared
 fault can still fail further up, where two characteristics converge.
-Bound it with `upstream_to` on a deep cascade -- the default ceiling is
-the largest fault in the study, which a sub-feeder may never see.
+Its ceiling is the largest fault at the primary's own level; a pair
+that cannot reach it -- a spur fuse -- wants `upstream_to` or
+`upstream = false`.
 
 ==== Letting the tool choose a setting
 
@@ -1775,8 +1776,7 @@ A checklist, in the order that avoids rework:
   `measures` to every `neg_seq` element. Give instantaneous stages a
   real operate time, not zero.
 . **Grade downstream against upstream**: `primary` is the element that
-  must clear first. Add `upstream = true` unless you have a reason not
-  to.
+  must clear first. The sweep above the fault runs by default.
 . **`view` and `page` last** -- they change presentation only. Bound
   the current axis explicitly.
 . Run `check`, then `report`, then render and *look at the plot*.
@@ -1797,6 +1797,7 @@ A checklist, in the order that avoids rework:
 * Referring a residual current across a transformer. Declare it at each
   level with a `scenario`.
 * Assuming the study's largest fault is visible to a sub-feeder deep in
-  a cascade. Bound the upstream sweep with `upstream_to`.
+  a cascade. The sweep bounds by voltage, not position: use
+  `upstream_to`.
 * Expecting the tool to compute fault levels. It does not; they are
   input.

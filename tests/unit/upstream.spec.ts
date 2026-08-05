@@ -28,7 +28,13 @@ grade {
 }
 `;
 
-const withoutSweep = CONVERGING.replace('  upstream  = true;\n', '');
+/*
+ * The sweep is on by default, so "without it" has to be said. Deleting
+ * the line no longer means anything -- which is the point of the
+ * default: a study gets the check whether or not its author knew to
+ * ask for it.
+ */
+const withoutSweep = CONVERGING.replace('  upstream  = true;', '  upstream  = false;');
 
 describe('upstream sweep', () => {
   it('passes at the declared fault', () => {

@@ -100,7 +100,14 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
   const { element, device } = resolveRef(study, ref);
   if (element) {
     return {
-      ref: element.ref,
+      /*
+       * A graded stage names itself. `resolveRef` has already narrowed
+       * the element to it, so without this the row reads `R_A:51` while
+       * the figures beside it are one stage's -- the same answer the
+       * composite would give for a different reason, and no way to tell
+       * the two apart.
+       */
+      ref: ref?.stageId ? `${element.ref}/${ref.stageId}` : element.ref,
       element,
       voltage: element.voltage,
       tAt: (I: number) => tTripElement(element, I),

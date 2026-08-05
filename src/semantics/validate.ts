@@ -11,7 +11,7 @@
  * same identifier. Findings are ordered by source position.
  */
 
-import type { AnnotateBlock, Document, SourceLocation } from '../parser/ast.js';
+import type { AnnotateBlock, Document, Ref, SourceLocation } from '../parser/ast.js';
 import {
   isKnownCurveId,
   suggestCurveId,
@@ -123,8 +123,59 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validatePoints(ctx);
   validateView(ctx);
   validatePage(ctx);
+  validateStageRefs(ctx);
 
   return ctx.out.sort((a, b) => a.offset - b.offset || a.code.localeCompare(b.code));
+}
+
+/* ------------------------------------------------------------------ */
+/* Stage references                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A reference naming a stage that does not exist.
+ *
+ * `resolveRef` falls back to the whole element when the stage name
+ * matches nothing, which is the right behaviour -- grading nothing
+ * because of a typo would be worse than grading the composite. But the
+ * fallback has to be *said*, or the study quietly answers a different
+ * question from the one it asked: `R_A:51/toc` mistyped as
+ * `R_A:51/tocc` grades the high-set and reports a comfortable margin.
+ *
+ * Checked in one pass over every reference that can carry a stage --
+ * grades, annotations and combines -- rather than at each site, so a
+ * new directive taking a `Ref` cannot forget it.
+ */
+function validateStageRefs(ctx: Ctx): void {
+  const study = ctx.study;
+
+  const check = (ref: Ref | undefined, where: string): void => {
+    if (!ref?.stageId) return;
+    const { element } = resolveRef(study, ref);
+    /* An unresolvable element is already reported by its own site. */
+    if (!element) return;
+    if (element.stages.some((st) => st.id === ref.stageId)) return;
+
+    const names = element.stages.map((st) => st.id).filter(Boolean);
+    add(ctx, 'UNRESOLVED_STAGE', 'error',
+      `${where} references stage "${ref.stageId}" of ${element.ref}, which has no such `
+      + `stage; it declares ${names.length > 0 ? names.map((n) => `"${n}"`).join(', ') : 'none'}`
+      + didYouMean(suggest(ref.stageId, names)),
+      ref.loc, ref.text.length);
+  };
+
+  for (const grade of study.grades) {
+    check(grade.primary, 'grade primary');
+    check(grade.backup, 'grade backup');
+  }
+  for (const a of study.annotations) {
+    check(a.primary, 'annotate primary');
+    check(a.backup, 'annotate backup');
+    check(a.on_curve, 'annotate on_curve');
+  }
+  for (const c of study.combines) {
+    for (const source of c.sources) check(source, `combine "${c.name}"`);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -767,7 +818,7 @@ function validateCombines(ctx: Ctx): void {
         add(ctx, 'COMBINE_CHAINED', 'error',
           `combine "${combine.name}" references synthetic curve "${name}"; ` +
           'combines cannot be chained',
-          undefined);
+          ref.loc, ref.text.length);
         continue;
       }
       const { element, device } = resolveRef(study, ref);
@@ -775,7 +826,7 @@ function validateCombines(ctx: Ctx): void {
         add(ctx, 'UNRESOLVED_REFERENCE', 'error',
           `combine "${combine.name}" references "${name}", which is not a declared ` +
           'relay element or device',
-          undefined);
+          ref.loc, ref.text.length);
       }
     }
   }

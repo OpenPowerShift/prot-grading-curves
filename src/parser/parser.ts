@@ -2526,7 +2526,7 @@ if (kwName === 'flex_points') {
     const quoted = this.eat('STRING');
     if (quoted) {
       const id = unquote(quoted.image);
-      return { deviceId: id, text: id };
+      return { deviceId: id, text: id, loc: this.loc(quoted) };
     }
 
     const first = this.eat('IDENT') ?? this.eat('KW');
@@ -2554,11 +2554,16 @@ if (kwName === 'flex_points') {
         return {
           deviceId, elementId, stageId,
           text: `${deviceId}:${elementId}/${stageId}`,
+          loc: this.loc(first),
         };
       }
-      return { deviceId, elementId, text: `${deviceId}:${elementId}` };
+      return {
+        deviceId, elementId,
+        text: `${deviceId}:${elementId}`,
+        loc: this.loc(first),
+      };
     }
-    return { deviceId: first.image, text: first.image };
+    return { deviceId: first.image, text: first.image, loc: this.loc(first) };
   }
 
   private parseRefList(): Ref[] {

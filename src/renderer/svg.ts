@@ -1386,23 +1386,6 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * on total clear as a primary and minimum melt as a backup, matching
    * how `grades.ts` reasons about it.
    */
-  /**
-   * Narrow a resolved side to the single stage its reference named.
-   *
-   * `R_850:46/energ` means that stage, not the element. Without it a
-   * reference is the composite -- what the relay trips at -- which is
-   * right for grading and wrong for an annotation about the stage that
-   * is armed under the condition being drawn.
-   */
-  const atStage = (
-    side: { element?: Element; device?: Device },
-    ref: Ref | undefined,
-  ): { element?: Element; device?: Device } => {
-    if (!ref?.stageId || !side.element) return side;
-    const stage = side.element.stages.find((st) => st.id === ref.stageId);
-    if (!stage) return side;
-    return { ...side, element: { ...side.element, stages: [stage] } };
-  };
 
   const sideTime = (
     side: { element?: Element; device?: Device },
@@ -2978,8 +2961,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * meaning little without knowing where on the axis you are.
      */
     if (annotation.kind === 'current_margin') {
-      const primary = atStage(resolveRef(study, annotation.primary), annotation.primary);
-      const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
+      const primary = resolveRef(study, annotation.primary);
+      const backup = resolveRef(study, annotation.backup);
       const t = annotation.at_t_s!;
       /* As for the time margin: every failure here was silent. */
       const spanName = annotation.label
@@ -3105,8 +3088,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
 
     if (annotation.kind === 'margin') {
-      const primary = atStage(resolveRef(study, annotation.primary), annotation.primary);
-      const backup = atStage(resolveRef(study, annotation.backup), annotation.backup);
+      const primary = resolveRef(study, annotation.primary);
+      const backup = resolveRef(study, annotation.backup);
       /*
        * Every way out of this block used to be a bare `continue`, so a
        * margin that could not be computed drew nothing and said
@@ -3303,8 +3286,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
 
     /* Point form: mark one curve at one current. */
-    const { element, device } = atStage(
-      resolveRef(study, annotation.on_curve), annotation.on_curve);
+    const { element, device } = resolveRef(study, annotation.on_curve);
     const annotatedQ = element ? elementQuantity(element.stages) : 'phase';
 
     /*

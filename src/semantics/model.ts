@@ -1136,8 +1136,35 @@ export function allElements(study: Study): Element[] {
 }
 
 /**
+ * Narrow an element to the single stage a reference named.
+ *
+ * `R_850:46/energ` means that stage, not the element. A bare reference
+ * means the composite -- what the relay actually trips at -- which is
+ * the right default; naming a stage asks a different question, and the
+ * guide states that rule for references in general rather than for any
+ * one directive.
+ *
+ * A stage name that matches nothing leaves the element alone rather
+ * than silently emptying it. `UNRESOLVED_REFERENCE` is the validator's
+ * to report; grading nothing because a name was mistyped would be a
+ * second silent failure stacked on the first.
+ */
+function atStage(element: Element, ref: Ref): Element {
+  if (!ref.stageId) return element;
+  const stage = element.stages.find((st) => st.id === ref.stageId);
+  if (!stage) return element;
+  return { ...element, stages: [stage] };
+}
+
+/**
  * Resolve a `R_FDR_1:51` / `51` / `ferraz_abc_100a` reference to the
  * element or device it names.
+ *
+ * The stage narrowing lives here, in the one place a reference becomes
+ * a thing, so every caller agrees on what a reference means. It used to
+ * live in the renderer alone: the sheet drew the stage that was named
+ * and the report graded the composite, so a study could state a margin
+ * its own drawing contradicted and neither said a word.
  */
 export function resolveRef(
   study: Study,
@@ -1147,7 +1174,7 @@ export function resolveRef(
   if (ref.deviceId && ref.elementId) {
     const relay = study.relays.get(ref.deviceId);
     const element = relay?.elements.find((e) => e.id === ref.elementId);
-    if (element) return { element };
+    if (element) return { element: atStage(element, ref) };
     return {};
   }
   const id = ref.deviceId ?? ref.text;
@@ -1155,6 +1182,6 @@ export function resolveRef(
   const device = study.devices.get(id);
   if (device) return { device };
   const loose = study.looseElements.find((e) => e.id === id);
-  if (loose) return { element: loose };
+  if (loose) return { element: atStage(loose, ref) };
   return {};
 }

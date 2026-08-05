@@ -865,6 +865,15 @@ export interface Ref {
   stageId?: string;
   /** Raw text as written, for round-trip stability. */
   text: string;
+  /**
+   * Where the reference was written.
+   *
+   * A diagnostic about a reference -- an unresolved element, a stage
+   * that does not exist -- has to be able to point at it. Without this
+   * they all reported at 1:1, which on a study of any size means the
+   * reader is told there is a problem and left to find it.
+   */
+  loc?: SourceLocation;
 }
 
 /* ------------------------------------------------------------------ */

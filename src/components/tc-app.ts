@@ -159,16 +159,29 @@ export class TcApp extends LitElement {
    */
   @state() private viewIndex = 0;
   /**
-   * Help for the token under the caret, shown beside the source.
+   * Help for the token under the caret, shown under the source.
    *
    * Docked rather than floating: a tooltip covers the line being read
    * and has to be dismissed, where a panel simply follows the caret --
    * which is what makes it usable for *reading* an existing file
    * rather than only for writing a new one.
+   *
+   * A strip along the bottom rather than a right-hand column. As a
+   * column it took a third of the editor's width for two lines of
+   * text, and because it comes and goes with the caret the source
+   * reflowed under the reader every time they moved the cursor.
    */
   @state() private help: {
     name: string; scope?: string; summary: string; example?: string;
   } | null = null;
+  /**
+   * Whether the reader has shut the strip.
+   *
+   * Remembered, because someone who does not want it does not want it
+   * on every token for the rest of the session either. Cleared by the
+   * same toolbar control that opens it.
+   */
+  @state() private helpHidden = readStoredHelpHidden();
   /**
    * UI theme for both panes. Seeded from the OS preference and then
    * remembered, so the choice survives a reload.
@@ -185,6 +198,14 @@ export class TcApp extends LitElement {
   private readonly boundOnSave   = () => this.saveSource();
   private readonly boundOnOpen   = () => { void this.openSourceViaPicker(); };
   private readonly boundOnHelp = (help: TcApp['help']) => { this.help = help; };
+  private readonly hideHelp = (): void => {
+    this.helpHidden = true;
+    try { localStorage.setItem(HELP_HIDDEN_KEY, '1'); } catch { /* private mode */ }
+  };
+  private readonly showHelpStrip = (): void => {
+    this.helpHidden = false;
+    try { localStorage.removeItem(HELP_HIDDEN_KEY); } catch { /* private mode */ }
+  };
   private readonly boundOnSelectionMove = (offset: number) => {
     try { localStorage.setItem(this.cursorKey(this.exampleId), String(offset)); } catch { /* */ }
     this.caretLine = lineAtOffset(this.src, offset);
@@ -955,6 +976,10 @@ export class TcApp extends LitElement {
             <span class="counts">${this.issueSummary()}</span>
             <button class="side-btn" title="Reflow the source with standard indentation"
                     @click=${() => this.formatSource()}>Format</button>
+            ${this.helpHidden ? html`
+              <button class="side-btn"
+                      title="Show the help strip under the source again"
+                      @click=${this.showHelpStrip}>Help</button>` : null}
             <button class="side-btn" title="Open a .ptc file from disk"
                     @click=${() => { void this.openSourceViaPicker(); }}>Open…</button>
             <button class="side-btn" title="Save this study in the browser, under a name"
@@ -986,7 +1011,7 @@ export class TcApp extends LitElement {
                 .onSelectionMove=${this.boundOnSelectionMove}
                 .onHelp=${this.boundOnHelp}
                 .shortcuts=${this.boundShortcuts}></tc-editor>
-            ${this.help ? html`
+            ${this.help && !this.helpHidden ? html`
               <aside class="help-dock" aria-label="What this means">
                 <div class="help-dock-name">
                   ${this.help.name}
@@ -994,6 +1019,9 @@ export class TcApp extends LitElement {
                 </div>
                 <div class="help-dock-summary">${this.help.summary}</div>
                 ${this.help.example ? html`<pre class="help-dock-example">${this.help.example}</pre>` : null}
+                <button class="help-dock-close" title="Hide the help strip"
+                        aria-label="Hide the help strip"
+                        @click=${this.hideHelp}>&times;</button>
               </aside>` : null}
           </div>
           ${this.renderDiagnostics()}
@@ -1109,6 +1137,22 @@ const THEME_KEY = 'tc-curves.theme';
  * The theme to start in: the user's remembered choice if there is one,
  * otherwise whatever the operating system asks for.
  */
+/**
+ * Storage key for the help strip's dismissed state.
+ *
+ * Separate from the theme so clearing one does not clear the other.
+ */
+const HELP_HIDDEN_KEY = 'tc.helpHidden';
+
+function readStoredHelpHidden(): boolean {
+  try {
+    return localStorage.getItem(HELP_HIDDEN_KEY) === '1';
+  } catch {
+    /* Storage unavailable: show it, which is the useful default. */
+    return false;
+  }
+}
+
 function readStoredTheme(): 'light' | 'dark' {
   try {
     const stored = localStorage.getItem(THEME_KEY);

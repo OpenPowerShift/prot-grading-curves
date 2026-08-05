@@ -648,52 +648,85 @@ tc-app .source-body {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
-  align-items: stretch;
+  /*
+   * The dock sits *under* the source, not beside it.
+   *
+   * As a right-hand column it took a third of the editor's width for
+   * two lines of text, and it appears and disappears as the caret
+   * moves -- so the source reflowed under the reader every time they
+   * moved the cursor, which is the one thing an editor must not do.
+   * A strip along the bottom changes height by a line at most, and
+   * leaves the plot alone either way.
+   */
+  flex-direction: column;
 }
 tc-app .source-body tc-editor {
   flex: 1 1 0;
+  min-height: 0;
   min-width: 0;
 }
 tc-app .help-dock {
-  flex: 0 0 clamp(180px, 32%, 320px);
+  flex: 0 0 auto;
+  max-height: 30%;
   overflow: auto;
-  padding: 10px 12px;
-  border-left: 1px solid var(--tc-border);
+  padding: 8px 12px;
+  border-top: 1px solid var(--tc-border);
   background: var(--tc-bg-elevated);
   font-family: var(--tc-font);
   font-size: 12px;
   line-height: 1.45;
+  /* Laid out along the strip: identity, then meaning, then the
+   * example, so the eye reads left to right rather than down a
+   * narrow column. */
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 tc-app .help-dock-name {
   font-weight: 600;
   color: var(--tc-fg);
-  margin-bottom: 4px;
+  flex: 0 0 auto;
 }
 tc-app .help-dock-scope {
   font-weight: 400;
   color: var(--tc-fg-muted);
   margin-left: 6px;
 }
-tc-app .help-dock-scope::before { content: '· '; }
-tc-app .help-dock-summary { color: var(--tc-fg-muted); }
+tc-app .help-dock-scope::before { content: '\00b7 '; }
+tc-app .help-dock-summary {
+  color: var(--tc-fg-muted);
+  flex: 1 1 240px;
+  min-width: 0;
+}
 tc-app .help-dock-example {
-  margin: 8px 0 0;
-  padding: 6px 8px;
+  margin: 0;
+  padding: 4px 8px;
   background: var(--tc-bg-sunken);
   border-radius: 3px;
   color: var(--tc-fg);
   font-size: 11px;
   white-space: pre-wrap;
   overflow-x: auto;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+/* Dismiss. The dock is useful while you are asking and noise once you
+ * have the answer, so it can be shut without moving the caret. */
+tc-app .help-dock-close {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid var(--tc-border);
+  background: var(--tc-bg);
+  color: var(--tc-fg-muted);
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 2px 6px;
+}
+tc-app .help-dock-close:hover {
+  color: var(--tc-fg);
+  border-color: var(--tc-accent, #3b6ea5);
 }
 
-/* Too narrow for two columns: the dock goes under the source. */
-@media (max-width: 900px) {
-  tc-app .source-body { flex-direction: column; }
-  tc-app .help-dock {
-    flex: 0 0 auto;
-    max-height: 30%;
-    border-left: none;
-    border-top: 1px solid var(--tc-border);
-  }
-}

@@ -102,10 +102,11 @@ Two ways, both in the playground:
   the enclosing block accepts; after an `=` it lists that field's
   values -- curve names, quantities, the conditions and voltage levels
   the file itself declares.
-* **The help panel** beside the source while reading: put the caret on
+* **The help strip** under the source while reading: put the caret on
   anything and it explains it, including named values like `iec.si`.
   Docked rather than floating, because a tooltip covers the line you
-  are reading -- which is exactly the line you were asking about.
+  are reading -- which is exactly the line you were asking about. Shut
+  it with the `x` and it stays shut; the *Help* button brings it back.
 * **Hovering the plot**: the readout names what the cursor has latched
   onto and, beneath that, the *reference* a `grade` or an `annotate`
   would use. Those differ as soon as anything declares a `name` -- a

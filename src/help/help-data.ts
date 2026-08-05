@@ -55,7 +55,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   I_units:     M('system', 'Default current-units for the study ("primary" or "secondary").', 'I_units = "primary";'),
 
   // system.voltages
-  V:          M('voltages', 'Numerical voltage in kV (single value, no qualifier).', 'V = 33 kV;'),
+  V:          M('voltages', 'Nominal voltage of this level. Write the unit: kV, V or MV.', 'V = 33 kV;'),
   description: M('voltages', 'Free-text description.', 'description = "33 kV side";'),
 
   // faults
@@ -496,22 +496,40 @@ export const FIELD_UNITS: Record<string, ValueChoice[]> = {
     V('xIn', 'multiple of the relay nominal current'),
   ],
   __time: [V('s', 'seconds'), V('ms', 'milliseconds'), V('min', 'minutes')],
-  __voltage: [V('V', 'kilovolts'), V('V', 'volts'), V('MV', 'megavolts')],
+  /*
+   * `kV` was written as `V` and labelled "kilovolts", beside a second
+   * `V` labelled "volts". So the list offered the same suffix twice,
+   * one of them describing a unit a thousand times larger, and never
+   * offered `kV` at all -- on a field that is nearly always in kV.
+   */
+  __voltage: [V('kV', 'kilovolts'), V('V', 'volts'), V('MV', 'megavolts')],
   __power: [V('MVA', 'megavolt-amperes'), V('kVA', 'kilovolt-amperes'), V('MW', 'megawatts')],
   __angle: [V('deg', 'degrees')],
 };
 
 /** Which unit family a field belongs to. */
+/**
+ * Which unit family a field belongs to.
+ *
+ * Held to `FIELD_QUANTITY` -- the parser's own table -- by
+ * `tests/unit/help-currency.spec.ts`. Three entries here were keyed on
+ * spellings the parser had already renamed (`I_base_A`, `at_I_A`,
+ * `base_MVA`), so pressing `?` after `I_base = 5 ` offered nothing at
+ * all: the lookup missed, and a silent miss looks exactly like a field
+ * that takes no unit.
+ */
 export const UNIT_FAMILY: Record<string, keyof typeof FIELD_UNITS> = {
   I_pickup: '__pickup',
-  I: '__current', I_min: '__current', I_max: '__current',
+  I: '__current', I1: '__current', I_min: '__current', I_max: '__current',
   residual: '__current', I0: '__current', I2: '__current',
-  I_base_A: '__current', at_I_A: '__current', rating_I: '__current',
+  I_base: '__current', rating_I: '__current',
+  at_I: '__current', at_I1: '__current', at_I2: '__current',
+  at_I0: '__current', at_residual: '__current',
   current_min: '__current', current_max: '__current', upstream_to: '__current',
-  t_delay: '__time', t_reset: '__time', t: '__time',
+  t_delay: '__time', t_reset: '__time', t: '__time', at_t: '__time',
   time_min: '__time', time_max: '__time',
-  margin: '__time', margin_target: '__time', quantisation_s: '__time',
+  margin: '__time', margin_target: '__time',
   V: '__voltage', rating_V: '__voltage', voltage: '__voltage',
-  rating_S: '__power', base_MVA: '__power',
+  rating_S: '__power', base_S: '__power',
   char_angle: '__angle',
 };

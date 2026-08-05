@@ -192,9 +192,9 @@ magenta, cyan, gray, grey
 
 * Integer or decimal. Group separator `_` is permitted anywhere inside
   digits with no semantic meaning: `18_430` is identical to `18430`.
-* Unit suffix is *required* when the surrounding context expects a
-  unit and the suffix is *not* the default for that field. Bare numbers
-  without a suffix in a unit-bearing context are a *parse error*.
+* A unit suffix is *required* wherever the field carries a quantity.
+  No field has a default unit, so a bare number in a unit-bearing
+  context is a *parse error* (`UNIT_MISSING`) and never an assumption.
 
 === Recognised units
 
@@ -202,21 +202,27 @@ magenta, cyan, gray, grey
 |===
 | Category | Units
 
-| Current  | `A`, `kA`, `mA`
+| Current  | `A`, `kA`, `mA`, `MA`
 | Current, pickup only | `A_sec` (secondary amps; multiplied by `ct_ratio`), `A_pri` (primary, explicitly)
-| Time     | `s`, `ms`, `min`
+| Time     | `s`, `ms`, `min`, `ks`
 | Voltage  | `V`, `kV`, `MV`
-| Power    | `W`, `kW`, `MW`, `VA`, `kVA`, `MVA`
-| Angle    | `deg` (default)
-| Impedance| `ohm`, `kohm`
-| Length   | `m`, `km`
-| Frequency| `Hz`
+| Power    | `MVA`, `kVA`, `GVA`, `MW`
+| Angle    | `deg`
 | Ratio    | _no unit_ (e.g. `ct_ratio = 600/5`)
 | Per-unit | `pu`, `xCT`, `xIn`
 |===
 
-When the unit suffix is the default for the field it may be omitted,
-but is *encouraged* for clarity. The linter warns on unit omissions.
+A suffix outside this table is `UNIT_UNKNOWN`; a suffix belonging to
+another quantity -- `I_pickup = 5 ms` -- is `UNIT_WRONG_QUANTITY`, a
+category error a check against the union of every suffix would pass.
+
+NOTE: An earlier revision of this section said a suffix "may be
+omitted" where it was the field's default, and that the linter merely
+"warns on unit omissions" -- contradicting the paragraph above it and
+the implementation, which refuses. There are no default units. The
+rule is the stricter one, because the omission it would have permitted
+is the one that reads fifty as fifty seconds where fifty milliseconds
+was meant.
 
 === Default units per field
 

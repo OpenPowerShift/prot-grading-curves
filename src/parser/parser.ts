@@ -825,8 +825,7 @@ class Parser {
           }
           case 'base_S':
             this.pos++; this.expect('EQUALS', '=');
-            sys.base_S = this.parseNumberWithUnit(
-              { MVA: 1, kVA: 1e-3, GVA: 1e3 }, 'apparent power');
+            sys.base_S = this.parseNumberWithUnit_MVA('base_S');
             this.eat('SEMI'); continue;
           case 'I_base':
             this.pos++; this.expect('EQUALS', '='); sys.I_base_A = this.parseNumber(); this.eat('SEMI'); continue;
@@ -1499,8 +1498,12 @@ if (kwName === 'flex_points') {
           this.eat('SEMI');
           break;
         case 'rating_S':
-          d.rating_MVA = this.parseNumber();
-          this.eat('IDENT'); this.eat('KW');
+          /*
+           * Was `parseNumber` followed by eating whatever token came
+           * next, so the suffix was swallowed rather than read: `25 kVA`
+           * and `25 MVA` both became 25, and a bare `25` passed too.
+           */
+          d.rating_MVA = this.parseNumberWithUnit_MVA('rating_S');
           this.eat('SEMI');
           break;
         case 't_delay':
@@ -2378,6 +2381,10 @@ if (kwName === 'flex_points') {
   private parseNumberWithUnit_kV(field?: string): number {
     return this.parseNumberWithUnit(
       { kV: 1, V: 1e-3, MV: 1e3 }, 'voltage', field);
+  }
+  private parseNumberWithUnit_MVA(field?: string): number {
+    return this.parseNumberWithUnit(
+      { MVA: 1, kVA: 1e-3, GVA: 1e3, MW: 1 }, 'apparent power', field);
   }
   private parseNumberWithUnit_s(field?: string): number {
     return this.parseNumberWithUnit(

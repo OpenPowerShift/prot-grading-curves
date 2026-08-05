@@ -167,7 +167,7 @@ each is refused with its replacement rather than looking like a typo.
 | Pickup, extra forms | `A_sec` (secondary amps, multiplied by `ct_ratio`), `A_pri` (primary, explicitly), `pu`, `xCT`, `xIn`
 | Time | `s`, `ms`, `min`
 | Voltage | `kV`, `V`, `MV`
-| Power | `MVA`, `kVA`, `MW`
+| Power | `MVA`, `kVA`, `GVA`, `MW`
 | Angle | `deg`
 |===
 

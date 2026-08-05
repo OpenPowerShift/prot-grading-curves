@@ -125,6 +125,16 @@ where the numbers were read.
 this is, which fixes the relationship between phase current and the
 sequence components -- and that becomes important in section 12.
 
+[IMPORTANT]
+====
+`voltage` on a fault is the level where the current was *measured*,
+not where the fault is. The same thing for a fault on its own bus,
+which is why it is easy to miss -- and not the same when a fault on
+one side of a transformer is quoted as the current seen on the other,
+which is how a fault study usually reports it. Get it wrong and every
+figure is out by the turns ratio, plausibly and silently.
+====
+
 == 4. A minimum fault as well
 
 A study that only checks the maximum fault is half a study. Grading is
@@ -419,6 +429,10 @@ annotate {
     coords   = true;
 }
 ----
+
+A `\n` anywhere in text the sheet draws -- a label, a `times` name, a
+title -- breaks the line on the drawing, which is how a long caption
+is kept from running across the plot.
 
 `style` is `leader` (an elbowed line, the default), `pin` (a dot on the
 curve) or `tag` (bare text). `coords = true` prints the actual

@@ -189,6 +189,15 @@ magenta, cyan, gray, grey
 *Literals* -- true, false
 ====
 
+=== Escapes in strings
+
+`\"`, `\\`, `\n`, `\t` and `\u{XXXX}` are recognised.
+
+`\n` is significant beyond the lexer: in any string the renderer
+draws -- a `label`, a `times` name, a `title`, a `subtitle`, a legend
+`comment` -- it SHALL break the line on the sheet. This is the only
+means of controlling where a caption wraps.
+
 === Numbers
 
 * Integer or decimal. Group separator `_` is permitted anywhere inside

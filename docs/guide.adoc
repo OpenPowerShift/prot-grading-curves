@@ -135,7 +135,18 @@ tc-curves render study.ptc --pdf -o study.pdf
 * Blocks are `keyword { ... }`; statements inside end with `;`.
 * Comments: `#`, `//`, and `/* ... */`.
 * Strings are double-quoted. Escapes: `\"`, `\\`, `\n`, `\t`,
-  `\u{XXXX}`. A `\n` inside a *label* breaks the line on the drawing.
+  `\u{XXXX}`.
+* **`\n` breaks a line on the drawing.** It works in any text the
+  sheet renders -- a `label` on a point or an annotation, a `times`
+  name, a `title`, a `subtitle`, a legend `comment` -- and is how a
+  long caption is kept from running across the plot:
++
+[source,tc]
+----
+times { "ph-g/ph-ph total clearance\nafter energisation" { t = 430 ms; } }
+point "Inrush" { I = 2 kA; t = 100 ms;
+                 label = "Inrush falls below\n50P pickup, 184 ms"; }
+----
 * Numbers take a `_` group separator: `18_430` is `18430`.
 * **Units are required** wherever the field is not unit-free. A bare
   number in a unit-bearing field is a parse error.
@@ -157,10 +168,9 @@ the `3*I0` stated directly; `V` a voltage, `t` a time. The same
 vocabulary in a `fault`, a `scenario` level, a `point` and an
 `annotate`, so one current is written one way everywhere.
 
-Keys used to name their own unit -- `I_A`, `t_s`, `kV`, `CTI_min_s` --
-which said it twice when the value carried a suffix and left it
-ambiguous when it did not. The old spellings are still recognised, so
-each is refused with its replacement rather than looking like a typo.
+The old unit-carrying spellings -- `I_A`, `t_s`, `kV`, `CTI_min_s` --
+are still recognised, and each is refused with its replacement rather
+than looking like a typo.
 
 === Units
 
@@ -190,19 +200,16 @@ otherwise dialled in secondary amps.
 
 === Two errors worth knowing
 
-`DUPLICATE_KEY`:: A key assigned twice in one block. The later value
-used to win silently.
+`DUPLICATE_KEY`:: A key assigned twice in one block.
 
 `MISSING_VALUE`:: An `=` with nothing after it.
 
 `UNKNOWN_SETTING`:: A name inside an `element` the language does not
-know -- `tsm` for `tms`. It used to be skipped in silence, leaving the
-element at its default and the margin out by a factor of ten.
+know -- `tsm` for `tms`, which would leave the element at its default
+and the margin out by a factor of ten.
 
-`UNIT_UNKNOWN`:: A unit suffix outside the set below. Suffixes are
-case-sensitive: `kA`, not `KA`; `ms`, not `msec`. An unrecognised one
-used to be read as no unit at all -- a thousandfold error in the fields
-that decide whether a relay operates.
+`UNIT_UNKNOWN`:: A suffix outside the table below. They are
+case-sensitive: `kA`, not `KA`; `ms`, not `msec`.
 
 == Identifiers
 
@@ -302,6 +309,23 @@ derives the other, and errors if you declare both inconsistently.
 
 If only `I` is given, `I_min` and `I_max` default to it.
 
+[IMPORTANT]
+====
+`voltage` on a fault is *the level the current was measured at*, not
+the level the fault is on.
+
+They are the same thing for a fault on its own bus, which is why the
+distinction is easy to miss. They are not the same when a fault on one
+side of a transformer is quoted as the current seen on the other --
+which is how a fault study usually reports it, because that is where
+the relay and the CT are. Write the level the *figure* belongs to; the
+tool refers it to whatever axis a sheet is drawn in.
+
+Get this wrong and every current is out by the turns ratio, in a way
+nothing can detect: the number is plausible and the sheet is drawn
+without complaint.
+====
+
 === times
 
 Required clearances, drawn as horizontal rules -- the other axis's
@@ -369,11 +393,10 @@ to.
 
 [TIP]
 ====
-A curve runs to the edge of the sheet because a characteristic is
-defined for any multiple. The *network* is not. Past the largest fault
-the bus can deliver, the curve is describing a current that cannot
-flow, and a reader taking a margin off it is grading against a fault
-that does not exist.
+A characteristic is defined for any multiple; the *network* is not.
+Past the largest fault the bus can deliver, the curve describes a
+current that cannot flow, and a margin taken off it is graded against
+a fault that does not exist.
 
 `element { current_max = 8 kA; }` stops the curve there. The legend
 records the limit, so a curve that ends short reads as one that was
@@ -1026,10 +1049,8 @@ and identical whichever end you declare as the `primary`.
 Which way round it runs is left to the arrow and the legend, both of
 which are already on the sheet saying it.
 
-NOTE: This was once a signed difference against the primary, which
-gave one gap two magnitudes depending on which end you wrote first
-(`+52.9%` one way, `-34.6%` the other) and put the direction in a sign
-that is easy to read backwards.
+NOTE: Once a signed difference against the primary, which gave one gap
+two magnitudes depending on which end you wrote first.
 
 A current is read as *the smallest current whose operate time is at or
 below* `at_t`. On an inverse curve that is the point where it crosses;
@@ -1337,11 +1358,9 @@ point "Inrush" { I = 2.4 kA; t = 100 ms; view = "Phase"; }
 annotate { on_curve = R:46; at_I = 800 A; label = "I2 only"; view = "I2"; }
 ----
 
-A study with a phase sheet and a negative-sequence sheet carries marks
-that mean something on one and nothing on the other -- an inrush figure
-in phase amps, a clearance that applies only to the earth-fault story.
-Without this the choices were to draw them on every sheet or split the
-study into two files, and two files drift apart.
+A study with a phase sheet and a sequence sheet carries marks that mean
+something on one and nothing on the other -- an inrush figure in phase
+amps, a clearance belonging only to the earth-fault story.
 
 An `element` takes it too, which keeps a whole *curve* to the sheets it
 belongs on rather than only the marks around it:
@@ -1353,10 +1372,9 @@ element 51P { function = "phase_oc"; measures = I1;
               views = ["Phase", "Negative sequence"]; }
 ----
 
-A curve kept off a sheet is not fitted into that sheet's axes either,
-so it cannot widen the scale for something that is not drawn. Nor is
-it counted among the curves the sheet could not place: being on
-another sheet is a choice the study made, not a failure to report.
+A curve kept off a sheet is left out of that sheet's axis fit, so it
+cannot widen the scale for something not drawn; nor is it listed among
+the curves the sheet could not place.
 
 Leaving `view` off means every sheet, so nothing written before this
 changes.
@@ -1460,9 +1478,8 @@ finally `+N more not shown`.
 
 ==== Every page option
 
-The sub-blocks below are all optional and all independent. Sample 16
-sets every one of them in a single sheet if you would rather read it as
-a file.
+All optional, all independent. Sample 16 sets every one of them in a
+single sheet, which is the faster way to read them.
 
 *Paper and theme*
 
@@ -1479,17 +1496,11 @@ page {
 }
 ----
 
-`theme` picks the ink set. `light` and `dark` are for screens; `print`
-drops to inks that survive a mono plan copier; `monochrome` goes
-further and distinguishes curves by dash pattern alone, for a drawing
-that will be faxed or photocopied repeatedly.
-
-`watermark` prints diagonally across the plot. It is for status --
-_preliminary_, _superseded_, _for comment_ -- and is deliberately hard
-to remove by accident.
-
-`margins_mm` takes either one number for all four sides or a block
-naming each. It is the *paper* margin, used when exporting to PDF.
+`theme` picks the ink set: `light` and `dark` for screens, `print` for
+a mono plan copier, `monochrome` further still -- curves distinguished
+by dash pattern alone. `watermark` prints diagonally across the plot,
+for status. `margins_mm` takes one number for all four sides or a
+block naming each, and is the *paper* margin used on export.
 
 *Legend*
 
@@ -1638,10 +1649,9 @@ not drawn in, a scenario with nothing to say at this level. It sits at
 the foot because the list of characteristics is what a reader wants
 first; the caveats are what they come back for.
 
-It takes its space from the panel, pushing the conditions up rather
-than running off the page. On a crowded sheet it is dropped along with
-the other detail as the legend tightens, and it can be turned off
-outright:
+It takes its space from the panel rather than running off the page, is
+dropped as the legend tightens on a crowded sheet, and can be turned
+off outright:
 
 [source,tc]
 ----
@@ -1665,10 +1675,9 @@ page {
 }
 ----
 
-The two are deliberately separate. `Notes` is the tool's account of
-what it could not draw and changes as the study does; the comment is
-yours and does not. A `\n` inside a single string breaks it the same
-way as a list, for text pasted in from elsewhere.
+The two are separate on purpose: `Notes` is the tool's account of what
+it could not draw and changes as the study does; the comment is yours
+and does not.
 
 If the panel is still short of room, in the order that costs least:
 

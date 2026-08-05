@@ -3949,7 +3949,22 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * to names-only detail that had room for their settings.
      */
     const columnBudget = H - sheetInset - titleBlockH - 10 - topMargin;
-    out.push(...fitLegend(legX, topMargin, legendWidth, true, columnBudget).lines);
+    /*
+     * The blocks flow one after another: curves, then conditions, then
+     * times, then the comment and the notes.
+     *
+     * The conditions block used to be pinned to the foot of the plot,
+     * which left a hand's width of empty gutter between the last curve
+     * and it -- on a two-relay study, most of the column. The reader
+     * has to look down an inch of nothing to find out what the
+     * vertical rules mean, and a sheet with a short legend reads as
+     * though something failed to draw.
+     *
+     * Anchoring bought alignment with nothing: the fault *rules* are
+     * vertical and their names sit under the axis, so the block was
+     * not lining up with anything it described.
+     */
+    out.push(...fitLegend(legX, topMargin, legendWidth, false, columnBudget).lines);
   } else if (legendMode === 'inside') {
     /*
      * Floated over the plot. Measured first, because a panel pinned to

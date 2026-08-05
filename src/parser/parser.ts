@@ -52,6 +52,35 @@ import type {
  * and the field's to check -- so `I_A = 450 A` was saying it twice and
  * `I_A = 450` was saying it once, ambiguously.
  */
+/**
+ * The closest of a set of accepted words, for a diagnostic that can
+ * suggest rather than only refuse. Simple edit distance; the sets here
+ * are a handful of short words.
+ */
+function didYouMeanOf(written: string, names: readonly string[]): string {
+  let best: string | undefined;
+  let bestD = 3;
+  for (const n of names) {
+    const d = editDistance(written.toLowerCase(), n.toLowerCase());
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  return best ? ` -- did you mean "${best}"?` : '';
+}
+
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return row[b.length];
+}
+
 export const RENAMED_KEYS: Readonly<Record<string, string>> = {
   I_A: 'I', I1_A: 'I1', I2_A: 'I2', I0_A: 'I0', earth_A: 'residual',
   min_A: 'I_min', max_A: 'I_max',
@@ -538,6 +567,37 @@ class Parser {
       severity: isTypo ? 'error' : 'warning',
       code: isTypo ? 'UNKNOWN_SETTING' : 'UNKNOWN_KEY',
     });
+  }
+
+  /**
+   * A keyword from a closed set, refused rather than dropped.
+   *
+   * `matchKeyword` returns null for a word it does not know, and every
+   * page setting written `if (v) p.x = v` -- so `theme = "drak"` and
+   * `orientation = "landscpae"` parsed, validated, rendered, and
+   * silently used the default. A cosmetic key is not a margin, but a
+   * study can still be issued looking nothing like the standard its
+   * author thought they had set, with nothing anywhere saying why.
+   *
+   * Consumes the offending token so the statement's `;` still lines
+   * up and one typo does not cascade.
+   */
+  private keywordFrom(field: string, ...names: string[]): string | null {
+    const v = this.matchKeyword(...names);
+    if (v !== null) return v;
+    const t = this.peek();
+    if (t.kind === 'KW' || t.kind === 'IDENT' || t.kind === 'STRING') {
+      const written = unquote(t.image);
+      this.errors.push({
+        message: `"${field}" does not accept ${JSON.stringify(written)}; it takes `
+          + names.map((n) => `"${n}"`).join(', ')
+          + didYouMeanOf(written, names),
+        line: t.line, column: t.col, offset: t.start, length: t.end - t.start,
+        severity: 'error', code: 'VALUE_UNKNOWN',
+      });
+      this.pos++;
+    }
+    return null;
   }
 
   private expectKeyword(...names: string[]): string {
@@ -2181,14 +2241,14 @@ if (kwName === 'flex_points') {
             break;
           case 'orientation':
             {
-              const v = this.matchKeyword('portrait','landscape');
+              const v = this.keywordFrom('orientation', 'portrait', 'landscape');
               this.eat('SEMI');
               if (v) p.orientation = v as any;
             }
             break;
           case 'theme':
             {
-              const v = this.matchKeyword('light','dark','monochrome','print');
+              const v = this.keywordFrom('theme', 'light', 'dark', 'monochrome', 'print');
               this.eat('SEMI');
               if (v) p.theme = v as any;
             }

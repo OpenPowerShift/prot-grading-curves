@@ -36,6 +36,12 @@ import {
 } from './quantity.js';
 import { conditionNames, resolveCondition } from './condition.js';
 import { FIELD_QUANTITY, KNOWN_UNITS, suffixFits, suffixesFor } from './units.js';
+/*
+ * The editor's value tables, read here so the values offered and the
+ * values accepted are the same list. `help-data` is pure data with no
+ * editor dependency of its own.
+ */
+import { FIELD_VALUES } from '../help/help-data.js';
 
 export type Severity = 'error' | 'warning' | 'info';
 
@@ -1405,9 +1411,62 @@ function validateView(ctx: Ctx): void {
 
 const PAPER_SIZES = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'Letter', 'Legal', 'Tabloid'];
 
+/**
+ * Enumerated `page` values, checked against the list `?` offers.
+ *
+ * `legend { style = "insnide" }` parsed, validated, rendered, and
+ * silently used the default -- so a drawing office that set its house
+ * style got something else and nothing anywhere said why. A cosmetic
+ * key is not a margin, but a study can still be issued looking nothing
+ * like the standard its author thought they had applied.
+ *
+ * Read from `FIELD_VALUES`, which is the same table the editor offers
+ * from. One table with two readers cannot drift; two tables would.
+ */
+const PAGE_ENUMS: ReadonlyArray<readonly [string, string, string]> = [
+  /* [sub-block, field, FIELD_VALUES key] -- '' means the page itself. */
+  ['', 'theme', 'theme'],
+  ['', 'orientation', 'orientation'],
+  ['legend', 'style', 'legend.style'],
+  ['legend', 'position', 'position'],
+  ['legend', 'swatch', 'swatch'],
+  ['legend', 'currents', 'currents'],
+  ['curves', 'palette', 'palette'],
+  ['points', 'shape', 'shape'],
+  ['leaders', 'style', 'leaders.style'],
+  ['faults', 'style', 'faults.style'],
+  ['times', 'style', 'times.style'],
+  ['title', 'align', 'align'],
+  ['scale', 'tick_density', 'tick_density'],
+];
+
+function checkPageEnums(ctx: Ctx): void {
+  const page = ctx.study.page;
+  if (!page) return;
+  const blocks = page as unknown as Record<string, Record<string, unknown> | undefined>;
+
+  for (const [block, field, key] of PAGE_ENUMS) {
+    const holder = block === '' ? blocks : blocks[block];
+    if (holder == null || typeof holder !== 'object') continue;
+    const written = holder[field];
+    if (typeof written !== 'string' || written === '') continue;
+
+    const allowed = (FIELD_VALUES[key] ?? []).map((c) => c.value.replace(/^"|"$/g, ''));
+    if (allowed.length === 0 || allowed.includes(written)) continue;
+
+    const where = block === '' ? 'page' : `page ${block}`;
+    add(ctx, 'PAGE_VALUE_UNKNOWN', 'error',
+      `${where} sets ${field} = "${written}", which is not one of `
+      + allowed.map((a) => `"${a}"`).join(', ')
+      + didYouMean(suggest(written, allowed)),
+      page.loc);
+  }
+}
+
 function validatePage(ctx: Ctx): void {
   const page = ctx.study.page;
   if (!page) return;
+  checkPageEnums(ctx);
 
   if (typeof page.size === 'string') {
     if (!PAPER_SIZES.some((s) => s.toLowerCase() === page.size!.toString().toLowerCase())) {

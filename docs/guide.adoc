@@ -1025,17 +1025,10 @@ and identical whichever end you declare as the `primary`.
 Which way round it runs is left to the arrow and the legend, both of
 which are already on the sheet saying it.
 
-[NOTE]
-====
-This used to be a signed difference against the primary. Two things
-were wrong with it. The magnitude depended on which end you happened to
-call the primary -- one gap read `+52.9%` written one way round and
-`-34.6%` the other -- so two annotations over the same pair disagreed
-about how big it was. And the direction lived in a `+` or `-`, which is
-the easiest thing on a drawing to read backwards.
-
-A ratio is symmetric, so a gap has one figure however you write it.
-====
+NOTE: This was once a signed difference against the primary, which
+gave one gap two magnitudes depending on which end you wrote first
+(`+52.9%` one way, `-34.6%` the other) and put the direction in a sign
+that is easy to read backwards.
 
 A current is read as *the smallest current whose operate time is at or
 below* `at_t`. On an inverse curve that is the point where it crosses;

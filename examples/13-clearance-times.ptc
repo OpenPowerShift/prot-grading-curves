@@ -34,6 +34,22 @@ system {
       description = "11 kV switchboard";
     }
   }
+
+  # What is between the two levels, off the nameplate.
+  #
+  # The turns ratio alone refers a *balanced* fault correctly and
+  # nothing else. A delta-star transition rotates the positive- and
+  # negative-sequence components in opposite directions, so they
+  # recombine differently on the far side: the phase-phase fault below
+  # comes out 2:1:1 on the 33 kV lines, the largest being 2/sqrt(3) --
+  # 15.5% more than the ratio gives. That current is what the incomer
+  # actually sees, and it operates faster on it.
+  #
+  # The group also settles zero sequence: a delta blocks it, so the
+  # earth fault below is not carried across at all.
+  transformer HV to MV {
+    vector_group = "Dyn11";
+  }
 }
 
 faults {

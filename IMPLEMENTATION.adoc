@@ -371,15 +371,8 @@ makes that the code breaks outranks a promise never made.
 
 ==== Silently wrong answers
 
-. *Cross-voltage referral is ratio-only and understates the HV current
-  by 15.5% for a phase-phase fault through a delta-star.* [REPORTED]
-  `semantics/xvoltage.ts` applies `I x V_from/V_to` unconditionally.
-  This holds for sequence magnitudes; the delta-side phase currents for
-  a star-side two-phase fault distribute 2:1:1, so the largest HV phase
-  is `2/sqrt(3)` times the ratio referral. The backup therefore looks
-  slower than it is on the standard minimum-fault check. A `scenario`
-  with declared per-level figures is a correct workaround and nothing
-  says so.
+Nothing outstanding. The cross-voltage referral, the last entry here,
+was closed on 2026-08-07 -- see below.
 
 ==== The playground and the CLI
 
@@ -620,6 +613,28 @@ Reconciled 2026-08-07: exit status `3`, `--json`, PDF pagination,
   overflows -- the substitution is strictly narrower -- just loose.
 
 === Closed 2026-08-06
+
+* *Cross-voltage referral was ratio-only, and 15.5% low on the
+  standard minimum-fault check.* [VERIFIED 2026-08-07] `faultCurrentAt`
+  applied `I x V_from/V_to` for every fault shape and every connection.
+  Measured on a 33/11 kV Dyn11 with a 6 kA fault at 11 kV, the 33 kV
+  backup was evaluated at 2000 A for all three shapes; it should be
+  2000 / 2309 / 1155 A for three-phase, phase-phase and phase-earth.
+  The phase-phase row is the dangerous one -- the backup carries more,
+  operates faster, and the margin printed was larger than the one that
+  exists.
+
+  `system { transformer A to B { vector_group = "Dyn11"; } }` now
+  carries the nameplate, `constants/vector-groups.ts` turns it into a
+  factor or a refusal, and both the report and the *sheet* apply the
+  same one -- a rule drawn at one current beside a margin computed at
+  another would be the recurring failure in this codebase.
+
+  Two latent bugs surfaced while wiring it, both of the same family:
+  `parseSystem` silently skipped any token it did not recognise, so the
+  first cut of `transformer` parsed clean and did nothing at all; and
+  `I_base` was read with `parseNumber`, dropping its unit, which had
+  been invisible for exactly as long.
 
 * *A pane chosen on a narrow window rewrote the wide layout.* The
   narrow Source/Plot switch and the wide Hide/Split buttons wrote the

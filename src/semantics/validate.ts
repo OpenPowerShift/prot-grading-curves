@@ -19,6 +19,7 @@ import {
   levenshtein,
 } from '../constants/curves.js';
 import { isFaultType } from '../constants/sequence.js';
+import { parseVectorGroup } from '../constants/vector-groups.js';
 import {
   allElements, isCurveStyle, resolveRef,
   type Device, type Element, type Stage, type Study,
@@ -126,8 +127,38 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateStageRefs(ctx);
   validateTimeMultipliers(ctx);
   validateViewScopes(ctx);
+  validateTransformers(ctx);
 
   return ctx.out.sort((a, b) => a.offset - b.offset || a.code.localeCompare(b.code));
+}
+
+/**
+ * A declared vector group the tool cannot read.
+ *
+ * Without this the study says `vector_group = "Dyn11ish"`, the parse
+ * yields nothing, and the referral reports that *no* transformer is
+ * declared -- which is not what happened and sends the author looking
+ * in the wrong place. A group that cannot be read in full has not been
+ * read, and the sentence should say so where it was written.
+ */
+function validateTransformers(ctx: Ctx): void {
+  for (const item of ctx.doc?.items ?? []) {
+    if (item.type !== 'system') continue;
+    for (const t of item.transformers ?? []) {
+      if (t.vector_group == null) {
+        add(ctx, 'VECTOR_GROUP_MISSING', 'error',
+          `transformer ${t.from} to ${t.to} declares no vector_group, which is the only `
+          + 'thing it is for',
+          t.loc);
+        continue;
+      }
+      if (parseVectorGroup(t.vector_group) != null) continue;
+      add(ctx, 'VECTOR_GROUP_UNREADABLE', 'error',
+        `"${t.vector_group}" is not a vector group; write what the nameplate says -- `
+        + 'Dyn11, YNd1, YNyn0, Dd0, or the bare Dy / Yd',
+        t.groupLoc ?? t.loc, t.vector_group.length + 2);
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */

@@ -611,8 +611,30 @@ that carries it across. And it does not work for phase current either
 under an unbalanced fault, because part of that phase current *is* zero
 sequence.
 
-So instead of one figure and a conversion, declare what the fault study
-measured at each level:
+There are two ways out, and they suit different studies.
+
+The short one is to say what the transformer *is*, and let the tool do
+the conversion properly:
+
+[source,tc]
+----
+system {
+    voltages { "HV" { V = 33 kV; } "LV" { V = 0.48 kV; } }
+
+    transformer "HV" to "LV" {
+        vector_group = "Dyn11";
+    }
+}
+----
+
+From the nameplate follow both answers: a delta blocks zero sequence,
+and a delta-star transition carries an LV phase-phase fault to the HV
+side at `2/sqrt(3)` -- 15.5% more than the ratio gives -- and an LV
+earth fault at `1/sqrt(3)`. Where the windings do not settle it the
+tool refuses rather than guessing.
+
+The long one, and the one to reach for whenever the fault study gives
+you the figures, is to declare what it measured at each level:
 
 [source,tc]
 ----

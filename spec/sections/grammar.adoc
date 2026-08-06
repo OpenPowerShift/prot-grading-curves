@@ -49,7 +49,18 @@ system-assignment ::=
     | "I_base"         "=" number current-unit ";"
     | "I_units"        "=" pickup-units-keyword ";"
     | voltages-block
+    | transformer-block
     | zero-sequence-block ;
+
+(* What is between two levels, off the nameplate. The turns ratio refers
+   a *balanced* current correctly and nothing else: a delta-star
+   transition recombines the sequence components differently on the far
+   side, so a phase-phase fault on the star side stands 2/sqrt(3)
+   further out than the ratio gives. The group also settles
+   zero-sequence continuity, which `zero_sequence` may still override
+   for a case the windings alone do not decide. *)
+transformer-block ::= "transformer" voltage-ref "to" voltage-ref
+                      "{" "vector_group" "=" string ";" "}" ;
 
 voltages-block  ::= "voltages" "{" { voltage-asg } "}" ;
 voltage-asg     ::= string "{" { voltage-member } "}" ;

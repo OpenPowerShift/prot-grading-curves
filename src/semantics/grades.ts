@@ -235,6 +235,26 @@ function sideCurrentAt(
   /* Phase current keeps the established path, ratio and all. */
   if (quantity === 'phase') {
     const projection = faultCurrentAt(study, fault, side.voltage, at);
+    /*
+     * A referral the windings do not settle is refused, not answered.
+     *
+     * The turns ratio is exact for a balanced fault and wrong for
+     * every other kind across a delta-star, so producing the
+     * unadjusted figure here would be the same silent 15.5% error
+     * this check exists to remove. `scenario` is the way out: it
+     * states the current at each level directly, so nothing has to be
+     * carried across at all.
+     */
+    if (projection.referralIssue) {
+      return {
+        error: {
+          code: 'REFERRAL_NEEDS_CONNECTION',
+          message: `${side.ref}: ${projection.referralIssue.reason}; declare `
+            + 'system { transformer A to B { vector_group = "Dyn11"; } }, or state the '
+            + 'current at each level with a scenario',
+        },
+      };
+    }
     return { I_A: projection.I_A, error: projection.warning
       ? { code: 'VOLTAGE_RATIO_UNRESOLVED', message: projection.warning }
       : undefined };

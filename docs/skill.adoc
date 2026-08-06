@@ -127,6 +127,7 @@ them.
 | 51N / 51G / earth | `function = earth_fault;` | Measures residual `3I0`.
 | 46 / negative sequence | `function = neg_seq; measures = I2;` | State the scaling.
 | Grading margin 0.3 s | `margin = 0.30 s;` on the `grade` | Or in `meta`.
+| Dyn11 / vector group | `transformer HV to LV { vector_group = "Dyn11"; }` | Needed for any unbalanced fault across it.
 |===
 
 === Curves
@@ -169,7 +170,7 @@ Work down it. Stop at the first row that does not apply to your report.
 | 1 | is one voltage, phase overcurrent only | nothing. The study above is done.
 | 2 | has a high-set (50) as well as a 51 | a `stages` block, <<stages>>
 | 3 | has an earth-fault element | `function = earth_fault`, <<earth>>
-| 4 | spans a transformer | a second voltage and `ct_ratio` per relay, <<levels>>
+| 4 | spans a transformer | a second voltage, a `transformer` with its vector group, <<levels>>
 | 5 | gives a fault *range*, not one figure | `I_min` / `I_max`, <<ranges>>
 | 6 | gives negative-sequence settings | `measures = I2` or `3I2`, <<sequence>>
 | 7 | states a required clearance time | a `times` block, <<times>>
@@ -255,12 +256,21 @@ view EARTH { quantity = 3I0;   voltage = MV; title = "Earth grading"; }
 Declare both levels. Each relay says which one it is on, and the tool
 refers currents between them by the turns ratio.
 
+Declare both levels **and the transformer between them**. The turns
+ratio alone refers a balanced fault correctly and nothing else, so the
+vector group is not optional decoration -- write what the nameplate
+says.
+
 [source,tc]
 ----
 system {
     voltages {
         HV { V = 33 kV; }
         LV { V = 11 kV; }
+    }
+
+    transformer HV to LV {
+        vector_group = "Dyn11";
     }
 }
 
@@ -270,13 +280,19 @@ relay R_LV { voltage = LV; ct_ratio = 600/5; }
 view { voltage = HV; }    # everything framed in 33 kV amps
 ----
 
+A delta-star transition redistributes the phase currents: an LV
+phase-phase fault comes out `2/sqrt(3)` higher on the HV side than the
+ratio gives, and an LV earth fault `1/sqrt(3)` lower. Both change the
+margin.
+
 [WARNING]
 ====
-Zero sequence does not cross a delta winding. If the study grades an
-earth-fault element on one side against one on the other, the tool will
-refuse rather than refer a residual current through a transformer that
-blocks it. That refusal is correct: declare the fault at both levels
-with a `scenario` instead of asking for the conversion.
+Where the windings do not settle it, the tool refuses
+(`REFERRAL_NEEDS_CONNECTION`) rather than quoting the ratio: a
+two-phase-earth fault needs `Z0`, and an earth fault across two earthed
+stars splits by the zero-sequence impedance network. Declare the
+condition as a `scenario` with figures at each level instead of asking
+for the conversion. That refusal is the tool working.
 ====
 
 [#ranges]
@@ -484,6 +500,10 @@ what they mean when they appear.
                           stops. Either the cutoff or the fault is wrong.
 | `SEQUENCE_ACROSS_LEVELS` | A sequence current cannot be referred
                              across that transformer. Use a `scenario`.
+| `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
+                                across a transformer whose windings do
+                                not settle how. Declare the
+                                `vector_group`, or use a `scenario`.
 | `FAULT_SINGLE_POINT` | Informational: one fault current, so no range
                          was swept. Fine if that is all the report gave.
 |===
@@ -499,6 +519,7 @@ do not adjust settings to make it pass unless you were asked to.
 . Every number in the study appears in the source report. Nothing was
   inferred to fill a gap.
 . Every relay has `voltage` and `ct_ratio`.
+. Every transformer the study grades across has its `vector_group`.
 . Every element states `curve` and either `tms` or `t_delay`.
 . Sequence and earth elements state what they measure.
 . Each `grade` names a fault that exists at the primary's own voltage.

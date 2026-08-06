@@ -561,4 +561,53 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-07 | 0.2.0 | *A fault crosses a transformer by its windings,
+                              not only by its turns ratio.* The referral
+                              was `I x V_from / V_to` for every fault
+                              shape and every connection. That is exact
+                              for a balanced fault and wrong for the
+                              rest: a delta-star transition rotates the
+                              positive- and negative-sequence components
+                              in opposite directions, so they recombine
+                              differently on the far side.
+
+                              Measured on a 33/11 kV Dyn11 with a 6 kA
+                              fault on the 11 kV side, the 33 kV backup
+                              was evaluated at 2000 A for all three
+                              shapes. It should be 2000 A balanced,
+                              2309 A for phase-phase (`2/sqrt(3)`) and
+                              1155 A for phase-earth (`1/sqrt(3)`, the
+                              delta having absorbed the zero sequence).
+                              The middle row is the standard
+                              minimum-fault check: the backup carries
+                              15.5% more than the ratio gave, operates
+                              faster on it, and the margin reported was
+                              larger than the one that exists.
+
+                              `system { transformer A to B {
+                              vector_group = "Dyn11"; } }` says what the
+                              nameplate says. `Dyn11`, `YNd1`, `YNyn0`,
+                              `Dd0` and the bare `Dy` / `Yd` are read;
+                              anything not readable in full is
+                              `VECTOR_GROUP_UNREADABLE` rather than
+                              half-read.
+
+                              Where the windings do not settle it --
+                              a two-phase-earth fault, which needs `Z0`;
+                              an earth fault across two earthed stars,
+                              which splits by the zero-sequence
+                              impedance network; a fault on the delta
+                              side, which is the reciprocal problem and
+                              has not been derived -- grading refuses
+                              with `REFERRAL_NEEDS_CONNECTION` rather
+                              than quoting the ratio, naming `scenario`
+                              as the way to state the figures directly.
+
+                              Zero-sequence continuity is derived from
+                              the group; `zero_sequence` remains as the
+                              narrower statement and wins where both are
+                              written. Balanced faults are unaffected,
+                              so a study that declares nothing keeps
+                              working unless it grades an unbalanced
+                              fault across levels.
 |===

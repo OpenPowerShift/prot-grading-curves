@@ -80,7 +80,10 @@ renderer's title block and the `[meta.*]` footer macros read, are
 `margin`. Any other key is carried through and available to a
 `[meta.<key>]` macro.
 
-*Inside `system`* -- voltages, zero_sequence, base_S, I_base, I_units
+*Inside `system`* -- voltages, zero_sequence, transformer, base_S,
+I_base, I_units
+
+*Inside `system.transformer`* -- vector_group
 
 *Inside `system.voltages.<level>`* -- V, description
 

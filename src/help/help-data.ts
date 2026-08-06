@@ -48,7 +48,7 @@ export function helpFor(word: string, block?: string | null): HelpEntry | undefi
 export const KEYWORD_HELP: Record<string, HelpEntry> = {
   // top-level
   meta:        M('top', 'Project metadata block (engineer, date, standard, defaults).', 'meta { engineer = "..."; }'),
-  system:      M('top', 'Network-level declarations: named voltage levels, zero-sequence continuity between them, and the per-unit base.', 'system { voltages { ... } zero_sequence { "HV" to "LV" = blocked; } }'),
+  system:      M('top', 'Network-level declarations: named voltage levels, the transformers between them, zero-sequence continuity, and the per-unit base.', 'system { voltages { ... } transformer HV to LV { vector_group = "Dyn11"; } }'),
   faults:      M('top', 'Named fault-current table; each fault has a current and a voltage.', 'faults { "F1" { I = 6.4 kA; type = three_phase; voltage = "LV"; } }'),
   times:       M('top', 'Named required times, drawn as horizontal rules: the other axis\u2019s answer to a fault. An arc-flash limit, a withstand, a grid-code clearance.', 'times { "Arc flash limit" { t = 200 ms; at_I = 3 kA; } }'),
   relay:       M('top', 'A relay instance with its voltage level and current transformer ratio.', 'relay R_FDR { voltage = "LV"; ct_ratio = 600/5; ... }'),
@@ -139,6 +139,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   level:       M('scenario', 'One voltage level\u2019s currents under this condition. A scenario declares a figure per level so nothing is referred across a transformer.', 'level "HV" { I = 3.86 A; I2 = 2.23 A; I0 = 0 A; }'),
   residual:    M('faults', 'Residual current, 3*I0, stated directly as an alternative to I0.', 'residual = 2.4 kA;'),
   zero_sequence: M('system', 'Whether zero sequence crosses between two levels. A delta blocks it; a star-star with both neutrals earthed passes it. The tool cannot know, so the study says.', 'zero_sequence { "HV" to "LV" = blocked; }'),
+  transformer: M('system', 'What is between two voltage levels, off the nameplate. The turns ratio refers a *balanced* fault correctly and nothing else: a delta-star transition recombines the sequence components differently on the far side, so a phase-phase fault on the star side carries at 2/sqrt(3) and an earth fault at 1/sqrt(3). The group also settles zero-sequence continuity.', 'transformer HV to LV { vector_group = "Dyn11"; }'),
+  vector_group: M('system', 'The transformer\'s connection as the nameplate writes it -- Dyn11, YNd1, YNyn0, Dd0, or the bare Dy / Yd. The clock number is optional: a magnitude does not depend on it. Anything that cannot be read in full is refused rather than half-read.', 'vector_group = "Dyn11";'),
   voltages:    M('system', 'The named voltage levels of the study. Turns ratios are derived from them; there is deliberately no transformer block.', 'voltages { "HV" { V = 33 kV; } }'),
   share:       M('element', 'Share of the condition\u2019s current this element sees, in percent \u2014 parallel feeders or transformers.', 'share = 50 %;'),
 
@@ -337,7 +339,7 @@ export const TOP_BLOCK_KEYWORDS = [
  */
 export const BLOCK_FIELDS: Record<string, string[]> = {
   meta:        ['project', 'study', 'engineer', 'date', 'standard', 'margin'],
-  system:      ['voltages', 'zero_sequence', 'base_S', 'I_base', 'I_units'],
+  system:      ['voltages', 'zero_sequence', 'transformer', 'base_S', 'I_base', 'I_units'],
   'system.voltages': ['V', 'description'],
   faults:      ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type',
                'voltage', 'view', 'views', 'description'],

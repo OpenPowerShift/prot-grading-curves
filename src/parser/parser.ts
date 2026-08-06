@@ -198,6 +198,7 @@ export const KEYWORDS = new Set([
   'measures', 'quantity', 'phase', 'I1', 'I2', '3I2', 'I0', '3I0', 'any',
   'type', 'condition', 'three_phase', 'two_phase', 'two_phase_earth',
   'single_phase_earth', 'zero_sequence', 'blocked', 'continuous',
+  'transformer', 'vector_group',
   /* `to` is shared: the joiner in `zero_sequence { "A" to "B" }` and
    * the far end of an annotate span. Both are read positionally, so
    * one keyword serves. */
@@ -897,7 +898,24 @@ class Parser {
       const sys: SystemBlock = { type: 'system', voltages: [], loc: this.loc(head) };
       while (!this.at('RBRACE') && !this.at('EOF')) {
         const t = this.peek();
-        if (t.kind !== 'KW') { this.pos++; continue; }
+        if (t.kind !== 'KW') {
+          /*
+           * Reported rather than stepped over.
+           *
+           * This loop skipped anything that was not a keyword without
+           * a word, so a whole sub-block the parser did not recognise
+           * vanished -- which is how the first cut of `transformer`
+           * here parsed clean and did nothing at all. A key in
+           * `system` names a level or a property of the network;
+           * dropping one silently is the failure this file spends
+           * most of its comments guarding against.
+           */
+          this.noteUnknownKey('a system', t,
+            ['voltages', 'zero_sequence', 'transformer', 'base_S', 'I_base', 'I_units'],
+            /* strict */ true);
+          this.pos++;
+          continue;
+        }
         switch (t.image) {
           case 'voltages': {
             // Inline parse the voltages block -- nested parseBlock
@@ -961,12 +979,64 @@ class Parser {
             sys.zero_sequence = links;
             continue;
           }
+          /*
+           * `transformer HV to LV { vector_group = "Dyn11"; }`
+           *
+           * Shaped like `zero_sequence` -- two level names joined by
+           * `to` -- because it answers the same kind of question about
+           * the same pair, and an author who has written one should
+           * not have to learn a second shape for the other.
+           */
+          case 'transformer': {
+            const head = this.peek();
+            this.pos++;
+            const fromTok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+            if (this.peek().kind === 'KW' && this.peek().image === 'to') this.pos++;
+            else this.eat('IDENT');
+            const toTok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+            this.expect('LBRACE', '{');
+            let group: string | undefined;
+            let groupLoc: import('./ast.js').BaseNode['loc'] | undefined;
+            while (!this.at('RBRACE') && !this.at('EOF')) {
+              const k = this.eat('KW') ?? this.eat('IDENT');
+              if (!k) { this.pos++; continue; }
+              this.expect('EQUALS', '=');
+              if (k.image === 'vector_group') {
+                const v = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+                if (v) { group = unquote(v.image); groupLoc = this.loc(v); }
+              } else {
+                this.noteUnknownKey('a transformer', k, ['vector_group'], /* strict */ true);
+                this.parseScalarValue();
+              }
+              this.eat('SEMI');
+            }
+            this.expect('RBRACE', '}');
+            if (fromTok && toTok) {
+              (sys.transformers ??= []).push({
+                from: unquote(fromTok.image),
+                to: unquote(toTok.image),
+                vector_group: group,
+                groupLoc,
+                loc: this.loc(head),
+              });
+            }
+            continue;
+          }
           case 'base_S':
             this.pos++; this.expect('EQUALS', '=');
             sys.base_S = this.parseNumberWithUnit_MVA('base_S');
             this.eat('SEMI'); continue;
           case 'I_base':
-            this.pos++; this.expect('EQUALS', '='); sys.I_base_A = this.parseNumber(); this.eat('SEMI'); continue;
+            /*
+             * `parseNumber` left the unit behind, so `I_base = 1000 A`
+             * consumed the figure and dropped the `A` -- invisible for
+             * as long as this loop skipped what it did not recognise.
+             * Every other current in the language is read with its
+             * unit; this is now read the same way.
+             */
+            this.pos++; this.expect('EQUALS', '=');
+            sys.I_base_A = this.parseNumberWithUnit_A('I_base');
+            this.eat('SEMI'); continue;
           case 'I_units':
             this.pos++; this.expect('EQUALS', '='); {
               const k = this.matchKeyword('primary', 'secondary');

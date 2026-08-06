@@ -32,7 +32,8 @@
  * operate *time* does not depend on which winding you measure from.
  */
 
-import type { Fault, Study } from './model.js';
+import { levelPairKey, type Fault, type Study } from './model.js';
+import { referralFactor, type Referral } from '../constants/vector-groups.js';
 
 export interface Projection {
   /** Current in primary amps, in the target voltage frame. */
@@ -41,6 +42,12 @@ export interface Projection {
   ratio: number;
   /** Set when a ratio was wanted but could not be computed. */
   warning?: string;
+  /**
+   * Set when the windings between the two levels do not settle how
+   * this fault carries across. The current is the plain ratio, which
+   * is *not* the answer; the caller reports rather than uses it.
+   */
+  referralIssue?: Extract<Referral, { kind: 'declare' }>;
 }
 
 /**
@@ -88,5 +95,62 @@ export function faultCurrentAt(
   const I = which === 'min' ? fault.min_A : which === 'max' ? fault.max_A : fault.I_A;
   const faultKv = fault.voltage_kV ?? levelKv(study, fault.voltage);
   const relayKv = levelKv(study, relayVoltage);
-  return projectCurrent(I, faultKv, relayKv);
+  const base = projectCurrent(I, faultKv, relayKv);
+
+  /*
+   * The turns ratio is the whole answer only for a balanced fault.
+   *
+   * A delta-star transition rotates the positive- and
+   * negative-sequence components in opposite directions, so they
+   * recombine differently on the far side: a phase-phase fault on the
+   * star side comes out 2:1:1 on the delta lines, the largest being
+   * `2/sqrt(3)` times what the ratio alone gives. Referring by ratio
+   * understated the backup's current by 15.5%, made it look slower
+   * than it is, and reported a margin that does not exist.
+   *
+   * `transformerReferral` returns the factor where the windings
+   * settle it and a refusal where they do not. A refusal is not
+   * applied here -- the caller reports it, having somewhere to put a
+   * diagnostic -- because silently returning the unadjusted number is
+   * exactly the behaviour being removed.
+   */
+  const adjust = transformerReferral(study, fault.type, fault.voltage, relayVoltage);
+  if (adjust.kind === 'factor') {
+    return adjust.factor === 1
+      ? base
+      : { ...base, I_A: base.I_A * adjust.factor, ratio: base.ratio * adjust.factor };
+  }
+  return { ...base, referralIssue: adjust };
+}
+
+/**
+ * What the windings between two levels say about carrying a fault.
+ *
+ * `{ kind: 'factor', factor: 1 }` where nothing needs adjusting --
+ * one level, a balanced fault, or a like-for-like connection -- so a
+ * caller can apply the result without asking whether it applies.
+ */
+export function transformerReferral(
+  study: Study,
+  type: Fault['type'],
+  faultLevel: string | undefined,
+  relayLevel: string | undefined,
+): Referral {
+  const same = { kind: 'factor', factor: 1, derived: false } as const;
+  if (!faultLevel || !relayLevel || faultLevel === relayLevel) return same;
+
+  /* Without a declared type there is no shape to refer, and the
+   * balanced case is the one the ratio already gets right. */
+  if (!type || type === 'three_phase') return same;
+
+  const link = study.transformers.get(levelPairKey(faultLevel, relayLevel));
+  if (!link) {
+    return {
+      kind: 'declare',
+      reason: `no transformer is declared between ${faultLevel} and ${relayLevel}, so a `
+        + `${type.replace(/_/g, '-')} fault cannot be carried across it -- the turns ratio `
+        + 'alone is only right for a balanced fault',
+    };
+  }
+  return referralFactor(link.group, type, faultLevel === link.hvLevel ? 'hv' : 'lv');
 }

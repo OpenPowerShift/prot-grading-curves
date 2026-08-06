@@ -25,6 +25,11 @@
  * half-broken study still renders the curves that are well-formed.
  */
 
+import {
+  parseVectorGroup,
+  zeroSequenceCrosses,
+  type VectorGroup,
+} from '../constants/vector-groups.js';
 import type {
   Document,
   ElementBlock,
@@ -482,6 +487,16 @@ export interface Study {
    * star-star with both neutrals earthed does not.
    */
   zeroSequence: Map<string, 'blocked' | 'continuous'>;
+  /**
+   * The transformer between each pair of levels, by vector group.
+   *
+   * Keyed on the unordered pair like {@link Study.zeroSequence}, and
+   * carrying which level was written first so the referral knows
+   * which winding is which. The plain turns ratio refers a balanced
+   * current and nothing else; the group is what says how the rest
+   * redistribute.
+   */
+  transformers: Map<string, { group: VectorGroup; hvLevel: string; lvLevel: string }>;
   I_base_A?: number;
   I_units: 'primary' | 'secondary';
   faults: Map<string, Fault>;
@@ -565,6 +580,7 @@ export function buildStudy(doc: Document): Study {
     groups: new Map(),
     times: new Map(),
     zeroSequence: new Map(),
+    transformers: new Map(),
     relays: new Map(),
     looseElements: [],
     devices: new Map(),
@@ -627,6 +643,22 @@ export function buildStudy(doc: Document): Study {
         study.base_S = item.base_S;
     for (const link of item.zero_sequence ?? []) {
       study.zeroSequence.set(levelPairKey(link.from, link.to), link.link);
+    }
+    /*
+     * The group settles zero-sequence continuity too -- a delta blocks
+     * it -- so it is derived here and an explicit `zero_sequence`
+     * still wins, being the narrower statement. That order matters
+     * for the cases a group alone does not settle: an earthing
+     * transformer, a star-star with one neutral lifted.
+     */
+    for (const t of item.transformers ?? []) {
+      const parsed = t.vector_group ? parseVectorGroup(t.vector_group) : null;
+      if (!parsed) continue;
+      const key = levelPairKey(t.from, t.to);
+      study.transformers.set(key, { group: parsed, hvLevel: t.from, lvLevel: t.to });
+      if (!study.zeroSequence.has(key)) {
+        study.zeroSequence.set(key, zeroSequenceCrosses(parsed) ? 'continuous' : 'blocked');
+      }
     }
         study.I_base_A = item.I_base_A;
         if (item.I_units) study.I_units = item.I_units;

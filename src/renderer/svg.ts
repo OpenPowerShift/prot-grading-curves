@@ -59,6 +59,7 @@ import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, typ
 import { tTripStage } from '../semantics/curves.js';
 import { cutoffOf, tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
+import { transformerReferral } from '../semantics/xvoltage.js';
 import { tTripFlex } from '../semantics/curves.js';
 
 /* ------------------------------------------------------------------ */
@@ -837,12 +838,48 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
             && !survivesVoltageReferral(viewQuantity, study, f.voltage, viewLevelName)) {
           continue;
         }
+        /*
+         * The turns ratio is the whole answer only for a balanced
+         * fault, and only for *phase* current.
+         *
+         * A delta-star transition recombines the positive- and
+         * negative-sequence components differently on the far side, so
+         * a phase-phase fault on the star side stands 2/sqrt(3) further
+         * right than the ratio alone would put it. Sequence magnitudes
+         * are unchanged across the transition, so an I1 or I2 sheet
+         * keeps the plain ratio; zero sequence is already handled
+         * above.
+         *
+         * The grading report applies the same factor from the same
+         * table. It has to: a rule drawn at one current beside a margin
+         * computed at another is two answers to one question.
+         */
+        let shapeFactor = 1;
+        if (differentLevel && viewQuantity === 'phase') {
+          const referral = transformerReferral(
+            study, isFaultType(f.type) ? f.type : undefined, f.voltage, viewLevelName,
+          );
+          /*
+           * Where the windings do not settle it, the rule is still
+           * drawn -- by the ratio, with the caveat note below saying
+           * so and naming `scenario` as the way to be exact.
+           *
+           * The grading report refuses the same case, and the two are
+           * not in conflict: a margin is a number someone acts on, and
+           * a rule is a mark captioned with how it got there. Dropping
+           * the rule would leave a sheet that says less than the one
+           * that admits its own approximation.
+           */
+          if (referral.kind === 'factor') shapeFactor = referral.factor;
+        }
+
         if (differentLevel) {
           noteReferralCaveat(`fault ${oneLine(displayName(f))}`, viewQuantity,
             f.voltage, viewLevelName, f.type);
         }
 
-        const I_view = V_fault && V_view_kV ? declared * (V_fault / V_view_kV) : declared;
+        const I_view = (V_fault && V_view_kV ? declared * (V_fault / V_view_kV) : declared)
+          * shapeFactor;
         if (I_view * 0.8 < I_lo) I_lo = I_view * 0.8;
         if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
         faults.push({

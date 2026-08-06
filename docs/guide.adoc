@@ -1229,21 +1229,55 @@ belongs on an `I0` sheet. Only relating *different* components -- phase
 to `I2`, `I2` to `3I0` -- needs a condition to supply the ratios, and
 the legend says so by name when one is missing.
 
-===== Zero sequence across a transformer
+===== What is between two levels
 
-Whether zero sequence reaches another voltage level depends on the
-windings: a delta blocks it, a star-star with both neutrals earthed
-passes it. The tool cannot know, so the study says:
+The turns ratio refers a *balanced* fault correctly and nothing else.
+A delta-star transition rotates the positive- and negative-sequence
+components in opposite directions, so they recombine differently on
+the far side: a phase-phase fault on the star side comes out 2:1:1 on
+the delta lines, the largest being `2/sqrt(3)` -- 15.5% more than the
+ratio gives. The backup carries that, operates faster on it, and the
+margin is smaller than the ratio alone would report.
+
+Which it is depends on the windings, not the voltages. Say what the
+nameplate says:
 
 [source,tc]
 ----
 system {
-    voltages { "HV" { V  = 33 kV; } "LV" { V  = 0.48 kV; } }
+    voltages { "HV" { V = 33 kV; } "LV" { V = 0.48 kV; } }
 
-    zero_sequence {
-        "HV" to "LV" = blocked;      # delta winding
-        # "HV" to "LV" = continuous; # YNyn, both neutrals earthed
+    transformer "HV" to "LV" {
+        vector_group = "Dyn11";
     }
+}
+----
+
+`Dyn11`, `YNd1`, `YNyn0`, `Dd0`, and the bare `Dy` / `Yd` are all read;
+the clock number is optional, a magnitude not depending on it.
+
+From it follow both answers. Across a delta-star, a star-side fault
+carries at `1` (balanced), `2/sqrt(3)` (phase-phase) or `1/sqrt(3)`
+(phase-earth, the delta having absorbed the zero sequence). Across a
+like-for-like connection nothing is transposed and the ratio stands.
+
+Where the windings do not settle it -- a two-phase-earth fault, which
+needs `Z0`; an earth fault across two earthed stars, where the split is
+set by the zero-sequence impedance network -- grading refuses with
+`REFERRAL_NEEDS_CONNECTION` rather than quoting the ratio. Declare the
+condition as a `scenario` with figures at each level and nothing has to
+be carried across at all.
+
+Zero-sequence continuity follows from the group: a delta blocks it.
+`zero_sequence` remains for the cases the windings alone do not decide
+-- an earthing transformer, a star-star with one neutral lifted -- and
+wins where both are written:
+
+[source,tc]
+----
+system {
+    voltages { "HV" { V = 33 kV; } "LV" { V = 0.48 kV; } }
+    zero_sequence { "HV" to "LV" = blocked; }   # or continuous
 }
 ----
 

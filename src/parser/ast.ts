@@ -67,6 +67,19 @@ export interface SystemBlock extends BaseNode {
    * passes it. The tool cannot know which, so the study says.
    */
   zero_sequence?: ZeroSequenceDecl[];
+  /**
+   * The transformers between the levels, by nameplate vector group.
+   *
+   * The turns ratio alone refers a *balanced* current correctly and
+   * nothing else: a delta-star transition redistributes the phase
+   * currents, so a phase-phase fault on the star side comes out 2:1:1
+   * on the delta lines. Which it is depends on the windings, not the
+   * voltages, so the study says.
+   *
+   * It also settles zero-sequence continuity, which
+   * {@link ZeroSequenceDecl} previously had to be told by hand.
+   */
+  transformers?: TransformerDecl[];
   I_base_A?: number;
   I_units?: 'primary' | 'secondary';
   voltages: VoltageLevelDecl[];
@@ -323,6 +336,16 @@ export type FaultTypeKeyword =
 
 /** Whether zero sequence is continuous between two voltage levels. */
 export type ZeroSequenceLink = 'blocked' | 'continuous';
+
+/** `transformer HV to LV { vector_group = "Dyn11"; }` */
+export interface TransformerDecl extends BaseNode {
+  from: string;
+  to: string;
+  /** As written on the nameplate; parsed by `constants/vector-groups`. */
+  vector_group?: string;
+  /** Location of the group string itself, for an anchored diagnostic. */
+  groupLoc?: BaseNode['loc'];
+}
 
 export interface ZeroSequenceDecl extends BaseNode {
   from: string;

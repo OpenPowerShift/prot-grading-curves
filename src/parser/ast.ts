@@ -156,7 +156,10 @@ export interface ScenarioShareDecl extends BaseNode {
  */
 export interface ScenarioBlock extends BaseNode {
   type: 'scenario';
-  name: string;
+  /** How the study refers to this condition. A bare identifier. */
+  id: string;
+  /** What the reader sees. Defaults to the id. */
+  name?: string;
   /** Fault type, as on a `fault`. */
   faultType?: FaultTypeKeyword;
   description?: string;
@@ -382,6 +385,11 @@ export interface SpanEnd {
 }
 
 export interface AnnotateBlock extends BaseNode {
+  /**
+   * Optional handle. The only drawable block with no way to be named,
+   * so nothing could refer to a mark the study had already drawn.
+   */
+  id?: string;
   /**
    * Sheets this belongs to, by `view` name. Absent means every sheet.
    *

@@ -571,6 +571,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * another level's, which would mix two turns ratios into one number.
    */
   const conditionName = opts.view?.condition;
+  /*
+   * What the legend calls the condition: its `name` where it has one,
+   * else its id. `conditionName` above stays the *handle*, because it
+   * is what resolves the condition; this is only ever printed.
+   */
+  const conditionLabel = conditionName
+    ? (study.scenarios.get(conditionName)?.name
+       ?? study.faults.get(conditionName)?.name
+       ?? conditionName)
+    : undefined;
   const condition: ResolvedCondition | null =
     conditionName ? resolveCondition(study, conditionName, viewLevelName) : null;
 
@@ -3562,7 +3572,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const axisNotes: string[] = [];
     if (condition) {
       const kind = condition.type ? faultTypeLabel(condition.type) : 'declared';
-      axisNotes.push(`drawn for ${conditionName} (${kind})`);
+      axisNotes.push(`drawn for ${conditionLabel} (${kind})`);
       /*
        * A scenario named as the sheet's condition but silent about the
        * level being drawn supplies no ratios, so nothing converts and

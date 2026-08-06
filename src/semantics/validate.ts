@@ -358,14 +358,14 @@ function validateScenarios(ctx: Ctx): void {
   const declared = new Map<string, number>();
   for (const item of ctx.doc?.items ?? []) {
     if (item.type !== 'scenario') continue;
-    const seen = declared.get(item.name);
+    const seen = declared.get(item.id);
     if (seen != null) {
       add(ctx, 'DUPLICATE_SCENARIO', 'error',
-        `scenario "${item.name}" is declared more than once (first at line ${seen}); ` +
+        `scenario ${item.id} is declared more than once (first at line ${seen}); ` +
         'the later declaration silently replaces the earlier',
-        item.loc, item.name.length);
+        item.loc, item.id.length);
     } else {
-      declared.set(item.name, item.loc?.line ?? 0);
+      declared.set(item.id, item.loc?.line ?? 0);
     }
   }
 

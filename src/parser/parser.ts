@@ -719,8 +719,19 @@ class Parser {
 
   /* ----------------------- blocks ----------------------- */
 
-  private parseBlock<T>(open: string, body: () => T, close: string): T | null {
+  /**
+   * `keyword [id] { ... }`.
+   *
+   * The optional id is read here because this is where the keyword and
+   * the brace are handled, and it can only be told apart from the
+   * body's first key by the brace that follows it -- inside the body
+   * every key is an identifier too.
+   */
+  private parseBlock<T>(open: string, body: (id?: string) => T, close: string): T | null {
     this.expectKeyword(open);
+    const idTok = this.at('IDENT') && this.tokens[this.pos + 1]?.kind === 'LBRACE'
+      ? this.eat('IDENT')
+      : undefined;
     if (!this.eat('LBRACE')) {
       this.errors.push({
         message: `expected '{' after ${open}`,
@@ -730,7 +741,7 @@ class Parser {
       });
       return null;
     }
-    const v = body();
+    const v = body(idTok?.image);
     this.expect(close === '}' ? 'RBRACE' : 'RBRACK', close);
     return v;
   }
@@ -788,6 +799,12 @@ class Parser {
           if (names.length > 0) p.conditions = [...(p.conditions ?? []), ...names];
           break;
         }
+        /*
+         * `name` is the spelling every other block uses for the same
+         * job. `label` is kept because studies are written in it, and
+         * warned so the two do not stay in circulation forever.
+         */
+        case 'name':
         case 'label': p.label = this.parseStringOrIdent(); break;
         case 'voltage': p.voltage = this.parseStringOrIdent(); break;
         case 'view':
@@ -954,7 +971,7 @@ class Parser {
 
     const block: import('./ast.js').ScenarioBlock = {
       type: 'scenario',
-      name: unquote(nameTok.image),
+      id: unquote(nameTok.image),
       levels: [],
       shares: [],
       loc: this.loc(head),
@@ -1037,11 +1054,22 @@ class Parser {
         continue;
       }
 
+      /* What the reader sees, where the id is a handle rather than a
+       * caption -- the same three tiers every other block now has. */
+      if (t.image === 'name') {
+        this.pos++;
+        this.expect('EQUALS', '=');
+        const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+        if (tok) block.name = unquote(tok.image);
+        this.eat('SEMI');
+        continue;
+      }
+
       /* Unknown member: consume it so the loop cannot stick, and say
        * so -- silently skipped, a mistyped `level` or `sees` took a
        * whole level's figures out of the study without a word. */
       this.pos++;
-      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'description']);
+      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'name', 'description']);
       if (this.at('EQUALS')) { this.pos++; this.parseScalarValue(); this.eat('SEMI'); }
       else {
         /*
@@ -1807,8 +1835,8 @@ if (kwName === 'flex_points') {
 
   private parseAnnotate(): AnnotateBlock | null {
     const head = this.peek();
-    return this.parseBlock('annotate', () => {
-      const a: AnnotateBlock = { type: 'annotate', loc: this.loc(head) };
+    return this.parseBlock('annotate', (annotateId) => {
+      const a: AnnotateBlock = { type: 'annotate', loc: this.loc(head), id: annotateId };
       while (!this.at('RBRACE') && !this.at('EOF')) {
         const t = this.peek();
         if (t.kind !== 'KW' && t.kind !== 'IDENT') { this.pos++; continue; }
@@ -1886,6 +1914,7 @@ if (kwName === 'flex_points') {
               if (names.length > 0) a.conditions = [...(a.conditions ?? []), ...names];
             }
             break;
+          case 'name':
           case 'label':
             {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
@@ -1989,6 +2018,8 @@ if (kwName === 'flex_points') {
               if (v) c.style = v as any;
             }
             break;
+          /* `combine` spells its identity `name` already, so `label`
+           * keeps its own meaning here rather than aliasing onto it. */
           case 'label':
             {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');

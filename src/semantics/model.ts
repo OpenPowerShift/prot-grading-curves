@@ -259,6 +259,8 @@ export interface ScenarioLevel {
  * cannot be done for zero sequence. Declared, never derived.
  */
 export interface Scenario {
+  /** How the study refers to it. The key of `study.scenarios`. */
+  id: string;
   name: string;
   /** Fault type, as on a `Fault`. */
   type?: FaultType;
@@ -622,8 +624,9 @@ export function buildStudy(doc: Document): Study {
         earth_A: level.earth_A,
       });
     }
-    study.scenarios.set(item.name, {
-      name: item.name,
+    study.scenarios.set(item.id, {
+      id: item.id,
+      name: displayName(item),
       type: isFaultType(item.faultType) ? item.faultType : undefined,
       description: item.description,
       loc: item.loc,

@@ -341,9 +341,18 @@ export class TcViewer extends LitElement {
   }
 
   private observePane(): void {
-    if (this.ro) return;
     const host = this.paneEl;
-    if (!host || typeof ResizeObserver === 'undefined') return;
+    if (!host) return;
+
+    /*
+     * Bound before the observer, and independently of it. Tying the
+     * two together meant an environment without `ResizeObserver` --
+     * jsdom, among others -- also lost the pinch, which is a gesture
+     * that has nothing to do with measuring the pane.
+     */
+    if (!this.pinchListeners) this.attachPinch(host);
+
+    if (this.ro || typeof ResizeObserver === 'undefined') return;
     this.ro = new ResizeObserver((entries) => {
       const r = entries[0]?.contentRect;
       if (!r) return;
@@ -375,9 +384,50 @@ export class TcViewer extends LitElement {
     this.ro.observe(host);
     this.measured = true;
   }
+
+  /**
+   * Safari's own pinch, intercepted.
+   *
+   * WebKit reports a pinch as `gesturestart` / `gesturechange` /
+   * `gestureend` with a cumulative `scale`, and -- unlike Chrome --
+   * ignores `touch-action` when deciding whether to zoom the page. So
+   * these have to be prevented explicitly, or a pinch on the plot
+   * zooms the whole application and takes the toolbars off screen.
+   *
+   * Bound imperatively rather than in the template because they are
+   * not standard events and have no typing there. On every other
+   * engine they simply never fire, and the `touchmove` path handles
+   * the pinch instead.
+   */
+  private attachPinch(host: HTMLElement): void {
+    let base = 1;
+    const start = (ev: Event): void => {
+      if (ev.cancelable) ev.preventDefault();
+      base = this.displayScale;
+    };
+    const change = (ev: Event): void => {
+      if (ev.cancelable) ev.preventDefault();
+      const scale = (ev as Event & { scale?: number }).scale;
+      if (typeof scale === 'number' && scale > 0) this.setDisplayScale(base * scale);
+    };
+    const end = (ev: Event): void => { if (ev.cancelable) ev.preventDefault(); };
+
+    host.addEventListener('gesturestart', start);
+    host.addEventListener('gesturechange', change);
+    host.addEventListener('gestureend', end);
+    this.pinchListeners = () => {
+      host.removeEventListener('gesturestart', start);
+      host.removeEventListener('gesturechange', change);
+      host.removeEventListener('gestureend', end);
+    };
+  }
+
+  /** Undoes {@link attachPinch}. */
+  private pinchListeners?: () => void;
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.ro?.disconnect();
+    this.pinchListeners?.();
     this.endPan();
   }
 
@@ -974,6 +1024,19 @@ export class TcViewer extends LitElement {
   }
 
   private handleTouchStart(ev: TouchEvent): void {
+    /*
+     * Claim a two-finger gesture the moment it starts.
+     *
+     * `touch-action: none` on the pane is enough for Chrome, which
+     * takes it as "this element handles its own gestures". Safari does
+     * not apply `touch-action` to pinch-zoom at all, so on an iPhone a
+     * pinch on the plot zoomed the *page* -- carrying the toolbars off
+     * the side of the visual viewport, which is how the controls went
+     * missing. Preventing the default here, and on the `gesture*`
+     * events below, is what Safari does honour.
+     */
+    if (ev.touches.length >= 2 && ev.cancelable) ev.preventDefault();
+
     const svg = this.querySelector('svg') as SVGSVGElement | null;
     const proj = svg ? projectDomain(svg.querySelector('path.tc-curve')) : null;
     const geo = this.touchGeometry(ev);

@@ -584,17 +584,21 @@ breaks. They want one decision: implement, or delete the claim.
 
 ==== Smaller, and worth doing when nearby
 
-. *Reported but not reproduced: "when I zoom sometimes I lose the
-  source and plot buttons".* Swept the split from 1600 px down to
-  400 px, in both narrow and wide modes and all three pane states, and
-  measured every toolbar button's visibility and whether it fell
-  outside the pane: 22 of 22 reachable at every width, the rows
-  wrapping as intended. The one concrete defect found in the area --
-  the narrow switch clobbering the stored split -- is fixed above, and
-  `min-width: 0` was added to `tc-viewer` and its scroll host, which is
-  correct regardless (a fixed-size sheet inside a flex item should
-  declare it can shrink) but fixed nothing demonstrable. Needs the
-  reporter's zoom level and which buttons went.
+. *A pinch on the plot zoomed the page on iOS.* Reported as losing the
+  toolbars on mobile. `touch-action: none` is enough for Chrome, which
+  reads it as "this element handles its own gestures"; WebKit does not
+  apply `touch-action` to pinch-zoom at all, so a pinch on the plot
+  zoomed the whole application and carried the toolbars off the side of
+  the visual viewport. `touchstart` now claims a second finger the
+  moment it lands, and Safari's `gesturestart` / `gesturechange` /
+  `gestureend` are intercepted and drive the display scale from the
+  cumulative `scale`. *Not verified on a device* -- there is no iOS
+  Safari in this environment -- but it is the documented remedy and
+  the handlers are exercised in test and in a browser.
+
+  Width alone was ruled out first: the split was swept from 1600 px to
+  400 px in both modes and all three pane states, and 22 of 22 toolbar
+  buttons stayed reachable.
 
 . *`svg.ts` decomposition.* One large function holding around forty
   closures. Split in this order or the captures merely move: sheet

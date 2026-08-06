@@ -356,6 +356,94 @@ describe('touch', () => {
   });
 });
 
+describe('a pinch the browser would otherwise take', () => {
+  /**
+   * A touch event that records whether its default was prevented.
+   * jsdom implements `preventDefault`, but not `cancelable` unless it
+   * is asked for, and the handler checks it.
+   */
+  const cancelable = (count: number): TouchEvent & { prevented: boolean } => {
+    const list = Array.from({ length: count }, (_, i) => ({ clientX: 600 + i * 200, clientY: 400 }));
+    const ev = Object.assign(
+      new Event('touchstart', { bubbles: true, cancelable: true }) as TouchEvent,
+      { touches: list, changedTouches: list, prevented: false },
+    );
+    (ev as unknown as { preventDefault: () => void }).preventDefault = () => {
+      (ev as unknown as { prevented: boolean }).prevented = true;
+    };
+    return ev as TouchEvent & { prevented: boolean };
+  };
+
+  it('is claimed as soon as the second finger lands', async () => {
+    /*
+     * `touch-action: none` is enough for Chrome. Safari does not apply
+     * it to pinch-zoom at all, so without this a pinch on the plot
+     * zooms the *page* on an iPhone and carries the toolbars off the
+     * side of the visual viewport -- which is how the controls went
+     * missing on mobile.
+     */
+    const el = await mount();
+    const ev = cancelable(2);
+    call(el, 'handleTouchStart', ev);
+    expect(ev.prevented).toBe(true);
+  });
+
+  it('leaves a single finger to the browser until it moves', async () => {
+    /*
+     * One finger may be a page scroll, and preventing that on contact
+     * would make the surrounding page feel stuck. The move handler
+     * takes it once it is clearly a drag.
+     */
+    const el = await mount();
+    const ev = cancelable(1);
+    call(el, 'handleTouchStart', ev);
+    expect(ev.prevented).toBe(false);
+  });
+});
+
+describe('Safari\'s own pinch events', () => {
+  /** WebKit reports a pinch as `gesture*` with a cumulative `scale`. */
+  const gesture = (type: string, scale: number): Event & { prevented: boolean } => {
+    const ev = Object.assign(new Event(type, { bubbles: true, cancelable: true }),
+      { scale, prevented: false });
+    (ev as unknown as { preventDefault: () => void }).preventDefault = () => {
+      (ev as unknown as { prevented: boolean }).prevented = true;
+    };
+    return ev as Event & { prevented: boolean };
+  };
+
+  it('drive the drawing rather than the page', async () => {
+    const el = await mount();
+    const host = el.querySelector('.pane-host')!;
+    host.dispatchEvent(gesture('gesturestart', 1));
+    host.dispatchEvent(gesture('gesturechange', 2));
+    expect(peek<number>(el, 'displayScale')).toBeCloseTo(2, 2);
+  });
+
+  it('are prevented, which is what Safari honours', async () => {
+    const el = await mount();
+    const host = el.querySelector('.pane-host')!;
+    const start = gesture('gesturestart', 1);
+    const change = gesture('gesturechange', 1.5);
+    host.dispatchEvent(start);
+    host.dispatchEvent(change);
+    expect([start.prevented, change.prevented]).toEqual([true, true]);
+  });
+
+  it('scale from where the drawing already was', async () => {
+    /*
+     * `scale` is cumulative from the start of the gesture, not a
+     * delta, so the base has to be taken once at `gesturestart`.
+     */
+    const el = await mount();
+    const host = el.querySelector('.pane-host')!;
+    call(el, 'setDisplayScale', 1.5);
+    host.dispatchEvent(gesture('gesturestart', 1));
+    host.dispatchEvent(gesture('gesturechange', 2));
+    expect(peek<number>(el, 'displayScale')).toBeCloseTo(3, 2);
+  });
+});
+
 describe('showing the drawing larger', () => {
   it('steps up and down', async () => {
     const el = await mount();

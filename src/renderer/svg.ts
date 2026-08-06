@@ -3716,6 +3716,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     density: LegendDensity = 'full',
     /** Vertical space available; entries past it are summarised. */
     budget: number = Infinity,
+    /**
+     * Whether the notes are written out or reduced to a count.
+     *
+     * A separate axis from `density` because the two are not the same
+     * trade. See `fitLegend`.
+     */
+    notesMode: 'show' | 'summarise' = 'show',
   ): { lines: string[]; height: number; dropped: number } => {
     const showDetail = density === 'full';
     const showSomeDetail = density !== 'minimal';
@@ -3902,11 +3909,24 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * plot, leaving nothing beneath. Counted first, the conditions move
      * up and the notes land in the space that opens.
      */
-    const showNotes = opts.page?.legend?.notes !== false && density !== 'minimal';
-    const notesHeight = axisNotes.length === 0 || !showNotes
+    /*
+     * Notes written out, reduced to a count, or turned off outright.
+     *
+     * `page { legend = { notes = false } }` is the author saying they
+     * are not wanted, and that is the only thing that removes them
+     * without a trace. Everything else keeps a line, because these
+     * notes are how the sheet accounts for what it could not draw and
+     * losing that silently is the failure they exist to prevent.
+     */
+    const notesOff = opts.page?.legend?.notes === false;
+    const showNotes = !notesOff && notesMode === 'show' && density !== 'minimal';
+    const countNotes = !notesOff && !showNotes && axisNotes.length > 0;
+    const notesHeight = axisNotes.length === 0 || notesOff
       ? 0
-      : 10 + LINE_HEADING
-        + notesWrapped.reduce((n, w) => n + w.length, 0) * (LINE_DETAIL - 2);
+      : showNotes
+        ? 10 + LINE_HEADING
+          + notesWrapped.reduce((n, w) => n + w.length, 0) * (LINE_DETAIL - 2)
+        : 10 + (LINE_DETAIL - 2);
 
     /*
      * The author's own remarks, above the tool's notes.
@@ -3949,7 +3969,22 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     };
 
     const emitNotes = (): void => {
-      if (axisNotes.length === 0 || !showNotes) return;
+      if (axisNotes.length === 0 || notesOff) return;
+      if (countNotes) {
+        /* One line rather than nothing. The reader is told the sheet
+         * left something out and where to go for it, which is the
+         * whole job of the notes -- the detail is in the report. */
+        cursorY += 10;
+        lines.push(
+          `<text x="${originX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+          `font-size="${FONT_DETAIL - 1}" font-style="italic">`
+          + `${escapeXml(`• ${axisNotes.length} note${axisNotes.length === 1 ? '' : 's'} `
+            + 'omitted for space; see the report')}</text>`,
+        );
+        cursorY += LINE_DETAIL - 2;
+        return;
+      }
+      if (!showNotes) return;
       cursorY += 10;
       lines.push(
         `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
@@ -4326,11 +4361,24 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   /**
-   * Build the legend at the fullest density that fits `budget`.
+   * Build the legend at the fullest form that fits `budget`.
    *
    * Measured rather than estimated: the wrapping depends on the text,
    * so the only reliable way to know whether a legend fits is to lay
    * it out and look at the height it came to.
+   *
+   * *The notes give way before the settings do.* They used to be tied
+   * together -- notes were drawn at any density above `minimal`, and
+   * the only way to save space was to drop a density -- so a sheet
+   * with a page of notes and eight curves lost every relay's settings.
+   * Worse, it lost the notes as well: the fallback landed on
+   * `minimal`, which draws neither, having spent the space that forced
+   * it there. Turning the notes *off* brought the settings back, which
+   * is exactly backwards from what either is for.
+   *
+   * What a curve is set to is the substance of the sheet. The notes
+   * are the tool's account of what it could not draw, and a count of
+   * them plus a pointer to the report carries that in one line.
    */
   const fitLegend = (
     originX: number,
@@ -4339,7 +4387,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     anchorFaults: boolean,
     budget: number,
   ): { lines: string[]; height: number } => {
-    for (const density of ['full', 'compact', 'minimal'] as LegendDensity[]) {
+    const attempts: Array<[LegendDensity, 'show' | 'summarise']> = [
+      ['full', 'show'], ['full', 'summarise'],
+      ['compact', 'show'], ['compact', 'summarise'],
+      ['minimal', 'summarise'],
+    ];
+    for (const [density, notesMode] of attempts) {
       /*
        * Measured unanchored, always. In column mode the faults block
        * is dropped to the foot of the plot, so its laid-out height
@@ -4347,15 +4400,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * than the budget by construction, which would have condemned
        * even a two-curve study to the least detail.
        */
-      const natural = buildLegend(originX, originY, width, false, density);
+      const natural = buildLegend(originX, originY, width, false, density, Infinity, notesMode);
       if (natural.height <= budget) {
         return anchorFaults
-          ? buildLegend(originX, originY, width, true, density)
+          ? buildLegend(originX, originY, width, true, density, Infinity, notesMode)
           : natural;
       }
     }
     /* Still over at the least detail: drop entries and say how many. */
-    return buildLegend(originX, originY, width, anchorFaults, 'minimal', budget);
+    return buildLegend(originX, originY, width, anchorFaults, 'minimal', budget, 'summarise');
   };
 
   if (legendMode === 'column') {

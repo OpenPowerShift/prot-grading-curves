@@ -637,6 +637,19 @@ breaks. They want one decision: implement, or delete the claim.
 
 === Closed 2026-08-06
 
+* *The legend's notes cost the reader the settings.* Notes were drawn
+  at any density above `minimal` and the only way to buy space was to
+  drop a density -- which also drops every relay's settings. So a
+  sheet with eight curves and twenty notes showed no settings at all,
+  and turning the notes *off* was how you got them back. Worse, the
+  fallback landed on `minimal`, which draws neither: the space the
+  notes forced was then spent on nothing. Notes are now a separate
+  axis of the fit, tried after detail is preserved, and where they do
+  not fit they are reduced to a count and a pointer to the report
+  rather than dropped in silence. Sample 17's 3I2 sheet was itself a
+  victim -- it had been drawing at `compact`, without maker or
+  voltage lines, and now draws in full.
+
 * *Major and minor gridlines were one grey field.* They differed by
   weight alone -- 0.9px against 0.6, full against 70% -- on an axis
   that draws nine lines per decade, so finding a decade meant counting.

@@ -1652,8 +1652,8 @@ not drawn in, a scenario with nothing to say at this level. It sits at
 the foot because the list of characteristics is what a reader wants
 first; the caveats are what they come back for.
 
-It takes its space from the panel, is dropped as the legend tightens,
-and can be turned off:
+They give way before the settings as space runs short, saying how
+many. Turning them off is the only silent way:
 
 [source,tc]
 ----

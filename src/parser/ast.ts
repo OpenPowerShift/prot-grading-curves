@@ -780,6 +780,11 @@ export interface PageLegend extends BaseNode {
    * are on by default -- but a drawing being issued to someone who
    * does not need the workings can turn them off, and get the space
    * back for the curves.
+   *
+   * `false` is the only thing that removes them silently. Where the
+   * panel is merely short of room they are reduced to a count and a
+   * pointer to the report, because a sheet that quietly drops
+   * something is the failure these notes exist to prevent.
    */
   notes?: boolean;
 }

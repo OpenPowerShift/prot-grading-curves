@@ -124,8 +124,73 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateView(ctx);
   validatePage(ctx);
   validateStageRefs(ctx);
+  validateTimeMultipliers(ctx);
 
   return ctx.out.sort((a, b) => a.offset - b.offset || a.code.localeCompare(b.code));
+}
+
+/* ------------------------------------------------------------------ */
+/* Time multipliers                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * An inverse-time curve with no time multiplier.
+ *
+ * `tms` was defaulting to 1 and saying nothing. On an IEC standard
+ * inverse that is roughly ten times a normal setting, so a study that
+ * simply omitted it drew a curve an order of magnitude slow, graded
+ * against it, and reported a comfortable margin. The guide already
+ * names the stakes -- it warns that mistyping `tms` as `tsm` leaves
+ * "the margin out by a factor of ten" -- but that hazard was only
+ * caught because the typo produced an unknown key. Omitting the
+ * setting outright produced nothing at all.
+ *
+ * An error rather than a warning. There is no reading of a missing
+ * time multiplier under which 1.0 is a good guess: a relay always has
+ * one, and an author who means 1.0 can write it. The remedy is to type
+ * the number the relay is set to.
+ *
+ * Three cases are not faults:
+ *
+ *   - a definite-time stage has no multiplier, and mixing the two is
+ *     already refused elsewhere;
+ *   - a `flex_points` table is absolute in amps and `tms` scales it,
+ *     so omitting it means "the table as printed", which is an honest
+ *     identity rather than a guess;
+ *   - an element whose `tms` the solver is going to compute. That is
+ *     the whole point of `solve { free = ["tms"] }`, and the figure it
+ *     arrives at is reported.
+ */
+function validateTimeMultipliers(ctx: Ctx): void {
+  const { study } = ctx;
+
+  /*
+   * Elements the solver will set. `free` defaults to `['tms']`, and
+   * the backup is the side it adjusts.
+   */
+  const solved = new Set<string>();
+  for (const grade of study.grades) {
+    if (!grade.solve?.free.includes('tms')) continue;
+    const backup = resolveRef(study, grade.backup).element;
+    if (backup) solved.add(backup.ref);
+  }
+
+  for (const element of allElements(study)) {
+    if (solved.has(element.ref)) continue;
+    for (const stage of element.stages) {
+      const kind = stage.producer?.kind;
+      if (kind !== 'standard' && kind !== 'formula') continue;
+      if (stage.tms != null) continue;
+
+      const where = stage.id ? `${element.ref}/${stage.id}` : element.ref;
+      add(ctx, 'TMS_MISSING', 'error',
+        `${where} declares an inverse-time curve with no tms; it would be drawn and `
+        + 'graded at 1.0, which on a standard inverse is about ten times a usual '
+        + 'setting. Give the multiplier the relay is set to, or let a grade solve '
+        + 'for it with solve { free = ["tms"]; }',
+        undefined);
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */

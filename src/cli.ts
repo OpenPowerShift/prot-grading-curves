@@ -14,7 +14,15 @@
  *   tc-curves check  study.ptc                  # diagnostics only
  *
  * Exit status: 0 clean, 1 diagnostics of `error` severity, 2 usage or
- * I/O failure. `check` is therefore usable as a CI gate.
+ * I/O failure, 3 a valid study whose grading fails.
+ *
+ * 3 is separate from 1 on purpose. A study with an error could not be
+ * evaluated; a study that fails its margins was evaluated and did not
+ * coordinate. Those are different jobs for whoever is reading the exit
+ * status -- one is "fix the file", the other is "change the settings"
+ * -- and collapsing them into "non-zero" loses the distinction exactly
+ * where a CI gate needs it. `check` and `report` are therefore usable
+ * as a CI gate for coordination, not merely for syntax.
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -24,7 +32,8 @@ import { process as processStudy, renderStudy } from './index.js';
 import { exportPng } from './export/export-png.js';
 import { exportPdf } from './export/export-pdf.js';
 import { toExportableSvg } from './export/exportable-svg.js';
-import { formatGradeReports } from './semantics/grades.js';
+import { formatGradeReports, anyGradeFails } from './semantics/grades.js';
+import { jsonResult } from './semantics/json-report.js';
 import type { Diagnostic } from './semantics/validate.js';
 
 type Format = 'svg' | 'png' | 'pdf';
@@ -43,6 +52,8 @@ interface Options {
   quiet: boolean;
   /** Write the sheet even when the study has errors. */
   force?: boolean;
+  /** Emit machine-readable JSON instead of the human report. */
+  json?: boolean;
 }
 
 const USAGE = `tc-curves -- render protection-relay time-current grading studies
@@ -64,11 +75,14 @@ Options:
       --size <name>     PDF paper size: A0-A5, Letter, Legal, Tabloid (default A4)
       --portrait        PDF portrait orientation (default landscape)
       --landscape       PDF landscape orientation
+      --json            Machine-readable output: diagnostics and the
+                        grading result, for CI and downstream tools
   -q, --quiet           Suppress the margin report on stdout
       --force           Write the sheet even when the study has errors
   -h, --help            Show this message
 
-Exit status: 0 clean, 1 validation errors, 2 usage or I/O failure.`;
+Exit status: 0 clean, 1 validation errors, 2 usage or I/O failure,
+             3 valid study, grading fails.`;
 
 export function parseArgs(argv: string[]): Options {
   const opts: Options = { command: 'help', format: 'svg', quiet: false };
@@ -85,6 +99,7 @@ export function parseArgs(argv: string[]): Options {
       case '--landscape': opts.orientation = 'landscape'; break;
       case '-q': case '--quiet': opts.quiet = true; break;
       case '--force': opts.force = true; break;
+      case '--json': opts.json = true; break;
       case '-o': case '--output': opts.output = argv[++i]; break;
       case '--width': opts.width = Number(argv[++i]); break;
       case '--scale': opts.scale = Number(argv[++i]); break;
@@ -199,14 +214,33 @@ export async function main(argv: string[]): Promise<number> {
     result.parseErrors.some((e) => e.severity === 'error') ||
     result.diagnostics.some((d) => d.severity === 'error');
 
+  /*
+   * A study can be perfectly well-formed and not coordinate. That is
+   * the answer the study exists to produce, and until now it left by
+   * the same door as success: `check` on a study reporting
+   * "overall: FAIL (worst -0.310 s)" exited 0, so a CI job gating on
+   * this tool was gating on syntax while believing it gated on grading.
+   */
+  const gradingFails = anyGradeFails(result.reports);
+  const status = hasErrors ? 1 : gradingFails ? 3 : 0;
+
+  if (opts.json && (opts.command === 'check' || opts.command === 'report')) {
+    console.log(JSON.stringify(jsonResult(opts.input ?? '', result), null, 2));
+    return status;
+  }
+
   if (opts.command === 'check') {
-    if (!hasErrors && !opts.quiet) console.log(`${opts.input}: no errors`);
-    return hasErrors ? 1 : 0;
+    if (!hasErrors && !opts.quiet) {
+      console.log(gradingFails
+        ? `${opts.input}: no errors, but grading fails -- run report for the detail`
+        : `${opts.input}: no errors`);
+    }
+    return status;
   }
 
   if (opts.command === 'report') {
     console.log(formatGradeReports(result.reports));
-    return hasErrors ? 1 : 0;
+    return status;
   }
 
   /* ---- render ----------------------------------------------------- */

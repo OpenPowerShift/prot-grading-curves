@@ -79,6 +79,36 @@ export interface GradeReport {
   diagnostics: Array<{ code: string; message: string; severity: 'error' | 'warning' | 'info' }>;
 }
 
+/**
+ * The verdict on one grade, decided once.
+ *
+ * `pass` is only set where the study declares a `margin` floor, so a
+ * pair graded against `margin_target` alone left it undefined while the
+ * report printed PASS -- and anything reading the field disagreed with
+ * the report beside it. The CLI's exit status did exactly that.
+ *
+ * `unevaluated` is a third state and not a kind of failure. When
+ * neither side operates at the current asked about there is no margin
+ * to judge, and calling that "fail" sends the reader looking for a
+ * coordination problem when what they have is a settings or fault-data
+ * problem somewhere else.
+ */
+export type Verdict = 'pass' | 'fail' | 'unevaluated';
+
+export function verdictOf(report: GradeReport): Verdict {
+  const required = report.CTI_min_s ?? report.margin_s;
+  if (required == null) return 'unevaluated';
+  if (report.min_margin_s == null || !Number.isFinite(report.min_margin_s)) {
+    return 'unevaluated';
+  }
+  return report.min_margin_s >= required ? 'pass' : 'fail';
+}
+
+/** True when any grade in a study was evaluated and did not coordinate. */
+export function anyGradeFails(reports: readonly GradeReport[]): boolean {
+  return reports.some((r) => verdictOf(r) === 'fail');
+}
+
 /** A gradeable side: a relay element, or a device such as a fuse. */
 interface Side {
   ref: string;
@@ -1103,15 +1133,22 @@ export function formatGradeReport(report: GradeReport): string {
    * looks for was missing from exactly the studies that had asked the
    * tool to choose a setting for them.
    */
-  const required = report.CTI_min_s ?? report.margin_s;
   const against = report.CTI_min_s != null ? 'margin' : 'margin_target';
-  if (required != null && report.min_margin_s != null
-      && Number.isFinite(report.min_margin_s)) {
-    const met = report.min_margin_s >= required;
+  const verdict = verdictOf(report);
+  if (verdict !== 'unevaluated') {
     const where = report.min_margin_at_A != null
-      ? ` (worst ${s3(report.min_margin_s)} s at ${report.min_margin_at_A.toFixed(0)} A)`
+      ? ` (worst ${s3(report.min_margin_s!)} s at ${report.min_margin_at_A.toFixed(0)} A)`
       : '';
-    out.push(`    overall         : ${met ? 'PASS' : 'FAIL'}${where} vs ${against}`);
+    out.push(
+      `    overall         : ${verdict === 'pass' ? 'PASS' : 'FAIL'}${where} vs ${against}`,
+    );
+  } else if (report.rows.length > 0) {
+    /*
+     * Said rather than left blank. A pair that could not be judged used
+     * to print no verdict line at all, so the one line a reader looks
+     * for was simply missing and its absence had to be interpreted.
+     */
+    out.push('    overall         : not evaluated -- no margin could be computed');
   }
 
   for (const d of report.diagnostics) {

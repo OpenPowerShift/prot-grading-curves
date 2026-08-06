@@ -18,3 +18,4 @@ export * from './xvoltage.js';
 export * from './solver.js';
 export * from './grades.js';
 export * from './validate.js';
+export * from './json-report.js';

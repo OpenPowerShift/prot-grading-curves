@@ -258,6 +258,15 @@ export interface ScenarioLevel {
  * The alternative to referring one figure across a transformer, which
  * cannot be done for zero sequence. Declared, never derived.
  */
+/** A protection chain: the relays in series on one path. */
+export interface Group {
+  id: string;
+  name?: string;
+  description?: string;
+  /** Relay ids, upstream first. */
+  members: string[];
+}
+
 export interface Scenario {
   /** How the study refers to it. The key of `study.scenarios`. */
   id: string;
@@ -460,6 +469,7 @@ export interface Study {
   faults: Map<string, Fault>;
   /** Named conditions with their currents at every level. */
   scenarios: Map<string, Scenario>;
+  groups: Map<string, Group>;
   /** Named times the sheet rules across, keyed by name. */
   times: Map<string, RequiredTime>;
   relays: Map<string, Relay>;
@@ -534,6 +544,7 @@ export function buildStudy(doc: Document): Study {
     I_units: 'primary',
     faults: new Map(),
     scenarios: new Map(),
+    groups: new Map(),
     times: new Map(),
     zeroSequence: new Map(),
     relays: new Map(),
@@ -571,6 +582,15 @@ export function buildStudy(doc: Document): Study {
           });
         }
         break;
+      case 'group':
+        study.groups.set(item.id, {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          members: item.members,
+        });
+        break;
+
       case 'times':
         for (const t of item.times) {
           /* Keyed by identity; the stored `name` is what gets drawn. */

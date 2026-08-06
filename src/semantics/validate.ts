@@ -176,6 +176,37 @@ function validateViewScopes(ctx: Ctx): void {
   for (const t of study.times.values()) check(t.views, `time ${t.id}`);
   for (const f of study.faults.values()) check(f.views, `fault ${f.id}`);
   for (const sc of study.scenarios.values()) check(sc.views, `scenario ${sc.id}`);
+
+  /*
+   * A sheet naming a chain that does not exist would draw nothing at
+   * all -- the group resolves to an empty set of relays, and every
+   * curve is filtered out. Silent, and indistinguishable from a study
+   * whose relays are all misconfigured.
+   */
+  for (const v of study.views) {
+    if (!v.group) continue;
+    if (study.groups.has(v.group)) continue;
+    const known = [...study.groups.keys()];
+    add(ctx, 'UNRESOLVED_GROUP', 'error',
+      `view ${v.id ?? v.name ?? '(unnamed)'} draws group ${v.group}, which is not `
+      + `declared; the sheet would carry no curves at all. Declared: `
+      + (known.length > 0 ? known.join(', ') : 'none')
+      + didYouMean(suggest(v.group, known)),
+      v.loc);
+  }
+
+  /* A group naming a relay that does not exist quietly shrinks every
+   * sheet that draws it. */
+  for (const g of study.groups.values()) {
+    for (const member of g.members) {
+      if (study.relays.has(member)) continue;
+      if (study.devices.has(member)) continue;
+      add(ctx, 'UNRESOLVED_GROUP_MEMBER', 'error',
+        `group ${g.id} lists ${member}, which is not a declared relay or device`
+        + didYouMean(suggest(member, [...study.relays.keys(), ...study.devices.keys()])),
+        undefined);
+    }
+  }
   for (const p of study.points) check(p.views, `point ${p.id}`);
   for (const a of study.annotations) check(a.views, `annotation "${a.label ?? '(unlabelled)'}"`);
 }

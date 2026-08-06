@@ -1673,6 +1673,59 @@ Theme presets are *bundles*: declaring `theme = "dark"` does not
 overwrite subsequent specific `axes.color = "#abc123"` overrides
 inside the same `page { ... }` block.
 
+== Groups (protection chains)
+
+A `group` is the devices in series on one path, declared upstream
+first:
+
+[source,tc]
+----
+group BESS_CHAIN {
+    name    = "BESS transformer chain";
+    members = [R_INCOMER, R_BESS_FEEDER, R_BESS_RMU];
+}
+
+view BESS_PHASE {
+    group    = BESS_CHAIN;
+    quantity = phase;
+}
+----
+
+A sheet naming a group draws the elements of those relays and no
+others. A relay may be in several groups -- an incomer backs up every
+chain, so it belongs to all of them rather than to none.
+
+Membership flows one way. A group lists devices; times, points,
+annotations and conditions *name* a group and are never listed by one.
+They are not part of a chain, they are requirements and observations
+about one, and allowing both directions would need a precedence rule
+between two mechanisms that mean the same thing.
+
+=== What decides whether something is drawn
+
+Three tiers, in order, so the common case needs no scoping at all:
+
+. an element's own `view` / `views`, which wins;
+. otherwise the sheet's `group`, if it names one;
+. otherwise it is drawn.
+
+The override matters. A relay in a chain may have an element that
+belongs on only some of that chain's sheets -- a negative-sequence
+element has nothing to say on a phase sheet -- and that is a statement
+about *quantity*, which is the element's business rather than the
+sheet's. Left unscoped it is reported as unplaceable rather than
+dropped, which is honest and also noise.
+
+Saying nothing means every sheet, so a study written before groups
+existed, and every study with one chain, is unaffected.
+
+[NOTE]
+====
+A group is ordered because the order is what will enumerate grading
+pairs when topology lands. Declaring it unordered would imply the order
+does not matter, which on a radial feeder is the one thing that does.
+====
+
 === Semantic layers in the SVG
 
 A sheet is a stack of independent things, and the rendered SVG says

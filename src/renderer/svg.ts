@@ -695,6 +695,39 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * Absent `view` means every sheet, so nothing written before this
    * changes.
    */
+  /**
+   * The relays this sheet draws, when it names a chain.
+   *
+   * `null` means the sheet did not say, which is every study written
+   * before groups existed and every single-chain study after.
+   */
+  const sheetRelays: Set<string> | null = (() => {
+    const g = view?.group ? study.groups.get(view.group) : undefined;
+    return g ? new Set(g.members) : null;
+  })();
+
+  /**
+   * Whether an element belongs on this sheet.
+   *
+   * Three tiers, in order, so the common case needs no scoping at all:
+   * an element's own `views` is the override and wins; otherwise the
+   * sheet's `group` decides; otherwise it is drawn.
+   *
+   * The override matters more than it looks. An incomer backs up every
+   * chain, so it is in no one group and must still appear on all their
+   * sheets -- which it does by naming none. And a phase element shown
+   * on a sequence sheet as backup is a deliberate exception to its own
+   * chain, which is exactly what an override is for.
+   */
+  const elementOnThisSheet = (
+    scoped: { views?: string[] },
+    relayId: string | undefined,
+  ): boolean => {
+    if (scoped.views && scoped.views.length > 0) return onThisSheet(scoped);
+    if (sheetRelays && relayId != null) return sheetRelays.has(relayId);
+    return true;
+  };
+
   const onThisSheet = (scoped: { views?: string[] }): boolean => {
     if (!scoped.views || scoped.views.length === 0) return true;
     /*
@@ -901,7 +934,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /* Widen the domain to hold every pickup in the study. */
   for (const element of allElements(study)) {
     /* A curve kept off this sheet must not stretch its axes either. */
-    if (!onThisSheet(element)) continue;
+    if (!elementOnThisSheet(element, element.relayId)) continue;
     for (const stage of element.stages) {
       if (stage.I_pu_A == null || !Number.isFinite(stage.I_pu_A)) continue;
       const pu = project(stage.I_pu_A, element.voltage_kV);
@@ -1834,7 +1867,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * among the elements the sheet could not place. Being on another
      * sheet is a choice the study made, not a failure to report.
      */
-    if (!onThisSheet(element)) continue;
+    if (!elementOnThisSheet(element, element.relayId)) continue;
     const blockedBefore = blockedElements.size;
     const placement = placementFor(element);
     if (placement == null) {

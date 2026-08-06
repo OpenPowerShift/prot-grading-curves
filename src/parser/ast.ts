@@ -506,6 +506,29 @@ export type DeviceKind =
   | 'fuse' | 'recloser' | 'cable' | 'transformer_damage'
   | 'motor_startup' | 'breaker';
 
+/**
+ * A protection chain: the devices in series on one path.
+ *
+ * Declared as an ordered sequence, upstream first, because the order is
+ * what will enumerate grading pairs once topology lands -- and because
+ * writing it unordered would imply the order does not matter, which on
+ * a radial feeder is the one thing that does.
+ *
+ * A group holds *devices*. Times, points and annotations name a group
+ * rather than being listed by one: they are not part of a chain, they
+ * are requirements and observations about it, and allowing both
+ * directions would need a precedence rule between two mechanisms that
+ * mean the same thing.
+ */
+export interface GroupBlock extends BaseNode {
+  type: 'group';
+  id: string;
+  name?: string;
+  description?: string;
+  /** Relay ids, upstream first. */
+  members: string[];
+}
+
 export interface DeviceBlock extends BaseNode {
   type: 'device';
   id: string;
@@ -552,6 +575,16 @@ export interface CombineBlock extends BaseNode {
 }
 
 export interface ViewBlock extends BaseNode {
+  /**
+   * The protection chain this sheet draws.
+   *
+   * Selects the relays whose elements belong here, so a study says once
+   * which relays are on a path instead of every element listing every
+   * sheet it appears on. An element's own `views` still wins, for the
+   * exceptions -- an incomer's phase element shown on a sequence sheet
+   * as backup is a real one.
+   */
+  group?: string;
   /**
    * How the study refers to this sheet -- what a `views` list matches.
    *
@@ -948,6 +981,7 @@ export type TopLevel =
   | RelayBlock
   | ElementBlock        // standalone element block (also inside relay.member)
   | DeviceBlock
+  | GroupBlock
   | GradeBlock
   | AnnotateBlock
   | CombineBlock

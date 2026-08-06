@@ -137,6 +137,7 @@ export const KEYWORDS = new Set([
   'meta', 'system', 'faults', 'times', 'scenario', 'level', 'sees',
   'relay', 'element', 'device', 'grade',
   'annotate', 'combine', 'view', 'views', 'page', 'notes', 'stage', 'stages', 'point',
+  'group', 'members',
   // system sub-block header
   'voltages',
   // solve / grades
@@ -640,7 +641,7 @@ class Parser {
       const t = this.peek();
       if (t.kind === 'KW'
           && ['meta','system','faults','relay','element','device',
-              'grade','annotate','combine','view','page','notes'].includes(t.image)) {
+              'grade','annotate','combine','group','view','page','notes'].includes(t.image)) {
         return;
       }
       this.pos++;
@@ -702,6 +703,7 @@ class Parser {
       case 'grade':   return this.parseGrade();
       case 'annotate':return this.parseAnnotate();
       case 'combine': return this.parseCombine();
+      case 'group':   return this.parseGroup();
       case 'view':    return this.parseView();
       case 'page':    return this.parsePage();
       case 'point':   return this.parsePoint();
@@ -1983,6 +1985,52 @@ if (kwName === 'flex_points') {
     }, '}');
   }
 
+  /**
+   * `group BESS_CHAIN { members = [R_INCOMER, R_FEEDER, R_RMU]; }`
+   *
+   * A chain, upstream first. Views select by it, so a study says once
+   * which relays are on a path instead of every element naming every
+   * sheet it appears on.
+   */
+  private parseGroup(): import('./ast.js').GroupBlock | null {
+    const head = this.peek();
+    return this.parseBlock('group', (id) => {
+      const g: import('./ast.js').GroupBlock = {
+        type: 'group', id: id ?? '', members: [], loc: this.loc(head),
+      };
+      while (!this.at('RBRACE') && !this.at('EOF')) {
+        const t = this.peek();
+        if (t.kind !== 'KW' && t.kind !== 'IDENT') { this.pos++; continue; }
+        const k = this.eat('KW') ?? this.eat('IDENT');
+        if (!k) { this.pos++; continue; }
+        this.expect('EQUALS', '=');
+        switch (k.image) {
+          case 'members':
+            g.members = this.parseNameList();
+            this.eat('SEMI');
+            break;
+          case 'name': {
+            const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+            this.eat('SEMI');
+            if (tok) g.name = unquote(tok.image);
+            break;
+          }
+          case 'description': {
+            const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+            this.eat('SEMI');
+            if (tok) g.description = unquote(tok.image);
+            break;
+          }
+          default:
+            this.noteUnknownKey('a group', k, ['members', 'name', 'description']);
+            this.parseScalarValue();
+            this.eat('SEMI');
+        }
+      }
+      return g;
+    }, '}');
+  }
+
   private parseCombine(): CombineBlock | null {
     const head = this.peek();
     return this.parseBlock('combine', () => {
@@ -2059,8 +2107,16 @@ if (kwName === 'flex_points') {
      * read so existing studies parse and can be told what to write
      * instead; `validateIdentifiers` is what refuses it.
      */
+    /*
+     * A keyword-shaped id is still an id. `V` and `I` are field names
+     * elsewhere, so they lex as keywords, and refusing them here would
+     * make a sheet called `V` a parse error for no reason a reader
+     * could see. Every other declaring block already accepts them.
+     */
     const nameTok = this.at('STRING') ? this.eat('STRING')
-      : (this.at('IDENT') ? this.eat('IDENT') : null);
+      : (this.at('IDENT') ? this.eat('IDENT')
+        : (this.at('KW') && this.tokens[this.pos + 1]?.kind === 'LBRACE'
+          ? this.eat('KW') : null));
 
     if (!this.eat('LBRACE')) {
       this.errors.push({
@@ -2113,6 +2169,8 @@ if (kwName === 'flex_points') {
               if (q) v.quantity = q as import('./ast.js').AxisQuantityKeyword;
             }
             break;
+          case 'group':
+            v.group = this.parseStringOrIdent(); this.eat('SEMI'); break;
           case 'condition':
             {
               const c = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');

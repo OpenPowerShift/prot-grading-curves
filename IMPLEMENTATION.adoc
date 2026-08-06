@@ -269,6 +269,33 @@ The cost, stated honestly: two legal homes for a `time` means a reader
 looking for one has two places to look, and promoting a nested time to
 top level is a copy-paste rather than a rename.
 
+=== Ranges and sequence components (open)
+
+`I_min` / `I_max` on a `fault` are declared in *phase* amps and
+converted by the fault's `type`, so one range sweeps correctly on a
+phase sheet, an `I2` sheet or a `3I2` one. A `two_phase` fault ranged
+1.2-3 kA is checked at 693-1732 A on an `I2` axis, which is the
+sequence-ratio table earning its keep. Nothing per-component has to be
+written and nothing can drift.
+
+Two gaps follow from that, both worth closing:
+
+. *A range cannot be declared in a component.* There is no `I2_min` /
+  `I2_max`, so a study that knows its negative-sequence range but not
+  the phase equivalent has to back-calculate. Worse, writing them is
+  not refused clearly: the keys are ignored and the study then fails
+  with `FAULT_CURRENT_INVALID` about the missing `I_A`, which names
+  neither the mistake nor the remedy.
+
+. *A `scenario` has no range at all.* A level takes `I`, `I1`, `I2`,
+  `I0` and `residual` and nothing else, so a condition declared per
+  level is a single operating point and gets no range check. A study
+  written entirely in scenarios -- which is what an unbalanced fault
+  behind a delta forces, and what sample 18 is -- therefore grades at
+  one current per condition with no sweep between a minimum and a
+  maximum. That is a real hole in the middle of the feature that
+  `scenario` exists to serve.
+
 === Diagnostics this needs
 
 Each of these is currently silent.

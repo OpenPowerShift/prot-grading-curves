@@ -148,6 +148,165 @@ include::impl/sections/risks.adoc[]
 include::impl/sections/open-questions.adoc[]
 
 
+[[identity-and-scope]]
+== Plan: identity, scoping and composition (0.3.0, breaking)
+
+Agreed 2026-08-06, from a real six-sheet study (Bellambi Heights BESS,
+five relays, two protection chains) that made three problems visible at
+once. Breaking, and migrated rather than softened -- 62 of the 104
+declared ids in the shipped examples contain a space, so there is no
+version of this that is quietly compatible.
+
+=== The three problems
+
+*Identity is spelt five different ways.* A `relay` has a bare-identifier
+id and a `name`; a `view` has a quoted id and a `name`; a `point` has a
+quoted id and a `label`; a `fault` and a `scenario` have a quoted id and
+no display key at all; `times` has a quoted id, no display key, and no
+way to say anything but the id; an `annotate` has no id whatsoever.
+
+The consequence is visible in the study that prompted this. Because
+`times` has nowhere to put display text, the author put line breaks
+*inside identifiers*:
+
+  "33 kV bus primary \nclearance" { t = 200 ms; ... }
+
+A handle you cannot retype is not a handle. It also cannot be referenced
+by the scoping work below.
+
+*Scoping exists and cannot be found.* `views = [...]` already works
+uniformly -- elements, times, faults, points and annotations all pass
+through `onThisSheet`. But it matches the view's `name` rather than its
+id, an unknown name is silently ignored, and `view`/`views` is the only
+declared-name key with no completions. The author wrote three TODOs
+asking for a feature that shipped.
+
+*Membership is enumerated where it should be derived.* Every
+`views = [...]` in that study says "this relay is in the BESS chain" or
+"...the auxiliary chain". The incomer's phase element lists six sheets
+because it is on all of them. Inverting the direction -- views listing
+their curves -- transposes the same table without shrinking it. The
+relation is (chain x quantity), and the quantity half is already
+derivable, which is why nobody has to list the 46 elements separately
+from the phase ones.
+
+=== Identity: id, name, description
+
+Three tiers, identical on every declarable block, because they answer
+three different questions.
+
+`id`:: How do I refer to this? A *bare identifier*. Never displayed.
+`name`:: What does the reader see? Free text, line breaks welcome.
+  Defaults to the id.
+`description`:: What does it mean? Prose for the legend and notes.
+
+Bare rather than quoted so that an id *cannot* contain a space or a
+newline. Discouraging that was not enough; the study proves it.
+
+Changes: ids become bare on `fault`, `scenario`, `view`, `point`,
+`device` and `times` entries; `name` is added to `times`, `fault` and
+`scenario`; `label` becomes an alias of `name` on `point` and
+`annotate`, warned; `annotate` gains an optional id so it can be
+referenced. `title` and `subtitle` stay view-only -- a sheet heading is
+a third thing, not a display name.
+
+A quoted id at a declaration site is an error that quotes the
+identifier to write instead, so the migration is discoverable from the
+tool and not only from the release notes.
+
+=== Scoping: derive, then declare, then override
+
+One mechanism in three tiers, applied in order and stated normatively
+so it cannot drift.
+
+. *Derived.* Quantity is never written for scoping: it is read from how
+  the thing is declared. A time anchored `at_I2` belongs on
+  negative-sequence sheets; a point declaring `I0` belongs on
+  zero-sequence sheets; an annotation naming two elements belongs
+  wherever *both* are drawn.
+. *Declared* -- `group = ...`. The one thing that cannot be derived
+  without topology: which chain a free-floating time, point or span
+  belongs to.
+. *Override* -- `views = [...]`. The escape hatch, winning over both,
+  for genuine exceptions such as a phase element appearing on an `I2`
+  sheet as backup.
+
+Absent everything means every sheet, so nothing already written changes
+meaning.
+
+=== Groups contain devices; everything else names a group
+
+A group is an *ordered* set of devices -- that is what a protection
+chain is, and the order is what will enumerate grading pairs when
+topology lands. A time is not part of a chain; it is a requirement
+about one.
+
+So membership flows one way. A group lists devices. Times, points and
+annotations *name* a group and are never listed by one. Allowing both
+directions is exactly the dual reference this design exists to avoid,
+and it would require inventing a precedence rule between two mechanisms
+that mean the same thing.
+
+=== A single sheet: write it there
+
+For something that belongs to exactly one sheet, a reference is a name
+kept in sync for no reason. `times`, `point` and `annotate` may be
+declared *inside* a `view`, where dual referencing is impossible by
+construction and there is no name to spell or rename.
+
+Elements may not. A relay element is a real setting in a real device --
+it exists whether or not it is drawn, and nesting it would put one
+relay's settings in three places. The rule is worth stating in the spec
+because it explains the asymmetry: *things that exist in the world are
+declared where they live; things that exist only to be drawn may be
+declared on the drawing.*
+
+A nested item may not carry `group` or `views`. It is already scoped by
+where it sits, and writing both is an error rather than a precedence
+puzzle.
+
+The cost, stated honestly: two legal homes for a `time` means a reader
+looking for one has two places to look, and promoting a nested time to
+top level is a copy-paste rather than a rename.
+
+=== Diagnostics this needs
+
+Each of these is currently silent.
+
+. A `views` entry naming no declared view.
+. An annotation whose endpoints are drawn on no common sheet.
+. A `group` and a `views` on the same item -- the override wins, and
+  the other is dead text.
+. A quoted id at a declaration site, with the identifier to use.
+. An id that would collide after migration.
+
+=== Documentation
+
+`docs/guide.adoc` keeps its budget and its job: get a sheet drawn,
+read the diagnostics. It is at 64,015 of 64,000 bytes and has turned
+away three additions in two days, which is the constraint working --
+the test's reasoning is that the guide stays a digest rather than a
+second copy of the spec.
+
+Composition is not digest material. A new `docs/advanced.adoc` takes
+identity and references, scoping and precedence, groups and chains,
+what may nest and why, multi-sheet studies, and the SVG layer contract
+that is currently spec-only. It needs the same discipline or it becomes
+a dumping ground: its own size budget, every code block parsed by the
+suite, and one worked example per case.
+
+=== Migration
+
+Deterministic and lossless, so a script does the whole corpus:
+
+  faults { "Bus fault" { ... } }   ->  faults { BUS_FAULT { name = "Bus fault"; ... } }
+  grade  { fault = "Bus fault"; }  ->  grade  { fault = BUS_FAULT; }
+
+Prose becomes a `name`, so nothing a reader sees changes -- which the
+visual baseline proves sheet by sheet. Collisions after normalisation
+are reported rather than resolved. Shipped as `--migrate` on the CLI,
+following `scripts/migrate-ptc.mjs`.
+
 [[current-state]]
 == Current state and outstanding work
 

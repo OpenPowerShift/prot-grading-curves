@@ -205,6 +205,24 @@ export class TcViewer extends LitElement {
   @state() private measuredW = 1500;
   @state() private measuredH = 1000;
 
+  /**
+   * How large the drawing is shown, independent of the axes.
+   *
+   * The plot used to be laid out to the pane and stretched to fill it,
+   * so on a phone a 640 px sheet was squeezed into 390 and every
+   * label rendered at 61% -- 11 px legend text arriving as under seven
+   * physical pixels. Pinch made it no better: it zooms the *domain*,
+   * re-laying the sheet out at the same size over a narrower range, so
+   * no gesture existed that made the drawing bigger.
+   *
+   * This is that gesture. It scales the rendered sheet and lets the
+   * pane scroll, the way any document viewer behaves, and leaves the
+   * axes alone.
+   */
+  @state() private displayScale = 1;
+
+  /** True once the reader has set a scale, so `fit` stops overriding. */
+
   @query('div.pane-host') private paneEl?: HTMLDivElement;
   /** Cached reference to the rendered SVG element so we can pull the
    * embedded <desc data-plot="..."> from it and inject the crosshair
@@ -245,8 +263,24 @@ export class TcViewer extends LitElement {
       flex: 1 1 0;
       min-height: 0;
       width: 100%;
-      overflow: hidden;
+      /*
+       * Scrolls rather than clipping, because the drawing may now be
+       * larger than the pane -- which on a phone it always is, and
+       * which is the point: a sheet shown at a readable size and
+       * panned is worth more than one shrunk to fit and unreadable.
+       */
+      overflow: auto;
       position: relative;
+      overscroll-behavior: contain;
+    }
+    /*
+     * The drawing at its chosen size. The SVG fills this box, so the
+     * scale is applied once here rather than being threaded through
+     * every coordinate the renderer emits.
+     */
+    .sheet {
+      position: relative;
+      flex: none;
     }
     .toolbar {
       display: flex;
@@ -290,19 +324,53 @@ export class TcViewer extends LitElement {
    * available vertical height. ResizeObserver eats host size changes
    * (sidebar collapse, window resize). */
   private ro?: ResizeObserver;
-  firstUpdated(): void {
+
+  /**
+   * Attach the observer the first time the pane exists.
+   *
+   * This used to be `firstUpdated`, which runs while the viewer is
+   * still showing its empty state -- there is no pane yet, the guard
+   * returned, and nothing ever tried again. The observer was
+   * therefore *never* attached, and every sheet was laid out at the
+   * hardcoded 1500x1000 default whatever size the pane actually was.
+   * Running on each update instead means it attaches on the update
+   * that first draws a plot.
+   */
+  protected updated(): void {
+    this.observePane();
+  }
+
+  private observePane(): void {
+    if (this.ro) return;
     const host = this.paneEl;
     if (!host || typeof ResizeObserver === 'undefined') return;
     this.ro = new ResizeObserver((entries) => {
       const r = entries[0]?.contentRect;
       if (!r) return;
-      const w = Math.max(640, Math.floor(r.width));
-      const h = Math.max(400, Math.floor(r.height - 4));
+      /*
+       * A floor the layout can actually use.
+       *
+       * 640 was too small to *compose*, never mind to read: a legend
+       * column is 330 px, so a 640 px sheet gave the plot itself under
+       * 250. The sheet is drawn at a size a sheet needs and the pane
+       * scrolls, rather than the drawing being folded to fit a phone.
+       */
+      const w = Math.max(960, Math.floor(r.width));
+      const h = Math.max(620, Math.floor(r.height - 4));
       if (w !== this.measuredW || h !== this.measuredH) {
         this.measuredW = w;
         this.measuredH = h;
         this.measured = true;
       }
+      /*
+       * A narrow pane deliberately does *not* fit the sheet to it.
+       *
+       * Auto-fitting is what the old layout did in effect, and it is
+       * the complaint: on a 390px screen the whole sheet fits at 0.3,
+       * where 11px legend text renders at 3px and the drawing is a
+       * smudge. Full size and scrolled is legible; `Fit` is one tap
+       * away for a reader who wants the overview instead.
+       */
     });
     this.ro.observe(host);
     this.measured = true;
@@ -766,6 +834,17 @@ export class TcViewer extends LitElement {
     startCentre: number;
     /** Distance between two touches at the start; 0 for one finger. */
     startSpread: number;
+    /*
+     * The same gesture in the *screen's* coordinates, and where the
+     * pane was scrolled to. A drag on a drawing larger than the pane
+     * moves the paper rather than the axes, and that is a scroll --
+     * measured in the pixels the finger actually travelled, not in
+     * decades.
+     */
+    startClientX: number;
+    startClientY: number;
+    startScrollLeft: number;
+    startScrollTop: number;
   } | null = null;
 
   /** Touch positions in the SVG's own pixel space. */
@@ -781,6 +860,37 @@ export class TcViewer extends LitElement {
     const a = toSvg(ev.touches[0].clientX);
     const b = toSvg(ev.touches[1].clientX);
     return { centre: (a + b) / 2, spread: Math.abs(a - b) };
+  }
+
+  /**
+   * Show the drawing larger or smaller.
+   *
+   * Clamped to a range where the sheet is still a sheet: below about a
+   * third the labels are gone, and above four times a phone is looking
+   * at one curve through a keyhole.
+   */
+  setDisplayScale(scale: number): void {
+    const next = Math.min(4, Math.max(0.3, scale));
+    if (Math.abs(next - this.displayScale) < 0.001) return;
+    this.displayScale = next;
+  }
+
+  zoomDisplayBy(factor: number): void {
+    this.setDisplayScale(this.displayScale * factor);
+  }
+
+  /** Scale the drawing so the whole sheet is visible at once. */
+  fitDisplay(): void {
+    const host = this.paneEl;
+    if (!host) return;
+    const w = host.clientWidth / Math.max(1, this.measuredW);
+    const h = host.clientHeight / Math.max(1, this.measuredH);
+    this.setDisplayScale(Math.min(w, h));
+  }
+
+  /** Back to one drawn pixel per CSS pixel. */
+  actualSize(): void {
+    this.setDisplayScale(1);
   }
 
   private handleTouchStart(ev: TouchEvent): void {
@@ -802,6 +912,10 @@ export class TcViewer extends LitElement {
       xMax: proj.scale.xMax,
       startCentre: geo.centre,
       startSpread: geo.spread,
+      startClientX: ev.touches[0].clientX,
+      startClientY: ev.touches[0].clientY,
+      startScrollLeft: this.paneEl?.scrollLeft ?? 0,
+      startScrollTop: this.paneEl?.scrollTop ?? 0,
     };
   }
 
@@ -825,17 +939,40 @@ export class TcViewer extends LitElement {
     let hi = logHi;
     if (start.startSpread > 10 && geo.spread > 10) {
       /*
-       * Anchored where the fingers went down, exactly as the wheel
-       * anchors on the pointer: the current under the pinch stays put
-       * while the decades around it spread or close.
+       * Two fingers make the drawing bigger, not the axes narrower.
+       *
+       * This used to zoom the domain, the way the wheel does. On a
+       * desktop that is the analysis gesture and it stays on the
+       * wheel; on a phone a pinch means "let me see that" -- and since
+       * the domain zoom re-lays the sheet out at the same size, it was
+       * the one gesture that could never answer the one question a
+       * small screen asks.
+       *
+       * The pan below still moves the domain, so a finger drag reads
+       * the sheet the way it always did.
        */
-      const frac = Math.min(1, Math.max(0,
-        (start.startCentre - start.xMin) / Math.max(1, start.xMax - start.xMin)));
-      const anchor = logLo + frac * (logHi - logLo);
+      this.setDisplayScale(this.displayScale * (geo.spread / start.startSpread));
+      this.touch = { ...start, startSpread: geo.spread };
+      return;
+    }
 
-      const k = start.startSpread / geo.spread;
-      lo = anchor - (anchor - logLo) * k;
-      hi = anchor + (logHi - anchor) * k;
+    /*
+     * One finger on a drawing bigger than the pane moves the paper.
+     *
+     * The domain pan below is the right gesture when the whole sheet
+     * is on screen and there is nowhere to scroll to. Once the reader
+     * has zoomed in, though, a drag means "show me the part I can't
+     * see" -- and since the pane claims touch outright
+     * (`touch-action: none`, so a pinch is ours and not the browser's
+     * page zoom), the scroll has to be driven here.
+     */
+    const host = this.paneEl;
+    const overflows = host !== undefined
+      && (host.scrollWidth > host.clientWidth + 1 || host.scrollHeight > host.clientHeight + 1);
+    if (overflows && ev.touches.length === 1) {
+      host.scrollLeft = start.startScrollLeft - (ev.touches[0].clientX - start.startClientX);
+      host.scrollTop = start.startScrollTop - (ev.touches[0].clientY - start.startClientY);
+      return;
     }
 
     /* Then the pan, from how far the centre of the gesture moved. */
@@ -879,9 +1016,16 @@ export class TcViewer extends LitElement {
     this.dispatchEvent(new CustomEvent('tc-open-guide', { bubbles: true, composed: true }));
   }
 
+  /**
+   * Put the sheet back as the study declared it.
+   *
+   * Both zooms, because "reset" from a reader who has pinched their
+   * way into a corner has to be one button.
+   */
   resetZoom(): void {
     this.currentMin = null;
     this.currentMax = null;
+    this.displayScale = 1;
   }
 
   /**
@@ -1203,7 +1347,9 @@ render() {
             <dt>Hover</dt><dd>snap to the nearest curve, fault rule, or point (${SNAP_RADIUS_PX} px) and read I / t</dd>
             <dt>Wheel</dt><dd>zoom the current axis about the pointer</dd>
             <dt>Middle-drag</dt><dd>pan the current axis</dd>
-            <dt>Reset</dt><dd>return to the view block's bounds</dd>
+            <dt>&minus; / +</dt><dd>show the drawing larger or smaller &mdash; the axes do not change</dd>
+            <dt>Pinch</dt><dd>the same, by touch; one finger then moves the paper</dd>
+            <dt>Reset</dt><dd>return to the view block's bounds, at actual size</dd>
           </dl>
           <button class="help-guide"
                   title="Open the language specification"
@@ -1220,17 +1366,26 @@ render() {
            @touchmove=${(e: TouchEvent) => this.handleTouchMove(e)}
            @touchend=${() => this.handleTouchEnd()}
            @touchcancel=${() => this.handleTouchEnd()}>
-        ${unsafeHTML(this.renderWithOverlay(svg))}
-        ${this.renderFailure !== null ? html`
-          <div class="plot-stale" role="alert">
-            <strong>This plot could not be redrawn.</strong>
-            ${this.lastGoodSvg
-              ? html`<span>You are looking at the last sheet that drew, which is
-                     <em>not</em> the study now in the editor.</span>`
-              : html`<span>Nothing has drawn yet.</span>`}
-            <code>${this.renderFailure}</code>
-          </div>` : null}
+        <div class="sheet"
+             style=${`width:${Math.round(this.measuredW * this.displayScale)}px;`
+               + `height:${Math.round(this.measuredH * this.displayScale)}px;`}>
+          ${unsafeHTML(this.renderWithOverlay(svg))}
+        </div>
       </div>
+      <!--
+        Outside the pane, not inside it. The pane scrolls now, and a
+        warning that the drawing is not the study would scroll off the
+        edge of the one drawing it is warning about.
+      -->
+      ${this.renderFailure !== null ? html`
+        <div class="plot-stale" role="alert">
+          <strong>This plot could not be redrawn.</strong>
+          ${this.lastGoodSvg
+            ? html`<span>You are looking at the last sheet that drew, which is
+                   <em>not</em> the study now in the editor.</span>`
+            : html`<span>Nothing has drawn yet.</span>`}
+          <code>${this.renderFailure}</code>
+        </div>` : null}
     `;
   }
 

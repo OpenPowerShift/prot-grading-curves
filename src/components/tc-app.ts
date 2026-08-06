@@ -1180,6 +1180,25 @@ export class TcApp extends LitElement {
                        ${this.showReport ? 'Hide' : 'Show'} report ${this.gradeVerdict()}
                      </button>`
               : null}
+            <!--
+              Two different zooms, kept apart on purpose. "Reset view"
+              is about the *axes* -- which currents and times the sheet
+              covers. These are about how large the drawing is shown,
+              which is what a reader on a small screen actually wants,
+              and what no gesture used to offer.
+            -->
+            <span class="zoom-group">
+              <button class="side-btn" title="Show the drawing smaller"
+                      aria-label="Zoom out"
+                      @click=${() => this.viewer()?.zoomDisplayBy(1 / 1.25)}>&minus;</button>
+              <button class="side-btn" title="Fit the whole sheet in the pane"
+                      @click=${() => this.viewer()?.fitDisplay()}>Fit</button>
+              <button class="side-btn" title="Show the drawing at its full size"
+                      @click=${() => this.viewer()?.actualSize()}>1:1</button>
+              <button class="side-btn" title="Show the drawing larger"
+                      aria-label="Zoom in"
+                      @click=${() => this.viewer()?.zoomDisplayBy(1.25)}>+</button>
+            </span>
             <button class="side-btn" title="Reset the plot zoom to the view block's bounds"
                     @click=${() => this.viewer()?.resetZoom()}>Reset view</button>
             <button class="side-btn" title="Copy the plot to the clipboard as a PNG"

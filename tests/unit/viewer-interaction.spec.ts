@@ -198,6 +198,100 @@ describe('touch', () => {
     await el.updateComplete;
     expect(el.innerHTML).toContain('<svg');
   });
+
+  it('spreads two fingers to make the drawing larger', async () => {
+    /*
+     * This used to zoom the *domain*, the way the wheel does -- which
+     * re-lays the sheet out at the same size, so the one gesture a
+     * phone has for "let me see that" was the one gesture that could
+     * not answer it. Fingers apart now means bigger.
+     */
+    const el = await mount();
+    call(el, 'handleTouchStart', touches([[600, 400], [800, 400]]));
+    call(el, 'handleTouchMove', touches([[500, 400], [900, 400]]));
+    call(el, 'handleTouchEnd');
+    expect(peek<number>(el, 'displayScale')).toBeCloseTo(2, 2);
+  });
+
+  it('pinches them together to make it smaller', async () => {
+    const el = await mount();
+    call(el, 'handleTouchStart', touches([[500, 400], [900, 400]]));
+    call(el, 'handleTouchMove', touches([[600, 400], [800, 400]]));
+    call(el, 'handleTouchEnd');
+    expect(peek<number>(el, 'displayScale')).toBeCloseTo(0.5, 2);
+  });
+
+  it('leaves the axes alone while it does', async () => {
+    /*
+     * The two zooms stay separate: the wheel reads the sheet, the
+     * pinch reads the *drawing*. A reader who has zoomed in to see a
+     * label has not asked for a different set of decades.
+     */
+    const el = await mount();
+    const before = [peek<number | null>(el, 'currentMin'), peek<number | null>(el, 'currentMax')];
+    call(el, 'handleTouchStart', touches([[600, 400], [800, 400]]));
+    call(el, 'handleTouchMove', touches([[500, 400], [900, 400]]));
+    call(el, 'handleTouchEnd');
+    expect([peek<number | null>(el, 'currentMin'), peek<number | null>(el, 'currentMax')])
+      .toEqual(before);
+  });
+});
+
+describe('showing the drawing larger', () => {
+  it('steps up and down', async () => {
+    const el = await mount();
+    call(el, 'zoomDisplayBy', 1.25);
+    expect(peek<number>(el, 'displayScale')).toBeCloseTo(1.25, 3);
+    call(el, 'zoomDisplayBy', 1 / 1.25);
+    expect(peek<number>(el, 'displayScale')).toBeCloseTo(1, 3);
+  });
+
+  it('stops at a scale where the sheet is still a sheet', async () => {
+    /*
+     * Below about a third the labels have gone and above four times a
+     * phone is looking at one curve through a keyhole. Both ends are
+     * places a reader can get stuck, so neither is reachable.
+     */
+    const el = await mount();
+    for (let i = 0; i < 20; i += 1) call(el, 'zoomDisplayBy', 2);
+    expect(peek<number>(el, 'displayScale')).toBe(4);
+    for (let i = 0; i < 20; i += 1) call(el, 'zoomDisplayBy', 0.5);
+    expect(peek<number>(el, 'displayScale')).toBe(0.3);
+  });
+
+  it('sizes the drawing rather than the axes', async () => {
+    /*
+     * The whole point. The sheet is laid out at a readable size and
+     * the pane scrolls it; it is not squeezed into whatever width the
+     * screen has, which is what made 11px legend text render at 6.7px
+     * on a phone.
+     */
+    const el = await mount();
+    call(el, 'zoomDisplayBy', 2);
+    await el.updateComplete;
+    const box = el.querySelector<HTMLElement>('.sheet');
+    expect(box, 'the drawing should sit in a sized box').not.toBeNull();
+    const w = Number.parseFloat(box!.style.width);
+    expect(w).toBeCloseTo(peek<number>(el, 'measuredW') * 2, 0);
+  });
+
+  it('goes back to actual size on demand', async () => {
+    const el = await mount();
+    call(el, 'zoomDisplayBy', 2);
+    call(el, 'actualSize');
+    expect(peek<number>(el, 'displayScale')).toBe(1);
+  });
+
+  it('is put back by resetting the view', async () => {
+    /*
+     * A reader who has pinched their way into a corner should not have
+     * to find two separate controls to get out of it.
+     */
+    const el = await mount();
+    call(el, 'zoomDisplayBy', 3);
+    call(el, 'resetZoom');
+    expect(peek<number>(el, 'displayScale')).toBe(1);
+  });
 });
 
 describe('resetting the view', () => {

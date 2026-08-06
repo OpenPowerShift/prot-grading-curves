@@ -482,8 +482,29 @@ tc-viewer .pane-host {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  overflow: hidden;
+  /*
+   * Scrolls rather than clips, because the drawing may be larger than
+   * the pane -- on a phone it always is. A sheet drawn at a size a
+   * sheet needs and scrolled is worth more than one folded down to
+   * fit and unreadable: at 390px the 960px layout came out at 61%,
+   * which renders 11px legend text at under 7px.
+   */
+  overflow: auto;
+  overscroll-behavior: contain;
   position: relative;
+}
+
+/*
+ * The drawing at its chosen size.
+ *
+ * The SVG fills this box, so the display scale is applied once here
+ * rather than being threaded through every coordinate the renderer
+ * emits -- and the axes keep meaning what they say, because nothing
+ * about the drawing itself has changed.
+ */
+tc-viewer .sheet {
+  position: relative;
+  flex: none;
 }
 
 /* Middle-drag panning: grabbing cursor and no text selection. */
@@ -805,4 +826,26 @@ tc-viewer .plot-stale code {
   opacity: 0.8;
   font-size: 11px;
   word-break: break-word;
+}
+
+
+/*
+ * The display-zoom cluster.
+ *
+ * Grouped so it reads as one control rather than four buttons that
+ * happen to be adjacent, and given touch-sized hit targets because the
+ * screen where it matters most is the one with fingers on it.
+ */
+tc-app .zoom-group {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+tc-app .zoom-group .side-btn {
+  min-width: 34px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+@media (max-width: 860px) {
+  tc-app .zoom-group .side-btn { min-width: 40px; min-height: 40px; }
 }

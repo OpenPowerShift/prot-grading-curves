@@ -612,6 +612,16 @@ breaks. They want one decision: implement, or delete the claim.
 . *The report panel opens above the whole application*, unstyled,
   shrinking the plot it describes.
 
+. *All three components carry a `static styles` block that is never
+  applied.* They render into the light DOM (`createRenderRoot` returns
+  `this`), and Lit adopts `static styles` only into a shadow root --
+  so around 200 lines in `tc-viewer`, and more in `tc-editor` and
+  `tc-app`, are dead. The live rules are `src/styles/global.css`, which
+  largely duplicates them. It reads as the place to edit and silently
+  is not: two rules were added there during the mobile work and had no
+  effect. Either delete the blocks or move the sheet into them, but the
+  present state is a trap.
+
 . *PNG/PDF export can abort the process* on at least one valid study
   via a native resvg panic; the reviewer preserved a repro but did not
   isolate the trigger. Worth running the rasteriser out of process so a
@@ -626,6 +636,28 @@ breaks. They want one decision: implement, or delete the claim.
   overflows -- the substitution is strictly narrower -- just loose.
 
 === Closed 2026-08-06
+
+* *The plot pane was never measured.* `firstUpdated` attached the
+  `ResizeObserver` to `div.pane-host`, which does not exist on that
+  update -- the viewer is still showing its empty state -- so the guard
+  returned and nothing ever tried again. Every sheet in the playground
+  was therefore laid out at the hardcoded 1500x1000 default whatever
+  size the pane actually was, and no amount of resizing changed it.
+  Attaching from `updated` instead means it binds on the update that
+  first draws a plot. Confirmed in the browser: `ro` was `undefined`
+  before, and the sheet now tracks the pane.
+
+* *The drawing could not be made larger.* The sheet was CSS-sized to
+  `100%` of the pane, so a narrow screen squeezed a 960px layout into
+  390 -- 61%, which renders 11px legend text at under 7px -- and the
+  only zoom gesture there was moved the *axes*, re-laying the sheet out
+  at the same size. So no gesture existed that made the text bigger.
+  The pane now scrolls a full-size drawing, `displayScale` sizes it,
+  the toolbar carries -- / Fit / 1:1 / +, and a touch pinch drives the
+  scale while one finger moves the paper. Auto-fitting a narrow pane
+  was tried and dropped: it reproduces the complaint exactly, clamping
+  a phone to 0.3 where the drawing is a smudge. `Fit` is one tap away
+  for a reader who wants the overview.
 
 * *A stage reference in `grade` was ignored and the composite graded.*
   `resolveRef` dropped `stageId`; only the renderer honoured it, so the

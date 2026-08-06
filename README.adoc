@@ -133,7 +133,7 @@ npm run lint       # eslint
 
 === Documentation
 
-Three documents, deliberately separate:
+Four documents, deliberately separate:
 
 `docs/tutorial.adoc`:: The *tutorial*. A walkthrough that starts with a
 single curve and adds one idea at a time -- a second relay, a fault to
@@ -147,10 +147,20 @@ before.
 `docs/guide.adoc`:: The *user guide*. Example-led, about writing
 studies, and a single self-contained file -- so it can be read
 straight through, or handed whole to a language model asked to produce
-a `.ptc` study. The playground's *Guide* button opens both,
-converted by Asciidoctor at build time (`scripts/guide-plugin.js`),
-with a contents list and a filter; a *Tutorial* / *Reference* switch in
-the header picks between them, and the tutorial is what opens first.
+a `.ptc` study. It is held to a size budget for that reason: it stays a
+digest of the spec rather than a second copy of it.
+
+`docs/advanced.adoc`:: The *advanced guide*. What changes when a study
+stops being one sheet -- naming (handle, caption, prose), what appears
+on which sheet, protection chains, declaring a mark inside a view, and
+the rendered sheet as a document. Everything in it is drawn from
+`examples/18-bess-two-chains.ptc`, a two-chain study with four sheets.
+Read it when the guide's answers start being "it depends which sheet".
+
+The playground's *Guide* button opens all three, converted by
+Asciidoctor at build time (`scripts/guide-plugin.js`), with a contents
+list and a filter; a *Tutorial* / *Reference* / *Advanced* switch in the
+header picks between them, and the tutorial is what opens first.
 
 `spec/spec.adoc`:: The *normative specification*, assembled from
 `spec/sections/`. Grammar productions, curve constant tables,

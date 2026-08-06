@@ -32,4 +32,14 @@ declare module 'virtual:tc-guide' {
    * reader can start with whichever suits them.
    */
   export const tutorial: Guide;
+
+  /**
+   * The advanced guide -- `docs/advanced.adoc`.
+   *
+   * What changes when a study stops being one sheet: naming, scoping,
+   * chains, and the sheet as a document. Kept apart from the guide
+   * because the guide is a digest small enough to hand to a reader
+   * whole, and composition is not what a first study needs.
+   */
+  export const advanced: Guide;
 }

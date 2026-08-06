@@ -1,0 +1,363 @@
+= tc-curves: composing a large study
+:toc: left
+:toclevels: 2
+:icons: font
+:source-highlighter: highlight.js
+
+The user guide gets a sheet drawn. This one is about what changes when
+a study stops being one sheet.
+
+A real coordination study is several drawings of one network: phase and
+earth, each chain of relays, each condition worth checking. The
+settings are declared once and appear on many sheets, and the question
+that decides whether the study stays readable is *which things belong
+where*.
+
+Everything here is drawn from `examples/18-bess-two-chains.ptc` — a 33 kV
+collector with a battery system on one feeder and the site auxiliary
+supply on another. Five relays, four sheets, two independent chains.
+
+== Naming: a handle, a caption, and prose
+
+Every declared thing has three tiers, and they answer three different
+questions.
+
+[cols="1,3", options="header"]
+|===
+| | Answers
+
+| The *id* | How do I refer to this? A bare identifier. Never displayed.
+| `name` | What does the reader see? Free text. Defaults to the id.
+| `description` | What does it mean? Prose for the legend and notes.
+|===
+
+[source,tc]
+----
+times {
+    T_BUS_PRIMARY {
+        name        = "33 kV bus primary\nclearance";
+        t           = 200 ms;
+        at_I        = 12.38 kA;
+        description = "Connection agreement, primary protection";
+    }
+}
+----
+
+`T_BUS_PRIMARY` is what a reference matches. The caption carries the
+line break, because a caption is typeset and a handle is typed.
+
+[NOTE]
+====
+Ids are bare identifiers so they *cannot* contain a space or a newline.
+Before the two were separated, the id had to be the caption as well —
+and studies duly grew captions with line breaks inside them, which is
+not something anyone can retype into a reference.
+====
+
+The same three tiers appear on `fault`, `scenario`, `view`, `point`,
+`device`, `relay`, `element`, `group` and `annotate`. `point` and
+`annotate` also accept `label` for `name`, which is the older spelling.
+
+== What appears on which sheet
+
+Three tiers again, applied in this order, so the common case needs no
+scoping at all.
+
+. *Derived* — worked out from what the thing already says.
+. *`group`* — the chain a sheet draws.
+. *`views`* — the override, which wins.
+
+Saying nothing means every sheet.
+
+=== Groups: the chain a sheet draws
+
+A `group` is the devices in series on one path, upstream first.
+
+[source,tc]
+----
+group BESS_CHAIN {
+    name    = "BESS transformer chain";
+    members = [R_INCOMER, R_BESS_FEEDER, R_BESS_RMU];
+}
+
+group AUX_CHAIN {
+    name    = "Auxiliary kiosk chain";
+    members = [R_INCOMER, R_AUX_FEEDER, R_AUX_RMU];
+}
+----
+
+A sheet names one:
+
+[source,tc]
+----
+view BESS_PHASE {
+    group    = BESS_CHAIN;
+    quantity = phase;
+}
+----
+
+and draws those relays and no others. `R_INCOMER` is in both groups,
+because it backs up both chains — a relay belongs to every chain it is
+on, rather than to none.
+
+This is the answer to "should sheets list their curves, or curves list
+their sheets" being **neither**. Both enumerate the same many-to-many
+relation, and inverting the direction transposes the table without
+shrinking it. What the lists actually encode is which chain a relay is
+on, which is a fact about the network, stated once.
+
+[TIP]
+====
+A group is *ordered*, upstream first, because the order is what will
+enumerate grading pairs when topology arrives. Nothing reads the order
+yet; declaring it now costs nothing and means the study does not have
+to be revisited.
+====
+
+=== Membership flows one way
+
+A group lists *devices*. Times, points, annotations and conditions
+**name** a group and are never listed by one.
+
+The reason is that they are not part of a chain — they are requirements
+and observations *about* one. Allowing both directions would mean two
+mechanisms saying the same thing, and a precedence rule between them.
+
+=== Overrides: when an element differs from its chain
+
+An element's own `views` wins over the sheet's group.
+
+[source,tc]
+----
+element 46 {
+    function  = neg_seq;
+    measures  = I2;
+    curve     = definite;
+    I_pickup  = 216 A;
+    t_delay   = 600 ms;
+    views     = [BESS_I2];
+}
+----
+
+The relay is in `BESS_CHAIN`, so the group offers it to both of that
+chain's sheets. This element belongs on only one: a negative-sequence
+element has nothing to say on a phase sheet.
+
+That is a statement about *quantity*, which is the element's business
+rather than the sheet's — no group would absorb it, and it is why the
+override exists rather than being a loose end.
+
+[NOTE]
+====
+Left unscoped it is not silently dropped: the sheet draws what it can
+and lists in its notes what it could not place. Honest, and two lines of
+noise on every phase sheet. The override says the same thing once.
+====
+
+=== Derived: what you do not have to write
+
+An annotation that names elements is drawn only where *all* of them
+are drawn.
+
+[source,tc]
+----
+annotate CTI_BESS_RMU_FEEDER {
+    primary = R_BESS_RMU:P51;
+    backup  = R_BESS_FEEDER:P51;
+    fault   = F_33_RMU_3PH_MIN;
+    label   = "RMU to feeder";
+}
+----
+
+It never says which sheet. It does not have to: it named two curves,
+and it belongs wherever both of them appear. A margin therefore cannot
+fall out of step with the chain it measures.
+
+A span between two bare figures has no endpoint to derive from, so it
+says where it goes:
+
+[source,tc]
+----
+annotate KIOSK_46_WINDOW {
+    from  = 45 A;
+    to    = 154 A;
+    at_t  = 1 s;
+    label = "kiosk 46 window";
+    views = [AUX_I2];
+}
+----
+
+[IMPORTANT]
+====
+An `at_I2` on a `times` rule does **not** scope it. The anchor says
+where along the rule to write the caption — beside the curve the
+requirement bites on — not which sheets the requirement applies to. A
+second is a second on every axis, so a clearance that belongs to some
+sheets says so with `views`.
+====
+
+== Declaring something for one sheet
+
+For a mark that belongs to exactly one sheet, a reference is a name kept
+in step for no reason. Write it inside the view:
+
+[source,tc]
+----
+view BESS_I2 {
+    quantity  = I2;
+    condition = BESS_LV_2PH_MIN;
+
+    times { T_UNBALANCED { name = "660 V backup"; t = 1 s; at_I2 = 430 A; } }
+    annotate { from = 45 A; to = 154 A; at_t = 1 s; label = "46 window"; }
+    point P_INRUSH { label = "inrush"; I2 = 300 A; t = 100 ms; }
+}
+----
+
+This means exactly what declaring them at the top level with
+`views = [BESS_I2]` means, and resolves to that. The difference is that
+there is no name to spell, no name to keep in step when the sheet is
+renamed, and being scoped somewhere else is not expressible.
+
+A nested block may not also carry `views` or `group`. It is already
+scoped by where it sits, so the second statement is dead text that looks
+load-bearing. It is an error.
+
+=== What may nest, and why not everything
+
+Only `times`, `point` and `annotate`.
+
+An `element` may not. A relay element is a real setting in a real
+device: it exists whether or not it is drawn, and nesting it would put
+one relay's settings in three places.
+
+The line is worth stating because it explains the asymmetry:
+
+[quote]
+____
+Things that exist in the world are declared where they live. Things that
+exist only to be drawn may be declared on the drawing.
+____
+
+== Conditions across a transformer
+
+An unbalanced fault behind a delta cannot be carried to the other side
+by the turns ratio, so a `scenario` states the figures at every level it
+is measured:
+
+[source,tc]
+----
+scenario BESS_LV_2PH_MIN {
+    name        = "BESS LV phase-phase minimum";
+    type        = two_phase;
+    description = "Unbalanced LV fault, seen as negative sequence at 33 kV";
+
+    level BESS_LV { I = 37.21 kA; I1 = 21.48 kA; I2 = 21.48 kA; }
+    level HV33    { I = 744 A; I1 = 430 A; I2 = 430 A; residual = 0 A; }
+}
+----
+
+The residual is written as zero rather than left out. A phase-phase
+fault behind a delta genuinely puts no zero sequence on the HV side, and
+declaring it says so; omitting it would leave the tool to derive a
+figure from the fault type.
+
+A condition may be scoped like anything else, and usually should be in a
+multi-chain study — otherwise both chains draw each other's rules:
+
+[source,tc]
+----
+scenario AUX_LV_EF_MIN {
+    views = [AUX_I2];
+    name  = "Auxiliary LV earth minimum";
+    type  = single_phase_earth;
+
+    level HV33 { I = 267 A; I1 = 154 A; I2 = 154 A; residual = 0 A; }
+}
+----
+
+=== Ranges
+
+`I_min` and `I_max` on a `fault` are declared in **phase** amps, and the
+fault's `type` converts them to whatever is being measured:
+
+[source,tc]
+----
+faults {
+    F_2PH_RANGED {
+        type  = two_phase;
+        I     = 2 kA;
+        I_min = 1.2 kA;
+        I_max = 3 kA;
+    }
+}
+----
+
+On an `I2` sheet that is checked from 693 A to 1732 A — divided by
+`sqrt(3)`, because a two-phase fault fixes the ratio. The range is
+written once and is correct on every axis.
+
+[WARNING]
+====
+A `scenario` has no range: a level is a single operating point. A study
+written entirely in scenarios — which is what an unbalanced fault behind
+a delta forces — therefore grades at one current per condition, with no
+sweep between a minimum and a maximum.
+====
+
+== The sheet as a document
+
+The rendered SVG is grouped by what things are, not merely by the order
+they were drawn:
+
+[source,xml]
+----
+<g data-layer="curves">
+    <path d="..." class="tc-curve" data-ref="R_BESS_FEEDER:P51"/>
+</g>
+----
+
+Seventeen layers: `chrome`, `frame`, `grid`, `axes`, `pickups`,
+`faults`, `bands`, `curves`, `times`, `curve-labels`, `time-labels`,
+`points`, `annotations`, `fault-band`, `legend`, `footer`, `watermark`,
+and `invalid`.
+
+Three properties a consumer may rely on:
+
+* *A phase that draws nothing emits no group*, so counting
+  `[data-layer]` reports what a sheet actually contains.
+* *A layer name may appear more than once.* `times` appears twice —
+  beneath the curves as context and over them so it stays legible.
+  Layers name the phases of the drawing; they do not reorder it.
+* *A layer may nest.* `footer` sits inside `chrome` on a framed sheet,
+  because that is where the same declaration lands there.
+
+A sheet drawn from a study with errors carries an `invalid` layer
+stamping it `NOT VALID`. Both the CLI and the playground apply that,
+because a drawing is indistinguishable from a good one the moment it is
+a file, and that file is what gets attached to an email.
+
+== Getting it out
+
+[source,bash]
+----
+tc-curves check  study.ptc --json     # diagnostics + grading, machine-readable
+tc-curves render study.ptc --view BESS_I2 --pdf
+----
+
+Exit status is `0` clean, `1` an error-severity finding, `2` usage or
+I/O failure, and `3` a valid study whose grading fails. `3` is separate
+from `1` because "fix the file" and "change the settings" are different
+jobs for whoever reads the status.
+
+`--view` takes a sheet's handle or its printed name.
+
+== A checklist for a study of this size
+
+. Declare a `group` per chain, upstream first, before writing any views.
+. Give every sheet a short handle and a printed `name`.
+. Let annotations that name curves find their own sheets.
+. Scope a condition to the sheet it is the condition for.
+. Use `views` on an element only where the *quantity* differs from its
+  chain — a 46 on a phase sheet, an incomer on a sequence sheet.
+. Write single-sheet marks inside the view.
+. Run `check --json` in CI and gate on exit `3` as well as `1`.

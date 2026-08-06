@@ -23,8 +23,8 @@ export class TcGuide extends LitElement {
 
   /** The document on screen. Tutorial first: it is where a newcomer
    * should start, and a reader who wants the reference will switch. */
-  @state() private which: 'tutorial' | 'guide' = 'tutorial';
-  @state() private docs: { tutorial: Guide; guide: Guide } | null = null;
+  @state() private which: 'tutorial' | 'guide' | 'advanced' = 'tutorial';
+  @state() private docs: { tutorial: Guide; guide: Guide; advanced: Guide } | null = null;
   @state() private failed = '';
   @state() private filter = '';
   /** Anchor of the section currently under the reader. */
@@ -305,7 +305,7 @@ export class TcGuide extends LitElement {
     if (this.docs || this.failed) return;
     try {
       const mod = await import('virtual:tc-guide');
-      this.docs = { guide: mod.default, tutorial: mod.tutorial };
+      this.docs = { guide: mod.default, tutorial: mod.tutorial, advanced: mod.advanced };
       await this.updateComplete;
       this.watchHeadings();
     } catch (error) {
@@ -320,7 +320,7 @@ export class TcGuide extends LitElement {
    * left, so both are cleared; carrying a half-typed filter across
    * would hide most of whatever the reader just asked for.
    */
-  private show(which: 'tutorial' | 'guide'): void {
+  private show(which: 'tutorial' | 'guide' | 'advanced'): void {
     if (this.which === which) return;
     this.which = which;
     this.filter = '';
@@ -388,12 +388,12 @@ export class TcGuide extends LitElement {
             ? html`<span class="rev">${this.guide.revision} · ${this.guide.revdate}</span>`
             : null}
           <div class="which" role="tablist">
-            ${(['tutorial', 'guide'] as const).map((id) => html`
+            ${(['tutorial', 'guide', 'advanced'] as const).map((id) => html`
               <button role="tab"
                       class=${this.which === id ? 'on' : ''}
                       aria-selected=${this.which === id}
                       @click=${() => this.show(id)}>
-                ${id === 'tutorial' ? 'Tutorial' : 'Reference'}
+                ${id === 'tutorial' ? 'Tutorial' : id === 'guide' ? 'Reference' : 'Advanced'}
               </button>`)}
           </div>
           <span class="spacer"></span>

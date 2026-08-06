@@ -25,6 +25,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = resolve(HERE, '..', 'docs');
 const GUIDE_FILE = join(DOCS_DIR, 'guide.adoc');
 const TUTORIAL_FILE = join(DOCS_DIR, 'tutorial.adoc');
+const ADVANCED_FILE = join(DOCS_DIR, 'advanced.adoc');
 
 const VIRTUAL_ID = 'virtual:tc-guide';
 const RESOLVED_ID = '\0' + VIRTUAL_ID;
@@ -134,12 +135,14 @@ export function guidePlugin() {
       for (const file of specFiles()) this.addWatchFile(file);
 
       try {
-        const [guide, tutorial] = await Promise.all([
+        const [guide, tutorial, advanced] = await Promise.all([
           renderGuide(),
           renderGuide(TUTORIAL_FILE, 'tc-curves tutorial'),
+          renderGuide(ADVANCED_FILE, 'tc-curves advanced guide'),
         ]);
         return `export default ${JSON.stringify(guide)};\n`
-          + `export const tutorial = ${JSON.stringify(tutorial)};`;
+          + `export const tutorial = ${JSON.stringify(tutorial)};\n`
+          + `export const advanced = ${JSON.stringify(advanced)};`;
       } catch (error) {
         /*
          * A spec that fails to convert must not take the whole app

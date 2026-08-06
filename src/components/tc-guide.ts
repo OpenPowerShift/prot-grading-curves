@@ -319,17 +319,34 @@ export class TcGuide extends LitElement {
    * belongs to this viewer.
    */
   private addCopyButtons(): void {
+    /*
+     * The element's own document, not the global one.
+     *
+     * `ensureLoaded` is asynchronous, so an update can land after the
+     * page -- or a test's DOM -- has gone away, and reaching for the
+     * global `document` then throws `document is not defined` from a
+     * promise nobody is awaiting. `ownerDocument` is `null` on a
+     * detached node, which is the same question asked in a way that
+     * has an answer.
+     *
+     * This ran green locally and failed in CI: the race resolves
+     * differently under a different Node, which is the whole character
+     * of the bug.
+     */
+    const doc = this.ownerDocument;
+    if (!doc || !this.isConnected) return;
+
     const body = this.renderRoot.querySelector('.body');
     if (!body) return;
     for (const pre of body.querySelectorAll('pre')) {
       if (pre.parentElement?.classList.contains('tc-snippet')) continue;
 
-      const wrap = document.createElement('div');
+      const wrap = doc.createElement('div');
       wrap.className = 'tc-snippet';
       pre.parentElement?.insertBefore(wrap, pre);
       wrap.append(pre);
 
-      const button = document.createElement('button');
+      const button = doc.createElement('button');
       button.className = 'tc-copy';
       button.type = 'button';
       button.textContent = 'Copy';
@@ -394,6 +411,9 @@ export class TcGuide extends LitElement {
     if (this.docs || this.failed) return;
     try {
       const mod = await import('virtual:tc-guide');
+      /* Gone from the page while the import was in flight: setting
+       * state now would schedule an update against a torn-down DOM. */
+      if (!this.isConnected) return;
       this.docs = {
         guide: mod.default,
         tutorial: mod.tutorial,

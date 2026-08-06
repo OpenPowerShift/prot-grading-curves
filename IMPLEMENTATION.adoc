@@ -614,6 +614,19 @@ Reconciled 2026-08-07: exit status `3`, `--json`, PDF pagination,
 
 === Closed 2026-08-06
 
+* *CI failed four times on a suite where every test passed.* The
+  guide's copy-button pass reached for the global `document`, and
+  `ensureLoaded` is asynchronous, so an update landed after the test
+  DOM had been torn down: `document is not defined`, thrown from a
+  promise nobody was awaiting. Vitest reports that as an unhandled
+  rejection and exits 1 with `2081 passed`. It uses `ownerDocument`
+  now and stops on `isConnected`.
+
+  The reason it survived four pushes is worth writing down: the runs
+  were checked by grepping for `Tests` and `Test Files` rather than by
+  reading the *exit code*, so a green summary line above a red error
+  block read as success. Check `$?`.
+
 * *Cross-voltage referral was ratio-only, and 15.5% low on the
   standard minimum-fault check.* [VERIFIED 2026-08-07] `faultCurrentAt`
   applied `I x V_from/V_to` for every fault shape and every connection.

@@ -155,6 +155,15 @@ export interface ScenarioShareDecl extends BaseNode {
  * what they actually see.
  */
 export interface ScenarioBlock extends BaseNode {
+  /**
+   * Sheets this condition belongs to. Absent means every sheet.
+   *
+   * A `fault` could be scoped and a `scenario` could not, so a study
+   * with two independent chains drew each chain's conditions on the
+   * other chain's sheets -- and listed the ones it could not place in
+   * the notes, on a sheet they had no business appearing on.
+   */
+  views?: string[];
   type: 'scenario';
   /** How the study refers to this condition. A bare identifier. */
   id: string;

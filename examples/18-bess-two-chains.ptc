@@ -1,0 +1,438 @@
+# Sample 18 — A real study: two protection chains, six sheets
+#
+# Every other sample is built to demonstrate one idea. This one is the
+# shape of an issued study: a 33 kV collector with a battery system on
+# one feeder and the site auxiliary supply on another, five relays, and
+# six sheets because phase and negative sequence are read separately for
+# each chain.
+#
+# It is here because a study this size is where the language's *naming*
+# and *scoping* stop being cosmetic:
+#
+#   - Every declared thing has three tiers. `BESS_FEEDER_CLEAR` is the
+#     handle a reference uses; `name` is what the sheet prints, line
+#     breaks and all; `description` is the prose in the legend. Before
+#     they were separated, the handle had to be the caption too — and a
+#     caption with a line break in it is not a handle anyone can retype.
+#
+#   - `views` keeps a curve, a rule or a mark to the sheets it means
+#     something on. Each sheet here carries three or four curves; without
+#     scoping all four would carry all nine elements, and none of them
+#     would be readable. The chains never appear on each other's sheets,
+#     which is the whole point — they are graded independently.
+#
+# The numbers are representative of a study of this kind rather than
+# transcribed from a real one.
+
+meta {
+  project = "Kestrel Rise BESS";
+  study = "33 kV protection grading";
+  reference = "KR-ELE-RPT-0108";
+  revision = "0";
+  date = "2026-08-06";
+}
+
+system {
+  voltages {
+    HV33 {
+      V = 33 kV;
+      description = "33 kV collector system";
+    }
+    BESS_LV {
+      V = 660 V;
+      description = "Inverter transformer LV terminals";
+    }
+    AUX_LV {
+      V = 400 V;
+      description = "Auxiliary transformer LV terminals";
+    }
+  }
+}
+
+# ---- Conditions, declared at every level they are measured. ----------
+#      A `scenario` rather than a `fault` because these are unbalanced
+#      faults behind a delta: the LV figures cannot be carried to the
+#      33 kV side by the turns ratio, so the study states both.
+#
+#      Each is scoped to the one sheet it is the condition for.
+#      Unscoped, every sheet draws every condition -- the auxiliary
+#      chain's rules on the BESS sheets and back again -- and lists in
+#      its notes the ones it could not place, on sheets they had no
+#      business appearing on.
+scenario BESS_LV_3PH_MIN {
+  views = [BESS_PHASE];
+  name = "BESS LV three-phase minimum";
+  type = three_phase;
+  description = "Balanced LV fault; the feeder's sensitivity case";
+
+  level BESS_LV { I = 42.97 kA; I1 = 42.97 kA; I2 = 0 A; I0 = 0 A; residual = 0 A; }
+  level HV33 { I = 860 A; I1 = 860 A; I2 = 0 A; I0 = 0 A; residual = 0 A; }
+}
+
+scenario BESS_LV_2PH_MIN {
+  views = [BESS_I2];
+  name = "BESS LV phase-phase minimum";
+  type = two_phase;
+  description = "Unbalanced LV fault, seen as negative sequence at 33 kV";
+
+  # A phase-phase fault behind a delta puts no zero sequence on the HV
+  # side at all, so the residual is stated as zero rather than left out.
+  level BESS_LV { I = 37.21 kA; I1 = 21.48 kA; I2 = 21.48 kA; }
+  level HV33 { I = 744 A; I1 = 430 A; I2 = 430 A; residual = 0 A; }
+}
+
+scenario AUX_LV_3PH_MIN {
+  views = [AUX_PHASE];
+  name = "Auxiliary LV three-phase minimum";
+  type = three_phase;
+  description = "Balanced kiosk fault; the HV relay's sensitivity case";
+
+  level AUX_LV { I = 37.63 kA; I1 = 37.63 kA; I2 = 0 A; I0 = 0 A; residual = 0 A; }
+  level HV33 { I = 455 A; I1 = 455 A; I2 = 0 A; I0 = 0 A; residual = 0 A; }
+}
+
+scenario AUX_LV_EF_MIN {
+  views = [AUX_I2];
+  name = "Auxiliary LV earth minimum";
+  type = single_phase_earth;
+  description = "LV earth fault; the 33 kV side sees negative sequence only";
+
+  level AUX_LV { I = 38.13 kA; I1 = 12.71 kA; I2 = 12.71 kA; I0 = 12.71 kA; residual = 38.13 kA; }
+  level HV33 { I = 267 A; I1 = 154 A; I2 = 154 A; residual = 0 A; }
+}
+
+faults {
+  F_33_BUS_3PH_MIN {
+    name = "33 kV bus minimum";
+    I = 12.38 kA;
+    type = three_phase;
+    voltage = HV33;
+  }
+  F_33_RMU_3PH_MIN {
+    name = "33 kV RMU minimum";
+    I = 12.09 kA;
+    type = three_phase;
+    voltage = HV33;
+  }
+}
+
+# ---- The incomer: backup for everything, so it is on every sheet. ----
+relay R_INCOMER {
+  name = "33 kV incomer";
+  maker = "Siemens";
+  model = "7SJ85";
+  voltage = HV33;
+  ct_ratio = 2500/1;
+
+  element P51 {
+    name = "Phase OC";
+    function = phase_oc;
+    measures = phase;
+    current_max = 20.82 kA;
+
+    # No `views`: this element backs up both chains, so it is offered to
+    # every sheet rather than named on each. Leaving it unscoped also
+    # means a new sheet gets it without this relay being revisited.
+    #
+    # It is drawn on the two phase sheets. On the negative-sequence
+    # sheets its 2400 A pickup is far above the plotted range, so there
+    # is nothing to draw — scoping and range are different filters, and
+    # only one of them is a decision the study made.
+    stages {
+      stage idmt { curve = iec.si; I_pickup = 2400 A; tms = 0.2; }
+      stage high { curve = definite; I_pickup = 6250 A; t_delay = 800 ms; }
+    }
+  }
+}
+
+# ---- The BESS chain. -------------------------------------------------
+relay R_BESS_FEEDER {
+  name = "33 kV BESS feeder";
+  maker = "Siemens";
+  model = "7SJ85";
+  voltage = HV33;
+  ct_ratio = 800/1;
+
+  element P51 {
+    name = "Phase OC";
+    function = phase_oc;
+    measures = phase;
+    current_max = 20.73 kA;
+    views = [BESS_PHASE, BESS_I2];
+    stages {
+      stage idmt { curve = iec.si; I_pickup = 660 A; tms = 0.17; }
+      stage high { curve = definite; I_pickup = 2640 A; t_delay = 350 ms; }
+    }
+  }
+
+  element 46 {
+    name = "Negative sequence OC";
+    function = neg_seq;
+    measures = I2;
+    curve = definite;
+    I_pickup = 216 A;
+    t_delay = 600 ms;
+    views = [BESS_I2];
+    comment = "Inrush-blocked; the transformer sheet is where it is judged";
+  }
+}
+
+relay R_BESS_RMU {
+  name = "BESS transformer RMU";
+  maker = "Ormazabal";
+  model = "ekor.rpa21";
+  voltage = HV33;
+  ct_ratio = 300/1;
+
+  element P51 {
+    name = "Phase OC";
+    function = phase_oc;
+    measures = phase;
+    current_max = 20.73 kA;
+    views = [BESS_PHASE, BESS_I2];
+    stages {
+      stage idmt { curve = iec.si; I_pickup = 90 A; tms = 0.1; }
+      stage high { curve = definite; I_pickup = 370 A; t_delay = 50 ms; }
+    }
+  }
+
+  element 46 {
+    name = "Negative sequence OC";
+    function = neg_seq;
+    measures = I2;
+    curve = definite;
+    I_pickup = 130 A;
+    t_delay = 300 ms;
+    views = [BESS_I2];
+  }
+}
+
+# ---- The auxiliary chain. --------------------------------------------
+relay R_AUX_FEEDER {
+  name = "33 kV auxiliary feeder";
+  maker = "Siemens";
+  model = "7SJ85";
+  voltage = HV33;
+  ct_ratio = 200/1;
+
+  element P51 {
+    name = "Phase OC";
+    function = phase_oc;
+    measures = phase;
+    current_max = 20.73 kA;
+    views = [AUX_PHASE, AUX_I2];
+    stages {
+      stage idmt { curve = iec.si; I_pickup = 200 A; tms = 0.25; }
+      stage high { curve = definite; I_pickup = 260 A; t_delay = 350 ms; }
+    }
+  }
+
+  element 46 {
+    name = "Negative sequence OC";
+    function = neg_seq;
+    measures = I2;
+    curve = definite;
+    I_pickup = 80 A;
+    t_delay = 600 ms;
+    views = [AUX_I2];
+  }
+}
+
+relay R_AUX_RMU {
+  name = "Auxiliary kiosk RMU";
+  maker = "Siemens";
+  model = "7SR51";
+  voltage = HV33;
+  ct_ratio = 300/1;
+
+  element P51 {
+    name = "Phase OC";
+    function = phase_oc;
+    measures = phase;
+    current_max = 20.73 kA;
+    views = [AUX_PHASE, AUX_I2];
+    stages {
+      stage idmt { curve = iec.si; I_pickup = 45 A; tms = 0.1; }
+      stage high { curve = definite; I_pickup = 120 A; t_delay = 50 ms; }
+    }
+  }
+
+  element 46 {
+    name = "Negative sequence OC";
+    function = neg_seq;
+    measures = I2;
+    curve = definite;
+    I_pickup = 45 A;
+    t_delay = 300 ms;
+    views = [AUX_I2];
+  }
+}
+
+# ---- Grading, chain by chain. ----------------------------------------
+grade {
+  primary = R_BESS_RMU:P51;
+  backup = R_BESS_FEEDER:P51;
+  fault = F_33_RMU_3PH_MIN;
+  margin = 300 ms;
+}
+
+grade {
+  primary = R_BESS_FEEDER:P51;
+  backup = R_INCOMER:P51;
+  fault = F_33_RMU_3PH_MIN;
+  margin = 300 ms;
+}
+
+grade {
+  primary = R_AUX_RMU:P51;
+  backup = R_AUX_FEEDER:P51;
+  fault = F_33_RMU_3PH_MIN;
+  margin = 300 ms;
+}
+
+grade {
+  primary = R_AUX_FEEDER:P51;
+  backup = R_INCOMER:P51;
+  fault = F_33_RMU_3PH_MIN;
+  margin = 300 ms;
+}
+
+# ---- Required clearance times. ---------------------------------------
+#      The handle is what a `views` list matches; `name` is what the
+#      sheet prints, and is where the line break belongs.
+times {
+  T_BUS_PRIMARY {
+    name = "33 kV bus primary\nclearance";
+    t = 200 ms;
+    at_I = 12.38 kA;
+    description = "Connection agreement, primary protection";
+    views = [BESS_PHASE, AUX_PHASE];
+  }
+
+  T_FEEDER_BACKUP {
+    name = "33 kV feeder backup\nclearance";
+    t = 750 ms;
+    at_I = 12.09 kA;
+    description = "Connection agreement, backup protection";
+    views = [BESS_PHASE, AUX_PHASE];
+  }
+
+  # Anchored in negative sequence, so it means nothing on a phase sheet
+  # and is scoped to the two it belongs on.
+  T_UNBALANCED_BACKUP {
+    name = "660 V unbalanced\nbackup clearance";
+    t = 1 s;
+    at_I2 = 430 A;
+    description = "Connection agreement; three-phase exemption noted";
+    views = [BESS_I2];
+  }
+}
+
+# ---- The margins the study exists to prove. --------------------------
+annotate CTI_BESS_RMU_FEEDER {
+  primary = R_BESS_RMU:P51;
+  backup = R_BESS_FEEDER:P51;
+  fault = F_33_RMU_3PH_MIN;
+  label = "RMU to feeder";
+  style = leader;
+  coords = true;
+  views = [BESS_PHASE];
+}
+
+annotate CTI_AUX_RMU_FEEDER {
+  primary = R_AUX_RMU:P51;
+  backup = R_AUX_FEEDER:P51;
+  fault = F_33_RMU_3PH_MIN;
+  label = "Kiosk to feeder";
+  style = leader;
+  coords = true;
+  views = [AUX_PHASE];
+}
+
+# A dimension between two pickups, with no curve at either end: the
+# window the kiosk's 46 has to sit inside.
+annotate KIOSK_46_WINDOW {
+  from = 45 A;
+  to = 154 A;
+  at_t = 1 s;
+  label = "kiosk 46 window";
+  views = [AUX_I2];
+}
+
+# ---- Six sheets: one per chain, per quantity. ------------------------
+#      The handle is short because references use it; the caption says
+#      what the sheet is.
+view BESS_PHASE {
+  name = "BESS transformer - phase";
+  quantity = phase;
+  condition = BESS_LV_3PH_MIN;
+  voltage = HV33;
+  title = "BESS inverter transformer - phase grading";
+  subtitle = "Incomer / feeder / transformer RMU at the minimum LV three-phase fault";
+  current_min = 40 A;
+  current_max = 25 kA;
+  time_min = 10 ms;
+  time_max = 100 s;
+}
+
+view BESS_I2 {
+  name = "BESS transformer - negative sequence";
+  quantity = I2;
+  condition = BESS_LV_2PH_MIN;
+  voltage = HV33;
+  title = "BESS inverter transformer - negative-sequence grading";
+  subtitle = "Feeder 46 and RMU 46 at the minimum LV phase-phase fault";
+  current_min = 30 A;
+  current_max = 500 A;
+  time_min = 20 ms;
+  time_max = 10 s;
+}
+
+view AUX_PHASE {
+  name = "Auxiliary kiosk - phase";
+  quantity = phase;
+  condition = AUX_LV_3PH_MIN;
+  voltage = HV33;
+  title = "Auxiliary kiosk transformer - phase grading";
+  subtitle = "Incomer / feeder / kiosk RMU at the minimum LV three-phase fault";
+  current_min = 20 A;
+  current_max = 25 kA;
+  time_min = 10 ms;
+  time_max = 100 s;
+}
+
+view AUX_I2 {
+  name = "Auxiliary kiosk - negative sequence";
+  quantity = I2;
+  condition = AUX_LV_EF_MIN;
+  voltage = HV33;
+  title = "Auxiliary kiosk transformer - negative-sequence grading";
+  subtitle = "Feeder 46 and kiosk RMU 46 at the minimum LV earth fault";
+  current_min = 20 A;
+  current_max = 1 kA;
+  time_min = 40 ms;
+  time_max = 2 s;
+}
+
+page {
+  size = A3;
+  orientation = landscape;
+  theme = light;
+  border = true;
+
+  legend = {
+    style = column;
+    currents = both;
+    notes = true;
+  };
+
+  title = {
+    text = "Kestrel Rise BESS - 33 kV protection grading";
+    subtitle = "KR-ELE-RPT-0108 Rev 0";
+  };
+}
+
+notes {
+  chains = "Two independent chains share one incomer, so the incomer's phase element carries no view scope and is drawn on every sheet.";
+  sequence_basis = "The 33 kV side of each delta-star transformer sees an LV unbalanced fault as negative sequence with no residual, which is why the earth elements are graded on their own conditions rather than referred across.";
+}

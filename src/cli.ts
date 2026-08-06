@@ -153,9 +153,18 @@ function selectedView(
   const views = result.study?.views ?? [];
   if (!wanted) return {};
 
-  const found = views.find((v, i) => (v.name ?? `Sheet ${i + 1}`) === wanted);
+  /*
+   * Matched on the handle first, then the caption.
+   *
+   * They used to be one field. Now that a sheet can have a short id and
+   * a long printed name, `--view` has to take the id -- it is what a
+   * script would use and what `views` lists elsewhere -- while still
+   * accepting the name someone reads off the sheet.
+   */
+  const found = views.find((v, i) =>
+    v.id === wanted || (v.name ?? `Sheet ${i + 1}`) === wanted);
   if (!found) {
-    const names = views.map((v, i) => v.name ?? `Sheet ${i + 1}`);
+    const names = views.map((v, i) => v.id ?? v.name ?? `Sheet ${i + 1}`);
     throw new Error(
       `no view named "${wanted}"; this study declares ${names.length > 0 ? names.map((n) => `"${n}"`).join(', ') : 'none'}`,
     );

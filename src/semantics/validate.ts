@@ -175,6 +175,7 @@ function validateViewScopes(ctx: Ctx): void {
   for (const element of study.looseElements) check(element.views, `element ${element.ref}`);
   for (const t of study.times.values()) check(t.views, `time ${t.id}`);
   for (const f of study.faults.values()) check(f.views, `fault ${f.id}`);
+  for (const sc of study.scenarios.values()) check(sc.views, `scenario ${sc.id}`);
   for (const p of study.points) check(p.views, `point ${p.id}`);
   for (const a of study.annotations) check(a.views, `annotation "${a.label ?? '(unlabelled)'}"`);
 }

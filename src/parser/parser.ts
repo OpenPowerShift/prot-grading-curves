@@ -1054,6 +1054,17 @@ class Parser {
         continue;
       }
 
+      /* Which sheets it belongs on -- the same key every other
+       * drawable block takes, and the one a scenario used to lack. */
+      if (t.image === 'view' || t.image === 'views') {
+        this.pos++;
+        this.expect('EQUALS', '=');
+        const names = this.parseNameList();
+        if (names.length > 0) block.views = [...(block.views ?? []), ...names];
+        this.eat('SEMI');
+        continue;
+      }
+
       /* What the reader sees, where the id is a handle rather than a
        * caption -- the same three tiers every other block now has. */
       if (t.image === 'name') {
@@ -1069,7 +1080,7 @@ class Parser {
        * so -- silently skipped, a mistyped `level` or `sees` took a
        * whole level's figures out of the study without a word. */
       this.pos++;
-      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'name', 'description']);
+      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'name', 'description', 'view', 'views']);
       if (this.at('EQUALS')) { this.pos++; this.parseScalarValue(); this.eat('SEMI'); }
       else {
         /*

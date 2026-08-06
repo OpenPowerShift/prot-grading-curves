@@ -819,6 +819,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * turns ratio.
    */
   for (const scenario of study.scenarios.values()) {
+    if (!onThisSheet(scenario)) continue;
     /* Resolved by handle; every message below quotes the caption. */
     const c = resolveCondition(study, scenario.id, viewLevelName);
     if (!c) continue;

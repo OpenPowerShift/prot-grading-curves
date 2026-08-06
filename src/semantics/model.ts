@@ -261,6 +261,8 @@ export interface ScenarioLevel {
 export interface Scenario {
   /** How the study refers to it. The key of `study.scenarios`. */
   id: string;
+  /** Sheets it belongs to; absent means every sheet. */
+  views?: string[];
   name: string;
   /** Fault type, as on a `Fault`. */
   type?: FaultType;
@@ -628,6 +630,7 @@ export function buildStudy(doc: Document): Study {
     }
     study.scenarios.set(item.id, {
       id: item.id,
+      views: item.views,
       name: displayName(item),
       type: isFaultType(item.faultType) ? item.faultType : undefined,
       description: item.description,

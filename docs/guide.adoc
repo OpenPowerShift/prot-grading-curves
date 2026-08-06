@@ -1554,12 +1554,12 @@ page {
 }
 ----
 
-Keep the grid recessive. It is there to be read *off*, not looked at,
-and a grid as dark as the curves makes a sheet harder to use.
+Keep the grid recessive: it is read *off*, not looked at. Major and
+minor lines should differ (`grid_minor_style`) or finding a decade
+means counting.
 
-`scale` can also fix the window outright with `x_min`, `x_max`,
-`y_min` and `y_max`, though `view { current_min ... }` is the usual
-place for that.
+`scale` can also fix the window with `x_min`/`x_max`/`y_min`/`y_max`,
+though `view { current_min ... }` is the usual place.
 
 *Curves, points and leaders*
 

@@ -23,8 +23,9 @@ export class TcGuide extends LitElement {
 
   /** The document on screen. Tutorial first: it is where a newcomer
    * should start, and a reader who wants the reference will switch. */
-  @state() private which: 'tutorial' | 'guide' | 'advanced' = 'tutorial';
-  @state() private docs: { tutorial: Guide; guide: Guide; advanced: Guide } | null = null;
+  @state() private which: 'tutorial' | 'guide' | 'advanced' | 'skill' = 'tutorial';
+  @state() private docs:
+    { tutorial: Guide; guide: Guide; advanced: Guide; skill: Guide } | null = null;
   @state() private failed = '';
   @state() private filter = '';
   /** Anchor of the section currently under the reader. */
@@ -212,6 +213,42 @@ export class TcGuide extends LitElement {
     }
     .body pre code { padding: 0; border: 0; background: none; }
 
+    /*
+     * Copy the example rather than select it.
+     *
+     * Every code block in these documents is a study, or part of one,
+     * meant to be pasted into the editor beside it. Dragging a
+     * selection across a scrolling <pre> to do that is a poor way to
+     * spend the reader's attention.
+     *
+     * The button sits in the block's own corner and appears on hover
+     * or focus, so the page is not a field of buttons -- but it stays
+     * reachable by keyboard, which hover alone would not be.
+     */
+    .body .tc-snippet { position: relative; }
+    .body .tc-copy {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      padding: 2px 8px;
+      font-family: inherit;
+      font-size: 11px;
+      color: var(--tc-fg-muted, #52514e);
+      background: var(--tc-bg-elevated, #fff);
+      border: 1px solid var(--tc-border, #d8d7d2);
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 120ms ease-out;
+    }
+    .body .tc-snippet:hover .tc-copy,
+    .body .tc-copy:focus-visible { opacity: 1; }
+    .body .tc-copy[data-copied] { opacity: 1; color: var(--tc-ok, #2e7d32); }
+    @media (hover: none) {
+      /* No hover to reveal it, so it is simply there. */
+      .body .tc-copy { opacity: 1; }
+    }
+
     .body table {
       border-collapse: collapse;
       margin: 12px 0;
@@ -263,6 +300,7 @@ export class TcGuide extends LitElement {
   `;
 
   updated(changed: Map<string, unknown>): void {
+    this.addCopyButtons();
     if (!changed.has('open')) return;
     /* Reflect for the :host([open]) rule, which does the showing. */
     this.toggleAttribute('open', this.open);
@@ -270,6 +308,57 @@ export class TcGuide extends LitElement {
       void this.ensureLoaded();
       this.focusSearch();
     }
+  }
+
+  /**
+   * Give every code block a copy button.
+   *
+   * Done to the rendered DOM rather than in the Asciidoctor pipeline:
+   * the converted HTML is shared with the published documents, which
+   * are read on a page that has no clipboard to write to. The button
+   * belongs to this viewer.
+   */
+  private addCopyButtons(): void {
+    const body = this.renderRoot.querySelector('.body');
+    if (!body) return;
+    for (const pre of body.querySelectorAll('pre')) {
+      if (pre.parentElement?.classList.contains('tc-snippet')) continue;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'tc-snippet';
+      pre.parentElement?.insertBefore(wrap, pre);
+      wrap.append(pre);
+
+      const button = document.createElement('button');
+      button.className = 'tc-copy';
+      button.type = 'button';
+      button.textContent = 'Copy';
+      button.title = 'Copy this example to the clipboard';
+      button.addEventListener('click', () => { void this.copySnippet(pre, button); });
+      wrap.append(button);
+    }
+  }
+
+  private async copySnippet(pre: HTMLElement, button: HTMLButtonElement): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(pre.innerText.replace(/\s+$/, ''));
+    } catch {
+      /* Said, not swallowed: a reader who saw nothing happen would
+       * paste stale clipboard content into their study. */
+      button.textContent = 'Copy failed';
+      button.setAttribute('data-copied', '');
+      setTimeout(() => {
+        button.textContent = 'Copy';
+        button.removeAttribute('data-copied');
+      }, 5000);
+      return;
+    }
+    button.textContent = 'Copied!';
+    button.setAttribute('data-copied', '');
+    setTimeout(() => {
+      button.textContent = 'Copy';
+      button.removeAttribute('data-copied');
+    }, 5000);
   }
 
   connectedCallback(): void {
@@ -305,7 +394,12 @@ export class TcGuide extends LitElement {
     if (this.docs || this.failed) return;
     try {
       const mod = await import('virtual:tc-guide');
-      this.docs = { guide: mod.default, tutorial: mod.tutorial, advanced: mod.advanced };
+      this.docs = {
+        guide: mod.default,
+        tutorial: mod.tutorial,
+        advanced: mod.advanced,
+        skill: mod.skill,
+      };
       await this.updateComplete;
       this.watchHeadings();
     } catch (error) {
@@ -320,7 +414,7 @@ export class TcGuide extends LitElement {
    * left, so both are cleared; carrying a half-typed filter across
    * would hide most of whatever the reader just asked for.
    */
-  private show(which: 'tutorial' | 'guide' | 'advanced'): void {
+  private show(which: 'tutorial' | 'guide' | 'advanced' | 'skill'): void {
     if (this.which === which) return;
     this.which = which;
     this.filter = '';
@@ -388,12 +482,14 @@ export class TcGuide extends LitElement {
             ? html`<span class="rev">${this.guide.revision} · ${this.guide.revdate}</span>`
             : null}
           <div class="which" role="tablist">
-            ${(['tutorial', 'guide', 'advanced'] as const).map((id) => html`
+            ${(['tutorial', 'guide', 'advanced', 'skill'] as const).map((id) => html`
               <button role="tab"
                       class=${this.which === id ? 'on' : ''}
                       aria-selected=${this.which === id}
                       @click=${() => this.show(id)}>
-                ${id === 'tutorial' ? 'Tutorial' : id === 'guide' ? 'Reference' : 'Advanced'}
+                ${id === 'tutorial' ? 'Tutorial'
+                  : id === 'guide' ? 'Reference'
+                    : id === 'advanced' ? 'Advanced' : 'For an AI'}
               </button>`)}
           </div>
           <span class="spacer"></span>

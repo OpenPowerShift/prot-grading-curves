@@ -637,6 +637,26 @@ breaks. They want one decision: implement, or delete the claim.
 
 === Closed 2026-08-06
 
+* *Major and minor gridlines were one grey field.* They differed by
+  weight alone -- 0.9px against 0.6, full against 70% -- on an axis
+  that draws nine lines per decade, so finding a decade meant counting.
+  Minor lines are dotted by default now, and `page { axes }` takes
+  `grid_minor_color`, `grid_style` and `grid_minor_style`.
+
+* *`[page]` and `[of]` never resolved.* The spec said the exporter
+  paginates; nothing did. `exportPdfSheets` binds every declared view
+  into one PDF -- `render --pdf --all-views`, and a `PDF (all sheets)`
+  button in the playground when a study declares more than one -- and
+  passes each sheet its own `pagination`.
+
+* *`docs/skill.adoc`*, a fourth in-app document ("For an AI"). Written
+  to be handed to an agent along with a setting report: the two rules
+  that matter (write only what the report says; then run the
+  validator), the smallest useful study, a report-to-language mapping
+  table, and a decision ladder that says when to *stop* adding
+  language. Its blocks are parsed and its starter study is graded by
+  `tests/unit/skill.spec.ts`.
+
 * *`current_max` was ink and nothing else.* It was read where a curve
   was *drawn* and ignored everywhere a number was computed, so a
   high-set blocked above the maximum through-fault was drawn stopping

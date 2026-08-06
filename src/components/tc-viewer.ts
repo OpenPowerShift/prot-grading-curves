@@ -27,7 +27,7 @@ import type { Document, ParseError } from '../parser/index.js';
 import { renderSvg, type RenderOptions } from '../renderer/index.js';
 import type { ThemeName } from '../renderer/theme.js';
 import type { Study } from '../semantics/model.js';
-import { exportPdf } from '../export/export-pdf.js';
+import { exportPdf, exportPdfSheets } from '../export/export-pdf.js';
 import { sheetSize } from '../renderer/sheet.js';
 
 /*
@@ -1253,6 +1253,72 @@ export class TcViewer extends LitElement {
    * `jspdf` and `svg2pdf.js` are loaded lazily inside `exportPdf`, so
    * opening the playground does not pay for them.
    */
+  /**
+   * Every declared sheet, one PDF, a page each.
+   *
+   * A study with a phase sheet, an earth sheet and a sequence sheet is
+   * one document: it is issued, filed and reviewed as a whole, and
+   * three separate downloads is three chances for one of them to be
+   * the old revision.
+   *
+   * Each page is rendered from its own `view` as declared -- not from
+   * what is on screen. A reader's zoom belongs to the screen; the
+   * document is the study.
+   */
+  async saveAllViewsPdf(): Promise<void> {
+    const views = (this.document?.items.filter((i) => i.type === 'view')
+      ?? []) as Array<import('../parser/index.js').ViewBlock>;
+    if (views.length === 0) { await this.savePdf(); return; }
+
+    this.exporting = 'pdf';
+    try {
+      const page = this.study?.page;
+      const { width, height } = this.exportSize();
+      const sheets = views.map((view, i) => renderSvg(this.document, {
+        page: page ?? null,
+        system: null,
+        faults: null,
+        view,
+        study: this.study ?? null,
+        invalidErrors: this.errorCount,
+        theme: 'light',
+        width,
+        height,
+        pagination: { page: i + 1, of: views.length },
+      }));
+
+      const bytes = await exportPdfSheets(sheets, {
+        size: typeof page?.size === 'string' ? page.size : undefined,
+        orientation: page?.orientation ?? 'landscape',
+        margins_mm: page?.margins_mm,
+      });
+      this.download(bytes, `${this.exportStem()}-all.pdf`, 'application/pdf');
+    } catch (error) {
+      this.exportError = (error as Error).message;
+      setTimeout(() => { this.exportError = null; }, 6000);
+    } finally {
+      this.exporting = null;
+    }
+  }
+
+  /** Hand a byte array to the browser as a download. */
+  private download(bytes: Uint8Array, name: string, type: string): void {
+    const blob = new Blob([bytes as BlobPart], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /** How many sheets this study declares. Drives the toolbar. */
+  get sheetCount(): number {
+    return (this.document?.items.filter((i) => i.type === 'view') ?? []).length;
+  }
+
   async savePdf(): Promise<void> {
     const svg = this.querySelector('svg') as SVGSVGElement | null;
     if (!svg) return;

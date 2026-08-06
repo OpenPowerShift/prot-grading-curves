@@ -178,9 +178,18 @@ page {
   };
 
   # Axis furniture, kept recessive so the curves carry the eye.
+  #
+  # The decade lines and the nine steps inside each decade are told
+  # apart by ink as well as weight: solid for the labelled powers of
+  # ten, dotted and paler for the rest, so finding a decade does not
+  # mean counting. `dashed` is the third option, and leaving
+  # `grid_minor_color` off gives the minor lines the major colour.
   axes = {
     color = "#333333";
-    grid_color = "#d8d8d8";
+    grid_color = "#c4c4c4";
+    grid_style = "solid";
+    grid_minor_color = "#dedede";
+    grid_minor_style = "dotted";
     label_color = "#444444";
     label_size_px = 11;
     tick_size_px = 9;

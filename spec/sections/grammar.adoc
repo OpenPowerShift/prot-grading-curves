@@ -701,10 +701,19 @@ legend-swatch-keyword ::= "line" | "box" | "circle" ;
 axes-block      ::= "{" { axes-member } "}" ;
 axes-member     ::= "color"      "=" color-value ";"
                   | "grid_color" "=" color-value ";"
+                  (* The minor lines separately. A log axis draws nine
+                     per decade and only one is a labelled power of ten;
+                     told apart by weight alone the reader has to count.
+                     Unset, they take the major colour. *)
+                  | "grid_minor_color" "=" color-value ";"
+                  | "grid_style"       "=" grid-style ";"
+                  | "grid_minor_style" "=" grid-style ";"
                   | "label_color" "=" color-value ";"
                   | "label_size_px" "=" number ";"
                   | "tick_size_px"   "=" number ";"
                   | "frame"          "=" boolean ";" ;
+
+grid-style      ::= "solid" | "dashed" | "dotted" ;
 
 curves-block    ::= "{" { curves-member } "}" ;
 curves-member   ::= "palette"     "=" palette-value ";"

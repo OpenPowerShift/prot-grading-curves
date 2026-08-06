@@ -34,6 +34,11 @@ declare module 'virtual:tc-guide' {
   export const tutorial: Guide;
 
   /**
+   * The agent skill -- `docs/skill.adoc`. Written to be handed to an
+   * AI along with a setting report.
+   */
+  export const skill: Guide;
+  /**
    * The advanced guide -- `docs/advanced.adoc`.
    *
    * What changes when a study stops being one sheet: naming, scoping,

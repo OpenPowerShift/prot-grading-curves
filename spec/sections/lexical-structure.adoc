@@ -130,7 +130,8 @@ time_pad_high
 *Inside `page`* -- size, orientation, margins_mm, scale, legend,
 axes, curves, points, leaders, title, footer, theme, watermark,
 position, swatch, palette, frame, label_color, label_size_px,
-tick_size_px, grid_color, line_width_px, auto_color, shape, size_px,
+tick_size_px, grid_color, grid_minor_color, grid_style,
+grid_minor_style, line_width_px, auto_color, shape, size_px,
 outline, text, subtitle, align, font_size_px, border, top, right,
 bottom, left, center, show, style, stretch, x_min, x_max, y_min,
 y_max, auto, tick_density

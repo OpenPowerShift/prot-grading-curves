@@ -787,9 +787,24 @@ export interface PageLegend extends BaseNode {
 /** Spellings of {@link PageLegend.currents}. */
 export type LegendCurrents = 'primary' | 'secondary' | 'both';
 
+/** How a set of gridlines is stroked. */
+export type GridStyle = 'solid' | 'dashed' | 'dotted';
+
 export interface PageAxes extends BaseNode {
   color?: string;
   grid_color?: string;
+  /**
+   * The minor gridlines, separately from the major ones.
+   *
+   * A log axis draws nine lines per decade and only one of them is a
+   * labelled power of ten. Told apart by weight alone the reader has
+   * to count to find the decade; a different colour or dash says it at
+   * a glance. Unset, the minor lines take the major colour, as they
+   * always did.
+   */
+  grid_minor_color?: string;
+  grid_style?: GridStyle;
+  grid_minor_style?: GridStyle;
   label_color?: string;
   label_size_px?: number;
   tick_size_px?: number;

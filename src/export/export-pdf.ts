@@ -148,6 +148,26 @@ export function resolvePageMm(options: PdfOptions = {}): [number, number] {
  * page would misrepresent the log-log geometry.
  */
 export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<Uint8Array> {
+  return exportPdfSheets([svg], options);
+}
+
+/**
+ * Convert several SVG sheets into one PDF, a page each.
+ *
+ * A study with a phase sheet, an earth sheet and a sequence sheet is
+ * one document: it is issued, filed and reviewed as a whole, and three
+ * separate files is three chances for one of them to be the old
+ * revision. Every page takes the same size and margins, because they
+ * are the same drawing set.
+ *
+ * The caller renders each sheet -- it holds the study and knows which
+ * views there are -- and passes them in order.
+ */
+export async function exportPdfSheets(
+  sheets: readonly string[],
+  options: PdfOptions = {},
+): Promise<Uint8Array> {
+  if (sheets.length === 0) throw new Error('PDF export needs at least one sheet');
   let jsPDF: typeof import('jspdf').jsPDF;
   let svg2pdf: typeof import('svg2pdf.js').svg2pdf;
   try {
@@ -187,16 +207,8 @@ export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<
    * white -- invisible on white paper. Rendering the right thing beats
    * recolouring the wrong thing.
    */
-  const standalone = toPdfSafeText(normaliseFontWeights(
-    toExportableSvg(svg, { background: '#ffffff', fontFamily: PDF_FONT }),
-  ));
-  const { width: srcW, height: srcH } = svgDimensions(standalone);
-
   const availW = Math.max(1, pageW - mLeft - mRight);
   const availH = Math.max(1, pageH - mTop - mBottom);
-  const scale = Math.min(availW / srcW, availH / srcH);
-  const drawW = srcW * scale;
-  const drawH = srcH * scale;
 
   const doc = new jsPDF({
     orientation: pageW >= pageH ? 'landscape' : 'portrait',
@@ -205,14 +217,29 @@ export async function exportPdf(svg: string, options: PdfOptions = {}): Promise<
   });
 
   try {
-    await svg2pdf(await parseSvgElement(standalone), doc, {
-      /* Centred within the margin box, which is only the centre of the
-       * sheet when opposite margins are equal. */
-      x: mLeft + (availW - drawW) / 2,
-      y: mTop + (availH - drawH) / 2,
-      width: drawW,
-      height: drawH,
-    });
+    for (const [index, svg] of sheets.entries()) {
+      /* `jsPDF` starts with one page, so add before each *subsequent*
+       * sheet rather than after each -- otherwise the document ends on
+       * a blank. */
+      if (index > 0) doc.addPage([pageW, pageH], pageW >= pageH ? 'landscape' : 'portrait');
+
+      const standalone = toPdfSafeText(normaliseFontWeights(
+        toExportableSvg(svg, { background: '#ffffff', fontFamily: PDF_FONT }),
+      ));
+      const { width: srcW, height: srcH } = svgDimensions(standalone);
+      const scale = Math.min(availW / srcW, availH / srcH);
+      const drawW = srcW * scale;
+      const drawH = srcH * scale;
+
+      await svg2pdf(await parseSvgElement(standalone), doc, {
+        /* Centred within the margin box, which is only the centre of
+         * the sheet when opposite margins are equal. */
+        x: mLeft + (availW - drawW) / 2,
+        y: mTop + (availH - drawH) / 2,
+        width: drawW,
+        height: drawH,
+      });
+    }
     return new Uint8Array(doc.output('arraybuffer') as ArrayBuffer);
   } finally {
     /* Leave the caller's globals as we found them. */

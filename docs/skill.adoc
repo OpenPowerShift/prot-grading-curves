@@ -1,0 +1,506 @@
+= Writing a tc-curves study from a setting report
+:toc: left
+:toclevels: 2
+:icons: font
+:source-highlighter: highlight.js
+
+This document is written for an AI agent. You have been given a
+protection setting report, or a set of relay settings, and asked to
+produce a time-current coordination (TCC) study.
+
+Read this once, then write the study. It is deliberately short: the
+whole language is in the reference guide, and *most studies need about
+fifteen lines of it*.
+
+[IMPORTANT]
+====
+Two rules that matter more than anything else here.
+
+. *Only write what the report says.* Every number in a study is a claim
+  about a real relay. If the report does not give a TMS, do not write
+  one -- the tool will tell the reader it is missing, which is the
+  correct outcome. Inventing a plausible value produces a drawing that
+  looks authoritative and is fiction.
+. *Then run it.* `tc-curves check study.ptc` is not optional. It is a
+  validator with about ninety checks, and it is faster and more
+  reliable at finding your mistakes than re-reading your own output.
+====
+
+== What you are producing
+
+A `.ptc` text file. Feed it to the tool and it draws a log-log chart of
+operate time against current, with every relay's characteristic on it,
+and computes the grading margins between them.
+
+[source,bash]
+----
+tc-curves check  study.ptc          # diagnostics + margins
+tc-curves render study.ptc --pdf    # the sheet
+----
+
+Exit status: `0` clean, `1` a study error, `2` usage or I/O, `3` a
+valid study whose *grading fails* -- which is a real answer, not a bug.
+
+== The smallest study that says something
+
+Start here. Add nothing until a question forces you to.
+
+[source,tc]
+----
+system {
+    voltages { MV { V = 11 kV; } }
+}
+
+faults {
+    F_FEEDER_MAX { I = 6.2 kA; type = three_phase; voltage = MV; }
+}
+
+relay R_FEEDER {
+    voltage  = MV;
+    ct_ratio = 400/5;
+    element 51 {
+        function = phase_oc;
+        measures = phase;
+        curve    = iec.si;
+        I_pickup = 480 A;
+        tms      = 0.10;
+    }
+}
+
+relay R_INCOMER {
+    voltage  = MV;
+    ct_ratio = 800/5;
+    element 51 {
+        function = phase_oc;
+        measures = phase;
+        curve    = iec.si;
+        I_pickup = 800 A;
+        tms      = 0.25;
+    }
+}
+
+grade {
+    primary = R_FEEDER:51;
+    backup  = R_INCOMER:51;
+    fault   = F_FEEDER_MAX;
+    margin  = 0.30 s;
+}
+
+view { voltage = MV; }
+----
+
+That is a complete, valid, useful study. Everything else in this
+document is an answer to a specific question the report raised.
+
+=== What each part is for
+
+[cols="1,3", options="header"]
+|===
+| Block | Why it is there
+
+| `system` | Names the voltage levels. Needed the moment two levels
+             exist, so that a fault on one can be referred to the other.
+| `faults` | The currents grading is judged at. Without one there is
+             nothing to compute a margin from.
+| `relay`  | A physical device. Its `element`s are its settings.
+| `grade`  | The question: does this pair coordinate? One per pair.
+| `view`   | One sheet. Left bare, it fits itself to what is drawn.
+|===
+
+== Reading a setting report
+
+Setting reports vary. This is the mapping that holds across all of
+them.
+
+[cols="2,2,2", options="header"]
+|===
+| The report says | You write | Notes
+
+| CT ratio 400/5 | `ct_ratio = 400/5;` | On the *relay*, not the element.
+| Pickup / I> / Is | `I_pickup = 480 A;` | Primary amps by default.
+| 1.2 x In, In = 400 A | `I_pickup = 480 A;` | Multiply it out yourself.
+| Setting in secondary A | `I_pickup = 6 A_sec;` | Needs `ct_ratio`.
+| TMS / TD / time dial | `tms = 0.10;` | Never guess this.
+| IEC standard inverse | `curve = iec.si;` | See the curve table below.
+| Definite time, 0.1 s | `curve = definite; t_delay = 100 ms;` | No `tms`.
+| 50 / high-set / I>> | a second `element`, or a `stage` | Below.
+| 51N / 51G / earth | `function = earth_fault;` | Measures residual `3I0`.
+| 46 / negative sequence | `function = neg_seq; measures = I2;` | State the scaling.
+| Grading margin 0.3 s | `margin = 0.30 s;` on the `grade` | Or in `meta`.
+|===
+
+=== Curves
+
+Write the standard's name. The tool carries the constants.
+
+[cols="1,2", options="header"]
+|===
+| Family | Written
+
+| IEC 60255-151 | `iec.si`, `iec.vi`, `iec.ei`, `iec.lti`
+| IEEE C37.112  | `ieee.mi`, `ieee.vi`, `ieee.ei`
+| Definite time | `definite` (with `t_delay`, not `tms`)
+| Vendor        | `sel.c1`, `abb.rel_ni`, and others -- see the reference
+| Tabulated     | `flex_points = [(I, t), ...]` when the report gives a table
+|===
+
+If the report names a curve you cannot map, use `formula` with the
+constants it gives rather than picking a near-neighbour:
+
+[source,tc]
+----
+element 51 {
+    function = phase_oc;
+    measures = phase;
+    formula  = { k = 0.14; alpha = 0.02; c = 0; };
+    I_pickup = 480 A;
+    tms      = 0.10;
+}
+----
+
+== The decision ladder
+
+Work down it. Stop at the first row that does not apply to your report.
+
+[cols="1,3,2", options="header"]
+|===
+| # | If the report... | ...then add
+
+| 1 | is one voltage, phase overcurrent only | nothing. The study above is done.
+| 2 | has a high-set (50) as well as a 51 | a `stages` block, <<stages>>
+| 3 | has an earth-fault element | `function = earth_fault`, <<earth>>
+| 4 | spans a transformer | a second voltage and `ct_ratio` per relay, <<levels>>
+| 5 | gives a fault *range*, not one figure | `I_min` / `I_max`, <<ranges>>
+| 6 | gives negative-sequence settings | `measures = I2` or `3I2`, <<sequence>>
+| 7 | states a required clearance time | a `times` block, <<times>>
+| 8 | includes a fuse or cable damage curve | a `device`, <<devices>>
+| 9 | is several chains, or needs several sheets | `group` and `view`, <<sheets>>
+|===
+
+Rows 1--4 cover most reports. Rows 5--9 are the advanced cases: use
+them when the report contains the data, and not otherwise.
+
+[#stages]
+== 2. A relay with two settings that act together
+
+A 51 with a 50 is *one element with two stages*, not two elements,
+whenever they are the same protection function on the same CT. The
+drawn curve is then the composite -- what the relay actually does.
+
+[source,tc]
+----
+element 51 {
+    function = phase_oc;
+    measures = phase;
+    stages {
+        stage IDMT { curve = iec.si;   I_pickup = 480 A;  tms = 0.10; }
+        stage HIGH { curve = definite; I_pickup = 4.5 kA; t_delay = 50 ms; }
+    }
+}
+----
+
+If the high-set is blocked above some current -- a common setting where
+it must not see a through-fault -- say so, and mean it:
+
+[source,tc]
+----
+element 51 {
+    function = phase_oc;
+    measures = phase;
+    stages {
+        stage IDMT { curve = iec.si; I_pickup = 480 A; tms = 0.10; }
+        stage HIGH {
+            curve    = definite;
+            I_pickup = 4.5 kA;
+            t_delay  = 50 ms;
+            I_cutoff = 6 kA;      # the stage does not exist above this
+        }
+    }
+}
+----
+
+`I_cutoff` is not decoration. Past it the stage does not operate, the
+composite steps back onto the inverse stage, and a grade asked for
+beyond it is refused rather than answered.
+
+[#earth]
+== 3. Earth fault
+
+An earth-fault element does not measure phase current. It measures the
+residual, `3I0`, and stating that is what stops it being drawn against
+the wrong axis.
+
+[source,tc]
+----
+element 51G {
+    function = earth_fault;    # -> residual 3I0
+    curve    = iec.si;
+    I_pickup = 80 A;
+    tms      = 0.10;
+}
+----
+
+Give it its own sheet, because phase and earth currents on one axis
+invite a comparison that means nothing:
+
+[source,tc]
+----
+view PHASE { quantity = phase; voltage = MV; title = "Phase grading"; }
+view EARTH { quantity = 3I0;   voltage = MV; title = "Earth grading"; }
+----
+
+[#levels]
+== 4. Across a transformer
+
+Declare both levels. Each relay says which one it is on, and the tool
+refers currents between them by the turns ratio.
+
+[source,tc]
+----
+system {
+    voltages {
+        HV { V = 33 kV; }
+        LV { V = 11 kV; }
+    }
+}
+
+relay R_HV { voltage = HV; ct_ratio = 200/5; }   # ... its elements
+relay R_LV { voltage = LV; ct_ratio = 600/5; }
+
+view { voltage = HV; }    # everything framed in 33 kV amps
+----
+
+[WARNING]
+====
+Zero sequence does not cross a delta winding. If the study grades an
+earth-fault element on one side against one on the other, the tool will
+refuse rather than refer a residual current through a transformer that
+blocks it. That refusal is correct: declare the fault at both levels
+with a `scenario` instead of asking for the conversion.
+====
+
+[#ranges]
+== 5. A fault range rather than a point
+
+Setting reports usually give minimum and maximum fault levels. Give
+both, and the margin is checked across the range rather than at one
+convenient current.
+
+[source,tc]
+----
+faults {
+    F_BUS {
+        type  = three_phase;
+        voltage = HV;
+        I     = 6.2 kA;      # the graded point
+        I_min = 4.1 kA;
+        I_max = 8.8 kA;
+    }
+}
+----
+
+The upstream sweep is on by default: a pair that grades at the declared
+fault is also checked above it, because characteristics converge as the
+multiple rises. If it reports a failure above your fault, that is a
+real finding.
+
+[#sequence]
+== 6. Negative sequence
+
+A 46 element has no default scaling, because the factor of three
+between `I2` and `3I2` decides whether it operates at all. State which
+the relay is set in:
+
+[source,tc]
+----
+element 46 {
+    function = neg_seq;
+    measures = I2;         # or 3I2 -- read the report, do not assume
+    curve    = definite;
+    I_pickup = 200 A;
+    t_delay  = 600 ms;
+    views    = [SEQ];      # nothing to say on a phase sheet
+}
+----
+
+An unbalanced fault behind a delta cannot be carried across by the
+turns ratio, so state the figures at each level:
+
+[source,tc]
+----
+scenario LV_2PH_MIN {
+    type = two_phase;
+    level LV { I = 12.4 kA; I1 = 7.16 kA; I2 = 7.16 kA; }
+    level HV { I = 744 A;   I1 = 430 A;   I2 = 430 A;   residual = 0 A; }
+}
+----
+
+[#times]
+== 7. A required clearance time
+
+A connection agreement, an arc-flash limit or a grid-code requirement
+is a horizontal rule on the sheet, not a curve:
+
+[source,tc]
+----
+times {
+    T_BUS {
+        name        = "33 kV bus clearance";
+        t           = 200 ms;
+        at_I        = 12.4 kA;
+        description = "Connection agreement, primary protection";
+    }
+}
+----
+
+`at_I` says where along the rule to write its caption -- beside the
+curve the requirement bites on. It does not restrict which sheets the
+rule applies to; `views` does that.
+
+[#devices]
+== 8. Fuses, cables and damage curves
+
+Anything that is not a relay is a `device`. Give it the table the
+manufacturer publishes:
+
+[source,tc]
+----
+device F_100T {
+    kind        = fuse;
+    voltage     = MV;
+    rating_I    = 100 A;
+    min_melt    = [(200 A, 10.0 s), (400 A, 1.20 s), (800 A, 0.14 s)];
+    total_clear = [(200 A, 16.0 s), (400 A, 2.00 s), (800 A, 0.26 s)];
+}
+----
+
+A fuse grades on total-clear time as the primary and on minimum-melt as
+the backup, automatically. It can be named in a `grade` like any relay.
+
+[#sheets]
+== 9. Several chains, several sheets
+
+State each protection chain once, upstream first, and let the sheets
+name a chain rather than listing curves:
+
+[source,tc]
+----
+group FEEDER_1 { members = [R_INCOMER, R_FDR_1, R_RMU_1]; }
+group FEEDER_2 { members = [R_INCOMER, R_FDR_2, R_RMU_2]; }
+
+view F1_PHASE { group = FEEDER_1; quantity = phase; title = "Feeder 1"; }
+view F2_PHASE { group = FEEDER_2; quantity = phase; title = "Feeder 2"; }
+----
+
+A relay in both chains is drawn on both sheets -- an incomer backs up
+everything, so it belongs to every chain it is on.
+
+For a mark that belongs to exactly one sheet, write it inside the view
+rather than inventing a name to reference:
+
+[source,tc]
+----
+view F1_PHASE {
+    group = FEEDER_1;
+    quantity = phase;
+    times { T_LOCAL { name = "RMU limit"; t = 500 ms; at_I = 4 kA; } }
+}
+----
+
+== Naming
+
+Three tiers, answering three different questions. Use all three; they
+cost one line each and they are what makes a sheet readable.
+
+[cols="1,3", options="header"]
+|===
+| | Answers
+
+| the *id* | How do I refer to this? A bare identifier -- `R_FDR_1`.
+             Never displayed.
+| `name` | What does the reader see? Free text, may contain spaces.
+| `description` | What does it mean? Prose, for the legend and notes.
+|===
+
+Ids: `UPPER_SNAKE` for relays, faults and views; the IEEE C37.2 device
+number for elements (`51`, `50`, `51G`, `46`, `67`). Both are
+conventions rather than rules, but a study that follows them reads like
+the report it came from.
+
+== Presentation, and when to bother
+
+Defaults are chosen to be right for an ordinary study. Reach for `page`
+only when the sheet is going to be issued.
+
+[source,tc]
+----
+meta {
+    project  = "Riverside 33/11 kV";
+    study    = "Feeder overcurrent grading";
+    engineer = "A. Patel";
+    date     = "2026-08-06";
+    revision = "B";
+}
+
+page {
+    size        = "A3";
+    orientation = "landscape";
+    border      = true;            # title block
+    footer      = {
+        left   = "[meta.project] · [meta.study]";
+        center = "[meta.engineer] · rev [meta.revision]";
+        right  = "[meta.date] · [page] of [of]";
+    };
+}
+----
+
+`[meta.*]` reads the `meta` block, so the footer stays correct when the
+study is revised. `[page]` and `[of]` resolve when the study is
+exported with every sheet in one PDF:
+
+[source,bash]
+----
+tc-curves render study.ptc --pdf --all-views -o study.pdf
+----
+
+== What the validator will catch
+
+Do not pre-empt these; write the study and let it tell you. But know
+what they mean when they appear.
+
+[cols="1,3", options="header"]
+|===
+| Finding | What it is telling you
+
+| `TMS_MISSING` | You did not give a time multiplier and one is needed.
+                  It has *not* been defaulted to 1.
+| `UNKNOWN_SETTING` | A misspelled key. Refused rather than ignored,
+                      because `tsm` for `tms` is a factor-of-ten error.
+| `MEASURES_REQUIRED` | A sequence element with no stated scaling.
+| `NO_OPERATION` | The element does not pick up at the fault given.
+                   Usually a pickup above the fault current, or a
+                   fault declared at the wrong voltage.
+| `GRADE_BEYOND_CUTOFF` | You asked for a margin past where a curve
+                          stops. Either the cutoff or the fault is wrong.
+| `SEQUENCE_ACROSS_LEVELS` | A sequence current cannot be referred
+                             across that transformer. Use a `scenario`.
+| `FAULT_SINGLE_POINT` | Informational: one fault current, so no range
+                         was swept. Fine if that is all the report gave.
+|===
+
+A study that grades *fail* is not a broken study. It is the answer.
+Report it as a finding, with the margin and the current it occurs at;
+do not adjust settings to make it pass unless you were asked to.
+
+== Checklist before you hand it over
+
+. `tc-curves check study.ptc` exits `0`, or `3` with a grading failure
+  you have reported in words.
+. Every number in the study appears in the source report. Nothing was
+  inferred to fill a gap.
+. Every relay has `voltage` and `ct_ratio`.
+. Every element states `curve` and either `tms` or `t_delay`.
+. Sequence and earth elements state what they measure.
+. Each `grade` names a fault that exists at the primary's own voltage.
+. Anything the report did not give is *named in your summary* as
+  missing, rather than silently absent.

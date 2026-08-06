@@ -335,6 +335,33 @@ A condition is swept when it declares a range in *any* component, so a
 study whose fault report gives negative-sequence limits and no phase
 ones is checked across them.
 
+== Telling the decades from the steps
+
+A log axis draws nine gridlines per decade and only one of them is a
+labelled power of ten. They differ by weight -- 0.9px against 0.6, full
+against 70% -- and at a glance that is one grey field, so finding a
+decade means counting.
+
+The minor lines are dotted by default for that reason. Both sets take a
+colour and a style of their own:
+
+[source,tc]
+----
+page {
+    axes = {
+        grid_color       = "#c4c4c4";   # the labelled decades
+        grid_style       = "solid";
+        grid_minor_color = "#dedede";   # the nine steps inside one
+        grid_minor_style = "dotted";    # solid | dashed | dotted
+    };
+}
+----
+
+Leave `grid_minor_color` off and the minor lines take the major colour,
+which is what they did before they could be told apart. On a sheet
+printed in one ink, `grid_minor_style = "dotted"` carries the whole
+distinction without a second colour to lose in reproduction.
+
 == The sheet as a document
 
 The rendered SVG is grouped by what things are, not merely by the order

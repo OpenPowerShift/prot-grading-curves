@@ -30,7 +30,7 @@ import { pathToFileURL } from 'node:url';
 import { basename, extname, resolve as resolvePath } from 'node:path';
 import { process as processStudy, renderStudy } from './index.js';
 import { exportPng } from './export/export-png.js';
-import { exportPdf } from './export/export-pdf.js';
+import { exportPdfSheets } from './export/export-pdf.js';
 import { toExportableSvg } from './export/exportable-svg.js';
 import { formatGradeReports, anyGradeFails } from './semantics/grades.js';
 import { jsonResult } from './semantics/json-report.js';
@@ -49,6 +49,8 @@ interface Options {
   orientation?: 'portrait' | 'landscape';
   /** Which declared `view` to draw, by name. */
   view?: string;
+  /** PDF: every declared view, one page each, in declaration order. */
+  allViews?: boolean;
   quiet: boolean;
   /** Write the sheet even when the study has errors. */
   force?: boolean;
@@ -70,6 +72,9 @@ Options:
       --pdf             Render to PDF
       --view <name>     which declared view to draw (default: the one
                         marked "default = true", else the first)
+      --all-views       PDF only: every declared view, one page each,
+                        in declaration order. [page] and [of] in a
+                        footer resolve against the page count
       --width <px>      PNG width in pixels
       --scale <n>       PNG scale factor when --width is absent (default 2)
       --size <name>     PDF paper size: A0-A5, Letter, Legal, Tabloid (default A4)
@@ -105,6 +110,7 @@ export function parseArgs(argv: string[]): Options {
       case '--scale': opts.scale = Number(argv[++i]); break;
       case '--size': opts.size = argv[++i]; break;
       case '--view': opts.view = argv[++i]; break;
+      case '--all-views': opts.allViews = true; break;
       default:
         if (arg.startsWith('-')) throw new Error(`unknown option ${arg}`);
         rest.push(arg);
@@ -170,6 +176,20 @@ function selectedView(
     );
   }
   return { view: found };
+}
+
+/**
+ * Every sheet the study declares, in declaration order.
+ *
+ * Falls back to the single implicit sheet when it declares none, so a
+ * `--all-views` on a one-sheet study is a one-page PDF rather than an
+ * error -- the request is still coherent, it just has one answer.
+ */
+function declaredViews(
+  result: ReturnType<typeof processStudy>,
+): Array<{ view?: import('./parser/index.js').ViewBlock }> {
+  const views = result.study?.views ?? [];
+  return views.length > 0 ? views.map((view) => ({ view })) : [{}];
 }
 
 export async function main(argv: string[]): Promise<number> {
@@ -306,8 +326,34 @@ export async function main(argv: string[]): Promise<number> {
    */
   const invalidErrors = hasErrors && opts.force ? errorCount(result) : 0;
 
+  /*
+   * Every sheet, or the chosen one.
+   *
+   * A study with a phase sheet, an earth sheet and a sequence sheet is
+   * one document -- issued, filed and reviewed as a whole -- and three
+   * separate files is three chances for one of them to be the old
+   * revision. Only for PDF: an SVG or a PNG is one image by
+   * definition, and there is nothing to bind pages into.
+   */
+  const wantsEverySheet = opts.allViews && opts.format === 'pdf';
+  if (opts.allViews && opts.format !== 'pdf') {
+    console.error('tc-curves: --all-views needs --pdf; an SVG or PNG is a single image');
+    return 2;
+  }
+
+  const sheets = wantsEverySheet ? declaredViews(result) : [chosen];
+  const pdfPages = sheets.map((view, i) => renderStudy(result, {
+    theme: 'light',
+    invalidErrors,
+    ...view,
+    /* Only when there is a run of pages to number. A single sheet has
+     * no pagination to report, and the footer says "?" rather than
+     * claiming "1 / 1". */
+    ...(wantsEverySheet ? { pagination: { page: i + 1, of: sheets.length } } : {}),
+  }));
+
   const svg = opts.format === 'pdf'
-    ? renderStudy(result, { theme: 'light', invalidErrors, ...chosen })
+    ? pdfPages[0]
     : renderStudy(result, { invalidErrors, ...chosen });
   const outputPath = resolvePath(opts.output ?? defaultOutput(opts.input, opts.format));
 
@@ -319,7 +365,7 @@ export async function main(argv: string[]): Promise<number> {
       await writeFile(outputPath, png);
     } else {
       const page = result.study?.page;
-      const pdf = await exportPdf(svg, {
+      const pdf = await exportPdfSheets(pdfPages, {
         size: opts.size ?? (typeof page?.size === 'string' ? page.size : undefined),
         orientation: opts.orientation ?? page?.orientation ?? 'landscape',
         margins_mm: page?.margins_mm,

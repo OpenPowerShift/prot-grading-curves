@@ -282,6 +282,15 @@ export interface RenderOptions {
    * drawing lies by omission.
    */
   invalidErrors?: number;
+  /**
+   * Where this sheet sits in a paginated export.
+   *
+   * The footer's `[page]` and `[of]` resolve to "?" without it,
+   * because one SVG is one sheet and has no pagination to report --
+   * inventing "1 / 1" would be a claim the renderer cannot make. The
+   * multi-sheet PDF exporter knows the answer and passes it.
+   */
+  pagination?: { page: number; of: number };
   page: PageBlock | null;
   system: SystemBlock | null;
   faults: FaultsBlock | null;
@@ -411,6 +420,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     ...(pageAxes?.grid_color ? { grid: pageAxes.grid_color } : {}),
     ...(pageAxes?.label_color ? { label: pageAxes.label_color } : {}),
   };
+
+  /*
+   * Major and minor gridlines, told apart.
+   *
+   * A log axis draws nine lines per decade and only one is a labelled
+   * power of ten. They used to differ by weight alone -- 0.9 against
+   * 0.6, at 100% against 70% -- which at a glance is one grey field,
+   * so finding the decade meant counting. The minor lines are dotted
+   * by default now, which is what a drawn TCC sheet does and what
+   * separates "the decade" from "the steps inside it" without adding
+   * any more ink.
+   */
+  const gridDash = (style: import('../parser/ast.js').GridStyle | undefined,
+    width: number): string => {
+    if (style === 'dashed') return ` stroke-dasharray="${(width * 4).toFixed(1)} ${(width * 3).toFixed(1)}"`;
+    if (style === 'dotted') return ` stroke-dasharray="${width.toFixed(1)} ${(width * 3).toFixed(1)}" stroke-linecap="round"`;
+    return '';
+  };
+  const majorStroke = th.grid;
+  const minorStroke = pageAxes?.grid_minor_color ?? th.grid;
+  const majorDash = gridDash(pageAxes?.grid_style ?? 'solid', 0.9);
+  const minorDash = gridDash(pageAxes?.grid_minor_style ?? 'dotted', 0.6);
+  const gridAttrs = (major: boolean): string =>
+    `stroke="${major ? majorStroke : minorStroke}" `
+    + `stroke-width="${major ? '0.9' : '0.6'}" `
+    + `stroke-opacity="${major ? '1' : '0.7'}"${major ? majorDash : minorDash}`;
   const palName =
     typeof opts.page?.curves?.palette === 'string'
       ? (opts.page!.curves!.palette as any)
@@ -2252,7 +2287,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         out.push(
           `<text x="${x}" y="${footY}" text-anchor="${anchor}" ` +
           `font-size="${tbFooter.font_size_px ?? FONT_DETAIL - 1}" ` +
-          `fill="${tbFooter.color ?? th.label}">${escapeXml(expandMacros(raw, study))}</text>`,
+          `fill="${tbFooter.color ?? th.label}">${escapeXml(expandMacros(raw, study, opts.pagination))}</text>`,
         );
       }
     });
@@ -2311,7 +2346,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   for (const t of xTicks) {
     const px = xScale.toPx(t.value);
     if (!Number.isFinite(px)) continue;
-    gridLines.push(`<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
+    gridLines.push(`<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" ${gridAttrs(t.major)}/>`);
     if (t.major) {
       axisText.push(`<text x="${px.toFixed(1)}" y="${(topMargin + plotH + AXIS_LABEL_DY).toFixed(1)}" text-anchor="middle" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${escapeXml(axisTickLabel(t.value))}</text>`);
     } else if (isLabelledInterval(t.value)) {
@@ -2331,7 +2366,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   for (const t of yTicks) {
     const py = yScale.toPx(t.value);
     if (!Number.isFinite(py)) continue;
-    gridLines.push(`<line x1="${leftMargin.toFixed(1)}" y1="${py.toFixed(1)}" x2="${(leftMargin + plotW).toFixed(1)}" y2="${py.toFixed(1)}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" stroke="${th.grid}" stroke-width="${t.major ? 0.9 : 0.6}" stroke-opacity="${t.major ? 1 : 0.7}"/>`);
+    gridLines.push(`<line x1="${leftMargin.toFixed(1)}" y1="${py.toFixed(1)}" x2="${(leftMargin + plotW).toFixed(1)}" y2="${py.toFixed(1)}" class="${t.major ? 'tc-grid-major' : 'tc-grid-minor'}" ${gridAttrs(t.major)}/>`);
     if (t.major) {
       axisText.push(`<text x="${(leftMargin - 10).toFixed(1)}" y="${(py + 4).toFixed(1)}" text-anchor="end" class="tc-current-axis" fill="${th.label}" font-weight="600" font-size="${FONT_AXIS}">${formatSi(t.value, 's')}</text>`);
     } else if (isLabelledInterval(t.value)) {
@@ -4409,7 +4444,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       out.push(
         `<text x="${x}" y="${footerY}" text-anchor="${anchor}" ` +
         `font-size="${footer.font_size_px ?? FONT_DETAIL - 1}" ` +
-        `fill="${footer.color ?? th.label}">${escapeXml(expandMacros(raw, study))}</text>`,
+        `fill="${footer.color ?? th.label}">${escapeXml(expandMacros(raw, study, opts.pagination))}</text>`,
       );
     }
   }
@@ -5052,12 +5087,17 @@ function arrowHeadH(px: number, py: number, direction: 1 | -1, colour: string): 
  * the spec requires -- the renderer has no pagination to report, and
  * inventing "1 / 1" would be a claim it cannot make.
  */
-function expandMacros(text: string, study: Study): string {
+function expandMacros(
+  text: string,
+  study: Study,
+  pagination?: { page: number; of: number },
+): string {
   return text.replace(/\[([\w.]+)\]/g, (match, key: string) => {
     if (key === 'date') return new Date().toISOString().slice(0, 10);
     /* Spec: pagination macros resolve to "?" for a single SVG, which
-     * has no pagination to report. The PDF exporter paginates. */
-    if (key === 'page' || key === 'of') return '?';
+     * has no pagination to report. A paginated export says. */
+    if (key === 'page') return pagination ? String(pagination.page) : '?';
+    if (key === 'of') return pagination ? String(pagination.of) : '?';
     if (key.startsWith('meta.')) {
       const value = study.meta[key.slice(5)];
       return value == null ? match : String(value);

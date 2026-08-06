@@ -132,6 +132,42 @@ export class TcApp extends LitElement {
   /** Language-specification overlay. */
   @state() private showGuide = false;
 
+  /**
+   * How many sheets the study declares.
+   *
+   * Read from this component's own parsed document rather than asked
+   * of the viewer: a getter on a child is not a reactive dependency,
+   * so a toolbar built from one renders once with whatever the child
+   * happened to hold and never updates. `ast` is state here, so the
+   * button appears when the study that needs it is loaded.
+   */
+  private get sheetCount(): number {
+    return (this.ast?.items.filter((i) => i.type === 'view') ?? []).length;
+  }
+
+  /** Set for a few seconds after a successful clipboard write. */
+  @state() private copiedPng = false;
+  private copiedPngTimer?: ReturnType<typeof setTimeout>;
+
+  /**
+   * Copy the sheet, and say so.
+   *
+   * Only on success: a button that reports "Copied!" when the write
+   * threw is worse than one that says nothing, because the reader goes
+   * away believing they have it.
+   */
+  private async copyPng(): Promise<void> {
+    try {
+      await this.viewer()?.copyPngToClipboard();
+    } catch {
+      this.copiedPng = false;
+      return;
+    }
+    this.copiedPng = true;
+    clearTimeout(this.copiedPngTimer);
+    this.copiedPngTimer = setTimeout(() => { this.copiedPng = false; }, 5000);
+  }
+
   /** Transient confirmation shown after copying the share link. */
   @state() private copiedLink = false;
 
@@ -1201,14 +1237,30 @@ export class TcApp extends LitElement {
             </span>
             <button class="side-btn" title="Reset the plot zoom to the view block's bounds"
                     @click=${() => this.viewer()?.resetZoom()}>Reset view</button>
-            <button class="side-btn" title="Copy the plot to the clipboard as a PNG"
-                    @click=${() => { void this.viewer()?.copyPngToClipboard(); }}>Copy PNG</button>
+            <!--
+              Says it worked. A clipboard write leaves no trace on the
+              page, so the only way to find out whether the button did
+              anything was to go and paste somewhere.
+            -->
+            <button class="side-btn"
+                    title="Copy the plot to the clipboard as a PNG"
+                    @click=${() => { void this.copyPng(); }}>${this.copiedPng ? 'Copied!' : 'Copy PNG'}</button>
             <button class="side-btn" title="Download the plot as an SVG file"
                     @click=${() => this.viewer()?.saveSvg()}>Save SVG</button>
             <button class="side-btn" title="Download the plot as a PNG image"
                     @click=${() => { void this.viewer()?.savePng(); }}>Save PNG</button>
             <button class="side-btn" title="Download the plot as a PDF (always light, for printing)"
                     @click=${() => { void this.viewer()?.savePdf(); }}>Save PDF</button>
+            <!--
+              Only where there is more than one sheet to bind. On a
+              single-sheet study it would be a second button doing what
+              the first one does.
+            -->
+            ${this.sheetCount > 1 ? html`
+              <button class="side-btn"
+                      title="Download every declared sheet as one PDF, a page each"
+                      @click=${() => { void this.viewer()?.saveAllViewsPdf(); }}>PDF (all sheets)</button>`
+              : null}
             <button class="side-btn" title="Show the plot controls"
                     @click=${() => this.viewer()?.toggleHelp()}>?</button>
             <button class="side-btn" title="Open the language specification"

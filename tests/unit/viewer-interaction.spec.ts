@@ -156,6 +156,60 @@ describe('the wheel', () => {
     await el.updateComplete;
     expect(el.innerHTML).toContain('<svg');
   });
+
+  /** The plot rectangle the sheet declares, so a test can aim outside it. */
+  const plotRect = (el: TcViewer): { x: number; y: number; w: number; h: number } => {
+    const desc = el.querySelector('desc.tc-data');
+    const [x, y, w, h] = (desc?.getAttribute('data-plot') ?? '').split(',').map(Number);
+    expect([x, y, w, h].every(Number.isFinite), 'the sheet should declare its plot').toBe(true);
+    return { x, y, w, h };
+  };
+
+  describe('off the plot', () => {
+    /*
+     * Over the margin, the legend or the title there is no current
+     * under the pointer for an axis zoom to anchor to, so the gesture
+     * was answering a question the pointer had not asked. Where the
+     * reader points says which zoom they mean.
+     */
+    it('sizes the drawing instead of the axes', async () => {
+      const el = await mount();
+      const r = plotRect(el);
+      const before = [peek<number | null>(el, 'currentMin'), peek<number | null>(el, 'currentMax')];
+
+      call(el, 'handleWheel', wheel(-120, r.x / 2, r.y / 2));
+
+      expect(peek<number>(el, 'displayScale')).toBeCloseTo(1.25, 3);
+      expect([peek<number | null>(el, 'currentMin'), peek<number | null>(el, 'currentMax')])
+        .toEqual(before);
+    });
+
+    it('wheeling out comes back to the default and stops there', async () => {
+      /*
+       * Not down to the 0.3 floor. Backing off should land somewhere a
+       * reader recognises -- actual size, or the scale that shows the
+       * whole sheet if that is smaller -- rather than at an arbitrary
+       * fraction they then have to correct.
+       */
+      const el = await mount();
+      const r = plotRect(el);
+      const off = [r.x / 2, r.y / 2] as const;
+
+      for (let i = 0; i < 4; i += 1) call(el, 'handleWheel', wheel(-120, ...off));
+      expect(peek<number>(el, 'displayScale')).toBeGreaterThan(2);
+
+      for (let i = 0; i < 20; i += 1) call(el, 'handleWheel', wheel(120, ...off));
+      expect(peek<number>(el, 'displayScale')).toBe(1);
+    });
+
+    it('still zooms the axes when the pointer is on the plot', async () => {
+      const el = await mount();
+      const r = plotRect(el);
+      call(el, 'handleWheel', wheel(-120, r.x + r.w / 2, r.y + r.h / 2));
+      expect(peek<number>(el, 'displayScale')).toBe(1);
+      expect(peek<number | null>(el, 'currentMin')).not.toBeNull();
+    });
+  });
 });
 
 describe('panning', () => {
@@ -167,6 +221,71 @@ describe('panning', () => {
     }).not.toThrow();
     await el.updateComplete;
     expect(el.innerHTML).toContain('<svg');
+  });
+});
+
+describe('middle-drag on a drawing larger than the pane', () => {
+  /*
+   * jsdom measures everything as zero, so the overflow the handler
+   * branches on has to be stated. These are the only numbers the
+   * branch reads.
+   */
+  const overflowing = (el: TcViewer): HTMLElement => {
+    const pane = el.querySelector('.pane-host') as HTMLElement;
+    for (const [k, v] of [['clientWidth', 400], ['clientHeight', 300],
+      ['scrollWidth', 1200], ['scrollHeight', 900]] as const) {
+      Object.defineProperty(pane, k, { value: v, configurable: true });
+    }
+    pane.scrollLeft = 0;
+    pane.scrollTop = 0;
+    return pane;
+  };
+
+  it('moves the paper rather than the axes', async () => {
+    /*
+     * Once the reader has zoomed in, a drag means "show me the part I
+     * cannot see". Changing the decades under them instead answers a
+     * question they did not ask.
+     */
+    const el = await mount();
+    const pane = overflowing(el);
+    const before = [peek<number | null>(el, 'currentMin'), peek<number | null>(el, 'currentMax')];
+
+    call(el, 'handleMouseDown', mouse(700, 400, 1));
+    call(el, 'handlePanMove', mouse(640, 340));
+
+    expect(pane.scrollLeft).toBe(60);
+    expect(pane.scrollTop).toBe(60);
+    expect([peek<number | null>(el, 'currentMin'), peek<number | null>(el, 'currentMax')])
+      .toEqual(before);
+    call(el, 'endPan');
+  });
+
+  it('moves vertically as well as horizontally', async () => {
+    /*
+     * The domain pan was horizontal only -- the time axis has never
+     * been pannable -- so on a sheet the display zoom had made taller
+     * than the pane there was no way to reach the bottom of it.
+     */
+    const el = await mount();
+    const pane = overflowing(el);
+    call(el, 'handleMouseDown', mouse(700, 400, 1));
+    call(el, 'handlePanMove', mouse(700, 250));
+    expect(pane.scrollTop).toBe(150);
+    expect(pane.scrollLeft).toBe(0);
+    call(el, 'endPan');
+  });
+
+  it('still pans the axes when the whole sheet is on screen', async () => {
+    /*
+     * Nothing to scroll to, so the gesture keeps its old meaning
+     * rather than becoming a no-op.
+     */
+    const el = await mount();
+    call(el, 'handleMouseDown', mouse(700, 400, 1));
+    call(el, 'handlePanMove', mouse(640, 400));
+    expect(peek<number | null>(el, 'currentMin')).not.toBeNull();
+    call(el, 'endPan');
   });
 });
 

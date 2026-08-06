@@ -673,11 +673,15 @@ export class TcViewer extends LitElement {
   private pan: {
     active: boolean;
     startX: number;
+    startY: number;
     /** Log10 domain bounds at the moment the drag began. */
     logLo: number;
     logHi: number;
     /** Pixels per log10 unit, from the plot geometry. */
     pxPerDecade: number;
+    /** Where the pane was scrolled to, for the move-the-paper case. */
+    startScrollLeft: number;
+    startScrollTop: number;
   } | null = null;
 
   /**
@@ -703,12 +707,20 @@ export class TcViewer extends LitElement {
 
     const svg = this.querySelector('svg') as SVGSVGElement | null;
     const proj = svg ? projectDomain(svg.querySelector('path.tc-curve')) : null;
-    if (!svg || !proj) return;
 
-    const logLo = Math.log10(proj.domain.I_min);
-    const logHi = Math.log10(proj.domain.I_max);
-    const spanPx = proj.scale.xMax - proj.scale.xMin;
-    if (!(spanPx > 0) || !(logHi > logLo)) return;
+    /*
+     * A drag is worth starting if it can do *either* job: move the
+     * paper, or move the axes. A sheet larger than the pane can be
+     * dragged around even with no curve to take a domain from, which
+     * is a study that failed to draw -- and being unable to scroll the
+     * one sheet you have is no help at all.
+     */
+    if (!svg || (!proj && !this.paneOverflows())) return;
+
+    const logLo = proj ? Math.log10(proj.domain.I_min) : 0;
+    const logHi = proj ? Math.log10(proj.domain.I_max) : 1;
+    const spanPx = proj ? proj.scale.xMax - proj.scale.xMin : 0;
+    if (proj && (!(spanPx > 0) || !(logHi > logLo))) return;
 
     /* Middle-click otherwise triggers autoscroll in most browsers. */
     ev.preventDefault();
@@ -716,9 +728,12 @@ export class TcViewer extends LitElement {
     this.pan = {
       active: true,
       startX: ev.clientX,
+      startY: ev.clientY,
       logLo,
       logHi,
-      pxPerDecade: spanPx / (logHi - logLo),
+      pxPerDecade: spanPx > 0 ? spanPx / (logHi - logLo) : 0,
+      startScrollLeft: this.paneEl?.scrollLeft ?? 0,
+      startScrollTop: this.paneEl?.scrollTop ?? 0,
     };
 
     /* Own the gesture until the button comes up, wherever that is. */
@@ -740,8 +755,27 @@ export class TcViewer extends LitElement {
     const pan = this.pan;
     if (!pan?.active) return;
 
+    /*
+     * A drawing bigger than the pane is moved, not re-scaled.
+     *
+     * The same rule the touch drag follows, and for the same reason:
+     * once the reader has zoomed in, "drag" means "show me the part I
+     * cannot see". Changing the decades under them instead would be a
+     * different question answered.
+     *
+     * Both axes, because the display zoom overflows vertically too --
+     * which the domain pan never did, so there was no way to reach the
+     * bottom of a tall sheet at all.
+     */
+    const host = this.paneEl;
+    if (host && this.paneOverflows()) {
+      host.scrollLeft = pan.startScrollLeft - (ev.clientX - pan.startX);
+      host.scrollTop = pan.startScrollTop - (ev.clientY - pan.startY);
+      return;
+    }
+
     const svg = this.querySelector('svg') as SVGSVGElement | null;
-    if (!svg) return;
+    if (!svg || !(pan.pxPerDecade > 0)) return;
 
     /* Convert screen pixels to SVG user units before dividing. */
     const dxUser = toUserSpace(svg, ev.clientX, 0).x - toUserSpace(svg, pan.startX, 0).x;
@@ -750,6 +784,14 @@ export class TcViewer extends LitElement {
     const shift = -dxUser / pan.pxPerDecade;
     this.currentMin = Math.pow(10, pan.logLo + shift);
     this.currentMax = Math.pow(10, pan.logHi + shift);
+  }
+
+  /** True when the drawing is larger than the pane showing it. */
+  private paneOverflows(): boolean {
+    const host = this.paneEl;
+    if (!host) return false;
+    return host.scrollWidth > host.clientWidth + 1
+      || host.scrollHeight > host.clientHeight + 1;
   }
 
   private endPan(): void {
@@ -782,9 +824,34 @@ export class TcViewer extends LitElement {
     ev.preventDefault();
 
     /* Pointer position in the SVG's own pixel space. */
-    const px = toUserSpace(svg, ev.clientX, ev.clientY).x;
+    const pt = toUserSpace(svg, ev.clientX, ev.clientY);
+    const px = pt.x;
 
     const { xMin, xMax } = proj.scale;
+
+    /*
+     * Off the plot, the wheel sizes the drawing instead of the axes.
+     *
+     * Over the margin, the legend or the title there is no current
+     * under the pointer to anchor an axis zoom to, so the gesture was
+     * answering a question the pointer had not asked. Where the reader
+     * is pointing says which zoom they mean: on the plot, read the
+     * sheet; off it, handle the paper.
+     *
+     * Wheeling out stops at the default rather than running on down to
+     * the floor -- whichever is smaller of actual size and the scale
+     * that shows the whole sheet. So backing off always lands
+     * somewhere a reader recognises, rather than at an arbitrary
+     * fraction they then have to correct.
+     */
+    const onPlot = px >= xMin && px <= xMax
+      && pt.y >= proj.scale.yMin && pt.y <= proj.scale.yMax;
+    if (!onPlot) {
+      const step = ev.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      const home = Math.min(1, this.fitScale());
+      this.setDisplayScale(Math.max(home, this.displayScale * step));
+      return;
+    }
     const logLo = Math.log10(proj.domain.I_min);
     const logHi = Math.log10(proj.domain.I_max);
 
@@ -879,13 +946,26 @@ export class TcViewer extends LitElement {
     this.setDisplayScale(this.displayScale * factor);
   }
 
-  /** Scale the drawing so the whole sheet is visible at once. */
-  fitDisplay(): void {
+  /**
+   * The scale at which the whole sheet is visible at once.
+   *
+   * Falls back to actual size when the pane has no measurable box --
+   * an unattached or hidden viewer measures zero, and a fit of zero is
+   * not an answer, it is the absence of one.
+   */
+  private fitScale(): number {
     const host = this.paneEl;
-    if (!host) return;
+    if (!host) return 1;
     const w = host.clientWidth / Math.max(1, this.measuredW);
     const h = host.clientHeight / Math.max(1, this.measuredH);
-    this.setDisplayScale(Math.min(w, h));
+    const fit = Math.min(w, h);
+    return fit > 0 && Number.isFinite(fit) ? fit : 1;
+  }
+
+  /** Scale the drawing so the whole sheet is visible at once. */
+  fitDisplay(): void {
+    if (!this.paneEl) return;
+    this.setDisplayScale(this.fitScale());
   }
 
   /** Back to one drawn pixel per CSS pixel. */
@@ -1345,8 +1425,9 @@ render() {
           <h4>Plot controls</h4>
           <dl>
             <dt>Hover</dt><dd>snap to the nearest curve, fault rule, or point (${SNAP_RADIUS_PX} px) and read I / t</dd>
-            <dt>Wheel</dt><dd>zoom the current axis about the pointer</dd>
-            <dt>Middle-drag</dt><dd>pan the current axis</dd>
+            <dt>Wheel</dt><dd>on the plot, zoom the current axis about the pointer</dd>
+            <dt>Wheel off the plot</dt><dd>size the drawing; wheeling out returns to the default</dd>
+            <dt>Middle-drag</dt><dd>move the drawing when it is larger than the pane, otherwise pan the current axis</dd>
             <dt>&minus; / +</dt><dd>show the drawing larger or smaller &mdash; the axes do not change</dd>
             <dt>Pinch</dt><dd>the same, by touch; one finger then moves the paper</dd>
             <dt>Reset</dt><dd>return to the view block's bounds, at actual size</dd>

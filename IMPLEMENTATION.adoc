@@ -659,6 +659,16 @@ breaks. They want one decision: implement, or delete the claim.
   a phone to 0.3 where the drawing is a smudge. `Fit` is one tap away
   for a reader who wants the overview.
 
+* *The drag and the wheel now say which zoom they mean.* Middle-drag
+  moves the paper when the drawing is larger than the pane, in both
+  axes -- the domain pan was horizontal only, so a sheet the display
+  zoom had made taller than the pane had no reachable bottom. And the
+  wheel sizes the drawing when the pointer is off the plot rectangle,
+  where there is no current under it to anchor an axis zoom to;
+  wheeling out there stops at the default rather than the floor,
+  whichever is smaller of actual size and the fit scale. On the plot
+  the wheel is unchanged.
+
 * *A stage reference in `grade` was ignored and the composite graded.*
   `resolveRef` dropped `stageId`; only the renderer honoured it, so the
   sheet drew the stage that was named and the report graded something

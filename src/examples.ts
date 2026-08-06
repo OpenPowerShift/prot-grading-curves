@@ -60,7 +60,7 @@ const ALL: ReadonlyArray<Example> = [
   { id: 'parallel', name: 'Parallel feeders (share, directional)', source: parallelFeeders },
   { id: 'style', name: 'House drawing style (every page option)', source: drawingStyle },
   { id: 'sheets', name: 'Gallery 5 — Sequence sheets (phase, I2, 3I2, 3I0)', source: sequenceSheets },
-  { id: 'twochains', name: 'Gallery 6 — Two chains, four sheets (a real study)', source: bessTwoChains },
+  { id: 'twochains', name: 'Advanced — Kestrel Rise BESS (two chains, four sheets)', source: bessTwoChains },
   { id: 'tour', name: 'Capability tour (every block)', source: capabilityTour },
 ];
 

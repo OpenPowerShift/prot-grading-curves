@@ -187,3 +187,68 @@ view SEQ { quantity = I2; condition = COND; voltage = HV;
     expect(on('PH').hasAnnot).toBe(false);
   });
 });
+
+describe('a block declared inside a view', () => {
+  const NESTED = `
+system { voltages { HV { V = 33 kV; } } }
+relay R { voltage = HV; ct_ratio = 400/5;
+  element 51 { function = phase_oc; measures = phase;
+               curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
+view A {
+  quantity = phase; voltage = HV;
+  current_min = 100 A; current_max = 10 kA; time_min = 20 ms; time_max = 20 s;
+
+  times { T_LOCAL { name = "only on A"; t = 500 ms; at_I = 2 kA; } }
+  point P_LOCAL { label = "local marker"; I = 3 kA; t = 100 ms; }
+  annotate { on_curve = R:51; at_I = 5 kA; label = "A only"; }
+}
+view B {
+  quantity = phase; voltage = HV;
+  current_min = 100 A; current_max = 10 kA; time_min = 20 ms; time_max = 20 s;
+}
+`;
+
+  const drew = (sheet: string): string => {
+    const r = parse(NESTED);
+    expect(r.parseErrors).toEqual([]);
+    const found = sheetsOf(r).find((s) => s.name === sheet)!;
+    return renderStudy(r, { theme: 'light', view: found.view });
+  };
+
+  it('belongs to that sheet and no other', () => {
+    /*
+     * For something on one sheet, a reference is a name kept in step
+     * for no reason. Written inside the view there is nothing to spell
+     * and nothing to rename, and being scoped elsewhere is not
+     * expressible.
+     */
+    for (const mark of ['only on A', 'local marker', 'A only']) {
+      expect(drew('A'), `A should carry ${mark}`).toContain(mark);
+      expect(drew('B'), `B should not carry ${mark}`).not.toContain(mark);
+    }
+  });
+
+  it('is not listed in another sheet\'s legend as missing', () => {
+    /*
+     * A point scoped away from a sheet used to appear in that sheet's
+     * legend under "Points", as though it were a marker the sheet had
+     * failed to draw -- reporting an absence the study had asked for.
+     */
+    expect(drew('B')).not.toContain('local marker');
+  });
+
+  it('refuses to also name a scope', () => {
+    /*
+     * Already scoped by where it sits, so a `views` beside it is dead
+     * text that looks load-bearing. Refused rather than merged: two
+     * ways of saying the same thing would need a precedence rule.
+     */
+    const both = NESTED.replace('label = "A only";', 'label = "A only"; views = [B];');
+    const codes = parse(both).diagnostics.map((d) => d.code);
+    expect(codes).toContain('NESTED_BLOCK_SCOPED');
+  });
+
+  it('is clean when it does not', () => {
+    expect(parse(NESTED).diagnostics.map((d) => d.code)).not.toContain('NESTED_BLOCK_SCOPED');
+  });
+});

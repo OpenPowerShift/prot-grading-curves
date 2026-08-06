@@ -1701,6 +1701,42 @@ They are not part of a chain, they are requirements and observations
 about one, and allowing both directions would need a precedence rule
 between two mechanisms that mean the same thing.
 
+=== Declaring something for one sheet
+
+`times`, `point` and `annotate` may be written inside a `view`:
+
+[source,tc]
+----
+view BESS_I2 {
+    quantity = I2;
+
+    times { T_UNBALANCED { name = "660 V backup"; t = 1 s; at_I2 = 430 A; } }
+    annotate { from = 45 A; to = 154 A; at_t = 1 s; label = "46 window"; }
+}
+----
+
+It means exactly the same as declaring them at the top level with
+`views = [BESS_I2]`, and is resolved to that -- but there is no name to
+spell, no name to keep in step when the sheet is renamed, and being
+scoped somewhere else is not expressible.
+
+A nested block may not also carry `views` or `group`. It is already
+scoped by where it sits, so the second statement is dead text that
+looks load-bearing, and honouring both would need a precedence rule
+between two ways of saying one thing. It is an error.
+
+[IMPORTANT]
+====
+Only things that exist *to be drawn* may nest. A relay `element` may
+not: it is a real setting in a real device, it exists whether or not it
+is drawn, and nesting it would put one relay's settings in three
+places.
+
+The line is worth stating because it explains the asymmetry: things
+that exist in the world are declared where they live; things that exist
+only to be drawn may be declared on the drawing.
+====
+
 === What decides whether something is drawn
 
 Three tiers, in order, so the common case needs no scoping at all:
@@ -1708,6 +1744,12 @@ Three tiers, in order, so the common case needs no scoping at all:
 . an element's own `view` / `views`, which wins;
 . otherwise the sheet's `group`, if it names one;
 . otherwise it is drawn.
+
+An annotation is narrower still: one that names elements is drawn only
+where *all* of them are, which it already said by naming them. A margin
+therefore does not repeat its chain's sheet list and cannot fall out of
+step with it. An explicit `views` overrides that too, and a span
+between two bare figures has no endpoint to derive from.
 
 The override matters. A relay in a chain may have an element that
 belongs on only some of that chain's sheets -- a negative-sequence

@@ -559,8 +559,46 @@ export function buildStudy(doc: Document): Study {
     document: doc,
   };
 
-  /* Pass 1 -- everything that later passes need to look things up in. */
+  /*
+   * Nested blocks are hoisted before anything else looks at the
+   * document.
+   *
+   * `times`, `point` and `annotate` written inside a `view` mean
+   * exactly the same as writing them at the top level with
+   * `views = [that sheet]` -- so they are turned into that, once, and
+   * every pass after this one sees an ordinary study. Nothing
+   * downstream has to know the shorthand exists.
+   *
+   * An explicit `views` on a nested block is ignored rather than
+   * merged: it is already scoped by where it sits, and honouring both
+   * would need a precedence rule between two ways of saying the same
+   * thing. `validate` reports it.
+   */
+  const hoisted: TopLevel[] = [];
   for (const item of doc.items) {
+    if (item.type !== 'view' || !item.nested?.length) continue;
+    const sheet = item.id ?? item.name;
+    if (sheet == null) continue;
+    for (const block of item.nested) {
+      /*
+       * Copied, not mutated.
+       *
+       * The document is what `validate` reads, and it has to be able to
+       * tell a `views` the author wrote from one this hoist supplied --
+       * writing both is an error, and mutating in place made every
+       * nested block look as though it had.
+       */
+      if (block.type === 'times') {
+        hoisted.push({ ...block, times: block.times.map((t) => ({ ...t, views: [sheet] })) });
+      } else {
+        hoisted.push({ ...block, views: [sheet] } as TopLevel);
+      }
+    }
+  }
+  const items: TopLevel[] = hoisted.length > 0 ? [...doc.items, ...hoisted] : doc.items;
+
+  /* Pass 1 -- everything that later passes need to look things up in. */
+  for (const item of items) {
     switch (item.type) {
       case 'meta':
         for (const [k, v] of Object.entries(item.entries)) {
@@ -633,7 +671,7 @@ export function buildStudy(doc: Document): Study {
   }
 
   /* Pass 2 -- scenarios, which resolve their levels the same way. */
-  for (const item of doc.items) {
+  for (const item of items) {
     if (item.type !== 'scenario') continue;
     const levels = new Map<string, ScenarioLevel>();
     for (const level of item.levels) {
@@ -661,7 +699,7 @@ export function buildStudy(doc: Document): Study {
   }
 
   /* Pass 2 -- faults, now that voltage levels resolve. */
-  for (const item of doc.items) {
+  for (const item of items) {
     if (item.type !== 'faults') continue;
     for (const f of item.faults) {
       const kV = f.voltage ? study.voltages.get(f.voltage)?.kV : undefined;
@@ -685,7 +723,7 @@ export function buildStudy(doc: Document): Study {
   }
 
   /* Pass 3 -- relays, elements, devices, combines, grades. */
-  for (const item of doc.items) {
+  for (const item of items) {
     switch (item.type) {
       case 'relay': {
         const relay = resolveRelay(item, study);

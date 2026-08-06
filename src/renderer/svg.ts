@@ -4004,7 +4004,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * argument, so they belong in the legend with their values rather
      * than only as a glyph on the plot.
      */
+    /*
+     * Points this sheet could not draw, which is not the same as points
+     * that were never meant for it. A marker scoped to another sheet
+     * was being listed here as though it had gone missing -- so a
+     * sheet's legend reported an absence the study had asked for.
+     */
     const legendPoints = study.points
+      .filter((p) => onThisSheet(p))
       .filter((p) => !pointsOnPlot.has(p.id) && !pointsAccountedFor.has(p.id));
     if (legendPoints.length > 0) {
       lines.push(

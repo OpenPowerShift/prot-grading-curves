@@ -2144,6 +2144,27 @@ if (kwName === 'flex_points') {
       while (!this.at('RBRACE') && !this.at('EOF')) {
         const t = this.peek();
         if (t.kind !== 'KW' && t.kind !== 'IDENT') { this.pos++; continue; }
+
+        /*
+         * A block declared inside the sheet, rather than a key.
+         *
+         * Told apart by what follows: a key is followed by `=`, a
+         * nested block by its own id or brace. Only things that exist
+         * to be drawn may nest -- an element is a setting in a device
+         * and belongs on the device.
+         */
+        if ((t.image === 'times' || t.image === 'point' || t.image === 'annotate')
+            && this.tokens[this.pos + 1]?.kind !== 'EQUALS') {
+          const before = this.pos;
+          const block = t.image === 'times' ? this.parseTimes()
+            : t.image === 'point' ? this.parsePoint()
+              : this.parseAnnotate();
+          if (block) (v.nested ??= []).push(block);
+          /* A block that refused to parse must not stall the loop. */
+          if (this.pos === before) this.pos++;
+          continue;
+        }
+
         const k = this.eat('KW') ?? this.eat('IDENT');
         if (!k) { this.pos++; continue; }
         this.expect('EQUALS', '=');

@@ -178,6 +178,30 @@ function validateViewScopes(ctx: Ctx): void {
   for (const sc of study.scenarios.values()) check(sc.views, `scenario ${sc.id}`);
 
   /*
+   * A nested block that also names a scope.
+   *
+   * It is already scoped by where it sits, so the `views` or `group`
+   * beside it is dead text -- and dead text that looks load-bearing is
+   * worse than none. Refused rather than merged: honouring both would
+   * need a precedence rule between two ways of saying the same thing.
+   */
+  for (const item of ctx.doc?.items ?? []) {
+    if (item.type !== 'view' || !item.nested?.length) continue;
+    for (const block of item.nested) {
+      const entries: Array<{ views?: string[]; group?: string }> =
+        block.type === 'times' ? block.times : [block as { views?: string[] }];
+      for (const entry of entries) {
+        if (!entry.views?.length && !entry.group) continue;
+        add(ctx, 'NESTED_BLOCK_SCOPED', 'error',
+          `a ${block.type} declared inside view ${item.id ?? item.name ?? '(unnamed)'} `
+          + 'also names a scope; it is already scoped by where it sits. Remove the '
+          + 'views/group, or move the block to the top level',
+          block.loc);
+      }
+    }
+  }
+
+  /*
    * A sheet naming a chain that does not exist would draw nothing at
    * all -- the group resolves to an empty set of relays, and every
    * curve is filtered out. Silent, and indistinguishable from a study

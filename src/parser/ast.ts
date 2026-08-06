@@ -576,6 +576,22 @@ export interface CombineBlock extends BaseNode {
 
 export interface ViewBlock extends BaseNode {
   /**
+   * Things declared inside this sheet.
+   *
+   * `times`, `point` and `annotate` may be written in a `view`, where
+   * they belong to that sheet and no other. It is exactly equivalent to
+   * declaring them at the top level with `views = [this sheet]`, and is
+   * hoisted to that during resolution -- but with no name to spell, no
+   * name to keep in step, and no way to be scoped somewhere else by
+   * mistake.
+   *
+   * Only things that exist to be drawn may nest. A relay element is a
+   * real setting in a real device: it exists whether or not it is
+   * drawn, and nesting it would put one relay's settings in three
+   * places.
+   */
+  nested?: TopLevel[];
+  /**
    * The protection chain this sheet draws.
    *
    * Selects the relays whose elements belong here, so a study says once

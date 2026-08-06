@@ -592,8 +592,6 @@ domain-t 0.01,1000
 [annotations] text 715.9,582.7 text-anchor=end font-size=11 "46 at the phase-earth fault"
 [annotations] path n=2 bbox=715.9,500.6..723.9,601.1
 [annotations] text 715.9,603.4 text-anchor=end font-size=11 "declared as I2, read on a 3I2 element"
-[annotations] path n=2 bbox=715.9,413.3..723.9,631.0
-[annotations] text 715.9,633.3 text-anchor=end font-size=11 "positive-sequence backup"
 [annotations] circle 995.2,593.1 r=3.5
 [annotations] path n=3 bbox=971.2,593.1..995.2,609.9
 [annotations] text 971.2,612.2 text-anchor=end font-size=11 "phase element at 300 ms"
@@ -789,7 +787,6 @@ domain-t 0.01,1000
 [annotations] text 699.9,629.6 text-anchor=end font-size=11 "51G sees the whole residual"
 [annotations] path n=2 bbox=723.9,450.4..731.9,500.6
 [annotations] text 731.9,452.7 text-anchor=start font-size=11 "declared as I2, read on a 3I2 element"
-[annotations] text 731.9,415.5 text-anchor=start font-size=11 "positive-sequence backup"
 [annotations] path n=2 bbox=715.9,473.8..723.9,524.1
 [annotations] text 715.9,476.1 text-anchor=end font-size=11 "I0 rather than 3I0"
 [annotations] circle 905.9,593.1 r=3.5

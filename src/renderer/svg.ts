@@ -2930,8 +2930,67 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     return hi;
   };
 
+  /**
+   * The elements this sheet actually drew, by reference.
+   *
+   * An annotation between two curves belongs where *both* of them are,
+   * and nowhere else -- which the annotation already says by naming
+   * them. Deriving it means a margin does not have to repeat its
+   * chain's sheet list, and cannot fall out of step with it.
+   */
+  const drawnRefs = new Set<string>([
+    ...curves.map((c) => c.ref).filter((r): r is string => !!r),
+    /*
+     * Devices too. A fuse is drawn as a band rather than as a curve
+     * entry, so a set built from `curves` alone excluded every margin
+     * measured to one -- which took the fuse-to-relay CTI off a
+     * single-sheet study that had no scoping question to answer.
+     */
+    ...deviceBands.map((b) => b.id),
+  ]);
+
+  /**
+   * Does this annotation's far end exist on this sheet?
+   *
+   * Only asked when the annotation named elements and did not name
+   * sheets. An explicit `views` is an override and skips this, as does
+   * a span between two bare figures, which has no endpoint to derive
+   * from.
+   */
+  const endpointsDrawn = (a: Annotation): boolean => {
+    const refs = [a.primary, a.backup, a.on_curve]
+      .map((r) => r?.text)
+      .filter((t): t is string => !!t);
+    if (refs.length === 0) return true;
+    /*
+     * Matched in both directions, because a multi-stage element is one
+     * curve or several depending on the sheet.
+     *
+     * With `stages = composite` the sheet draws `R:46`, and an
+     * annotation naming `R:46/energ` belongs beside it. With
+     * `stages = individual` it draws `R:46/main` and `R:46/energ`, and
+     * an annotation naming `R:46` belongs beside those. Checking only
+     * one direction took the margin off every individually-staged
+     * sheet in the suite.
+     */
+    const matches = (want: string): boolean => {
+      if (drawnRefs.has(want)) return true;
+      const element = want.split('/')[0];
+      if (drawnRefs.has(element)) return true;
+      for (const drawn of drawnRefs) {
+        if (drawn.split('/')[0] === element) return true;
+      }
+      return false;
+    };
+    return refs.every(matches);
+  };
+
   for (const annotation of study.annotations) {
     if (!onThisSheet(annotation)) continue;
+    if ((!annotation.views || annotation.views.length === 0)
+        && !endpointsDrawn(annotation)) {
+      continue;
+    }
     const colour = annotation.color ?? th.foreground;
 
     /*

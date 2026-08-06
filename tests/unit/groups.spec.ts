@@ -129,3 +129,61 @@ describe('the shipped two-chain study', () => {
     expect((src.match(/^\s*group = /gm) ?? []).length).toBe(4);
   });
 });
+
+describe('what a sheet carries without being told', () => {
+  const DERIVED = `
+system { voltages { HV { V = 33 kV; } } }
+scenario COND { type = two_phase; level HV { I = 2 kA; I1 = 1155 A; I2 = 1155 A; } }
+relay R_A { voltage = HV; ct_ratio = 400/5;
+  element P51 { function = phase_oc; measures = phase;
+                curve = iec.si; I_pickup = 400 A; tms = 0.2; }
+  element 46 { function = neg_seq; measures = I2; views = [SEQ];
+               curve = definite; I_pickup = 200 A; t_delay = 0.6 s; } }
+times {
+  T_PHASE { name = "phase limit"; t = 500 ms; at_I = 2 kA; }
+  T_SEQ   { name = "sequence limit"; t = 1 s; at_I2 = 400 A; }
+  T_ANY   { name = "bare limit"; t = 2 s; }
+}
+annotate { on_curve = R_A:46; at_I2 = 400 A; label = "on the 46"; }
+view PH  { quantity = phase; condition = COND; voltage = HV;
+           current_min = 100 A; current_max = 10 kA; time_min = 20 ms; time_max = 20 s; }
+view SEQ { quantity = I2; condition = COND; voltage = HV;
+           current_min = 100 A; current_max = 10 kA; time_min = 20 ms; time_max = 20 s; }
+`;
+
+  const on = (sheet: string): { times: string[]; hasAnnot: boolean } => {
+    const r = parse(DERIVED);
+    expect(r.parseErrors).toEqual([]);
+    const found = sheetsOf(r).find((s) => s.name === sheet)!;
+    const svg = renderStudy(r, { theme: 'light', view: found.view });
+    return {
+      times: [...svg.matchAll(/data-time-name="([^"]*)"/g)].map((m) => m[1]).sort(),
+      hasAnnot: svg.includes('on the 46'),
+    };
+  };
+
+  it('draws every required time on every sheet, whatever its anchor', () => {
+    /*
+     * I tried deriving this -- `at_I2` looked like a statement that a
+     * clearance was about negative sequence -- and backed it out. The
+     * anchor says where along the rule to write the caption, beside
+     * the curve the requirement bites on; it does not say which sheets
+     * the requirement applies to. A second is a second on every axis,
+     * and a limit that is true is true on all of them.
+     *
+     * Which sheets a clearance belongs on is `views`, said outright.
+     */
+    expect(on('PH').times).toEqual(['bare limit', 'phase limit', 'sequence limit']);
+    expect(on('SEQ').times).toEqual(['bare limit', 'phase limit', 'sequence limit']);
+  });
+
+  it('follows an annotation to wherever its curve is drawn', () => {
+    /*
+     * The annotation names `R_A:46`, which is scoped to the sequence
+     * sheet. It used to be drawn on both and reported as unplaceable
+     * on the one where its curve was absent.
+     */
+    expect(on('SEQ').hasAnnot).toBe(true);
+    expect(on('PH').hasAnnot).toBe(false);
+  });
+});

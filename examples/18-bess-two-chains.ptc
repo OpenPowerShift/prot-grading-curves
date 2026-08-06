@@ -322,7 +322,12 @@ grade {
 }
 
 # ---- Required clearance times. ---------------------------------------
-#      The handle is what a `views` list matches; `name` is what the
+#      `at_I` and `at_I2` say where along the rule to write its name --
+#      beside the curve the requirement bites on -- and not which sheet
+#      the requirement applies to. A second is a second on every axis,
+#      so which sheets a clearance belongs on is said with `views`.
+#
+#      The handle is what those `views` lists match; `name` is what the
 #      sheet prints, and is where the line break belongs.
 times {
   T_BUS_PRIMARY {

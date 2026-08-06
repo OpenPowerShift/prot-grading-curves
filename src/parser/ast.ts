@@ -543,6 +543,15 @@ export interface CombineBlock extends BaseNode {
 }
 
 export interface ViewBlock extends BaseNode {
+  /**
+   * How the study refers to this sheet -- what a `views` list matches.
+   *
+   * Separate from `name` because they used to be one field: the block
+   * id was written into `name` and a `name =` key then overwrote it,
+   * so a view with a caption had no handle at all and every `views`
+   * entry naming it silently matched nothing.
+   */
+  id?: string;
   type: 'view';
   /**
    * Sheet name, when a study declares more than one view.

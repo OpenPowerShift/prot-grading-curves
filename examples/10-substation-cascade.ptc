@@ -30,11 +30,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV incomer";
     }
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV switchboard";
     }
@@ -43,29 +43,34 @@ system {
 }
 
 faults {
-  "Bus max" {
+  BUS_MAX {
+    name = "Bus max";
     I = 8.20 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Feeder max" {
+  FEEDER_MAX {
+    name = "Feeder max";
     I = 5.60 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Sub max" {
+  SUB_MAX {
+    name = "Sub max";
     I = 3.10 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Spur max" {
+  SPUR_MAX {
+    name = "Spur max";
     I = 1.25 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Sub min" {
+  SUB_MIN {
+    name = "Sub min";
     I = 0.95 kA;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
-device "spur_fuse_65T" {
+device spur_fuse_65T {
   kind = "fuse";
   maker = "Mersen";
   model = "65T";
@@ -75,7 +80,7 @@ device "spur_fuse_65T" {
 }
 
 relay R_INC {
-  voltage = "HV";
+  voltage = HV;
   maker = "ABB";
   model = "REF615";
   ct_ratio = 600/5;
@@ -88,7 +93,7 @@ relay R_INC {
 }
 
 relay R_TIE {
-  voltage = "MV";
+  voltage = MV;
   maker = "ABB";
   model = "REF615";
   ct_ratio = 800/5;
@@ -101,7 +106,7 @@ relay R_TIE {
 }
 
 relay R_FDR {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 600/5;
@@ -123,7 +128,7 @@ relay R_FDR {
 }
 
 relay R_SUB {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 300/5;
@@ -139,7 +144,7 @@ relay R_SUB {
 grade {
   primary = R_TIE:51;
   backup = R_INC:51;
-  fault = "Bus max";
+  fault = BUS_MAX;
   margin = 0.30 s;
   upstream = true;
 }
@@ -147,7 +152,7 @@ grade {
 grade {
   primary = R_FDR:51;
   backup = R_TIE:51;
-  fault = "Feeder max";
+  fault = FEEDER_MAX;
   margin = 0.30 s;
   upstream = true;
 }
@@ -163,7 +168,7 @@ grade {
 grade {
   primary = R_SUB:51;
   backup = R_FDR:51;
-  fault = "Sub max";
+  fault = SUB_MAX;
   margin = 0.30 s;
   upstream_to = 3.1 kA;
 }
@@ -171,7 +176,7 @@ grade {
 grade {
   primary = spur_fuse_65T;
   backup = R_SUB:51;
-  fault = "Spur max";
+  fault = SPUR_MAX;
   margin = 0.15 s; # fuse-relay pairs run tighter
 
   # The one pair in this study that is not swept above its fault, and
@@ -196,25 +201,25 @@ grade {
 annotate {
   primary = R_TIE:51;
   backup = R_INC:51;
-  fault = "Bus max";
+  fault = BUS_MAX;
   label = "CTI";
 }
 annotate {
   primary = R_FDR:51;
   backup = R_TIE:51;
-  fault = "Feeder max";
+  fault = FEEDER_MAX;
   label = "CTI";
 }
 annotate {
   primary = R_SUB:51;
   backup = R_FDR:51;
-  fault = "Sub max";
+  fault = SUB_MAX;
   label = "CTI";
 }
 annotate {
   primary = spur_fuse_65T;
   backup = R_SUB:51;
-  fault = "Spur max";
+  fault = SPUR_MAX;
   label = "CTI";
 }
 
@@ -248,7 +253,7 @@ page {
 }
 
 view {
-  voltage = "MV";
+  voltage = MV;
   current_max = 60 kA;
   time_pad_high = 0.2;
 }

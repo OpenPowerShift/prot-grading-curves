@@ -16,23 +16,25 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
     }
   }
 }
 
 faults {
-  "Bus fault" {
+  BUS_FAULT {
+    name = "Bus fault";
     I = 6000 A;
   }
-  "Remote fault" {
+  REMOTE_FAULT {
+    name = "Remote fault";
     I = 1200 A;
   }
 }
 
 relay R_TGT {
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 600/5;
 
   element 51 {

@@ -24,23 +24,25 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
     }
   }
 }
 
 faults {
-  "Spur fault" {
+  SPUR_FAULT {
+    name = "Spur fault";
     I = 900 A;
   }
-  "Bus fault" {
+  BUS_FAULT {
+    name = "Bus fault";
     I = 4200 A;
   }
 }
 
-device "fuse_100T" {
-  voltage = "MV"; # the level it sits on
+device fuse_100T {
+  voltage = MV; # the level it sits on
   kind = "fuse";
   maker = "Mersen";
   model = "100T";
@@ -53,7 +55,7 @@ device "fuse_100T" {
 }
 
 relay R_FEEDER {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 400/5;
@@ -69,7 +71,7 @@ relay R_FEEDER {
 grade {
   primary = fuse_100T; # fuse clears first
   backup = R_FEEDER:51;
-  fault = "Spur fault";
+  fault = SPUR_FAULT;
   margin = 0.15 s;
 }
 

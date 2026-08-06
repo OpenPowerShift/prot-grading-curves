@@ -25,11 +25,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV incoming";
     }
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV switchboard";
     }
@@ -37,20 +37,23 @@ system {
 }
 
 faults {
-  "Board max" {
+  BOARD_MAX {
+    name = "Board max";
     I = 9.4 kA;
     type = three_phase;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Board min" {
+  BOARD_MIN {
+    name = "Board min";
     I = 2.1 kA;
     type = two_phase;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Earth max" {
+  EARTH_MAX {
+    name = "Earth max";
     I = 1.6 kA;
     type = single_phase_earth;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
@@ -63,17 +66,20 @@ faults {
 #      goes at the left-hand end unless told otherwise — put it beside
 #      the curve the requirement actually bites on.
 times {
-  "Arc flash boundary" {
+  ARC_FLASH_BOUNDARY {
+    name = "Arc flash boundary";
     t = 500 ms;
     at_I = 6 kA;
     description = "Above this, PPE category rises a level";
   }
-  "Grid code clearance" {
+  GRID_CODE_CLEARANCE {
+    name = "Grid code clearance";
     t = 800 ms;
     at_I = 3 kA;
     description = "DNO connection agreement, 11 kV";
   }
-  "Transformer withstand" {
+  TRANSFORMER_WITHSTAND {
+    name = "Transformer withstand";
     t = 4 s;
     at_I = 1.2 kA;
     description = "ONAN 10 MVA, category II through-fault";
@@ -86,7 +92,7 @@ relay R_FDR {
   maker = "SEL";
   model = "751";
   reference = "Panel 3B, relay 2";
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 600/5;
 
   element 51 {
@@ -117,7 +123,7 @@ relay R_INC {
   name = "33/11 kV incomer";
   maker = "ABB";
   model = "REF615";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 300/5;
 
   element 51 {
@@ -133,7 +139,7 @@ relay R_INC {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   margin = 0.30 s;
   comment = "the case the arc-flash boundary is written for";
 }
@@ -141,7 +147,7 @@ grade {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board min";
+  fault = BOARD_MIN;
   margin = 0.30 s;
 }
 
@@ -168,7 +174,7 @@ annotate {
 annotate {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   label = "CTI";
 }
 
@@ -202,7 +208,8 @@ annotate {
 }
 
 # ---- A marked point taken from the fault study. ----------------------
-point "Withstand corner" {
+point WITHSTAND_CORNER {
+  name = "Withstand corner";
   I = 1.2 kA;
   t = 4 s;
   label = "Transformer withstand corner";
@@ -210,7 +217,7 @@ point "Withstand corner" {
   color = "#8e44ad";
 }
 
-point "Inrush" {
+point Inrush {
   I = 2.4 kA;
   t = 100 ms;
   label = "Transformer inrush, 12x for 100 ms";
@@ -247,7 +254,7 @@ page {
 }
 
 view {
-  voltage = "MV";
+  voltage = MV;
   quantity = any;
   current_min = 50 A;
   current_max = 30 kA;

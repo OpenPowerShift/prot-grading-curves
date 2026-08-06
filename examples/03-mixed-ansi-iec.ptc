@@ -17,28 +17,30 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 115.0 kV;
     }
-    "LV" {
+    LV {
       V = 12.47 kV;
     }
   }
 }
 
 faults {
-  "LV 3ph" {
+  LV_3PH {
+    name = "LV 3ph";
     I = 5500 A;
-    voltage = "LV";
+    voltage = LV;
   }
-  "HV 3ph" {
+  HV_3PH {
+    name = "HV 3ph";
     I = 12000 A;
-    voltage = "HV";
+    voltage = HV;
   }
 }
 
 relay R_FDR {
-  voltage = "LV";
+  voltage = LV;
   maker = "GE";
   model = "UR T60";
   ct_ratio = 1200/5;
@@ -51,7 +53,7 @@ relay R_FDR {
 }
 
 relay R_INC {
-  voltage = "HV";
+  voltage = HV;
   maker = "ABB";
   model = "REL-615";
   ct_ratio = 1200/5;
@@ -66,7 +68,7 @@ relay R_INC {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "LV 3ph";
+  fault = LV_3PH;
   margin_target = 0.35 s;
 }
 

@@ -21,11 +21,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV side";
     }
-    "LV" {
+    LV {
       V = 11.0 kV;
       description = "11 kV side";
     }
@@ -33,22 +33,25 @@ system {
 }
 
 faults {
-  "LV max" {
+  LV_MAX {
+    name = "LV max";
     I = 6400 A;
-    voltage = "LV";
+    voltage = LV;
   }
-  "HV max" {
+  HV_MAX {
+    name = "HV max";
     I = 18400 A;
-    voltage = "HV";
+    voltage = HV;
   }
-  "LV min" {
+  LV_MIN {
+    name = "LV min";
     I = 1500 A;
-    voltage = "LV";
+    voltage = LV;
   }
 }
 
 relay R_FDR_110 {
-  voltage = "LV";
+  voltage = LV;
   maker = "ABB";
   model = "REL-615";
   ct_ratio = 600/5;
@@ -68,7 +71,7 @@ relay R_FDR_110 {
 }
 
 relay R_TRF_INC {
-  voltage = "HV";
+  voltage = HV;
   maker = "ABB";
   model = "REL-615";
   ct_ratio = 600/5;
@@ -84,7 +87,7 @@ relay R_TRF_INC {
 grade {
   primary = R_FDR_110:51;
   backup = R_TRF_INC:51;
-  fault = "LV max";
+  fault = LV_MAX;
   margin_target = 0.30 s;
   solve {
     strategy = "tight";
@@ -100,7 +103,7 @@ page {
 }
 
 view {
-  voltage = "HV"; # project both LV and HV relays onto the HV frame
+  voltage = HV; # project both LV and HV relays onto the HV frame
   current_min = 100 A; # don't show below 100 A on the current axis
   current_max = 50 kA;
   time_min = 0.01 s;

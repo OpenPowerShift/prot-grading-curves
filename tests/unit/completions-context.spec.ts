@@ -66,43 +66,58 @@ describe('inside free text', () => {
 
 describe('a declared name', () => {
   const STUDY = `
-system { voltages { "MV" { V = 11 kV; } } }
+system { voltages { MV { V = 11 kV; } } }
 faults {
-  "Board max" { I = 6 kA; }
+  BOARD_MAX { name = "Board max"; I = 6 kA; }
 }
-scenario "LV earth fault" { type = single_phase_earth; }
-relay R { voltage = "MV"; ct_ratio = 400/5;
+scenario LV_EARTH_FAULT { name = "LV earth fault"; type = single_phase_earth; }
+relay R { voltage = MV; ct_ratio = 400/5;
   element 51 { function = "phase_oc"; stages {
     stage main { curve = iec.si; I_pickup = 400 A; tms = 0.2; }
     stage inst { curve = definite; I_pickup = 4 kA; t_delay = 50 ms; }
   } } }
 `;
 
-  it('is inserted quoted, so it parses', () => {
+  it('is inserted bare, which is what an id is now', () => {
     /*
-     * The bare word was inserted, giving `fault = Board max;` -- a
-     * parse error for any name with a space, and a bare identifier for
-     * the rest.
+     * Ids used to be quoted prose, so the completion inserted quotes
+     * or produced `fault = Board max;` -- a parse error. They are bare
+     * identifiers now, and completing to the old spelling would keep
+     * writing new studies in it.
      */
     const r = at(`${STUDY}grade { fault = |`);
-    expect(labels(r)).toContain('Board max');
-    expect(applied(r, 'Board max')).toBe('"Board max"');
+    expect(labels(r)).toContain('BOARD_MAX');
+    expect(applied(r, 'BOARD_MAX')).toBe('BOARD_MAX');
   });
 
-  it('reads cleanly in the list, without its quotes', () => {
+  it('offers the handle, which is what a reference needs', () => {
+    /* The caption is `name`, and is not what resolves anything. */
     const r = at(`${STUDY}grade { fault = |`);
-    expect(labels(r)).toContain('Board max');
-    expect(labels(r)).not.toContain('"Board max"');
+    expect(labels(r)).toContain('BOARD_MAX');
+    expect(labels(r)).not.toContain('Board max');
   });
 
-  it('quotes a scenario the same way', () => {
+  it('offers a scenario the same way', () => {
     const r = at(`${STUDY}grade { scenario = |`);
-    expect(applied(r, 'LV earth fault')).toBe('"LV earth fault"');
+    expect(applied(r, 'LV_EARTH_FAULT')).toBe('LV_EARTH_FAULT');
   });
 
-  it('quotes a voltage level', () => {
+  it('offers a voltage level', () => {
     const r = at(`${STUDY}relay R2 { voltage = |`);
-    expect(applied(r, 'MV')).toBe('"MV"');
+    expect(applied(r, 'MV')).toBe('MV');
+  });
+
+  it('offers the declared sheets, which nothing used to', () => {
+    /*
+     * `views` was the one declared-name key with no completions, so
+     * the list a study had to spell exactly was the one with no help
+     * spelling it -- and a wrong entry removed the thing from every
+     * sheet in silence.
+     */
+    const withViews = `${STUDY}view PHASE { quantity = phase; }\nview SEQUENCE { quantity = I2; }\n`;
+    const r = at(`${withViews}relay R3 { element 51 { views = [|`);
+    expect(labels(r)).toContain('PHASE');
+    expect(labels(r)).toContain('SEQUENCE');
   });
 });
 
@@ -164,8 +179,8 @@ point "External fault I2" { I2 = 49 A; t = 100 ms; label = "Ext fault"; }
     expect(found).not.toContain('Inrush I2 falls below 46 pickup, 240 ms');
   });
 
-  it('inserts it quoted', () => {
+  it('inserts it bare, as ids are written now', () => {
     const r = at(`${STUDY}annotate { point = |`);
-    expect(applied(r, 'External fault I2')).toBe('"External fault I2"');
+    expect(applied(r, 'External fault I2')).toBe('External fault I2');
   });
 });

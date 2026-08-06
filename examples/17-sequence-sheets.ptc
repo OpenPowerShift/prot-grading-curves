@@ -30,7 +30,7 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV ring";
     }
@@ -38,13 +38,14 @@ system {
 }
 
 # ---- Two conditions, both unbalanced. --------------------------------
-scenario "Phase-earth at the tee" {
+scenario PHASE_EARTH_AT_THE_TEE {
+  name = "Phase-earth at the tee";
   type = single_phase_earth;
   description = "Solid A-earth fault at the tee point";
 
   # I1 = I2 = I0 = If/3 for a solid phase-earth fault; the residual
   # 3*I0 is the whole fault current.
-  level "HV" {
+  level HV {
     I = 2.4 kA;
     I1 = 800 A;
     I2 = 800 A;
@@ -53,13 +54,14 @@ scenario "Phase-earth at the tee" {
   }
 }
 
-scenario "Phase-phase at the tee" {
+scenario PHASE_PHASE_AT_THE_TEE {
+  name = "Phase-phase at the tee";
   type = two_phase;
   description = "B-C fault, no earth path";
 
   # A phase-phase fault carries no zero sequence at all, so the
   # residual sheet has nothing to draw for it — and says so.
-  level "HV" {
+  level HV {
     I = 2.1 kA;
     I1 = 1.21 kA;
     I2 = 1.21 kA;
@@ -69,10 +71,11 @@ scenario "Phase-phase at the tee" {
 }
 
 faults {
-  "Ring max" {
+  RING_MAX {
+    name = "Ring max";
     I = 3.6 kA;
     type = three_phase;
-    voltage = "HV";
+    voltage = HV;
   }
 }
 
@@ -82,7 +85,7 @@ relay R_TEE {
   maker = "SEL";
   model = "751";
   reference = "Cardross tee kiosk";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 400/5;
 
   element 51 {
@@ -118,7 +121,7 @@ relay R_RING {
   name = "Ring incomer (ABB REF615)";
   maker = "ABB";
   model = "REF615";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 600/5;
 
   element 46 {
@@ -154,14 +157,14 @@ relay R_RING {
     curve = iec.si;
     I_pickup = 500 A;
     tms = 0.30;
-    views = ["Phase", "Negative sequence"];
+    views = [Phase, NEGATIVE_SEQUENCE];
   }
 }
 
 grade {
   primary = R_TEE:46;
   backup = R_RING:46;
-  scenario = "Phase-earth at the tee";
+  scenario = PHASE_EARTH_AT_THE_TEE;
   margin = 0.30 s;
   comment = "both measure negative sequence, one scaled by three";
 
@@ -175,7 +178,7 @@ grade {
 grade {
   primary = R_TEE:51G;
   backup = R_RING:51G;
-  scenario = "Phase-earth at the tee";
+  scenario = PHASE_EARTH_AT_THE_TEE;
   margin = 0.30 s;
 }
 
@@ -201,7 +204,7 @@ annotate {
   at_residual = 2.4 kA;
   label = "51G sees the whole residual";
   style = leader;
-  views = ["Phase", "Negative sequence", "Residual"];
+  views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
 
 # The component written has to be one the element measures. This relay
@@ -228,7 +231,7 @@ annotate {
   at_I0 = 800 A;
   label = "I0 rather than 3I0";
   style = tag;
-  views = ["Phase", "Negative sequence", "Residual"];
+  views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
 
 # `at_t` places the mark by time instead of current — where a curve is
@@ -248,7 +251,7 @@ annotate {
   on_curve = R_TEE:51G;
   at_residual = 1.2 kA;
   style = pin;                    # a marker only — no label to lose
-  views = ["Phase", "Negative sequence", "Residual"];
+  views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
 
 # ---- A point drawn for both conditions at once. ----------------------
@@ -259,10 +262,11 @@ annotate {
 #      means something on. A phase-current inrush figure is meaningless
 #      on the I2 axis; drawn there it invites a reader to compare it
 #      against a curve it has nothing to do with.
-point "Phase inrush" {
+point PHASE_INRUSH {
+  name = "Phase inrush";
   I = 1.8 kA;
   t = 100 ms;
-  view = "Phase";
+  view = Phase;
   label = "Inrush, phase amps";
   shape = cross;
 }
@@ -273,22 +277,26 @@ times {
   # another axis — so the component is named, exactly as a `point` or
   # an `annotate` names one. Written the wrong way the caption still
   # appears, at the left-hand end, and the sheet says why.
-  "Earth-fault clearance" {
+  EARTH_FAULT_CLEARANCE {
+    name = "Earth-fault clearance";
     t = 800 ms;
     at_residual = 1.2 kA;
-    views = ["Residual"];
+    views = [Residual];
   }
 
-  "Negative-sequence clearance" {
+  NEGATIVE_SEQUENCE_CLEARANCE {
+
+    name = "Negative-sequence clearance";
     t = 900 ms;
     at_I2 = 600 A;
-    views = ["Negative sequence", "Three times I2"];
+    views = [NEGATIVE_SEQUENCE, THREE_TIMES_I2];
   }
 }
 
-point "Tee I2" {
-  scenarios = ["Phase-earth at the tee", "Phase-phase at the tee"];
-  voltage = "HV";
+point TEE_I2 {
+  name = "Tee I2";
+  scenarios = [PHASE_EARTH_AT_THE_TEE, PHASE_PHASE_AT_THE_TEE];
+  voltage = HV;
   t = 0.60 s;
   label = "46 operates";
   shape = square;
@@ -331,11 +339,11 @@ page {
 # ---- Four sheets of the same study. ----------------------------------
 #      `condition` lets curves measuring one quantity be drawn on an
 #      axis in another, using that condition's own declared figures.
-view "Phase" {
+view Phase {
   default = true;
-  voltage = "HV";
+  voltage = HV;
   quantity = phase;
-  condition = "Phase-earth at the tee";
+  condition = PHASE_EARTH_AT_THE_TEE;
   title = "Phase sheet";
   subtitle = "Everything converted onto phase current";
   current_min = 50 A;
@@ -347,10 +355,11 @@ view "Phase" {
   time_pad_low = 2;
 }
 
-view "Negative sequence" {
-  voltage = "HV";
+view NEGATIVE_SEQUENCE {
+  name = "Negative sequence";
+  voltage = HV;
   quantity = I2;
-  condition = "Phase-earth at the tee";
+  condition = PHASE_EARTH_AT_THE_TEE;
   title = "I2 sheet";
   subtitle = "As the tee relay is scaled";
   current_min = 50 A;
@@ -360,20 +369,21 @@ view "Negative sequence" {
   current_pad_high = 1.2;
 }
 
-view "Three times I2" {
-  voltage = "HV";
+view THREE_TIMES_I2 {
+  name = "Three times I2";
+  voltage = HV;
   quantity = 3I2;
-  condition = "Phase-phase at the tee";
+  condition = PHASE_PHASE_AT_THE_TEE;
   title = "3I2 sheet";
   subtitle = "As the ring relay is scaled — the same physics, x3";
   current_min = 50 A;
   current_max = 20 kA;
 }
 
-view "Residual" {
-  voltage = "HV";
+view Residual {
+  voltage = HV;
   quantity = 3I0;
-  condition = "Phase-earth at the tee";
+  condition = PHASE_EARTH_AT_THE_TEE;
   title = "Residual sheet";
   subtitle = "3I0 — what an earth-fault element measures";
   current_min = 50 A;

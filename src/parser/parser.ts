@@ -2063,7 +2063,17 @@ if (kwName === 'flex_points') {
 
     const v = ((): ViewBlock => {
       const v: ViewBlock = { type: 'view', loc: this.loc(head) };
-      if (nameTok) v.name = unquote(nameTok.image);
+      if (nameTok) {
+        /*
+         * The handle, and the caption until a `name =` key says
+         * otherwise -- which is what makes `name` optional without
+         * leaving a sheet unlabelled. `id` is never overwritten, so a
+         * view that declares a caption still has something for a
+         * `views` list to match.
+         */
+        v.id = unquote(nameTok.image);
+        v.name = v.id;
+      }
       while (!this.at('RBRACE') && !this.at('EOF')) {
         const t = this.peek();
         if (t.kind !== 'KW' && t.kind !== 'IDENT') { this.pos++; continue; }

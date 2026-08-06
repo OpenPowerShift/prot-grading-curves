@@ -16,20 +16,21 @@ meta {
 
 system {
   voltages {
-    "LV" {
+    LV {
       V = 0.48 kV;
     }
   }
 }
 
 faults {
-  "Bus fault" {
+  BUS_FAULT {
+    name = "Bus fault";
     I = 4500 A;
   } # bolted fault at end of feeder
 }
 
 relay R_FDR_480 {
-  voltage = "LV";
+  voltage = LV;
   ct_ratio = 600/5;
 
   element 51 {

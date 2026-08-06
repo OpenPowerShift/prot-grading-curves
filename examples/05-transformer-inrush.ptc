@@ -25,11 +25,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV incomer";
     }
-    "LV" {
+    LV {
       V = 11.0 kV;
       description = "11 kV feeders";
     }
@@ -38,44 +38,47 @@ system {
 }
 
 faults {
-  "LV max" {
+  LV_MAX {
+    name = "LV max";
     I = 6.40 kA;
-    voltage = "LV";
+    voltage = LV;
   }
-  "LV min" {
+  LV_MIN {
+    name = "LV min";
     I = 2.50 kA;
-    voltage = "LV";
+    voltage = LV;
   }
-  "HV max" {
+  HV_MAX {
+    name = "HV max";
     I = 18.4 kA;
-    voltage = "HV";
+    voltage = HV;
   }
 }
 
 # ---- transformer characteristic points -------------------------------
 #      25 MVA at 33 kV  ->  I_FLC = 25e6 / (sqrt(3) x 33e3) = 437 A
 #      Inrush is conventionally 12 x FLC held for 0.1 s.
-point "TX1_inrush" {
+point TX1_inrush {
   I = 5250 A;
   t = 0.10 s;
-  voltage = "HV";
+  voltage = HV;
   label = "TX1 inrush — 12 x FLC";
   shape = "cross";
   coords = true; # append (current, time) to the label
 }
 
 #      IEEE C57.109 category II through-fault: 2 s at 25 x FLC.
-point "TX1_damage" {
+point TX1_damage {
   I = 10900 A;
   t = 2.0 s;
-  voltage = "HV";
+  voltage = HV;
   label = "TX1 through-fault limit";
   shape = "triangle";
   coords = true;
 }
 
 relay R_TRF_HV {
-  voltage = "HV";
+  voltage = HV;
   maker = "ABB";
   model = "REF615";
   ct_ratio = 600/5;
@@ -89,7 +92,7 @@ relay R_TRF_HV {
 }
 
 relay R_FDR_LV {
-  voltage = "LV";
+  voltage = LV;
   maker = "Schneider";
   model = "MiCOM_P122";
   ct_ratio = 400/5;
@@ -111,7 +114,7 @@ relay R_FDR_LV {
 grade {
   primary = R_FDR_LV:51;
   backup = R_TRF_HV:51;
-  fault = "LV max";
+  fault = LV_MAX;
   margin = 0.30 s;
   upstream = true; # verify the margin holds above the fault too
 }
@@ -123,14 +126,14 @@ grade {
 annotate {
   primary = R_FDR_LV:51;
   backup = R_TRF_HV:51;
-  fault = "LV max";
+  fault = LV_MAX;
   label = "CTI";
 }
 
 annotate {
   primary = R_FDR_LV:51;
   backup = R_TRF_HV:51;
-  fault = "LV min";
+  fault = LV_MIN;
   label = "CTI";
 }
 
@@ -152,7 +155,7 @@ annotate {
 annotate {
   primary = R_TRF_HV:51;
   at_t = 2.0 s;
-  point = "TX1_damage";
+  point = TX1_damage;
   label = "through-fault headroom";
 }
 
@@ -167,7 +170,7 @@ annotate {
 #      current, against the 100 ms the inrush lasts.
 annotate {
   primary = R_TRF_HV:51;
-  point = "TX1_inrush";
+  point = TX1_inrush;
   label = "clear of inrush by";
 }
 
@@ -183,6 +186,6 @@ page {
 }
 
 view {
-  voltage = "HV";
+  voltage = HV;
   current_pad = 0.25;
 }

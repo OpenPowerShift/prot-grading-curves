@@ -26,23 +26,25 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
     }
   }
 }
 
 faults {
-  "Bus fault" {
+  BUS_FAULT {
+    name = "Bus fault";
     I = 3.0 kA;
   }
-  "Max fault" {
+  MAX_FAULT {
+    name = "Max fault";
     I = 20.0 kA;
   }
 }
 
 relay R_FEEDER {
-  voltage = "MV";
+  voltage = MV;
   maker = "GE";
   model = "UR T60";
   ct_ratio = 400/5;
@@ -56,7 +58,7 @@ relay R_FEEDER {
 }
 
 relay R_INCOMER {
-  voltage = "MV";
+  voltage = MV;
   maker = "GE";
   model = "UR T60";
   ct_ratio = 600/5;
@@ -72,7 +74,7 @@ relay R_INCOMER {
 grade {
   primary = R_FEEDER:51;
   backup = R_INCOMER:51;
-  fault = "Bus fault";
+  fault = BUS_FAULT;
   margin = 0.30 s;
 
   # Left in, though it is now the default, because this study is about

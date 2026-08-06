@@ -180,9 +180,9 @@ function curveCompletions(): Completion[] {
  */
 function pointCompletions(src: string): Completion[] {
   const out: Completion[] = [];
-  const re = /\bpoint\s+"([^"]+)"\s*\{/g;
+  const re = new RegExp(`\\bpoint\\s+${DECL_ID}\\s*\\{`, 'g');
   for (let m = re.exec(src); m; m = re.exec(src)) {
-    out.push(namedValue(m[1], 'marked point', 4));
+    out.push(namedValue(idOf(m), 'marked point', 4));
   }
   return out;
 }
@@ -274,27 +274,55 @@ function refCompletions(src: string): Completion[] {
  * lands in the document.
  */
 function namedValue(name: string, detail: string, boost: number): Completion {
-  return { label: name, apply: `"${name}"`, type: 'variable', detail, boost };
+  /*
+   * Inserted bare, because ids are bare identifiers now. A quoted id
+   * still parses so an unmigrated study loads, but completing to the
+   * old spelling would keep writing new files in it.
+   */
+  return { label: name, apply: name, type: 'variable', detail, boost };
 }
+
+/** A declared id, quoted in the old spelling or bare in the new. */
+const DECL_ID = '(?:"([^"]+)"|([A-Za-z_]\\w*))';
+
+/** Whichever capture group matched. */
+const idOf = (m: RegExpExecArray): string => m[1] ?? m[2];
 
 function faultCompletions(src: string): Completion[] {
   const out: Completion[] = [];
 
   const faultsBody = blockBody(src, /\bfaults\s*\{/);
   if (faultsBody != null) {
-    const nameRe = /"([^"]+)"\s*\{/g;
+    const nameRe = new RegExp(`${DECL_ID}\\s*\\{`, 'g');
     for (let m = nameRe.exec(faultsBody); m; m = nameRe.exec(faultsBody)) {
-      out.push(namedValue(m[1], 'fault', 4));
+      out.push(namedValue(idOf(m), 'fault', 4));
     }
   }
 
   /* `scenario "name" {` is a top-level block, so it is matched
    * directly rather than inside an enclosing one. */
-  const scenarioRe = /\bscenario\s+"([^"]+)"\s*\{/g;
+  const scenarioRe = new RegExp(`\\bscenario\\s+${DECL_ID}\\s*\\{`, 'g');
   for (let m = scenarioRe.exec(src); m; m = scenarioRe.exec(src)) {
-    out.push(namedValue(m[1], 'scenario', 4));
+    out.push(namedValue(idOf(m), 'scenario', 4));
   }
 
+  return out;
+}
+
+/**
+ * Sheets declared in the source, for `view` and `views`.
+ *
+ * The only declared-name key that offered nothing, so the one list a
+ * study must spell exactly was the one with no help spelling it -- and
+ * an entry that matched nothing removed the thing from every sheet in
+ * silence. Both halves of that are now fixed.
+ */
+function viewCompletions(src: string): Completion[] {
+  const out: Completion[] = [];
+  const re = new RegExp(`\\bview\\s+${DECL_ID}\\s*\\{`, 'g');
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    out.push(namedValue(idOf(m), 'sheet', 4));
+  }
   return out;
 }
 
@@ -303,9 +331,9 @@ function voltageCompletions(src: string): Completion[] {
   const out: Completion[] = [];
   const body = blockBody(src, /\bvoltages\s*\{/);
   if (body == null) return out;
-  const nameRe = /"([^"]+)"\s*\{/g;
+  const nameRe = new RegExp(`${DECL_ID}\\s*\\{`, 'g');
   for (let m = nameRe.exec(body); m; m = nameRe.exec(body)) {
-    out.push(namedValue(m[1], 'voltage level', 4));
+    out.push(namedValue(idOf(m), 'voltage level', 4));
   }
   return out;
 }
@@ -344,6 +372,20 @@ function blockBody(src: string, opener: RegExp): string | null {
 function assignmentTarget(src: string, pos: number): string | null {
   const lineStart = src.lastIndexOf('\n', pos - 1) + 1;
   const line = src.slice(lineStart, pos);
+
+  /*
+   * Inside a list, the key is still what decides the candidates.
+   *
+   * `views`, `faults`, `scenarios` and `sources` all take lists, and
+   * none of them ever completed: the pattern stopped at the `=` and an
+   * opening bracket was not something it could look past. So the one
+   * key a study has to spell exactly -- a sheet name, where a wrong
+   * entry silently removes the thing from every sheet -- was the one
+   * with no help spelling it.
+   */
+  const inList = line.match(/([A-Za-z_]\w*)\s*=\s*\[[^\]]*$/);
+  if (inList) return inList[1];
+
   const m = line.match(/([A-Za-z_]\w*)\s*=\s*"?[\w.]*$/);
   return m ? m[1] : null;
 }
@@ -507,6 +549,7 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
     }
     /* `point` inside an annotate names a marked coordinate. */
     else if (target === 'point') options = pointCompletions(src);
+    else if (target === 'view' || target === 'views') options = viewCompletions(src);
     else if (target === 'voltage') {
       /* `voltage` names a level everywhere except inside a fault or a
        * device rating, so offer the declared levels first and fall

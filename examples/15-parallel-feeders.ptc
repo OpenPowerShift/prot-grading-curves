@@ -28,7 +28,7 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV double circuit";
     }
@@ -38,20 +38,23 @@ system {
 }
 
 faults {
-  "Load end 3ph" {
+  LOAD_END_3PH {
+    name = "Load end 3ph";
     I = 7.2 kA;
     type = three_phase;
-    voltage = "HV";
+    voltage = HV;
   }
-  "Load end 2ph" {
+  LOAD_END_2PH {
+    name = "Load end 2ph";
     I = 6.2 kA;
     type = two_phase;
-    voltage = "HV";
+    voltage = HV;
   }
-  "Load end 2phE" {
+  LOAD_END_2PHE {
+    name = "Load end 2phE";
     I = 5.8 kA;
     type = two_phase_earth;
-    voltage = "HV";
+    voltage = HV;
     I2 = 2.1 kA;
     I0 = 1.4 kA;
     residual = 4.2 kA;
@@ -62,11 +65,12 @@ faults {
 #      `sees` records the share each relay takes of the level's current.
 #      Written down, it is auditable; left to the reader, it is the
 #      commonest place a parallel study goes wrong by a factor of two.
-scenario "Both circuits in" {
+scenario BOTH_CIRCUITS_IN {
+  name = "Both circuits in";
   type = three_phase;
   description = "Normal running, both feeders closed";
 
-  level "HV" {
+  level HV {
     I = 7.2 kA;
     I1 = 7.2 kA;
     I2 = 0 A;
@@ -81,11 +85,12 @@ scenario "Both circuits in" {
   }
 }
 
-scenario "One circuit out" {
+scenario ONE_CIRCUIT_OUT {
+  name = "One circuit out";
   type = three_phase;
   description = "B out for maintenance; A carries the lot";
 
-  level "HV" {
+  level HV {
     I = 6.4 kA;
     I1 = 6.4 kA;
     I2 = 0 A;
@@ -103,7 +108,7 @@ relay R_FDR_A {
   maker = "SEL";
   model = "751";
   reference = "Ardmore panel A";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 400/5;
   direction = forward;
 
@@ -137,7 +142,7 @@ relay R_FDR_B {
   name = "Feeder B";
   maker = "SEL";
   model = "751";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 400/5;
   direction = forward;
 
@@ -160,7 +165,7 @@ relay R_SRC {
   name = "Source incomer";
   maker = "ABB";
   model = "REF615";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 800/5;
   direction = none;
 
@@ -181,7 +186,7 @@ relay R_SRC {
 # ---- A reverse-looking element, for the busbar behind it. ------------
 relay R_BUS {
   name = "Bus zone backup";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 800/5;
   direction = reverse;
 
@@ -210,7 +215,7 @@ relay R_BUS {
 grade {
   primary = R_FDR_A:51;
   backup = R_SRC:51;
-  scenario = "Both circuits in";
+  scenario = BOTH_CIRCUITS_IN;
   margin = 0.35 s;
   margin_target = 0.40 s;
   comment = "A carries half; the source relay sees the whole fault";
@@ -226,7 +231,7 @@ grade {
 grade {
   primary = R_FDR_A:51;
   backup = R_SRC:51;
-  scenario = "One circuit out";
+  scenario = ONE_CIRCUIT_OUT;
   margin = 0.35 s;
   comment = "worst case for A: it now carries everything";
 }
@@ -234,18 +239,19 @@ grade {
 annotate {
   primary = R_FDR_A:51;
   backup = R_SRC:51;
-  scenario = "Both circuits in";
+  scenario = BOTH_CIRCUITS_IN;
   label = "CTI, both in";
 }
 
 # ---- Two sheets from one study. --------------------------------------
 #      `default = true` picks the one the CLI and a fresh playground
 #      open on; the picker offers the rest.
-view "Primary amps" {
+view PRIMARY_AMPS {
+  name = "Primary amps";
   default = true;
-  voltage = "HV";
+  voltage = HV;
   quantity = phase;
-  condition = "Both circuits in";
+  condition = BOTH_CIRCUITS_IN;
   title = "Parallel feeder grading";
   subtitle = "Both circuits in service, 50% share each";
   axis = "primary";
@@ -260,10 +266,11 @@ view "Primary amps" {
   time_max = 100 s;
 }
 
-view "Multiples of pickup" {
-  voltage = "HV";
+view MULTIPLES_OF_PICKUP {
+  name = "Multiples of pickup";
+  voltage = HV;
   quantity = phase;
-  condition = "One circuit out";
+  condition = ONE_CIRCUIT_OUT;
   title = "Same study, drawn in multiples";
   subtitle = "x pickup rather than amps — how a settings sheet reads";
 

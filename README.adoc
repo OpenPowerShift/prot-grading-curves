@@ -253,22 +253,23 @@ TIP: Open it in the playground: https://openpowershift.github.io/time-current-gr
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11 kV;
     }
   }
 }
 
 faults {
-  "Board max" {
+  BOARD_MAX {
+    name = "Board max";
     I = 6.2 kA;
     type = three_phase;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
 relay R_FDR {
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 400/5;
   element 51 {
     function = "phase_oc";
@@ -279,7 +280,7 @@ relay R_FDR {
 }
 
 relay R_INC {
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 1200/5;
   element 51 {
     function = "phase_oc";
@@ -292,7 +293,7 @@ relay R_INC {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   margin = 0.30 s;
 }
 ----
@@ -347,11 +348,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV incomer";
     }
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV switchboard";
     }
@@ -360,29 +361,34 @@ system {
 }
 
 faults {
-  "Bus max" {
+  BUS_MAX {
+    name = "Bus max";
     I = 8.20 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Feeder max" {
+  FEEDER_MAX {
+    name = "Feeder max";
     I = 5.60 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Sub max" {
+  SUB_MAX {
+    name = "Sub max";
     I = 3.10 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Spur max" {
+  SPUR_MAX {
+    name = "Spur max";
     I = 1.25 kA;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Sub min" {
+  SUB_MIN {
+    name = "Sub min";
     I = 0.95 kA;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
-device "spur_fuse_65T" {
+device spur_fuse_65T {
   kind = "fuse";
   maker = "Mersen";
   model = "65T";
@@ -392,7 +398,7 @@ device "spur_fuse_65T" {
 }
 
 relay R_INC {
-  voltage = "HV";
+  voltage = HV;
   maker = "ABB";
   model = "REF615";
   ct_ratio = 600/5;
@@ -405,7 +411,7 @@ relay R_INC {
 }
 
 relay R_TIE {
-  voltage = "MV";
+  voltage = MV;
   maker = "ABB";
   model = "REF615";
   ct_ratio = 800/5;
@@ -418,7 +424,7 @@ relay R_TIE {
 }
 
 relay R_FDR {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 600/5;
@@ -440,7 +446,7 @@ relay R_FDR {
 }
 
 relay R_SUB {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 300/5;
@@ -456,7 +462,7 @@ relay R_SUB {
 grade {
   primary = R_TIE:51;
   backup = R_INC:51;
-  fault = "Bus max";
+  fault = BUS_MAX;
   margin = 0.30 s;
   upstream = true;
 }
@@ -464,7 +470,7 @@ grade {
 grade {
   primary = R_FDR:51;
   backup = R_TIE:51;
-  fault = "Feeder max";
+  fault = FEEDER_MAX;
   margin = 0.30 s;
   upstream = true;
 }
@@ -480,7 +486,7 @@ grade {
 grade {
   primary = R_SUB:51;
   backup = R_FDR:51;
-  fault = "Sub max";
+  fault = SUB_MAX;
   margin = 0.30 s;
   upstream_to = 3.1 kA;
 }
@@ -488,7 +494,7 @@ grade {
 grade {
   primary = spur_fuse_65T;
   backup = R_SUB:51;
-  fault = "Spur max";
+  fault = SPUR_MAX;
   margin = 0.15 s; # fuse-relay pairs run tighter
 
   # The one pair in this study that is not swept above its fault, and
@@ -513,25 +519,25 @@ grade {
 annotate {
   primary = R_TIE:51;
   backup = R_INC:51;
-  fault = "Bus max";
+  fault = BUS_MAX;
   label = "CTI";
 }
 annotate {
   primary = R_FDR:51;
   backup = R_TIE:51;
-  fault = "Feeder max";
+  fault = FEEDER_MAX;
   label = "CTI";
 }
 annotate {
   primary = R_SUB:51;
   backup = R_FDR:51;
-  fault = "Sub max";
+  fault = SUB_MAX;
   label = "CTI";
 }
 annotate {
   primary = spur_fuse_65T;
   backup = R_SUB:51;
-  fault = "Spur max";
+  fault = SPUR_MAX;
   label = "CTI";
 }
 
@@ -565,7 +571,7 @@ page {
 }
 
 view {
-  voltage = "MV";
+  voltage = MV;
   current_max = 60 kA;
   time_pad_high = 0.2;
 }
@@ -616,11 +622,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV incoming";
     }
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV switchboard";
     }
@@ -628,20 +634,23 @@ system {
 }
 
 faults {
-  "Board max" {
+  BOARD_MAX {
+    name = "Board max";
     I = 9.4 kA;
     type = three_phase;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Board min" {
+  BOARD_MIN {
+    name = "Board min";
     I = 2.1 kA;
     type = two_phase;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Earth max" {
+  EARTH_MAX {
+    name = "Earth max";
     I = 1.6 kA;
     type = single_phase_earth;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
@@ -654,17 +663,20 @@ faults {
 #      goes at the left-hand end unless told otherwise — put it beside
 #      the curve the requirement actually bites on.
 times {
-  "Arc flash boundary" {
+  ARC_FLASH_BOUNDARY {
+    name = "Arc flash boundary";
     t = 500 ms;
     at_I = 6 kA;
     description = "Above this, PPE category rises a level";
   }
-  "Grid code clearance" {
+  GRID_CODE_CLEARANCE {
+    name = "Grid code clearance";
     t = 800 ms;
     at_I = 3 kA;
     description = "DNO connection agreement, 11 kV";
   }
-  "Transformer withstand" {
+  TRANSFORMER_WITHSTAND {
+    name = "Transformer withstand";
     t = 4 s;
     at_I = 1.2 kA;
     description = "ONAN 10 MVA, category II through-fault";
@@ -677,7 +689,7 @@ relay R_FDR {
   maker = "SEL";
   model = "751";
   reference = "Panel 3B, relay 2";
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 600/5;
 
   element 51 {
@@ -708,7 +720,7 @@ relay R_INC {
   name = "33/11 kV incomer";
   maker = "ABB";
   model = "REF615";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 300/5;
 
   element 51 {
@@ -724,7 +736,7 @@ relay R_INC {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   margin = 0.30 s;
   comment = "the case the arc-flash boundary is written for";
 }
@@ -732,7 +744,7 @@ grade {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board min";
+  fault = BOARD_MIN;
   margin = 0.30 s;
 }
 
@@ -759,7 +771,7 @@ annotate {
 annotate {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   label = "CTI";
 }
 
@@ -793,7 +805,8 @@ annotate {
 }
 
 # ---- A marked point taken from the fault study. ----------------------
-point "Withstand corner" {
+point WITHSTAND_CORNER {
+  name = "Withstand corner";
   I = 1.2 kA;
   t = 4 s;
   label = "Transformer withstand corner";
@@ -801,7 +814,7 @@ point "Withstand corner" {
   color = "#8e44ad";
 }
 
-point "Inrush" {
+point Inrush {
   I = 2.4 kA;
   t = 100 ms;
   label = "Transformer inrush, 12x for 100 ms";
@@ -838,7 +851,7 @@ page {
 }
 
 view {
-  voltage = "MV";
+  voltage = MV;
   quantity = any;
   current_min = 50 A;
   current_max = 30 kA;
@@ -896,11 +909,11 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV incoming";
     }
-    "LV" {
+    LV {
       V = 0.4 kV;
       description = "400 V motor board";
     }
@@ -909,15 +922,17 @@ system {
 }
 
 faults {
-  "LV board max" {
+  LV_BOARD_MAX {
+    name = "LV board max";
     I = 21 kA;
     type = three_phase;
-    voltage = "LV";
+    voltage = LV;
   }
-  "LV board min" {
+  LV_BOARD_MIN {
+    name = "LV board min";
     I = 8.4 kA;
     type = two_phase;
-    voltage = "LV";
+    voltage = LV;
   }
 }
 
@@ -926,9 +941,9 @@ faults {
 #      records where, because a number nobody can trace is a number
 #      nobody can check.
 
-device "spur_fuse_100T" {
+device spur_fuse_100T {
   kind = fuse;
-  voltage = "LV";
+  voltage = LV;
   maker = "Mersen";
   model = "100T";
   rating_I = 100 A;
@@ -943,9 +958,9 @@ device "spur_fuse_100T" {
   total_clear = [(200 A, 16.0 s), (400 A, 2.00 s), (800 A, 0.26 s), (1.6 kA, 0.045 s)];
 }
 
-device "sub_main_cable" {
+device sub_main_cable {
   kind = cable;
-  voltage = "LV";
+  voltage = LV;
   rating_I = 400 A;
   reference = "IEC 60949, 185 mm2 Cu XLPE, k = 143";
   description = "Board to motor control centre, 185 mm2";
@@ -955,9 +970,9 @@ device "sub_main_cable" {
   flex_points = [(4 kA, 43.0 s), (8 kA, 10.8 s), (16 kA, 2.70 s), (32 kA, 0.67 s)];
 }
 
-device "tx_damage_1250" {
+device tx_damage_1250 {
   kind = transformer_damage;
-  voltage = "LV";
+  voltage = LV;
   maker = "Wilson";
   model = "1250 kVA ONAN";
   rating_S = 1.25 MVA;
@@ -968,9 +983,9 @@ device "tx_damage_1250" {
   flex_points = [(3.6 kA, 300 s), (7.2 kA, 75 s), (14.4 kA, 18.8 s), (28.8 kA, 4.7 s)];
 }
 
-device "sump_motor_start" {
+device sump_motor_start {
   kind = motor_startup;
-  voltage = "LV";
+  voltage = LV;
   rating_I = 180 A;
   reference = "Motor data sheet, DOL, 6.2x FLC";
   description = "132 kW sump pump, direct on line";
@@ -979,9 +994,9 @@ device "sump_motor_start" {
   flex_points = [(1.12 kA, 9.0 s), (1.12 kA, 0.05 s)];
 }
 
-device "acb_operating" {
+device acb_operating {
   kind = breaker;
-  voltage = "LV";
+  voltage = LV;
   maker = "Schneider";
   model = "NW20";
   rating_I = 2000 A;
@@ -990,9 +1005,9 @@ device "acb_operating" {
   t_delay = 50 ms;
 }
 
-device "recloser_R1" {
+device recloser_R1 {
   kind = recloser;
-  voltage = "MV";
+  voltage = MV;
   maker = "Schneider";
   model = "N-Series";
   rating_I = 630 A;
@@ -1008,7 +1023,7 @@ relay R_MCC {
   maker = "SEL";
   model = "751";
   reference = "MCC-1 panel";
-  voltage = "LV";
+  voltage = LV;
   ct_ratio = 2000/5;
 
   element 51 {
@@ -1023,7 +1038,7 @@ relay R_MCC {
 
 relay R_BOARD {
   name = "LV board incomer";
-  voltage = "LV";
+  voltage = LV;
   ct_ratio = 3000/5;
 
   element 51 {
@@ -1092,7 +1107,7 @@ combine {
 grade {
   primary = R_MCC:51;
   backup = R_BOARD:51;
-  fault = "LV board max";
+  fault = LV_BOARD_MAX;
   margin = 0.30 s;
   comment = "MCC ahead of the board incomer";
 }
@@ -1100,7 +1115,7 @@ grade {
 annotate {
   primary = R_MCC:51;
   backup = R_BOARD:51;
-  fault = "LV board max";
+  fault = LV_BOARD_MAX;
   label = "CTI";
 }
 
@@ -1111,7 +1126,8 @@ annotate {
   style = leader;
 }
 
-point "Motor start corner" {
+point MOTOR_START_CORNER {
+  name = "Motor start corner";
   I = 1.12 kA;
   t = 9 s;
   label = "DOL start, 6.2x FLC for 9 s";
@@ -1144,7 +1160,7 @@ page {
 }
 
 view {
-  voltage = "LV";
+  voltage = LV;
   quantity = any;
   current_min = 100 A;
   current_max = 60 kA;
@@ -1203,7 +1219,7 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV ring";
     }
@@ -1211,13 +1227,14 @@ system {
 }
 
 # ---- Two conditions, both unbalanced. --------------------------------
-scenario "Phase-earth at the tee" {
+scenario PHASE_EARTH_AT_THE_TEE {
+  name = "Phase-earth at the tee";
   type = single_phase_earth;
   description = "Solid A-earth fault at the tee point";
 
   # I1 = I2 = I0 = If/3 for a solid phase-earth fault; the residual
   # 3*I0 is the whole fault current.
-  level "HV" {
+  level HV {
     I = 2.4 kA;
     I1 = 800 A;
     I2 = 800 A;
@@ -1226,13 +1243,14 @@ scenario "Phase-earth at the tee" {
   }
 }
 
-scenario "Phase-phase at the tee" {
+scenario PHASE_PHASE_AT_THE_TEE {
+  name = "Phase-phase at the tee";
   type = two_phase;
   description = "B-C fault, no earth path";
 
   # A phase-phase fault carries no zero sequence at all, so the
   # residual sheet has nothing to draw for it — and says so.
-  level "HV" {
+  level HV {
     I = 2.1 kA;
     I1 = 1.21 kA;
     I2 = 1.21 kA;
@@ -1242,10 +1260,11 @@ scenario "Phase-phase at the tee" {
 }
 
 faults {
-  "Ring max" {
+  RING_MAX {
+    name = "Ring max";
     I = 3.6 kA;
     type = three_phase;
-    voltage = "HV";
+    voltage = HV;
   }
 }
 
@@ -1255,7 +1274,7 @@ relay R_TEE {
   maker = "SEL";
   model = "751";
   reference = "Cardross tee kiosk";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 400/5;
 
   element 51 {
@@ -1291,7 +1310,7 @@ relay R_RING {
   name = "Ring incomer (ABB REF615)";
   maker = "ABB";
   model = "REF615";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 600/5;
 
   element 46 {
@@ -1327,14 +1346,14 @@ relay R_RING {
     curve = iec.si;
     I_pickup = 500 A;
     tms = 0.30;
-    views = ["Phase", "Negative sequence"];
+    views = [Phase, NEGATIVE_SEQUENCE];
   }
 }
 
 grade {
   primary = R_TEE:46;
   backup = R_RING:46;
-  scenario = "Phase-earth at the tee";
+  scenario = PHASE_EARTH_AT_THE_TEE;
   margin = 0.30 s;
   comment = "both measure negative sequence, one scaled by three";
 
@@ -1348,7 +1367,7 @@ grade {
 grade {
   primary = R_TEE:51G;
   backup = R_RING:51G;
-  scenario = "Phase-earth at the tee";
+  scenario = PHASE_EARTH_AT_THE_TEE;
   margin = 0.30 s;
 }
 
@@ -1374,7 +1393,7 @@ annotate {
   at_residual = 2.4 kA;
   label = "51G sees the whole residual";
   style = leader;
-  views = ["Phase", "Negative sequence", "Residual"];
+  views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
 
 # The component written has to be one the element measures. This relay
@@ -1401,7 +1420,7 @@ annotate {
   at_I0 = 800 A;
   label = "I0 rather than 3I0";
   style = tag;
-  views = ["Phase", "Negative sequence", "Residual"];
+  views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
 
 # `at_t` places the mark by time instead of current — where a curve is
@@ -1421,7 +1440,7 @@ annotate {
   on_curve = R_TEE:51G;
   at_residual = 1.2 kA;
   style = pin;                    # a marker only — no label to lose
-  views = ["Phase", "Negative sequence", "Residual"];
+  views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
 
 # ---- A point drawn for both conditions at once. ----------------------
@@ -1432,10 +1451,11 @@ annotate {
 #      means something on. A phase-current inrush figure is meaningless
 #      on the I2 axis; drawn there it invites a reader to compare it
 #      against a curve it has nothing to do with.
-point "Phase inrush" {
+point PHASE_INRUSH {
+  name = "Phase inrush";
   I = 1.8 kA;
   t = 100 ms;
-  view = "Phase";
+  view = Phase;
   label = "Inrush, phase amps";
   shape = cross;
 }
@@ -1446,22 +1466,26 @@ times {
   # another axis — so the component is named, exactly as a `point` or
   # an `annotate` names one. Written the wrong way the caption still
   # appears, at the left-hand end, and the sheet says why.
-  "Earth-fault clearance" {
+  EARTH_FAULT_CLEARANCE {
+    name = "Earth-fault clearance";
     t = 800 ms;
     at_residual = 1.2 kA;
-    views = ["Residual"];
+    views = [Residual];
   }
 
-  "Negative-sequence clearance" {
+  NEGATIVE_SEQUENCE_CLEARANCE {
+
+    name = "Negative-sequence clearance";
     t = 900 ms;
     at_I2 = 600 A;
-    views = ["Negative sequence", "Three times I2"];
+    views = [NEGATIVE_SEQUENCE, THREE_TIMES_I2];
   }
 }
 
-point "Tee I2" {
-  scenarios = ["Phase-earth at the tee", "Phase-phase at the tee"];
-  voltage = "HV";
+point TEE_I2 {
+  name = "Tee I2";
+  scenarios = [PHASE_EARTH_AT_THE_TEE, PHASE_PHASE_AT_THE_TEE];
+  voltage = HV;
   t = 0.60 s;
   label = "46 operates";
   shape = square;
@@ -1504,11 +1528,11 @@ page {
 # ---- Four sheets of the same study. ----------------------------------
 #      `condition` lets curves measuring one quantity be drawn on an
 #      axis in another, using that condition's own declared figures.
-view "Phase" {
+view Phase {
   default = true;
-  voltage = "HV";
+  voltage = HV;
   quantity = phase;
-  condition = "Phase-earth at the tee";
+  condition = PHASE_EARTH_AT_THE_TEE;
   title = "Phase sheet";
   subtitle = "Everything converted onto phase current";
   current_min = 50 A;
@@ -1520,10 +1544,11 @@ view "Phase" {
   time_pad_low = 2;
 }
 
-view "Negative sequence" {
-  voltage = "HV";
+view NEGATIVE_SEQUENCE {
+  name = "Negative sequence";
+  voltage = HV;
   quantity = I2;
-  condition = "Phase-earth at the tee";
+  condition = PHASE_EARTH_AT_THE_TEE;
   title = "I2 sheet";
   subtitle = "As the tee relay is scaled";
   current_min = 50 A;
@@ -1533,20 +1558,21 @@ view "Negative sequence" {
   current_pad_high = 1.2;
 }
 
-view "Three times I2" {
-  voltage = "HV";
+view THREE_TIMES_I2 {
+  name = "Three times I2";
+  voltage = HV;
   quantity = 3I2;
-  condition = "Phase-phase at the tee";
+  condition = PHASE_PHASE_AT_THE_TEE;
   title = "3I2 sheet";
   subtitle = "As the ring relay is scaled — the same physics, x3";
   current_min = 50 A;
   current_max = 20 kA;
 }
 
-view "Residual" {
-  voltage = "HV";
+view Residual {
+  voltage = HV;
   quantity = 3I0;
-  condition = "Phase-earth at the tee";
+  condition = PHASE_EARTH_AT_THE_TEE;
   title = "Residual sheet";
   subtitle = "3I0 — what an earth-fault element measures";
   current_min = 50 A;

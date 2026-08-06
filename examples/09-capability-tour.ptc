@@ -26,11 +26,11 @@ meta {
 #      these, so no transformer block is needed. ----------------------
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV incomer";
     }
-    "LV" {
+    LV {
       V = 11.0 kV;
       description = "11 kV board";
     }
@@ -41,29 +41,32 @@ system {
 # ---- faults: a single point, or a range with min_A / max_A that the
 #      CTI constraint sweeps across. ---------------------------------
 faults {
-  "LV max" {
+  LV_MAX {
+    name = "LV max";
     I = 6.40 kA;
     I_min = 4.0 kA;
     I_max = 8.0 kA;
-    voltage = "LV";
+    voltage = LV;
   }
-  "LV min" {
+  LV_MIN {
+    name = "LV min";
     I = 1.50 kA;
-    voltage = "LV";
+    voltage = LV;
   }
-  "HV max" {
+  HV_MAX {
+    name = "HV max";
     I = 18.4 kA;
-    voltage = "HV";
+    voltage = HV;
   }
 }
 
 # ---- point: a marked (I, t) the curves must respect. ---------------
 # `\n` in any label breaks the line, so a marked point can carry its
 # justification without crowding the plot.
-point "TX1_inrush" {
+point TX1_inrush {
   I = 5250 A;
   t = 0.10 s;
-  voltage = "HV";
+  voltage = HV;
   label = "TX1 inrush\n12 x FLC, 100 ms";
   shape = "cross";
 }
@@ -75,9 +78,9 @@ point "TX1_inrush" {
 #      on a cross-voltage sheet that draws the band out by the turns
 #      ratio. `rating_kV` is a different thing: the fuse's own
 #      insulation rating, not a system level.
-device "spur_fuse_50T" {
+device spur_fuse_50T {
   kind = "fuse";
-  voltage = "LV";
+  voltage = LV;
   maker = "Mersen";
   model = "50T";
   rating_I = 50 A;
@@ -86,7 +89,7 @@ device "spur_fuse_50T" {
 }
 
 relay R_INC {
-  voltage = "HV";
+  voltage = HV;
   maker = "ABB";
   model = "REF615";
   ct_ratio = 600/5;
@@ -102,7 +105,7 @@ relay R_INC {
 }
 
 relay R_FDR {
-  voltage = "LV";
+  voltage = LV;
   maker = "Schneider";
   model = "MiCOM_P122";
   ct_ratio = 400/5;
@@ -142,7 +145,7 @@ relay R_FDR {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "LV max";
+  fault = LV_MAX;
   margin = 0.30 s;
   upstream = true;
 }
@@ -151,7 +154,7 @@ grade {
 annotate {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "LV max";
+  fault = LV_MAX;
   label = "CTI";
 }
 
@@ -165,7 +168,7 @@ annotate {
 
 # ---- view: display directives; none of these change the maths. -----
 view {
-  voltage = "HV";
+  voltage = HV;
   stages = "composite";
   axis = "primary";
   current_pad = 0.25;

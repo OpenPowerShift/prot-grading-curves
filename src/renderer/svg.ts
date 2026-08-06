@@ -576,11 +576,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * else its id. `conditionName` above stays the *handle*, because it
    * is what resolves the condition; this is only ever printed.
    */
-  const conditionLabel = conditionName
-    ? (study.scenarios.get(conditionName)?.name
-       ?? study.faults.get(conditionName)?.name
-       ?? conditionName)
-    : undefined;
+  /**
+   * The caption for a condition handle.
+   *
+   * Everything printed about a condition goes through here, so a sheet
+   * never shows the identifier the study happens to use for it. The
+   * handle is still what resolves the condition; this is only ever the
+   * text beside it.
+   */
+  const conditionLabelFor = (handle: string | undefined): string | undefined => {
+    if (!handle) return undefined;
+    return study.scenarios.get(handle)?.name
+      ?? study.faults.get(handle)?.name
+      ?? handle;
+  };
+  const conditionLabel = conditionLabelFor(conditionName);
   const condition: ResolvedCondition | null =
     conditionName ? resolveCondition(study, conditionName, viewLevelName) : null;
 
@@ -687,7 +697,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const onThisSheet = (scoped: { views?: string[] }): boolean => {
     if (!scoped.views || scoped.views.length === 0) return true;
-    const here = view?.name;
+    /*
+     * Matched on the sheet's *handle*. It used to match the caption,
+     * which was the same field -- so a view that declared a `name`
+     * lost its handle and every `views` entry naming it matched
+     * nothing, silently, on every sheet.
+     */
+    const here = view?.id ?? view?.name;
     return here != null && scoped.views.includes(here);
   };
 
@@ -803,7 +819,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * turns ratio.
    */
   for (const scenario of study.scenarios.values()) {
-    const c = resolveCondition(study, scenario.name, viewLevelName);
+    /* Resolved by handle; every message below quotes the caption. */
+    const c = resolveCondition(study, scenario.id, viewLevelName);
     if (!c) continue;
 
     if (c.voltage == null) {
@@ -1712,7 +1729,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       if (own != null && !(Math.abs(own.value) > 0)) {
         blockedElements.set(element.label,
           `${element.label} carries no ${quantityLabel(measures)} at ${element.voltage} `
-          + `under ${conditionName}`);
+          + `under ${conditionLabel}`);
         return null;
       }
     }
@@ -1759,7 +1776,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     if (quantityIsAbsent(condition.type, measures)) {
       blockedElements.set(element.label,
-        `${element.label} carries no ${quantityLabel(measures)} under ${conditionName}`);
+        `${element.label} carries no ${quantityLabel(measures)} under ${conditionLabel}`);
       return null;
     }
 
@@ -1781,7 +1798,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       blockedElements.set(element.label,
         `${element.label} carries no ${quantityLabel(measures)}`
         + `${condition.voltage ? ` at ${condition.voltage}` : ''}`
-        + `${conditionName ? ` under ${conditionName}` : ''}`);
+        + `${conditionLabel ? ` under ${conditionLabel}` : ''}`);
       return null;
     }
     if (factor == null || !(factor > 0) || !Number.isFinite(factor)) return null;
@@ -2815,7 +2832,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     placer.reserve({ x: px - 7, y: py - 7, w: 14, h: 14 });
 
-    const base = point.label ?? point.id;
+    const raw = point.label ?? point.id;
+    /* One marker per condition needs to say which; the model recorded
+     * that it split, and the caption names the condition rather than
+     * the handle the study refers to it by. */
+    const base = point.conditionSuffixed && point.condition
+      ? `${raw} · ${conditionLabelFor(point.condition)}`
+      : raw;
     const text = point.coords ? `${base} (${coordText(I_view, point.t_s)})` : base;
     if (text) {
       /* Right of the marker by preference, then left -- a portrait
@@ -3614,7 +3637,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           axisNotes.push(
             `${label}: ${fromLevel} ${quantityLabel(measures)} drawn on the `
             + `${viewLevelName ?? 'sheet'} ${quantityLabel(viewQuantity)} axis, x${shown} `
-            + `-- from ${conditionName ?? 'the condition'}, not the turns ratio`,
+            + `-- from ${conditionLabel ?? 'the condition'}, not the turns ratio`,
           );
         } else {
           axisNotes.push(

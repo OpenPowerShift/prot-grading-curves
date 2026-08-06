@@ -353,6 +353,8 @@ export interface RequiredTime {
 
 /** A marked (I, t) coordinate -- inrush, motor start, damage point. */
 export interface StudyPoint {
+  /** Drawn once per condition, so the caption names which. */
+  conditionSuffixed?: boolean;
   /** Sheets this belongs to, by `view` name. Absent means every sheet. */
   views?: string[];
 
@@ -704,6 +706,14 @@ export function buildStudy(doc: Document): Study {
           for (const condition of conditions) {
             const suffix = conditions.length > 1 && condition ? ` · ${condition}` : '';
             study.points.push({
+              /*
+               * The id keeps the handle, because it is what duplicate
+               * detection and the hover readout key from. The caption
+               * gets the condition's *name*, which only the renderer
+               * can look up -- conditions may be declared after the
+               * points that reference them.
+               */
+              conditionSuffixed: suffix !== '',
               id: `${item.id}${suffix}`,
               views: item.views,
               I_A: item.I_A,
@@ -714,7 +724,7 @@ export function buildStudy(doc: Document): Study {
               type: isFaultType(item.faultType) ? item.faultType : undefined,
               t_s: item.t_s,
               condition,
-              label: item.label ? `${item.label}${suffix}` : undefined,
+              label: item.label,
               voltage: item.voltage,
               voltage_kV: item.voltage ? study.voltages.get(item.voltage)?.kV : undefined,
               color: item.color,

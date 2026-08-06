@@ -26,7 +26,7 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV switchboard";
     }
@@ -34,20 +34,23 @@ system {
 }
 
 faults {
-  "Board max" {
+  BOARD_MAX {
+    name = "Board max";
     I = 12.5 kA;
     type = three_phase;
-    voltage = "MV";
+    voltage = MV;
   }
-  "Board min" {
+  BOARD_MIN {
+    name = "Board min";
     I = 3.1 kA;
     type = two_phase;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
 times {
-  "Switchgear rating" {
+  SWITCHGEAR_RATING {
+    name = "Switchgear rating";
     t = 1 s;
     at_I = 8 kA;
     description = "1 s short-time withstand";
@@ -58,7 +61,7 @@ relay R_FDR {
   name = "Feeder";
   maker = "Siemens";
   model = "7SJ82";
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 800/5;
 
   # The curve this sheet is *about*, drawn heavier than its context.
@@ -80,7 +83,7 @@ relay R_INC {
   name = "Incomer";
   maker = "Siemens";
   model = "7SJ85";
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 1600/5;
 
   element 51 {
@@ -113,18 +116,19 @@ relay R_INC {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   margin = 0.30 s;
 }
 
 annotate {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   label = "CTI";
 }
 
-point "Rating corner" {
+point RATING_CORNER {
+  name = "Rating corner";
   I = 8 kA;
   t = 1 s;
   label = "Switchgear 1 s rating";
@@ -250,7 +254,7 @@ page {
 }
 
 view {
-  voltage = "MV";
+  voltage = MV;
   quantity = any;
   stages = individual; # draw each stage, not the composite
   current_min = 200 A;

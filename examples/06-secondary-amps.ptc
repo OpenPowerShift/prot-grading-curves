@@ -23,7 +23,7 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
     }
   }
@@ -31,18 +31,20 @@ system {
 }
 
 faults {
-  "Bus fault" {
+  BUS_FAULT {
+    name = "Bus fault";
     I = 7.5 kA;
     I_min = 4.0 kA;
     I_max = 9.0 kA;
   }
-  "Remote fault" {
+  REMOTE_FAULT {
+    name = "Remote fault";
     I = 1.8 kA;
   }
 }
 
 relay R_INCOMER {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 600/5; # n_CT = 120
@@ -57,7 +59,7 @@ relay R_INCOMER {
 }
 
 relay R_FEEDER {
-  voltage = "MV";
+  voltage = MV;
   maker = "SEL";
   model = "SEL-751";
   ct_ratio = 300/5; # n_CT = 60
@@ -81,7 +83,7 @@ relay R_FEEDER {
 grade {
   primary = R_FEEDER:51;
   backup = R_INCOMER:51;
-  fault = "Bus fault";
+  fault = BUS_FAULT;
   margin = 0.30 s;
   upstream = true;
 }

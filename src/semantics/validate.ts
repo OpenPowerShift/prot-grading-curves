@@ -125,8 +125,58 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validatePage(ctx);
   validateStageRefs(ctx);
   validateTimeMultipliers(ctx);
+  validateViewScopes(ctx);
 
   return ctx.out.sort((a, b) => a.offset - b.offset || a.code.localeCompare(b.code));
+}
+
+/* ------------------------------------------------------------------ */
+/* Sheet scoping                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A `views` entry naming no declared sheet.
+ *
+ * `views` is an *include* list, so a name that matches nothing removes
+ * the thing from every sheet -- and did so in silence. A curve scoped
+ * to a misspelt sheet simply was not drawn anywhere, on a study whose
+ * author had every reason to think they had said where it belonged.
+ *
+ * Checked for everything that can be scoped, in one pass, so a new
+ * drawable block cannot forget it.
+ */
+function validateViewScopes(ctx: Ctx): void {
+  const { study } = ctx;
+  const declared = new Set<string>();
+  for (const [i, v] of study.views.entries()) {
+    declared.add(v.id ?? v.name ?? String(i + 1));
+    if (v.name) declared.add(v.name);
+  }
+  /* A study with no `view` block draws one default sheet, which
+   * nothing can name -- so scoping is meaningless rather than wrong,
+   * and saying so once is the `views` key's own problem. */
+  if (study.views.length === 0) return;
+
+  const check = (views: string[] | undefined, what: string, loc?: SourceLocation): void => {
+    for (const name of views ?? []) {
+      if (declared.has(name)) continue;
+      add(ctx, 'UNRESOLVED_VIEW', 'error',
+        `${what} is scoped to view ${name}, which is not declared; `
+        + `it would be drawn on no sheet at all. Declared: `
+        + [...declared].map((d) => d).join(', ')
+        + didYouMean(suggest(name, declared)),
+        loc, name.length);
+    }
+  };
+
+  for (const relay of study.relays.values()) {
+    for (const element of relay.elements) check(element.views, `element ${element.ref}`);
+  }
+  for (const element of study.looseElements) check(element.views, `element ${element.ref}`);
+  for (const t of study.times.values()) check(t.views, `time ${t.id}`);
+  for (const f of study.faults.values()) check(f.views, `fault ${f.id}`);
+  for (const p of study.points) check(p.views, `point ${p.id}`);
+  for (const a of study.annotations) check(a.views, `annotation "${a.label ?? '(unlabelled)'}"`);
 }
 
 /* ------------------------------------------------------------------ */

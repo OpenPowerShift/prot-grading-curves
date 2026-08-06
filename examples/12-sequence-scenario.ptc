@@ -49,11 +49,11 @@ meta {
 
 system {
   voltages {
-    "HV" {
+    HV {
       V = 33.0 kV;
       description = "33 kV, delta winding";
     }
-    "LV" {
+    LV {
       V = 0.48 kV;
       description = "480 V, star, earthed";
     }
@@ -89,17 +89,18 @@ system {
 #      Round these to two figures (3.9 and 2.2) and the sheet quotes
 #      0.564 instead: a declared component always beats the type's
 #      table, so the ratio you write is the ratio you get.
-scenario "LV earth fault" {
+scenario LV_EARTH_FAULT {
+  name = "LV earth fault";
   type = single_phase_earth;
   description = "Single phase to earth at 0.48 kV, system normal";
 
-  level "LV" {
+  level LV {
     I = 460 A;
     I1 = 153.3 A;
     I2 = 153.3 A;
     I0 = 153.3 A;
   }
-  level "HV" {
+  level HV {
     I = 3.86 A;
     I1 = 2.23 A;
     I2 = 2.23 A;
@@ -109,17 +110,18 @@ scenario "LV earth fault" {
 
 # A second condition for the phase elements: a solid three-phase fault
 # on the LV side, which is balanced and so carries no I2 or I0 at all.
-scenario "LV three-phase fault" {
+scenario LV_THREE_PHASE_FAULT {
+  name = "LV three-phase fault";
   type = three_phase;
   description = "Balanced 3ph at 0.48 kV";
 
-  level "LV" {
+  level LV {
     I = 520 A;
     I1 = 520 A;
     I2 = 0 A;
     I0 = 0 A;
   }
-  level "HV" {
+  level HV {
     I = 7.6 A;
     I1 = 7.6 A;
     I2 = 0 A;
@@ -144,7 +146,7 @@ scenario "LV three-phase fault" {
 # ---- Downstream: the LV air circuit breaker. ---------------------------
 relay R_ACB {
   name = "LV ACB";
-  voltage = "LV";
+  voltage = LV;
   ct_ratio = 1/1;
 
   element 51 {
@@ -161,7 +163,7 @@ relay R_850 {
   name = "HV relay (GE Multilin 850)";
   maker = "GE Multilin";
   model = "850";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 250/1;
 
   element 51 {
@@ -197,7 +199,7 @@ relay R_FDR {
   name = "33 kV feeder (SEL-751)";
   maker = "SEL";
   model = "751";
-  voltage = "HV";
+  voltage = HV;
   ct_ratio = 250/1;
 
   element 46 {
@@ -214,7 +216,7 @@ relay R_FDR {
 grade {
   primary = R_850:46;
   backup = R_FDR:46;
-  scenario = "LV earth fault";
+  scenario = LV_EARTH_FAULT;
   margin = 0.30 s;
   comment = "both measure I2, so this is a like-for-like margin";
 }
@@ -223,7 +225,7 @@ grade {
 grade {
   primary = R_ACB:51;
   backup = R_850:46;
-  scenario = "LV earth fault";
+  scenario = LV_EARTH_FAULT;
   margin = 0.30 s;
   comment = "I2 backup for an LV earth fault the HV residual cannot see";
 }
@@ -234,7 +236,7 @@ grade {
 grade {
   primary = R_ACB:51;
   backup = R_850:51G;
-  scenario = "LV earth fault";
+  scenario = LV_EARTH_FAULT;
   margin = 0.30 s;
   comment = "blind to this fault -- zero sequence stays in the delta";
 }
@@ -243,7 +245,7 @@ grade {
 grade {
   primary = R_ACB:51;
   backup = R_850:51;
-  scenario = "LV three-phase fault";
+  scenario = LV_THREE_PHASE_FAULT;
   margin = 0.30 s;
 }
 
@@ -259,7 +261,7 @@ grade {
 annotate {
   primary = R_850:46;
   backup = R_FDR:46;
-  scenario = "LV earth fault";
+  scenario = LV_EARTH_FAULT;
   label = "CTI";
 }
 
@@ -280,9 +282,10 @@ annotate {
 #      the one drawn is carried here by the turns ratio, which for a
 #      scenario is NOT the same as its declared figure for this level --
 #      see the note in the guide.
-point "850 negative-sequence trip" {
-  scenario = "LV earth fault";
-  voltage = "HV";
+point N850_NEGATIVE_SEQUENCE_TRIP {
+  name = "850 negative-sequence trip";
+  scenario = LV_EARTH_FAULT;
+  voltage = HV;
   t = 2.00 s;
   label = "850 46 operates";
   shape = square;
@@ -342,9 +345,9 @@ page {
 #      because I0 = 0 at HV. Drop `condition` and the sheet falls back to
 #      showing only what measures I2.
 view {
-  voltage = "HV";
+  voltage = HV;
   quantity = I2;
-  condition = "LV earth fault";
+  condition = LV_EARTH_FAULT;
   current_min = 0.5 A;
   current_max = 50 A;
   time_min = 20 ms;

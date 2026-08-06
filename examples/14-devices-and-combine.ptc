@@ -29,11 +29,11 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV incoming";
     }
-    "LV" {
+    LV {
       V = 0.4 kV;
       description = "400 V motor board";
     }
@@ -42,15 +42,17 @@ system {
 }
 
 faults {
-  "LV board max" {
+  LV_BOARD_MAX {
+    name = "LV board max";
     I = 21 kA;
     type = three_phase;
-    voltage = "LV";
+    voltage = LV;
   }
-  "LV board min" {
+  LV_BOARD_MIN {
+    name = "LV board min";
     I = 8.4 kA;
     type = two_phase;
-    voltage = "LV";
+    voltage = LV;
   }
 }
 
@@ -59,9 +61,9 @@ faults {
 #      records where, because a number nobody can trace is a number
 #      nobody can check.
 
-device "spur_fuse_100T" {
+device spur_fuse_100T {
   kind = fuse;
-  voltage = "LV";
+  voltage = LV;
   maker = "Mersen";
   model = "100T";
   rating_I = 100 A;
@@ -76,9 +78,9 @@ device "spur_fuse_100T" {
   total_clear = [(200 A, 16.0 s), (400 A, 2.00 s), (800 A, 0.26 s), (1.6 kA, 0.045 s)];
 }
 
-device "sub_main_cable" {
+device sub_main_cable {
   kind = cable;
-  voltage = "LV";
+  voltage = LV;
   rating_I = 400 A;
   reference = "IEC 60949, 185 mm2 Cu XLPE, k = 143";
   description = "Board to motor control centre, 185 mm2";
@@ -88,9 +90,9 @@ device "sub_main_cable" {
   flex_points = [(4 kA, 43.0 s), (8 kA, 10.8 s), (16 kA, 2.70 s), (32 kA, 0.67 s)];
 }
 
-device "tx_damage_1250" {
+device tx_damage_1250 {
   kind = transformer_damage;
-  voltage = "LV";
+  voltage = LV;
   maker = "Wilson";
   model = "1250 kVA ONAN";
   rating_S = 1.25 MVA;
@@ -101,9 +103,9 @@ device "tx_damage_1250" {
   flex_points = [(3.6 kA, 300 s), (7.2 kA, 75 s), (14.4 kA, 18.8 s), (28.8 kA, 4.7 s)];
 }
 
-device "sump_motor_start" {
+device sump_motor_start {
   kind = motor_startup;
-  voltage = "LV";
+  voltage = LV;
   rating_I = 180 A;
   reference = "Motor data sheet, DOL, 6.2x FLC";
   description = "132 kW sump pump, direct on line";
@@ -112,9 +114,9 @@ device "sump_motor_start" {
   flex_points = [(1.12 kA, 9.0 s), (1.12 kA, 0.05 s)];
 }
 
-device "acb_operating" {
+device acb_operating {
   kind = breaker;
-  voltage = "LV";
+  voltage = LV;
   maker = "Schneider";
   model = "NW20";
   rating_I = 2000 A;
@@ -123,9 +125,9 @@ device "acb_operating" {
   t_delay = 50 ms;
 }
 
-device "recloser_R1" {
+device recloser_R1 {
   kind = recloser;
-  voltage = "MV";
+  voltage = MV;
   maker = "Schneider";
   model = "N-Series";
   rating_I = 630 A;
@@ -141,7 +143,7 @@ relay R_MCC {
   maker = "SEL";
   model = "751";
   reference = "MCC-1 panel";
-  voltage = "LV";
+  voltage = LV;
   ct_ratio = 2000/5;
 
   element 51 {
@@ -156,7 +158,7 @@ relay R_MCC {
 
 relay R_BOARD {
   name = "LV board incomer";
-  voltage = "LV";
+  voltage = LV;
   ct_ratio = 3000/5;
 
   element 51 {
@@ -225,7 +227,7 @@ combine {
 grade {
   primary = R_MCC:51;
   backup = R_BOARD:51;
-  fault = "LV board max";
+  fault = LV_BOARD_MAX;
   margin = 0.30 s;
   comment = "MCC ahead of the board incomer";
 }
@@ -233,7 +235,7 @@ grade {
 annotate {
   primary = R_MCC:51;
   backup = R_BOARD:51;
-  fault = "LV board max";
+  fault = LV_BOARD_MAX;
   label = "CTI";
 }
 
@@ -244,7 +246,8 @@ annotate {
   style = leader;
 }
 
-point "Motor start corner" {
+point MOTOR_START_CORNER {
+  name = "Motor start corner";
   I = 1.12 kA;
   t = 9 s;
   label = "DOL start, 6.2x FLC for 9 s";
@@ -277,7 +280,7 @@ page {
 }
 
 view {
-  voltage = "LV";
+  voltage = LV;
   quantity = any;
   current_min = 100 A;
   current_max = 60 kA;

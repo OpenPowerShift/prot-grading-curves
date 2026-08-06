@@ -5,22 +5,23 @@
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11 kV;
     }
   }
 }
 
 faults {
-  "Board max" {
+  BOARD_MAX {
+    name = "Board max";
     I = 6.2 kA;
     type = three_phase;
-    voltage = "MV";
+    voltage = MV;
   }
 }
 
 relay R_FDR {
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 400/5;
   element 51 {
     function = "phase_oc";
@@ -31,7 +32,7 @@ relay R_FDR {
 }
 
 relay R_INC {
-  voltage = "MV";
+  voltage = MV;
   ct_ratio = 1200/5;
   element 51 {
     function = "phase_oc";
@@ -44,6 +45,6 @@ relay R_INC {
 grade {
   primary = R_FDR:51;
   backup = R_INC:51;
-  fault = "Board max";
+  fault = BOARD_MAX;
   margin = 0.30 s;
 }

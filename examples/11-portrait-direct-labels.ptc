@@ -42,7 +42,7 @@ meta {
 
 system {
   voltages {
-    "MV" {
+    MV {
       V = 11.0 kV;
       description = "11 kV switchboard";
     }
@@ -50,26 +50,29 @@ system {
 }
 
 faults {
-  "Bus fault" {
+  BUS_FAULT {
+    name = "Bus fault";
     I = 13_500 A;
-    voltage = "MV";
+    voltage = MV;
     description = "switchboard bus fault";
   }
-  "Feeder fault" {
+  FEEDER_FAULT {
+    name = "Feeder fault";
     I = 7_200 A;
-    voltage = "MV";
+    voltage = MV;
     description = "feeder fault";
   }
-  "Spur fault" {
+  SPUR_FAULT {
+    name = "Spur fault";
     I = 2_400 A;
-    voltage = "MV";
+    voltage = MV;
     description = "spur fault";
   }
 }
 
 # ---- Incomer: slowest, backs up everything downstream. -------------
 relay R_INC {
-  voltage = "MV";
+  voltage = MV;
   name = "Incomer";
   maker = "ABB";
   model = "REF615";
@@ -85,7 +88,7 @@ relay R_INC {
 
 # ---- Bus section. --------------------------------------------------
 relay R_BUS {
-  voltage = "MV";
+  voltage = MV;
   name = "Bus section";
   maker = "ABB";
   model = "REF615";
@@ -112,7 +115,7 @@ relay R_BUS {
 
 # ---- Feeder, with an instantaneous stage above the spur. -----------
 relay R_FDR {
-  voltage = "MV";
+  voltage = MV;
   name = "Feeder 4 (Mill Road)";
   maker = "Schneider";
   model = "MiCOM_P122";
@@ -136,7 +139,7 @@ relay R_FDR {
 grade {
   primary = R_FDR:51;
   backup = R_BUS:51;
-  fault = "Feeder fault";
+  fault = FEEDER_FAULT;
   margin = 0.30 s;
   comment = "feeder graded against the bus section";
 }
@@ -144,7 +147,7 @@ grade {
 grade {
   primary = R_BUS:51;
   backup = R_INC:51;
-  fault = "Bus fault";
+  fault = BUS_FAULT;
   margin = 0.30 s;
   comment = "bus section graded against the incomer";
 }
@@ -152,14 +155,14 @@ grade {
 annotate {
   primary = R_FDR:51;
   backup = R_BUS:51;
-  fault = "Feeder fault";
+  fault = FEEDER_FAULT;
   label = "CTI";
 }
 
-point "MOTOR_START" {
+point MOTOR_START {
   I = 1_800 A;
   t = 8.0 s;
-  voltage = "MV";
+  voltage = MV;
   label = "Largest motor start\n6 x FLC for 8 s";
   shape = "triangle";
   coords = true;
@@ -182,7 +185,7 @@ page {
 }
 
 view {
-  voltage = "MV";
+  voltage = MV;
   current_min = 100 A;
   current_max = 30 kA;
   time_min = 20 ms;

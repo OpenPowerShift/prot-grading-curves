@@ -198,6 +198,95 @@ export interface ResolvedCurrent {
  * `null`: the caller reports it rather than substituting another
  * quantity.
  */
+/**
+ * The low and high figures for one quantity at one condition.
+ *
+ * The rule is the one `resolveCurrent` uses for the centre: a declared
+ * figure wins, and an undeclared one is carried across from the phase
+ * range. What it is carried across *by* matters -- it is the factor
+ * this condition's own numbers give, not the factor the fault type
+ * would give.
+ *
+ * That distinction is the whole point. A `two_phase` fault whose
+ * `Z2` differs from `Z1` may declare `I = 2 kA` and `I2 = 500 A`, a
+ * ratio of 0.25 where the ideal table says 0.577. Deriving the range
+ * from the table would put the minimum at 693 A -- above the declared
+ * centre of 500 A, a range that does not contain its own value.
+ * Carrying it by the observed ratio gives 300 A, which is coherent
+ * with what the study actually says.
+ *
+ * `null` where there is no range to report: the condition is a single
+ * operating point, which is not an error and not a fault to warn about.
+ */
+export function resolveRange(
+  quantity: MeasuredQuantity,
+  currents: SequenceCurrents,
+  range: SequenceRange,
+  type?: FaultType,
+): { min: number; max: number } | null {
+  const declaredMin = rangeFor(quantity, range, 'min');
+  const declaredMax = rangeFor(quantity, range, 'max');
+  if (declaredMin != null && declaredMax != null) {
+    return { min: declaredMin, max: declaredMax };
+  }
+
+  /* Nothing declared for this component: carry the phase range across. */
+  if (range.min == null || range.max == null) return null;
+  const centre = resolveCurrent(quantity, currents, type);
+  if (centre == null || currents.phase == null || !(currents.phase > 0)) return null;
+
+  const factor = centre.value / currents.phase;
+  return {
+    min: declaredMin ?? range.min * factor,
+    max: declaredMax ?? range.max * factor,
+  };
+}
+
+/** The declared low or high figure for one component, if any. */
+function rangeFor(
+  quantity: MeasuredQuantity,
+  range: SequenceRange,
+  end: 'min' | 'max',
+): number | null {
+  const at = (v: number | undefined): number | null =>
+    v != null && Number.isFinite(v) ? v : null;
+  switch (quantity) {
+    case 'phase': return at(end === 'min' ? range.min : range.max);
+    case 'I1': return at(end === 'min' ? range.I1_min : range.I1_max);
+    case 'I2': return at(end === 'min' ? range.I2_min : range.I2_max);
+    /*
+     * `3I2` and `3I0` are the same component written three times
+     * larger, so a range declared in one is read in the other -- the
+     * same rule `currentFor` applies to the centre.
+     */
+    case '3I2': {
+      const v = at(end === 'min' ? range.I2_min : range.I2_max);
+      return v == null ? null : v * 3;
+    }
+    case 'I0': return at(end === 'min' ? range.I0_min : range.I0_max);
+    case '3I0': {
+      const direct = at(end === 'min' ? range.earth_min : range.earth_max);
+      if (direct != null) return direct;
+      const v = at(end === 'min' ? range.I0_min : range.I0_max);
+      return v == null ? null : v * 3;
+    }
+  }
+}
+
+/** Declared low and high figures, per component. */
+export interface SequenceRange {
+  min?: number;
+  max?: number;
+  I1_min?: number;
+  I1_max?: number;
+  I2_min?: number;
+  I2_max?: number;
+  I0_min?: number;
+  I0_max?: number;
+  earth_min?: number;
+  earth_max?: number;
+}
+
 export function resolveCurrent(
   quantity: MeasuredQuantity,
   currents: SequenceCurrents,

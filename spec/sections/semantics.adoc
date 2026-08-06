@@ -1673,6 +1673,43 @@ Theme presets are *bundles*: declaring `theme = "dark"` does not
 overwrite subsequent specific `axes.color = "#abc123"` overrides
 inside the same `page { ... }` block.
 
+=== Ranges, per component
+
+A condition's low and high figures may be declared for any component,
+beside its centre:
+
+[source,tc]
+----
+faults {
+    F_2PH {
+        type   = two_phase;
+        I      = 2 kA;   I_min      = 1.2 kA;  I_max      = 3 kA;
+        I2     = 500 A;  I2_min     = 300 A;   I2_max     = 900 A;
+    }
+}
+----
+
+`I1_min`/`I1_max`, `I2_min`/`I2_max`, `I0_min`/`I0_max` and
+`residual_min`/`residual_max`, on a `fault` and on a `scenario`'s
+`level` alike.
+
+The resolution rule is the one the centre already uses: *declared
+wins, otherwise carry it across*. What it is carried across **by** is
+the factor this condition's own numbers give, not the factor the fault
+type would give.
+
+That distinction is normative. A `two_phase` fault whose `Z2` differs
+from `Z1` may declare `I = 2 kA` with `I2 = 500 A` -- a ratio of 0.25
+where the ideal table says 0.577. Carrying the phase range by the table
+would put the negative-sequence minimum at 693 A, above the declared
+centre of 500 A: a range that does not contain its own value. Carrying
+it by the observed ratio gives 300 A, which is coherent with what the
+study says.
+
+A condition is swept when it declares a range in *any* component, not
+only in phase, and is reported as a single point only when it declares
+none.
+
 == Groups (protection chains)
 
 A `group` is the devices in series on one path, declared upstream

@@ -37,6 +37,7 @@ import type {
   TopLevel,
 } from '../parser/ast.js';
 import { displayName } from '../parser/ast.js';
+import type { SequenceRange } from './quantity.js';
 import { lookupCurve, type CurveConstants } from '../constants/curves.js';
 import { amps, rawNumber, readBoolean, readRatio, readString, seconds } from './units.js';
 import { isFaultType, type FaultType } from '../constants/sequence.js';
@@ -70,6 +71,14 @@ export interface Fault {
   /** Range endpoints; both default to `I_A` (spec: _CTI computation_). */
   min_A: number;
   max_A: number;
+  /**
+   * Declared low and high figures per component.
+   *
+   * Separate from `min_A`/`max_A`, which are the phase range and are
+   * defaulted to `I_A`. These are only what the study wrote, so
+   * `resolveRange` can tell a declared figure from a carried one.
+   */
+  range: SequenceRange;
   I1_A?: number;
   earth_A?: number;
   I0_A?: number;
@@ -241,6 +250,15 @@ export interface Relay {
 /** One level's symmetrical components under a scenario. */
 export interface ScenarioLevel {
   voltage: string;
+  /**
+   * Declared low and high figures at this level, per component.
+   *
+   * A scenario level had none at all, so a condition declared per level
+   * was a single operating point and got no range check -- in the
+   * middle of the feature `scenario` exists to serve, since an
+   * unbalanced fault behind a delta cannot be written as a `fault`.
+   */
+  range: SequenceRange;
   /** Source position, so a diagnostic can point at the declaration. */
   loc?: SourceLocation;
   voltage_kV?: number;
@@ -684,6 +702,13 @@ export function buildStudy(doc: Document): Study {
         I2_A: level.I2_A,
         I0_A: level.I0_A,
         earth_A: level.earth_A,
+        range: {
+          min: level.min_A, max: level.max_A,
+          I1_min: level.I1_min_A, I1_max: level.I1_max_A,
+          I2_min: level.I2_min_A, I2_max: level.I2_max_A,
+          I0_min: level.I0_min_A, I0_max: level.I0_max_A,
+          earth_min: level.earth_min_A, earth_max: level.earth_max_A,
+        },
       });
     }
     study.scenarios.set(item.id, {
@@ -710,6 +735,13 @@ export function buildStudy(doc: Document): Study {
         I_A: f.I_A,
         min_A: f.min_A ?? f.I_A,
         max_A: f.max_A ?? f.I_A,
+        range: {
+          min: f.min_A, max: f.max_A,
+          I1_min: f.I1_min_A, I1_max: f.I1_max_A,
+          I2_min: f.I2_min_A, I2_max: f.I2_max_A,
+          I0_min: f.I0_min_A, I0_max: f.I0_max_A,
+          earth_min: f.earth_min_A, earth_max: f.earth_max_A,
+        },
         views: f.views,
         I1_A: f.I1_A,
         earth_A: f.earth_A,

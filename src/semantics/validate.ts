@@ -572,7 +572,50 @@ function validateFaults(ctx: Ctx): void {
         `fault ${fault.id} declares I_A = ${fault.I_A}; it must be strictly positive`,
         undefined);
     }
-    if (fault.min_A === fault.I_A && fault.max_A === fault.I_A) {
+    /*
+     * A range needs a centre.
+     *
+     * The graded point comes from the centre and the sweep from the
+     * range, so a component with one and not the other has them from
+     * two different sources -- the centre derived from an assumed fault
+     * shape, the range measured. Refused rather than reconciled: which
+     * of the two the reader should believe is not the tool's to decide.
+     */
+    const RANGED: Array<[keyof typeof fault.range, keyof typeof fault.range, string, string]> = [
+      ['I1_min', 'I1_max', 'I1', 'I1'],
+      ['I2_min', 'I2_max', 'I2', 'I2'],
+      ['I0_min', 'I0_max', 'I0', 'I0'],
+      ['earth_min', 'earth_max', 'residual', 'residual'],
+    ];
+    const centreOf: Record<string, number | undefined> = {
+      I1: fault.I1_A, I2: fault.I2_A, I0: fault.I0_A, residual: fault.earth_A,
+    };
+    for (const [minKey, maxKey, component, key] of RANGED) {
+      const hasRange = fault.range[minKey] != null || fault.range[maxKey] != null;
+      if (!hasRange) continue;
+      if (centreOf[component] == null) {
+        add(ctx, 'RANGE_WITHOUT_CENTRE', 'error',
+          `fault ${fault.id} declares a ${key} range but no ${key}; the graded point `
+          + 'would come from the fault type while the sweep came from the study, so the '
+          + `two would not describe one condition. Declare ${key}`,
+          undefined);
+      }
+      if (fault.range[minKey] == null || fault.range[maxKey] == null) {
+        add(ctx, 'RANGE_INCOMPLETE', 'error',
+          `fault ${fault.id} declares only one end of its ${key} range; `
+          + `give both ${key}_min and ${key}_max`,
+          undefined);
+      }
+    }
+
+    /*
+     * Said only when the condition really is one point. A study that
+     * declared its range in a component rather than in phase used to
+     * be told it had none.
+     */
+    const anyRange = Object.values(fault.range)
+      .some((v) => v != null && Number.isFinite(v));
+    if (!anyRange && fault.min_A === fault.I_A && fault.max_A === fault.I_A) {
       add(ctx, 'FAULT_SINGLE_POINT', 'info',
         `fault ${fault.id} declares only I_A; min_A and max_A default to it`,
         undefined);

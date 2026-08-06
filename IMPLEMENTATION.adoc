@@ -269,7 +269,7 @@ The cost, stated honestly: two legal homes for a `time` means a reader
 looking for one has two places to look, and promoting a nested time to
 top level is a copy-paste rather than a rename.
 
-=== Ranges and sequence components (open)
+=== Ranges and sequence components (done 2026-08-06)
 
 `I_min` / `I_max` on a `fault` are declared in *phase* amps and
 converted by the fault's `type`, so one range sweeps correctly on a
@@ -278,23 +278,19 @@ phase sheet, an `I2` sheet or a `3I2` one. A `two_phase` fault ranged
 sequence-ratio table earning its keep. Nothing per-component has to be
 written and nothing can drift.
 
-Two gaps follow from that, both worth closing:
+Both gaps are now closed. Every component takes `_min` / `_max`, on a
+`fault` and on a `scenario`'s `level` alike, and an undeclared one is
+carried across from phase *by the factor this condition's own numbers
+give* rather than by the fault type's ideal ratio -- so a range always
+contains the centre it surrounds. A range without its centre is
+refused, since the graded point and the sweep would come from two
+different sources.
 
-. *A range cannot be declared in a component.* There is no `I2_min` /
-  `I2_max`, so a study that knows its negative-sequence range but not
-  the phase equivalent has to back-calculate. Worse, writing them is
-  not refused clearly: the keys are ignored and the study then fails
-  with `FAULT_CURRENT_INVALID` about the missing `I_A`, which names
-  neither the mistake nor the remedy.
-
-. *A `scenario` has no range at all.* A level takes `I`, `I1`, `I2`,
-  `I0` and `residual` and nothing else, so a condition declared per
-  level is a single operating point and gets no range check. A study
-  written entirely in scenarios -- which is what an unbalanced fault
-  behind a delta forces, and what sample 18 is -- therefore grades at
-  one current per condition with no sweep between a minimum and a
-  maximum. That is a real hole in the middle of the feature that
-  `scenario` exists to serve.
+Doing it uncovered a third fault, worse than either: a range endpoint
+substituted the phase minimum and left every *declared* component at
+its centre, so both ends of the sweep landed on the middle. Any study
+declaring a component got a range check that printed two rows and
+checked nothing.
 
 === Diagnostics this needs
 

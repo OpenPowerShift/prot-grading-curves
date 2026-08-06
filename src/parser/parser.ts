@@ -156,6 +156,14 @@ export const KEYWORDS = new Set([
   'tolerance_pct', 'upstream', 'upstream_to',
   /* Units-everywhere names. No key carries its own unit. */
   'I', 'I_min', 'I_max', 'residual', 't', 'V',
+  /*
+   * A range per component. Keywords rather than identifiers because
+   * the blocks that take them read keys with `eat('KW')` -- an
+   * identifier there is skipped without a word, which is how the first
+   * cut of these silently did nothing.
+   */
+  'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max',
+  'residual_min', 'residual_max',
   'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target',
   'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t',
   'rating_I', 'rating_V', 'rating_S',
@@ -998,6 +1006,23 @@ class Parser {
           this.expect('EQUALS', '=');
           switch (k.image) {
             case 'I':     level.I_A = this.parseNumberWithUnit_A('I'); break;
+            case 'I_min': level.min_A = this.parseNumberWithUnit_A('I_min'); break;
+            case 'I_max': level.max_A = this.parseNumberWithUnit_A('I_max'); break;
+            /*
+             * A range per component. The centre may be declared for
+             * any of them, and so may the low and high figures -- a
+             * study that knows its negative-sequence minimum should
+             * not have to work backwards through the ratio to a phase
+             * figure it never measured.
+             */
+            case 'I1_min':       level.I1_min_A = this.parseNumberWithUnit_A('I1_min'); break;
+            case 'I1_max':       level.I1_max_A = this.parseNumberWithUnit_A('I1_max'); break;
+            case 'I2_min':       level.I2_min_A = this.parseNumberWithUnit_A('I2_min'); break;
+            case 'I2_max':       level.I2_max_A = this.parseNumberWithUnit_A('I2_max'); break;
+            case 'I0_min':       level.I0_min_A = this.parseNumberWithUnit_A('I0_min'); break;
+            case 'I0_max':       level.I0_max_A = this.parseNumberWithUnit_A('I0_max'); break;
+            case 'residual_min': level.earth_min_A = this.parseNumberWithUnit_A('residual_min'); break;
+            case 'residual_max': level.earth_max_A = this.parseNumberWithUnit_A('residual_max'); break;
             case 'I1':    level.I1_A = this.parseNumberWithUnit_A('I1'); break;
             case 'I2':    level.I2_A = this.parseNumberWithUnit_A('I2'); break;
             case 'I0':    level.I0_A = this.parseNumberWithUnit_A('I0'); break;
@@ -1005,7 +1030,9 @@ class Parser {
             default:
               this.parseScalarValue();
               this.noteUnknownKey("a scenario's level", k,
-                ['I', 'I1', 'I2', 'I0', 'residual']);
+                ['I', 'I1', 'I2', 'I0', 'residual',
+                  'I_min', 'I_max', 'I1_min', 'I1_max', 'I2_min', 'I2_max',
+                  'I0_min', 'I0_max', 'residual_min', 'residual_max']);
               break;
           }
           this.eat('SEMI');
@@ -1109,7 +1136,14 @@ class Parser {
         const f: import('./ast.js').FaultDecl = { id: unquote(nameTok.image), I_A: NaN, loc: this.loc(nameTok) };
         this.expect('LBRACE', '{');
         while (!this.at('RBRACE') && !this.at('EOF')) {
-          const k = this.eat('KW');
+          /*
+           * Identifiers as well as keywords, so a key this block does
+           * not know reaches `noteUnknownKey` and is reported. Reading
+           * only keywords meant an unrecognised key was skipped in
+           * silence -- a mistyped `I2_min` did nothing and said
+           * nothing.
+           */
+          const k = this.eat('KW') ?? this.eat('IDENT');
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
           switch (k.image) {
@@ -1119,6 +1153,22 @@ class Parser {
             case 'I':      f.I_A = this.parseNumberWithUnit_A('I'); break;
             case 'I_min':    f.min_A = this.parseNumberWithUnit_A('I_min'); break;
             case 'I_max':    f.max_A = this.parseNumberWithUnit_A('I_max'); break;
+            /*
+             * A range per component. The centre may be declared for
+             * any of them, and so may the low and high figures -- a
+             * study that knows its negative-sequence minimum should
+             * not have to work backwards through the ratio to a phase
+             * figure it never measured.
+             */
+            case 'I1_min':       f.I1_min_A = this.parseNumberWithUnit_A('I1_min'); break;
+            case 'I1_max':       f.I1_max_A = this.parseNumberWithUnit_A('I1_max'); break;
+            case 'I2_min':       f.I2_min_A = this.parseNumberWithUnit_A('I2_min'); break;
+            case 'I2_max':       f.I2_max_A = this.parseNumberWithUnit_A('I2_max'); break;
+            case 'I0_min':       f.I0_min_A = this.parseNumberWithUnit_A('I0_min'); break;
+            case 'I0_max':       f.I0_max_A = this.parseNumberWithUnit_A('I0_max'); break;
+            case 'residual_min': f.earth_min_A = this.parseNumberWithUnit_A('residual_min'); break;
+            case 'residual_max': f.earth_max_A = this.parseNumberWithUnit_A('residual_max'); break;
+
             case 'residual':  f.earth_A = this.parseNumberWithUnit_A('residual'); break;
             case 'I0':     f.I0_A = this.parseNumberWithUnit_A('I0'); break;
             case 'I1':     f.I1_A = this.parseNumberWithUnit_A('I1'); break;
@@ -1150,7 +1200,7 @@ class Parser {
               break;
             }
             default: /* ignore */ this.parseScalarValue();
-              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type', 'voltage', 'view', 'views', 'name', 'description']);
+              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max', 'residual_min', 'residual_max', 'type', 'voltage', 'view', 'views', 'name', 'description']);
           }
           this.eat('SEMI');
         }

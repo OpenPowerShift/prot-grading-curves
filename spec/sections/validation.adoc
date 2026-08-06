@@ -9,6 +9,12 @@ semantic error.
 . *A `grade` or `combine` referencing a relay or element that does
   not exist.* *Error* with the missing id quoted.
 . *`I_pickup` not strictly positive.* *Error*.
+. *A component range declared without its centre.* *Error*. The graded
+  point comes from the centre and the sweep from the range, so a
+  component with one and not the other takes them from two sources --
+  a centre derived from the fault type, a range measured. Which the
+  reader should believe is not the processor's to decide.
+. *A component range with only one end declared.* *Error*.
 . *`tms` absent on an inverse-time stage.* *Error*. A processor shall
   not supply a default. The multiplier scales the whole
   characteristic, so assuming 1.0 draws an IEC standard inverse about

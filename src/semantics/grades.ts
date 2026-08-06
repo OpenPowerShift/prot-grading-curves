@@ -21,6 +21,7 @@ import { controllingStage, tTripElement } from './stages.js';
 import { faultCurrentAt } from './xvoltage.js';
 import {
   resolveCurrent,
+  resolveRange,
   elementQuantity,
   quantityField,
   quantityLabel,
@@ -241,13 +242,32 @@ function sideCurrentAt(
    * SEQUENCE_DATA_MISSING and failed the pair. One condition, two
    * answers.
    */
-  const resolved = resolveCurrent(quantity, {
-    phase: at === 'min' ? fault.min_A : at === 'max' ? fault.max_A : fault.I_A,
+  const currents = {
+    phase: fault.I_A,
+    I1: fault.I1_A,
     I2: fault.I2_A,
     I0: fault.I0_A,
     residual: fault.earth_A,
-  }, fault.type);
-  const declared = resolved?.value ?? null;
+  };
+  const resolved = resolveCurrent(quantity, currents, fault.type);
+
+  /*
+   * A range endpoint is the *component's* endpoint, not the phase one.
+   *
+   * This used to substitute the phase minimum into `phase` and leave
+   * every declared component at its centre -- so `resolveCurrent`
+   * returned the declared figure whatever end was asked for, and both
+   * ends of the sweep landed on the middle. The report printed a range
+   * check that had checked nothing, which is worse than printing none.
+   */
+  const declared = at === 'I'
+    ? resolved?.value ?? null
+    : (() => {
+      const range = resolveRange(quantity, currents, fault.range, fault.type);
+      if (range) return at === 'min' ? range.min : range.max;
+      /* No range for this component: the centre stands for both ends. */
+      return resolved?.value ?? null;
+    })();
 
   if (declared == null) {
     return {
@@ -646,8 +666,17 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
    * the margin itself needs no conversion once each side is evaluated
    * correctly.
    */
+  /*
+   * Swept when the condition states a range in *any* component, not
+   * only in phase. A study whose fault report gives negative-sequence
+   * minimum and maximum declares those, and would otherwise get its
+   * single point checked and a range it wrote ignored.
+   */
+  const declaresRange = (fault.min_A !== fault.I_A || fault.max_A !== fault.I_A)
+    || Object.entries(fault.range).some(([k, v]) =>
+      k !== 'min' && k !== 'max' && v != null && Number.isFinite(v));
   const endpoints: Array<'I' | 'min' | 'max'> =
-    fault.min_A === fault.I_A && fault.max_A === fault.I_A ? ['I'] : ['I', 'min', 'max'];
+    declaresRange ? ['I', 'min', 'max'] : ['I'];
 
   /*
    * A declared range is *swept*, not sampled at its ends.

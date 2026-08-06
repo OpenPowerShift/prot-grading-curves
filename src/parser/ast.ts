@@ -85,7 +85,7 @@ export function displayName(x: { id: string; name?: string }): string {
   return x.name ?? x.id;
 }
 
-export interface FaultDecl extends BaseNode {
+export interface FaultDecl extends BaseNode, ComponentRange {
   /**
    * Sheets this belongs to, by `view` name. Absent means every sheet.
    *
@@ -107,8 +107,6 @@ export interface FaultDecl extends BaseNode {
    */
   type?: FaultTypeKeyword;
   I_A: number;
-  min_A?: number;
-  max_A?: number;
   I1_A?: number;
   earth_A?: number;
   I0_A?: number;
@@ -126,7 +124,34 @@ export interface FaultDecl extends BaseNode {
  * study produced at each level, and the processor selects rather than
  * transforms.
  */
-export interface ScenarioLevelDecl extends BaseNode {
+/**
+ * The low and high figures a condition can take, per component.
+ *
+ * A study's fault levels come as a range, and the range is as much a
+ * sequence quantity as the centre is. Declaring it per component means
+ * a study that knows its negative-sequence minimum writes it, rather
+ * than working backwards through the ratio to a phase figure it never
+ * measured -- and rather than the tool deriving one from an assumed
+ * fault shape.
+ *
+ * Every field is optional. An undeclared range is carried across from
+ * the phase range by the same factor the component's own value was, so
+ * the common case still says it once.
+ */
+export interface ComponentRange {
+  min_A?: number;
+  max_A?: number;
+  I1_min_A?: number;
+  I1_max_A?: number;
+  I2_min_A?: number;
+  I2_max_A?: number;
+  I0_min_A?: number;
+  I0_max_A?: number;
+  earth_min_A?: number;
+  earth_max_A?: number;
+}
+
+export interface ScenarioLevelDecl extends BaseNode, ComponentRange {
   /** Named level from `system.voltages`. */
   voltage: string;
   /** Phase current, primary amps at this level. */

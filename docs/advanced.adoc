@@ -293,16 +293,47 @@ faults {
 ----
 
 On an `I2` sheet that is checked from 693 A to 1732 A — divided by
-`sqrt(3)`, because a two-phase fault fixes the ratio. The range is
-written once and is correct on every axis.
+`sqrt(3)`, because a two-phase fault fixes the ratio. Written once, and
+correct on every axis.
 
-[WARNING]
+Where the study knows the component's range directly, declare it and
+nothing is converted at all:
+
+[source,tc]
+----
+faults {
+    F_2PH {
+        type = two_phase;
+        I    = 2 kA;    I_min  = 1.2 kA;  I_max  = 3 kA;
+        I2   = 500 A;   I2_min = 300 A;   I2_max = 900 A;
+    }
+}
+----
+
+`I1_min`/`I1_max`, `I2_min`/`I2_max`, `I0_min`/`I0_max` and
+`residual_min`/`residual_max` are all available, on a `scenario`'s
+`level` as well as on a `fault`.
+
+Declaring the centre without the range is fine — the range is carried
+across from phase. Declaring the range without the centre is refused:
+the graded point would come from the fault type while the sweep came
+from your study, and the two would not describe one condition.
+
+[NOTE]
 ====
-A `scenario` has no range: a level is a single operating point. A study
-written entirely in scenarios — which is what an unbalanced fault behind
-a delta forces — therefore grades at one current per condition, with no
-sweep between a minimum and a maximum.
+An undeclared component range is carried by the factor *this
+condition's own numbers* give, not by the fault type's ideal ratio.
+
+`I = 2 kA` with `I2 = 500 A` is a ratio of 0.25 where the two-phase
+table says 0.577 — a real network with `Z2 != Z1`. Using the table
+would put the minimum at 693 A, above the declared centre of 500 A: a
+range that does not contain its own value. The observed ratio gives
+300 A, which is coherent with what the study says.
 ====
+
+A condition is swept when it declares a range in *any* component, so a
+study whose fault report gives negative-sequence limits and no phase
+ones is checked across them.
 
 == The sheet as a document
 

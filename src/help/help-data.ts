@@ -18,7 +18,7 @@ export interface HelpEntry {
   /** Where in the .ptc source this construct lives. */
   scope: 'top' | 'meta' | 'system' | 'voltages' | 'faults' | 'times' | 'scenario' | 'relay'
        | 'element' | 'stage' | 'device' | 'grade' | 'solve' | 'annotate' | 'point'
-       | 'combine' | 'view' | 'page';
+       | 'combine' | 'view' | 'page' | 'group';
   /** One-line summary for the hover tooltip. */
   summary: string;
   /** Example value or fragment. */

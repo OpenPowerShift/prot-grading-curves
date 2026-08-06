@@ -441,15 +441,15 @@ function validateFaults(ctx: Ctx): void {
   for (const item of ctx.doc?.items ?? []) {
     if (item.type !== 'faults') continue;
     for (const f of item.faults) {
-      const first = seen.get(f.name);
+      const first = seen.get(f.id);
       if (first != null) {
         add(ctx, 'DUPLICATE_FAULT', 'error',
-          `fault "${f.name}" is declared more than once (first at line ${first}); ` +
+          `fault ${f.id} is declared more than once (first at line ${first}); ` +
           'the later declaration silently replaces the earlier, changing every margin ' +
           'that references it',
-          f.loc, f.name.length);
+          f.loc, f.id.length);
       } else {
-        seen.set(f.name, f.loc?.line ?? 0);
+        seen.set(f.id, f.loc?.line ?? 0);
       }
     }
   }
@@ -457,23 +457,23 @@ function validateFaults(ctx: Ctx): void {
   for (const fault of study.faults.values()) {
     if (fault.voltage && !study.voltages.has(fault.voltage)) {
       add(ctx, 'VOLTAGE_UNKNOWN', 'error',
-        `fault "${fault.name}" references voltage level "${fault.voltage}", which is not declared in system.voltages` +
+        `fault ${fault.id} references voltage level "${fault.voltage}", which is not declared in system.voltages` +
         didYouMean(suggest(fault.voltage, names)),
         undefined);
     }
     if (!(fault.I_A > 0)) {
       add(ctx, 'FAULT_CURRENT_INVALID', 'error',
-        `fault "${fault.name}" declares I_A = ${fault.I_A}; it must be strictly positive`,
+        `fault ${fault.id} declares I_A = ${fault.I_A}; it must be strictly positive`,
         undefined);
     }
     if (fault.min_A === fault.I_A && fault.max_A === fault.I_A) {
       add(ctx, 'FAULT_SINGLE_POINT', 'info',
-        `fault "${fault.name}" declares only I_A; min_A and max_A default to it`,
+        `fault ${fault.id} declares only I_A; min_A and max_A default to it`,
         undefined);
     }
     if (fault.min_A > fault.max_A) {
       add(ctx, 'FAULT_RANGE_INVERTED', 'error',
-        `fault "${fault.name}" has min_A (${fault.min_A}) above max_A (${fault.max_A})`,
+        `fault ${fault.id} has min_A (${fault.min_A}) above max_A (${fault.max_A})`,
         undefined);
     }
   }
@@ -1266,14 +1266,14 @@ function validateTimes(ctx: Ctx): void {
   for (const item of ctx.doc?.items ?? []) {
     if (item.type !== 'times') continue;
     for (const t of item.times) {
-      const first = seen.get(t.name);
+      const first = seen.get(t.id);
       if (first != null) {
         add(ctx, 'DUPLICATE_TIME', 'error',
-          `time "${t.name}" is declared more than once (first at line ${first}); ` +
+          `time ${t.id} is declared more than once (first at line ${first}); ` +
           'the later declaration silently replaces the earlier',
-          t.loc, t.name.length);
+          t.loc, t.id.length);
       } else {
-        seen.set(t.name, t.loc?.line ?? 0);
+        seen.set(t.id, t.loc?.line ?? 0);
       }
     }
   }

@@ -1065,7 +1065,7 @@ class Parser {
       while (!this.at('RBRACE') && !this.at('EOF')) {
         const nameTok = this.eat('STRING') ?? this.eat('IDENT');
         if (!nameTok) { this.pos++; continue; }
-        const f: import('./ast.js').FaultDecl = { name: unquote(nameTok.image), I_A: NaN, loc: this.loc(nameTok) };
+        const f: import('./ast.js').FaultDecl = { id: unquote(nameTok.image), I_A: NaN, loc: this.loc(nameTok) };
         this.expect('LBRACE', '{');
         while (!this.at('RBRACE') && !this.at('EOF')) {
           const k = this.eat('KW');
@@ -1093,13 +1093,23 @@ class Parser {
               if (names.length > 0) f.views = [...(f.views ?? []), ...names];
               break;
             }
+            /*
+             * `name` is what the reader sees; the id is how the study
+             * refers to it. Without this the id had to be both, so a
+             * legible caption meant an unusable handle.
+             */
+            case 'name': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) f.name = unquote(tok.image);
+              break;
+            }
             case 'description': {
               const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
               if (tok) f.description = unquote(tok.image);
               break;
             }
             default: /* ignore */ this.parseScalarValue();
-              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type', 'voltage', 'view', 'views', 'description']);
+              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type', 'voltage', 'view', 'views', 'name', 'description']);
           }
           this.eat('SEMI');
         }
@@ -1125,7 +1135,7 @@ class Parser {
         const nameTok = this.eat('STRING') ?? this.eat('IDENT');
         if (!nameTok) { this.pos++; continue; }
         const t: import('./ast.js').TimeDecl = {
-          name: unquote(nameTok.image), t_s: NaN, loc: this.loc(nameTok),
+          id: unquote(nameTok.image), t_s: NaN, loc: this.loc(nameTok),
         };
         this.expect('LBRACE', '{');
         while (!this.at('RBRACE') && !this.at('EOF')) {
@@ -1150,6 +1160,11 @@ class Parser {
             case 'views': {
               const names = this.parseNameList();
               if (names.length > 0) t.views = [...(t.views ?? []), ...names];
+              break;
+            }
+            case 'name': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) t.name = unquote(tok.image);
               break;
             }
             case 'description': {
@@ -1994,9 +2009,16 @@ if (kwName === 'flex_points') {
     const head = this.peek();
     this.expectKeyword('view');
 
-    /* `view "Phase grading" { ... }` -- the name is optional, so a
-     * study with one sheet reads exactly as it always did. */
-    const nameTok = this.at('STRING') ? this.eat('STRING') : null;
+    /*
+     * `view PHASE_GRADING { ... }` -- the id is optional, so a study
+     * with one sheet reads exactly as it always did.
+     *
+     * A bare identifier, like every other declared id. Quoted is still
+     * read so existing studies parse and can be told what to write
+     * instead; `validateIdentifiers` is what refuses it.
+     */
+    const nameTok = this.at('STRING') ? this.eat('STRING')
+      : (this.at('IDENT') ? this.eat('IDENT') : null);
 
     if (!this.eat('LBRACE')) {
       this.errors.push({

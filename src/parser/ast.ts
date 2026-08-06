@@ -72,6 +72,19 @@ export interface SystemBlock extends BaseNode {
   voltages: VoltageLevelDecl[];
 }
 
+/**
+ * What a reader sees for a declared thing.
+ *
+ * The id is a handle and the `name` is prose; where no prose was given
+ * the handle stands in, which is what makes `name` optional without
+ * leaving anything unlabelled. Written once so that no site has to
+ * decide for itself, and so that "which of the two is this?" is
+ * answered by which function was called.
+ */
+export function displayName(x: { id: string; name?: string }): string {
+  return x.name ?? x.id;
+}
+
 export interface FaultDecl extends BaseNode {
   /**
    * Sheets this belongs to, by `view` name. Absent means every sheet.
@@ -82,7 +95,10 @@ export interface FaultDecl extends BaseNode {
    */
   views?: string[];
 
-  name: string;
+  /** How the study refers to this fault. A bare identifier. */
+  id: string;
+  /** What the reader sees. Defaults to the id. */
+  name?: string;
   /**
    * What kind of fault this is. Supplies the ratios between phase
    * current and the sequence components, so a component the study does
@@ -176,7 +192,10 @@ export interface TimeDecl extends BaseNode {
    */
   views?: string[];
 
-  name: string;
+  /** How the study refers to this required time. A bare identifier. */
+  id: string;
+  /** What the reader sees. Defaults to the id. */
+  name?: string;
   /** The required time, in seconds. */
   t_s: number;
   /**

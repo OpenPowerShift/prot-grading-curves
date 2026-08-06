@@ -36,6 +36,7 @@ import type {
   StageBlock,
   TopLevel,
 } from '../parser/ast.js';
+import { displayName } from '../parser/ast.js';
 import { lookupCurve, type CurveConstants } from '../constants/curves.js';
 import { amps, rawNumber, readBoolean, readRatio, readString, seconds } from './units.js';
 import { isFaultType, type FaultType } from '../constants/sequence.js';
@@ -56,6 +57,8 @@ export interface VoltageLevel {
 }
 
 export interface Fault {
+  /** How the study refers to it. The key of `study.faults`. */
+  id: string;
   /** Sheets this belongs to, by `view` name. Absent means every sheet. */
   views?: string[];
 
@@ -323,6 +326,8 @@ export interface Grade {
  * judged against rather than a current they are evaluated at.
  */
 export interface RequiredTime {
+  /** How the study refers to it. The key of `study.times`. */
+  id: string;
   /** Sheets this belongs to, by `view` name. Absent means every sheet. */
   views?: string[];
 
@@ -562,8 +567,10 @@ export function buildStudy(doc: Document): Study {
         break;
       case 'times':
         for (const t of item.times) {
-          study.times.set(t.name, {
-            name: t.name,
+          /* Keyed by identity; the stored `name` is what gets drawn. */
+          study.times.set(t.id, {
+            id: t.id,
+            name: displayName(t),
             t_s: t.t_s,
             at_I_A: t.at_I_A,
             at_I1_A: t.at_I1_A,
@@ -630,8 +637,9 @@ export function buildStudy(doc: Document): Study {
     if (item.type !== 'faults') continue;
     for (const f of item.faults) {
       const kV = f.voltage ? study.voltages.get(f.voltage)?.kV : undefined;
-      study.faults.set(f.name, {
-        name: f.name,
+      study.faults.set(f.id, {
+        id: f.id,
+        name: displayName(f),
         type: isFaultType(f.type) ? f.type : undefined,
         I_A: f.I_A,
         min_A: f.min_A ?? f.I_A,

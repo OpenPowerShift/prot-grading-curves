@@ -34,6 +34,7 @@ import type {
   SystemBlock,
   ViewBlock,
 } from '../parser/ast.js';
+import { displayName } from '../parser/ast.js';
 import { LogScale } from './scale.js';
 import { ticks, formatSi } from './ticks.js';
 import { paletteFor, paletteFromList, strokeDashFor, type Palette } from './palette.js';
@@ -735,7 +736,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           continue;
         }
         if (differentLevel) {
-          noteReferralCaveat(`fault ${oneLine(f.name)}`, viewQuantity,
+          noteReferralCaveat(`fault ${oneLine(displayName(f))}`, viewQuantity,
             f.voltage, viewLevelName, f.type);
         }
 
@@ -743,7 +744,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         if (I_view * 0.8 < I_lo) I_lo = I_view * 0.8;
         if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
         faults.push({
-          name: f.name,
+          name: displayName(f),
           kind: 'fault',
           description: f.description,
           I_A: declared,

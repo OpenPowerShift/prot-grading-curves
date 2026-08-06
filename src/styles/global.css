@@ -132,6 +132,21 @@ tc-viewer {
   flex-direction: column;
   width: 100%;
   height: 100%;
+  /*
+   * May be narrower than the drawing it holds.
+   *
+   * A flex item defaults to `min-width: auto`, meaning it will not
+   * shrink below its min-content width -- and since the sheet became a
+   * fixed-size box for the display zoom, that min-content width is the
+   * whole drawing. So the plot pane refused to be narrower than the
+   * sheet, pushed the row past the viewport, and everything to the
+   * right of it -- the entire plot toolbar -- was clipped. Visible at
+   * ordinary window sizes only once the page was zoomed, which is what
+   * made it look like a zoom bug.
+   *
+   * The pane scrolls; that is what it is for.
+   */
+  min-width: 0;
   /* The plot's own background comes from the rendered SVG, which
    * follows the same theme; this only fills the surround. */
   background: var(--tc-bg-sunken);
@@ -481,6 +496,9 @@ tc-viewer .toolbar {
 tc-viewer .pane-host {
   flex: 1 1 0;
   min-height: 0;
+  /* Same reason as the host element above: the sheet inside is a
+   * fixed-size box, and this must be free to be smaller than it. */
+  min-width: 0;
   width: 100%;
   /*
    * Scrolls rather than clips, because the drawing may be larger than

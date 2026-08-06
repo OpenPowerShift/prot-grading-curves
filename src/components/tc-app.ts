@@ -69,6 +69,15 @@ export class TcApp extends LitElement {
 
   /** True while the window is too narrow to show both panes at once. */
   @state() private narrow = false;
+
+  /**
+   * Which single pane a narrow window is showing.
+   *
+   * Kept apart from `pane`, which is the layout chosen when there was
+   * room for both, so a trip through a narrow window and back leaves
+   * the split as it was found.
+   */
+  @state() private narrowPane: 'source' | 'plot' = 'plot';
   @state() private exampleId: string | null = DEFAULT_EXAMPLE.id;
   /** Drag-to-resize state for the Source/Plot splitter. */
   private splitter: {
@@ -604,6 +613,25 @@ export class TcApp extends LitElement {
   }
 
   private showPane(which: 'split' | 'source' | 'plot'): void {
+    /*
+     * A choice made on a narrow screen is not a choice about the wide
+     * layout.
+     *
+     * Both used to write `pane`. So: zoom in until the window goes
+     * narrow, tap `Source` to read the study, zoom back out -- and the
+     * plot is gone, because tapping a switch that exists only because
+     * the window is small had silently rewritten the split you were
+     * working in. Getting it back meant finding a button that had also
+     * changed its label.
+     *
+     * The narrow choice lives in `narrowPane` and is not stored. What
+     * is stored is what you asked for while there was room for both.
+     */
+    if (this.narrow) {
+      this.narrowPane = which === 'source' ? 'source' : 'plot';
+      requestAnimationFrame(() => { if (this.isConnected) this.viewer()?.requestUpdate(); });
+      return;
+    }
     this.pane = which;
     try { localStorage.setItem(PANE_KEY, which); } catch { /* not essential */ }
     /* The plot sizes itself to its host, so tell it to re-measure
@@ -640,7 +668,18 @@ export class TcApp extends LitElement {
       ? window.matchMedia('(pointer: coarse)').matches
       : false;
     const limit = coarse ? TcApp.NARROW_TOUCH_PX : TcApp.NARROW_PX;
-    this.narrow = width > 0 && width <= limit;
+    const narrow = width > 0 && width <= limit;
+    /*
+     * Arriving at a narrow window, start on whichever pane the wide
+     * layout was showing -- someone working source-only should not be
+     * handed the plot because the window got smaller. `split` has no
+     * single answer, so it opens on the plot, that being what the tool
+     * is for.
+     */
+    if (narrow && !this.narrow) {
+      this.narrowPane = this.pane === 'source' ? 'source' : 'plot';
+    }
+    this.narrow = narrow;
   }
 
   private loadExample(id: string): void {
@@ -1059,9 +1098,7 @@ export class TcApp extends LitElement {
      * is read as whichever single pane was last asked for -- the plot
      * by default, that being what the tool is for.
      */
-    const mode: 'split' | 'source' | 'plot' = this.narrow
-      ? (this.pane === 'source' ? 'source' : 'plot')
-      : this.pane;
+    const mode: 'split' | 'source' | 'plot' = this.narrow ? this.narrowPane : this.pane;
 
     return html`
       ${this.showReport && this.reports.length > 0

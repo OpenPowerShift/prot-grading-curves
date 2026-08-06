@@ -584,6 +584,18 @@ breaks. They want one decision: implement, or delete the claim.
 
 ==== Smaller, and worth doing when nearby
 
+. *Reported but not reproduced: "when I zoom sometimes I lose the
+  source and plot buttons".* Swept the split from 1600 px down to
+  400 px, in both narrow and wide modes and all three pane states, and
+  measured every toolbar button's visibility and whether it fell
+  outside the pane: 22 of 22 reachable at every width, the rows
+  wrapping as intended. The one concrete defect found in the area --
+  the narrow switch clobbering the stored split -- is fixed above, and
+  `min-width: 0` was added to `tc-viewer` and its scroll host, which is
+  correct regardless (a fixed-size sheet inside a flex item should
+  declare it can shrink) but fixed nothing demonstrable. Needs the
+  reporter's zoom level and which buttons went.
+
 . *`svg.ts` decomposition.* One large function holding around forty
   closures. Split in this order or the captures merely move: sheet
   model, legend, annotations, frame.
@@ -636,6 +648,15 @@ breaks. They want one decision: implement, or delete the claim.
   overflows -- the substitution is strictly narrower -- just loose.
 
 === Closed 2026-08-06
+
+* *A pane chosen on a narrow window rewrote the wide layout.* The
+  narrow Source/Plot switch and the wide Hide/Split buttons wrote the
+  same field, so zooming in until the window went narrow, tapping
+  `Source`, and zooming back out left the plot hidden -- a layout the
+  reader never asked for, restored only by finding a button whose
+  label had also changed. The narrow choice now lives in `narrowPane`
+  and is not stored; arriving narrow it is seeded from the wide
+  layout, and re-seeded only on the transition.
 
 * *The legend's notes cost the reader the settings.* Notes were drawn
   at any density above `minimal` and the only way to buy space was to

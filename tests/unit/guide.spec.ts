@@ -58,8 +58,13 @@ describe('the guide as a document', () => {
      * language grew, and the honest answer to that is not to delete
      * documentation of features that work. The fraction is what
      * actually holds the guide to being a digest.
+     *
+     * Raised from 64k to 69k on 2026-08-07, the language having grown
+     * again. The fraction did not move: that is the bound with a
+     * reason behind it, and the guide is still under a third of the
+     * spec.
      */
-    expect(GUIDE.length).toBeLessThan(64_000);
+    expect(GUIDE.length).toBeLessThan(69_000);
     expect(GUIDE.length).toBeLessThan(SPEC.length / 2);
   });
 });

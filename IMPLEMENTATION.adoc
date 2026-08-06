@@ -381,39 +381,16 @@ makes that the code breaks outranks a promise never made.
   with declared per-level figures is a correct workaround and nothing
   says so.
 
-==== The playground does not apply the CLI's own policy
+==== The playground and the CLI
 
-. *A study with hard errors is drawn and exported unmarked.*
-  [VERIFIED by review] `cli.ts` refuses to write a sheet when the study
-  has errors and stamps a `--force` sheet `NOT VALID`; the comment
-  there is right that the file is what gets emailed. `tc-app.ts` passes
-  the viewer only parse errors, so semantic diagnostics never reach it.
-  A study with nine errors drew a clean sheet at a thousand times and a
-  thousandth of the intended settings with all four export buttons
-  enabled.
-
-. *Thirteen diagnostic codes report at 1:1*, including both unit
-  errors -- and 1:1 is a clickable go-to-line that lands at the top of
-  the file. `validateUnits` computes the correct highlight width and
-  discards the anchor. (Was "twelve" on the previous reconciliation;
-  recounted.)
-
-. *No inline error marking.* `@codemirror/lint` is a declared
-  dependency and `linter()` is never called, though `validate.ts` says
-  codes are stable so the lint gutter can key off them. With the
-  locations above, the only channel is a list whose line numbers are
-  often wrong.
-
-. *`info` diagnostics are dropped in the GUI* while the CLI prints
-  them, so the two disagree about what the same file contains.
-
-. *"1 fail" is shown when nothing could be evaluated.* A pair where
-  neither side operates sets `pass = false`; the engineer reads a
-  margin problem and goes looking in the wrong place. Wants a third
-  verdict state.
+Reconciled 2026-08-07. The five findings this section opened with are
+closed: the sheet is stamped and the exports are gated on the same
+count the CLI uses, diagnostics carry real locations and drive a lint
+gutter, `info` findings appear in both, and a pair that could not be
+evaluated reports `unevaluated` rather than a failure. What is left:
 
 . *The report prints `no-op s`* -- a non-finite branch returning a word
-  where callers append a unit.
+  where callers append a unit (`grades.ts:1089`).
 
 ==== Documented, and absent
 
@@ -455,26 +432,17 @@ breaks. They want one decision: implement, or delete the claim.
 
 ==== Output and integration
 
-. *`check` is advertised as a CI gate and gates only syntax and
-  semantics.* [VERIFIED] A study that fails coordination exits 0.
-  `README.adoc` and `cli.ts` both claim CI usability. Wants a distinct
-  exit status for "valid study, failing grade".
+Reconciled 2026-08-07: exit status `3`, `--json`, PDF pagination,
+`--all-views` and the `[page]`/`[of]` macros are done. What is left:
 
-. *Nothing is machine-readable.* `GradeReport` is already a clean
-  structured type reachable only through a text formatter. No JSON
-  anywhere. Blocks every downstream consumer.
+. *The PDF still forces `theme: 'light'`*, discarding a declared
+  `monochrome` or `print`; non-WinAnsi text is silently substituted
+  (`Lodz` with its diacritics becomes `?od?`); and there is no
+  document metadata and no embedded fonts, so it is not archival.
 
-. *The PDF is the least faithful of the three formats*, and it is the
-  one that gets issued and filed. `cli.ts` forces `theme: 'light'`,
-  discarding declared `monochrome` and `print`; there is no
-  pagination, so a four-view study makes one page and `[page]`/`[of]`
-  print a literal `?` on a sheet stamped for issue; and non-WinAnsi
-  text is silently substituted (`Lodz` with its diacritics becomes
-  `?od?`). No document metadata, no embedded fonts, so not archival.
-
-. *Extra CLI arguments are silently discarded.* [VERIFIED]
+. *Extra CLI arguments are silently discarded.* [VERIFIED 2026-08-07]
   `check a.ptc b.ptc` reads only the first and exits 0. No stdin, no
-  stdout, no glob, no `--watch`, no all-views render.
+  stdout, no glob, no `--watch`.
 
 . *The sheet never says whether the study passed.* The verdict lives
   only in console output that does not travel with the file.

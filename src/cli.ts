@@ -286,27 +286,20 @@ export async function main(argv: string[]): Promise<number> {
     return 2;
   }
 
-  let svg = opts.format === 'pdf'
-    ? renderStudy(result, { theme: 'light', ...chosen })
-    : renderStudy(result, chosen);
-
   /*
    * A forced sheet says so on its face.
    *
    * `--force` exists to let someone look at what a broken study draws,
    * and the moment it is a file it is indistinguishable from a good
    * one. Stamped, it cannot be issued by accident -- which is the only
-   * reason refusing to write was worth doing.
+   * reason refusing to write was worth doing. The renderer draws the
+   * stamp, so this and the playground cannot drift apart.
    */
-  if (hasErrors && opts.force) {
-    const count = errorCount(result);
-    svg = svg.replace('</svg>',
-      '<g pointer-events="none">'
-      + '<rect x="0" y="0" width="100%" height="26" fill="#c0392b"/>'
-      + '<text x="12" y="18" font-size="13" font-weight="700" fill="#ffffff">'
-      + `DRAWN FROM A STUDY WITH ${count} ERROR${count === 1 ? '' : 'S'} — NOT VALID`
-      + '</text></g></svg>');
-  }
+  const invalidErrors = hasErrors && opts.force ? errorCount(result) : 0;
+
+  const svg = opts.format === 'pdf'
+    ? renderStudy(result, { theme: 'light', invalidErrors, ...chosen })
+    : renderStudy(result, { invalidErrors, ...chosen });
   const outputPath = resolvePath(opts.output ?? defaultOutput(opts.input, opts.format));
 
   try {

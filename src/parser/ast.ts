@@ -15,11 +15,25 @@ export interface BaseNode {
   loc: SourceLocation;
 }
 
+/**
+ * Where a value was written.
+ *
+ * Only blocks used to carry a location, so a diagnostic about a value
+ * -- a suffix in the wrong place, a number out of range -- had nowhere
+ * to point and reported at 1:1. Thirteen codes did that, and 1:1 is a
+ * clickable go-to-line that lands the reader at the top of the file.
+ *
+ * Optional because a value can also be synthesised (a stage lifted out
+ * of an element's shorthand), and a synthetic node honestly has no
+ * position in the source.
+ */
+export interface ValueLocation { loc?: SourceLocation }
+
 export type ScalarValue =
-  | { kind: 'number'; value: number; unit?: string }
-  | { kind: 'string'; value: string }
-  | { kind: 'boolean'; value: boolean }
-  | { kind: 'ratio'; numerator: number; denominator: number };
+  | ({ kind: 'number'; value: number; unit?: string } & ValueLocation)
+  | ({ kind: 'string'; value: string } & ValueLocation)
+  | ({ kind: 'boolean'; value: boolean } & ValueLocation)
+  | ({ kind: 'ratio'; numerator: number; denominator: number } & ValueLocation);
 
 /* ------------------------------------------------------------------ */
 /* Top-level blocks                                                    */

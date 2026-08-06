@@ -1708,6 +1708,7 @@ The layers, in paint order:
 | `legend`       | The legend, column or floating panel
 | `footer`       | Page footer slots, wherever they are placed
 | `watermark`    | The diagonal watermark, over everything
+| `invalid`      | "Drawn from a study with errors" banner, over all
 |===
 
 Three properties a consumer may rely on:

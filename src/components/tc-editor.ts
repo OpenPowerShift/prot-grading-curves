@@ -11,6 +11,7 @@ import { LitElement, css, html, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, hoverTooltip } from '@codemirror/view';
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
+import { lintGutter, setDiagnostics, type Diagnostic as CmDiagnostic } from '@codemirror/lint';
 import { EditorState, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentMore, indentLess } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
@@ -25,6 +26,23 @@ import { tcCompletionSource } from '../editor/completions.js';
 import { helpAt, tcHoverSource } from '../editor/hover.js';
 import { tcLanguage } from '../highlight/tc-language.js';
 import { tcEditorAppearance } from '../highlight/tc-highlight-style.js';
+
+/**
+ * One finding, in the shape the editor needs.
+ *
+ * Deliberately not the semantic `Diagnostic`: the editor works in
+ * character offsets and knows nothing about codes or study structure,
+ * and the app already has to merge parse errors with semantic findings
+ * before either can be shown.
+ */
+export interface EditorMark {
+  line: number;
+  column: number;
+  length: number;
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  code: string;
+}
 
 /** Keyboard shortcuts that the Source/Plot playground exposes.
  *  These are wired into the editor's keymap so they work even
@@ -67,6 +85,19 @@ export class TcEditor extends LitElement {
    */
   @property({ attribute: false }) declare onHelp:
     ((help: ReturnType<typeof helpAt>) => void) | null;
+  /**
+   * Findings to mark in the text.
+   *
+   * The list below the editor was the only place a diagnostic appeared,
+   * and its line numbers are only as good as the location the finding
+   * carries -- so a reader was told there was a problem and left to
+   * find it. Marking the text is what makes a diagnostic point at
+   * something. `validate.ts` has said all along that codes are stable
+   * "so the editor's lint gutter can key off them"; this is that
+   * gutter, six months late.
+   */
+  @property({ attribute: false }) declare marks: readonly EditorMark[];
+
   /** Internal CM view. */
   private view?: EditorView;
 
@@ -151,8 +182,10 @@ export class TcEditor extends LitElement {
   protected updated(changed: PropertyValues): void {
     if (!this.view) {
       this.mountEditor();
+      this.pushMarks();
       return;
     }
+    if (changed.has('marks')) this.pushMarks();
     if (!changed.has('source')) return;
 
     /*
@@ -201,6 +234,7 @@ export class TcEditor extends LitElement {
        * else is this named" without a search at all.
        */
       search({ top: true }),
+      lintGutter(),
       highlightSelectionMatches(),
       bracketMatching(),
       tcLanguage,
@@ -290,6 +324,38 @@ export class TcEditor extends LitElement {
     ];
     const state = EditorState.create({ doc: this.source, extensions: exts });
     this.view = new EditorView({ state, parent: this.renderRoot as HTMLElement });
+  }
+
+  /**
+   * Hand the current findings to CodeMirror.
+   *
+   * Positions arrive as 1-based line and column, which is what every
+   * other surface quotes, and have to become character offsets. A
+   * finding whose line is past the end of the document is dropped
+   * rather than clamped: during a re-parse the text and the findings
+   * are momentarily out of step, and a marker pinned to the last line
+   * would blink there on every keystroke.
+   */
+  private pushMarks(): void {
+    const view = this.view;
+    if (!view) return;
+    const doc = view.state.doc;
+
+    const marks: CmDiagnostic[] = [];
+    for (const m of this.marks ?? []) {
+      if (m.line < 1 || m.line > doc.lines) continue;
+      const line = doc.line(m.line);
+      const from = Math.min(line.from + Math.max(0, m.column - 1), line.to);
+      const to = Math.min(from + Math.max(1, m.length), line.to);
+      marks.push({
+        from,
+        /* A zero-width marker is invisible; give it the character. */
+        to: to > from ? to : Math.min(from + 1, doc.length),
+        severity: m.severity,
+        message: m.code ? `${m.code}: ${m.message}` : m.message,
+      });
+    }
+    view.dispatch(setDiagnostics(view.state, marks));
   }
 
   /** Move the caret to a 1-based line/column and reveal it. */

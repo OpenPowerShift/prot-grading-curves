@@ -31,7 +31,6 @@ import type {
   PageBlock,
   PageLegend,
   LegendCurrents,
-  Ref,
   SystemBlock,
   ViewBlock,
 } from '../parser/ast.js';
@@ -214,6 +213,8 @@ export const SVG_LAYERS = [
   'footer',
   /** Diagonal watermark, over everything. */
   'watermark',
+  /** "Drawn from a study with errors" banner, over everything else. */
+  'invalid',
 ] as const;
 
 export type SvgLayer = typeof SVG_LAYERS[number];
@@ -271,6 +272,15 @@ function wrapLabel(text: string, maxWidthPx: number, fontSize: number): string[]
 }
 
 export interface RenderOptions {
+  /**
+   * How many errors the study has, when it has any.
+   *
+   * Non-zero stamps the sheet. The caller counts them, because the
+   * renderer is handed a document rather than a validation result --
+   * but every caller that can draw a broken study must pass it, or the
+   * drawing lies by omission.
+   */
+  invalidErrors?: number;
   page: PageBlock | null;
   system: SystemBlock | null;
   faults: FaultsBlock | null;
@@ -4241,6 +4251,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     }
   }
   closeLayer(footerLayer);
+
+  /*
+   * The sheet says it is not valid.
+   *
+   * A drawing made from a study with errors is indistinguishable from
+   * a good one the moment it is a file, and that file is what gets
+   * attached to an email. The CLI has stamped this for a while by
+   * string surgery on `</svg>`, which put the one mark that says the
+   * drawing is wrong outside the layer model -- so a consumer
+   * recomposing the sheet from its layers dropped exactly that. Drawn
+   * here instead, so the CLI and the playground stamp identically and
+   * a layer-aware reader can find it.
+   */
+  const invalidCount = opts.invalidErrors ?? 0;
+  layer('invalid', () => {
+    if (invalidCount <= 0) return;
+    out.push(
+      '<g pointer-events="none">'
+      + `<rect x="0" y="0" width="${W}" height="26" fill="#c0392b"/>`
+      + '<text x="12" y="18" font-size="13" font-weight="700" fill="#ffffff">'
+      + escapeXml(
+        `DRAWN FROM A STUDY WITH ${invalidCount} ERROR${invalidCount === 1 ? '' : 'S'}`
+        + ' \u2014 NOT VALID')
+      + '</text></g>',
+    );
+  });
 
   /* watermark */
   layer('watermark', () => {

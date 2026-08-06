@@ -36,6 +36,12 @@ const allSheets = (): Array<{ name: string; svg: string }> => {
 
 const SHEETS = allSheets();
 
+/** A sheet drawn from a study with errors, which the CLI stamps. */
+const stamped = (): string => renderStudy(
+  parse(readFileSync('examples/00-minimal.ptc', 'utf8')),
+  { theme: 'light', invalidErrors: 3 },
+);
+
 describe('the groups', () => {
   it('open and close in balance', () => {
     for (const { name, svg } of SHEETS) {
@@ -72,11 +78,17 @@ describe('the groups', () => {
      * The other direction. A layer listed in the contract but never
      * drawn is a control a viewer would offer for something that does
      * not exist.
+     *
+     * The shipped examples are all valid, so none of them stamps a
+     * sheet. Rather than exempt `invalid` -- which would leave the one
+     * layer that matters most unchecked -- a broken study is rendered
+     * here on purpose.
      */
     const seen = new Set<string>();
     for (const { svg } of SHEETS) {
       for (const m of svg.matchAll(/<g data-layer="([^"]*)"/g)) seen.add(m[1]);
     }
+    for (const m of stamped().matchAll(/<g data-layer="([^"]*)"/g)) seen.add(m[1]);
     expect([...SVG_LAYERS].filter((l) => !seen.has(l))).toEqual([]);
   });
 });

@@ -232,12 +232,32 @@ export function tokenize(source: string): { tokens: Token[]; errors: ParseError[
   let line = 1;
   let col = 1;
 
+  /*
+   * Where the token being read began.
+   *
+   * `emit` runs after the token has been consumed, so `line` and `col`
+   * by then describe the character *after* it. Recording those meant
+   * every token's position was its end: a diagnostic about `KA`
+   * underlined the `; ` following it, and every parse error was off by
+   * the length of the token it was complaining about. Nobody noticed
+   * because the two positions differ by a token width, which reads as
+   * plausible until you try to highlight the thing.
+   *
+   * Captured at the top of each iteration, which is where a token
+   * starts, and unaffected by the whitespace and comment branches
+   * because those `continue` and the next iteration recaptures.
+   */
+  let tokLine = 1;
+  let tokCol = 1;
+
   const emit = (k: TokenKind, image: string, start: number) => {
-    tokens.push({ kind: k, image, start, end: i, line, col });
+    tokens.push({ kind: k, image, start, end: i, line: tokLine, col: tokCol });
   };
 
   while (i < source.length) {
     const c = source[i];
+    tokLine = line;
+    tokCol = col;
 
     // whitespace
     if (c === ' ' || c === '\t' || c === '\r') {
@@ -2495,15 +2515,23 @@ if (kwName === 'flex_points') {
       this.pos++;
       const num = Number(t.image.replace(/_/g, ''));
       let unit: string | undefined;
+      let unitTok: Token | undefined;
       if (this.at('IDENT') || this.at('KW')) {
-        const ut = this.tokens[this.pos++];
-        unit = ut.image;
+        unitTok = this.tokens[this.pos++];
+        unit = unitTok.image;
       }
-      return { kind: 'number', value: num, unit };
+      /*
+       * Anchored on the *unit* where there is one. Every diagnostic
+       * about a number with a suffix is about the suffix -- "kA not
+       * KA", "ms not msec" -- and the highlight is already sized to
+       * it, so pointing at the number left the marker one token short
+       * of the thing being complained about.
+       */
+      return { kind: 'number', value: num, unit, loc: this.loc(unitTok ?? t) };
     }
     if (t.kind === 'STRING') {
       this.pos++;
-      return { kind: 'string', value: unquote(t.image) };
+      return { kind: 'string', value: unquote(t.image), loc: this.loc(t) };
     }
     if (t.kind === 'KW' && (t.image === 'true' || t.image === 'false')) {
       this.pos++;

@@ -99,10 +99,22 @@ npx tc-curves render study.ptc --png -o out.png
 npx tc-curves render study.ptc --pdf --size A3 --landscape
 npx tc-curves report study.ptc              # margin report only
 npx tc-curves check  study.ptc              # diagnostics only
+npx tc-curves check  study.ptc --json       # machine-readable, for CI
 ----
 
-`check` exits `0` when clean and `1` on any error-severity finding, so it works
-as a CI gate on a repository of studies.
+Exit status: `0` clean, `1` an error-severity finding, `2` usage or I/O
+failure, `3` a valid study whose grading fails.
+
+`3` is separate from `1` deliberately. A study with an error could not be
+evaluated; a study that fails its margins was evaluated and did not
+coordinate. Those are different jobs for whoever reads the status -- "fix the
+file" against "change the settings" -- and a gate that collapses them into
+non-zero loses the distinction exactly where it matters. `check` is therefore
+a CI gate on coordination, not merely on syntax.
+
+`--json` emits the same findings and the grading result as a versioned
+document, so a settings database, a dashboard or a PR annotation does not have
+to scrape the text report.
 
 == Playground / development
 

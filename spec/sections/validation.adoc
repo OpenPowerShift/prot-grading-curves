@@ -9,11 +9,25 @@ semantic error.
 . *A `grade` or `combine` referencing a relay or element that does
   not exist.* *Error* with the missing id quoted.
 . *`I_pickup` not strictly positive.* *Error*.
+. *`tms` absent on an inverse-time stage.* *Error*. A processor shall
+  not supply a default. The multiplier scales the whole
+  characteristic, so assuming 1.0 draws an IEC standard inverse about
+  ten times slow, grades against it, and reports a comfortable margin
+  -- an error in the direction nobody checks. Three cases are not
+  faults: a definite-time stage has no multiplier; a `flex_points`
+  table is absolute in amps, so an absent scale means the table as
+  printed; and an element whose `tms` a `solve` block computes.
 . *`tms` outside* `0.025 <= tms <= 1.5` for IEC curves, *or*
   `0.5 <= tms <= 15` for ANSI curves. *Error* with the valid range
   in the message.
 . *`at_I` below `I_pickup`* for the anchored curve. *Warning*.
-. *`flex_points` not monotone in `I`* (after sorting). *Error*.
+. *`flex_points` with a repeated current* (tables are sorted by
+  current before use, so row order is not a fault; two times at one
+  current leave the curve undefined there). *Error*. Applies to a
+  device's `min_melt` and `total_clear` as well as to an element's
+  table -- except where the table is a bounding envelope rather than a
+  characteristic read for a time, a motor start being legitimately
+  vertical at its starting current.
 . *`flex_points` with fewer than 2 entries.* *Error*.
 . *A declared curve name not in the table.* *Error* with a
   suggestion (closest edit distance <= 2).

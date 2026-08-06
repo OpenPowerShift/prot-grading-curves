@@ -158,6 +158,18 @@ export class TcViewer extends LitElement {
   @property({ type: String }) theme: ThemeName = 'light';
   @property({ type: Array }) errors: ParseError[] = [];
   /**
+   * How many error-severity findings the study has, from both the
+   * parser and the validator.
+   *
+   * The viewer used to be handed parse errors only, so a study with
+   * nine semantic errors drew a clean-looking sheet -- at a thousand
+   * times and a thousandth of the intended settings, in the case that
+   * found this -- with every export button live and nothing on the
+   * face of it to say so. The CLI has refused to write that file since
+   * the beginning. The two surfaces now apply one policy.
+   */
+  @property({ type: Number }) errorCount = 0;
+  /**
    * Which declared `view` to draw, by index.
    *
    * A study may declare several sheets; the app's picker selects one.
@@ -912,6 +924,7 @@ export class TcViewer extends LitElement {
         faults: null,
         view: this.currentView(),
         study: this.study ?? null,
+        invalidErrors: this.errorCount,
         theme: this.theme,
         width,
         height,
@@ -956,6 +969,7 @@ export class TcViewer extends LitElement {
         faults: null,
         view: this.currentView(),
         study: this.study ?? null,
+        invalidErrors: this.errorCount,
         theme: this.theme,
         width,
         height,
@@ -1037,6 +1051,7 @@ export class TcViewer extends LitElement {
         faults: null,
         view: this.currentView(),
         study: this.study ?? null,
+        invalidErrors: this.errorCount,
         theme: 'light',
         width,
         height,
@@ -1172,6 +1187,7 @@ render() {
       page, system, faults, view: viewClamped ?? null,
       study: this.study ?? null,
       theme: this.theme,
+      invalidErrors: this.errorCount,
       width: this.measuredW,
       height: this.measuredH,
       highlightLabel: this.hover?.protocol === 'snap' ? this.hover.curveLabel : null,
@@ -1205,6 +1221,15 @@ render() {
            @touchend=${() => this.handleTouchEnd()}
            @touchcancel=${() => this.handleTouchEnd()}>
         ${unsafeHTML(this.renderWithOverlay(svg))}
+        ${this.renderFailure !== null ? html`
+          <div class="plot-stale" role="alert">
+            <strong>This plot could not be redrawn.</strong>
+            ${this.lastGoodSvg
+              ? html`<span>You are looking at the last sheet that drew, which is
+                     <em>not</em> the study now in the editor.</span>`
+              : html`<span>Nothing has drawn yet.</span>`}
+            <code>${this.renderFailure}</code>
+          </div>` : null}
       </div>
     `;
   }
@@ -1382,6 +1407,20 @@ render() {
    */
   private svgCache: { key: string; svg: string } | null = null;
 
+  /**
+   * The last sheet that drew successfully, and why the current one did
+   * not.
+   *
+   * A render that throws used to take the pane down with it: Lit's
+   * render fails, the previous DOM is left on screen, and the reader is
+   * looking at a drawing of a study that is no longer the one in the
+   * editor with nothing to say so. A stale plot presented as a current
+   * one is the same fault as a sheet drawn from a broken study --
+   * confident, wrong, and indistinguishable from right.
+   */
+  @state() private renderFailure: string | null = null;
+  private lastGoodSvg: string | null = null;
+
   private renderCached(opts: RenderOptions): string {
     const key = JSON.stringify([
       this.docRevision,
@@ -1397,11 +1436,25 @@ render() {
       opts.view?.current_min, opts.view?.current_max,
       opts.view?.time_min, opts.view?.time_max,
       opts.highlightLabel, opts.highlightVoltage,
+      opts.invalidErrors,
     ]);
     if (this.svgCache?.key === key) return this.svgCache.svg;
-    const svg = renderSvg(this.document, opts);
-    this.svgCache = { key, svg };
-    return svg;
+    try {
+      const svg = renderSvg(this.document, opts);
+      this.svgCache = { key, svg };
+      this.lastGoodSvg = svg;
+      if (this.renderFailure !== null) this.renderFailure = null;
+      return svg;
+    } catch (error) {
+      /*
+       * Keep the last good sheet rather than blanking the pane -- it
+       * is still the best picture of the study available -- but say
+       * plainly that it is not the current one.
+       */
+      const message = error instanceof Error ? error.message : String(error);
+      if (this.renderFailure !== message) this.renderFailure = message;
+      return this.lastGoodSvg ?? '';
+    }
   }
 
   /**

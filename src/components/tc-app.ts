@@ -15,7 +15,7 @@ import { parse, type Document, type ParseError } from '../parser/index.js';
 import { buildStudy, type Study } from '../semantics/model.js';
 import { viewLabel } from '../semantics/condition.js';
 import { validate, type Diagnostic } from '../semantics/validate.js';
-import { reportGrades, formatGradeReports, type GradeReport } from '../semantics/grades.js';
+import { reportGrades, formatGradeReports, verdictOf, type GradeReport } from '../semantics/grades.js';
 import { EXAMPLES, DEFAULT_EXAMPLE } from '../examples.js';
 import { formatSource } from '../format/format.js';
 import {
@@ -34,6 +34,7 @@ import {
 } from '../editor/share.js';
 
 import './tc-editor.js';
+import type { EditorMark } from './tc-editor.js';
 import './tc-viewer.js';
 import './tc-guide.js';
 
@@ -812,18 +813,52 @@ export class TcApp extends LitElement {
     );
   }
 
-  private renderDiagnostics() {
-    type Row = { severity: string; line: number; column: number; code: string; message: string };
-    const rows: Row[] = [
+  /**
+   * Every finding about the current source, in one list.
+   *
+   * The list under the editor and the markers in it are two views of
+   * the same thing, and they were assembled separately -- the list
+   * merged parse errors with semantic findings and dropped `info`,
+   * while the editor showed nothing at all. Building the set once means
+   * the gutter, the list and the counts cannot disagree about what is
+   * wrong with the study, which is the same reason the CLI and the
+   * playground now share `verdictOf` and `jsonResult`.
+   *
+   * `info` is kept. The CLI prints it, so dropping it here made the two
+   * surfaces describe the same file differently; the list dims it
+   * instead.
+   */
+  /**
+   * Errors from both halves of the front end.
+   *
+   * The count the sheet is stamped with, and the same number the CLI
+   * refuses to draw on. Parse errors and semantic errors are one thing
+   * to a reader; only the tool cares which pass found them.
+   */
+  private errorTotal(): number {
+    return this.errors.filter((e) => e.severity === 'error').length
+      + this.diagnostics.filter((d) => d.severity === 'error').length;
+  }
+
+  private allFindings(): EditorMark[] {
+    const rows: EditorMark[] = [
       ...this.visibleErrors().map((e) => ({
-        severity: e.severity, line: e.line, column: e.column, code: e.code, message: e.message,
+        severity: e.severity as EditorMark['severity'],
+        line: e.line, column: e.column, length: e.length ?? 1,
+        code: e.code, message: e.message,
       })),
       ...this.diagnostics.map((d) => ({
-        severity: d.severity, line: d.line, column: d.column, code: d.code, message: d.message,
+        severity: d.severity as EditorMark['severity'],
+        line: d.line, column: d.column, length: d.length ?? 1,
+        code: d.code, message: d.message,
       })),
-    ]
-      .filter((r) => r.severity === 'error' || r.severity === 'warning')
-      .sort((a, b) => a.line - b.line || a.column - b.column);
+    ];
+    return rows.sort((a, b) => a.line - b.line || a.column - b.column);
+  }
+
+  private renderDiagnostics() {
+    type Row = { severity: string; line: number; column: number; code: string; message: string };
+    const rows: Row[] = this.allFindings();
 
     if (rows.length === 0) return null;
 
@@ -831,11 +866,10 @@ export class TcApp extends LitElement {
       <ul class="diagnostics">
         ${rows.map((r) => html`
           <li class=${r.severity}>
-            <span class="diag-icon">${r.severity === 'error' ? '✗' : '⚠'}</span>
+            <span class="diag-icon">${r.severity === 'error' ? '✗' : r.severity === 'warning' ? '⚠' : 'ℹ'}</span>
             <button class="diag-where" title="Go to line ${r.line}"
                     @click=${() => this.gotoLine(r.line, r.column)}>${r.line}:${r.column}</button>
-            <span class="diag-code">${r.code}</span>
-            <span class="diag-msg">${r.message}</span>
+            <span class="diag-msg">${r.message}<span class="diag-code">${r.code}</span></span>
           </li>`)}
       </ul>`;
   }
@@ -946,13 +980,34 @@ export class TcApp extends LitElement {
   }
 
   /** Pass/fail badge across every grade that declares a constraint. */
+  /**
+   * The badge on the report button.
+   *
+   * Through `verdictOf`, so the badge, the report text and the CLI's
+   * exit status are one decision. It read `r.pass` directly, which is
+   * only set where a `margin` floor is declared -- so a solved study
+   * graded against `margin_target` showed no badge at all, and a pair
+   * where neither side operates counted as a failure.
+   *
+   * "Not evaluated" gets its own word. An engineer reads "fail" as
+   * *the coordination interval is not met* and goes looking for a
+   * margin problem; the actual state is that nothing could be judged,
+   * which is a settings or fault-data problem somewhere else entirely.
+   */
   private gradeVerdict() {
-    const judged = this.reports.filter((r) => r.pass != null);
-    if (judged.length === 0) return null;
-    const failed = judged.filter((r) => !r.pass).length;
-    return failed === 0
-      ? html`<span class="verdict pass">${judged.length} pass</span>`
-      : html`<span class="verdict fail">${failed} fail</span>`;
+    const verdicts = this.reports.map((r) => verdictOf(r));
+    const failed = verdicts.filter((v) => v === 'fail').length;
+    const passed = verdicts.filter((v) => v === 'pass').length;
+    const unjudged = verdicts.filter((v) => v === 'unevaluated').length;
+
+    if (failed > 0) return html`<span class="verdict fail">${failed} fail</span>`;
+    if (passed > 0) return html`<span class="verdict pass">${passed} pass</span>`;
+    if (unjudged > 0) {
+      return html`<span class="verdict unevaluated"
+                        title="No margin could be computed: at the current asked about, a side does not operate"
+                  >${unjudged} not evaluated</span>`;
+    }
+    return null;
   }
 
   render() {
@@ -1070,6 +1125,7 @@ export class TcApp extends LitElement {
                 .onSelectionMove=${this.boundOnSelectionMove}
                 .onHelp=${this.boundOnHelp}
                 .caretRequest=${this.caretRequest}
+                .marks=${this.allFindings()}
                 .shortcuts=${this.boundShortcuts}></tc-editor>
             ${this.help && !this.helpHidden ? html`
               <aside class="help-dock" aria-label="What this means">
@@ -1158,7 +1214,8 @@ export class TcApp extends LitElement {
               .study=${this.study}
               .viewIndex=${this.viewIndex}
               .theme=${this.plotTheme()}
-              .errors=${this.errors}></tc-viewer>
+              .errors=${this.errors}
+              .errorCount=${this.errorTotal()}></tc-viewer>
         </div>
       </div>
       <tc-guide

@@ -94,7 +94,7 @@ describe('the JSON result', () => {
      * quantity.
      */
     const numeric = Object.keys(json.grades[0])
-      .filter((k) => typeof (json.grades[0] as Record<string, unknown>)[k] === 'number');
+      .filter((k) => typeof (json.grades[0] as unknown as Record<string, unknown>)[k] === 'number');
     for (const key of numeric) expect(key, key).toMatch(/_(s|A|pct)$/);
   });
 

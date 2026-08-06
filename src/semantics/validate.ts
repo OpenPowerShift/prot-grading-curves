@@ -183,12 +183,13 @@ function validateTimeMultipliers(ctx: Ctx): void {
       if (stage.tms != null) continue;
 
       const where = stage.id ? `${element.ref}/${stage.id}` : element.ref;
+      const at = stage.node?.loc ?? element.node?.loc;
       add(ctx, 'TMS_MISSING', 'error',
         `${where} declares an inverse-time curve with no tms; it would be drawn and `
         + 'graded at 1.0, which on a standard inverse is about ten times a usual '
         + 'setting. Give the multiplier the relay is set to, or let a grade solve '
         + 'for it with solve { free = ["tms"]; }',
-        undefined);
+        at);
     }
   }
 }
@@ -1197,9 +1198,13 @@ function checkConditionReference(
  * is real but wrong for its field (`I_pu = 5 ms`) still slips through;
  * that is a narrower hole and a rarer mistake.
  */
-function validateUnits(ctx: Ctx): void {
-  const seen = new Set<string>();
+/** A node's own source location, when the parser recorded one. */
+function at_(node: unknown): SourceLocation | undefined {
+  const loc = (node as { loc?: SourceLocation } | undefined)?.loc;
+  return loc && typeof loc.line === 'number' ? loc : undefined;
+}
 
+function validateUnits(ctx: Ctx): void {
   const walk = (node: unknown): void => {
     if (node == null || typeof node !== 'object') return;
     if (Array.isArray(node)) { for (const item of node) walk(item); return; }
@@ -1217,31 +1222,37 @@ function validateUnits(ctx: Ctx): void {
     if (o.kind === 'scalar' && typeof o.key === 'string'
         && value?.kind === 'number' && typeof value.unit === 'string') {
       const fits = suffixFits(o.key, value.unit);
+      /*
+       * The walker knows where it is, and used to throw that away.
+       *
+       * The width of the highlight was computed correctly and the
+       * anchor passed as `undefined`, so every unit error reported at
+       * 1:1 -- and 1:1 is a clickable go-to-line that lands the reader
+       * at the top of the file. On a three-hundred-line study they were
+       * then told a suffix was wrong and left to find which one.
+       */
+      const at = at_(value) ?? at_(o);
       if (fits === false) {
         add(ctx, 'UNIT_WRONG_QUANTITY', 'error',
           `"${value.unit}" is not a unit of ${FIELD_QUANTITY[o.key]}; "${o.key}" takes ` +
           suffixesFor(FIELD_QUANTITY[o.key]!).map((u) => `"${u}"`).join(', '),
-          undefined, value.unit.length);
+          at, value.unit.length);
         return;
       }
-      if (fits == null && !KNOWN_UNITS.has(value.unit) && !seen.has(value.unit)) {
-        seen.add(value.unit);
+      if (fits == null && !KNOWN_UNITS.has(value.unit)) {
         add(ctx, 'UNIT_UNKNOWN', 'error',
           `"${value.unit}" is not a unit this language knows. Units are ` +
           'case-sensitive -- "kA" not "KA", "ms" not "msec"',
-          undefined, value.unit.length);
+          at, value.unit.length);
       }
       return;
     }
 
     if (o.kind === 'number' && typeof o.unit === 'string' && !KNOWN_UNITS.has(o.unit)) {
-      if (!seen.has(o.unit)) {
-        seen.add(o.unit);
-        add(ctx, 'UNIT_UNKNOWN', 'error',
-          `"${o.unit}" is not a unit this language knows. Units are case-sensitive ` +
-          '-- "kA" not "KA", "ms" not "msec"',
-          undefined, o.unit.length);
-      }
+      add(ctx, 'UNIT_UNKNOWN', 'error',
+        `"${o.unit}" is not a unit this language knows. Units are case-sensitive ` +
+        '-- "kA" not "KA", "ms" not "msec"',
+        at_(o), o.unit.length);
       return;
     }
     for (const v of Object.values(o)) walk(v);

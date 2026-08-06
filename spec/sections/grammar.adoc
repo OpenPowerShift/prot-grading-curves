@@ -224,13 +224,16 @@ element-member  ::= name-asg
                   | char_angle-asg
                   | reset-asg
                   | directional-asg
-                  | current_max-asg
+                  | I_cutoff-asg
                   | curve-drawing-asg
                   | scoped-view-asg
                   | comment-asg
                   | stages-block ;
 
-current_max-asg ::= "current_max" "=" number current-unit ";" ;
+(* Where this characteristic stops. An element or a stage says it;
+   a `view` says `current_max`, which is an axis bound and a different
+   thing. *)
+I_cutoff-asg ::= "I_cutoff" "=" number current-unit ";" ;
 
 (* How one characteristic is stroked, overriding the sheet's palette
    and line weight. Accepted on an `element` and on a `stage`; a stage
@@ -305,7 +308,7 @@ stage-member    ::= curve-asg
                   | char_angle-asg
                   | reset-asg
                   | directional-asg
-                  | current_max-asg
+                  | I_cutoff-asg
                   | curve-drawing-asg
                   | comment-asg ;
 ----

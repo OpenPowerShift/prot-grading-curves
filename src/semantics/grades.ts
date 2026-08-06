@@ -17,7 +17,7 @@
 
 import { tTripFlex } from './curves.js';
 import { solveGrade, type SolveResult } from './solver.js';
-import { controllingStage, tTripElement } from './stages.js';
+import { controllingStage, cutoffOf, tTripElement } from './stages.js';
 import { faultCurrentAt } from './xvoltage.js';
 import {
   resolveCurrent,
@@ -125,6 +125,14 @@ interface Side {
    * device (a fuse, a cable damage curve) is a phase-current device.
    */
   measures: MeasuredQuantity | null | 'mixed';
+  /**
+   * The largest current at which this side still has a curve.
+   *
+   * `undefined` for a device and for an element that declared no
+   * cutoff. A grade asked for at a current above it is refused rather
+   * than answered.
+   */
+  cutoff_A?: number;
 }
 
 function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'): Side | undefined {
@@ -143,6 +151,7 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
       voltage: element.voltage,
       tAt: (I: number) => tTripElement(element, I),
       measures: elementQuantity(element.stages),
+      cutoff_A: cutoffOf(element),
     };
   }
   if (device) {
@@ -377,6 +386,9 @@ function reportScenarioGrade(
 
   const I_p = atPrimary.I_A!;
   const I_b = atBackup.I_A!;
+
+  if (refuseBeyondCutoff([[primary, I_p], [backup, I_b]], diagnostics)) return report;
+
   const t_p = primary.tAt(I_p);
   const t_b = backup.tAt(I_b);
 
@@ -513,6 +525,50 @@ function backupRatio(
  * twenty times pick-up is a guess made in the absence of data rather
  * than one made over the top of it.
  */
+/**
+ * Refuse a margin taken past where a curve stops.
+ *
+ * `I_cutoff` says the characteristic does not exist above that current
+ * -- a high-set blocked above the maximum through-fault, a thermal
+ * stage characterised only to a few multiples. Grading there anyway
+ * used to return the blocked stage's time regardless, so the sheet
+ * drew the curve stopping at its ceiling while the report beside it
+ * quoted a margin from well past it: eight times fast, in the case
+ * that found this.
+ *
+ * Refused rather than answered from whatever stage survives, because
+ * the study has said two things that cannot both hold -- grade at this
+ * current, and this curve ends before it -- and which of them is wrong
+ * is the author's to say.
+ *
+ * Shared because there are two grading paths, one for a `fault` and
+ * one for a `scenario`, and a check that lands in only one of them is
+ * the same silent answer in a different place.
+ */
+function refuseBeyondCutoff(
+  at: ReadonlyArray<readonly [Side, number]>,
+  diagnostics: GradeReport['diagnostics'],
+): boolean {
+  let refused = false;
+  for (const [side, I] of at) {
+    if (side.cutoff_A == null || I <= side.cutoff_A) continue;
+    refused = true;
+    const already = diagnostics.some(
+      (d) => d.code === 'GRADE_BEYOND_CUTOFF' && d.message.startsWith(`${side.ref} stops`),
+    );
+    if (already) continue;
+    diagnostics.push({
+      code: 'GRADE_BEYOND_CUTOFF',
+      severity: 'error',
+      message:
+        `${side.ref} stops at ${side.cutoff_A} A and this grade is taken at `
+        + `${Math.round(I)} A; either raise I_cutoff or grade at a current the `
+        + 'curve reaches',
+    });
+  }
+  return refused;
+}
+
 function upstreamCeiling(
   study: Study,
   grade: Grade,
@@ -740,6 +796,8 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
 
     const I_p = atPrimary.I_A!;
     const I_b = atBackup.I_A!;
+    if (refuseBeyondCutoff([[primary, I_p], [backup, I_b]], diagnostics)) continue;
+
     const t_p = primary.tAt(I_p);
     const t_b = backup.tAt(I_b);
     const row: MarginRow = {
@@ -811,7 +869,18 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   const askedForSweep = grade.upstream === true || grade.upstream_to_A != null;
   if (grade.upstream !== false) {
     const from = faultCurrentAt(study, fault, primary.voltage, 'max').I_A;
-    const to = upstreamCeiling(study, grade, primary, from);
+    /*
+     * The sweep stops where the curves do.
+     *
+     * Clamped rather than refused, unlike the declared fault above: a
+     * sweep is the tool's own choice of currents, so running it past a
+     * cutoff is the tool overreaching rather than the study
+     * contradicting itself. Above the cutoff there is no curve to take
+     * a margin from, and a sweep that carried on would be grading
+     * against whichever stage happened to survive.
+     */
+    const ends = [primary.cutoff_A, backup.cutoff_A].filter((x): x is number => x != null);
+    const to = Math.min(upstreamCeiling(study, grade, primary, from), ...ends);
     if (to > from) {
       const samples = 48;
       const lo = Math.log(from);

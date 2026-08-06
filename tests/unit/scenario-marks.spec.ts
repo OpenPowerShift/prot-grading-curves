@@ -109,7 +109,7 @@ describe('a scenario on the plot', () => {
 
   it('names the scenario in the legend, and says it is one', () => {
     const svg = render('');
-    expect(svg).toContain('system normal · 460 A · LV · 0.48 kV');
+    expect(svg).toContain('system normal · 460 A · 0.48 kV');
     expect(svg).toContain('>scenario<');
   });
 

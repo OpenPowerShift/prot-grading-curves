@@ -99,7 +99,7 @@ domain-t 0.02,100
 [axes] text 96.0,124.3 text-anchor=end font-size=10 "50 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
 [axes] text 44.0,405.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · HV · 33 kV)"
+[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 33 kV)"
 [pickups] line 367.3,745.0..367.3,749.0
 [pickups] line 367.3,745.0..367.3,749.0
 [pickups] line 472.0,745.0..472.0,749.0
@@ -135,35 +135,35 @@ domain-t 0.02,100
 [legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "Feeder A · Phase TOC"
 [legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "ANSI MI · 480 A (6 A sec) · TMS 1"
-[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] rect 1090.0,161.0 26.0x10.0
 [legend] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "Feeder B · Phase TOC"
 [legend] text 1126.0,186.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1126.0,201.0 class=tc-legend-muted font-size=11 "ANSI MI · 480 A (6 A sec) · TMS 1"
-[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] rect 1090.0,232.0 26.0x10.0
 [legend] text 1126.0,241.0 class=tc-legend font-size=12 font-weight=600 "Source incomer · Phase TOC"
 [legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ANSI MI · 900 A (5.625 A sec) · TMS 2"
-[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] rect 1090.0,303.0 26.0x10.0
 [legend] text 1126.0,312.0 class=tc-legend font-size=12 font-weight=600 "Bus zone backup · Reverse-looking"
 [legend] text 1126.0,328.0 class=tc-legend font-size=12 font-weight=600 "TOC"
 [legend] text 1126.0,344.0 class=tc-legend-muted font-size=11 "ANSI VI · 1.2 kA (7.5 A sec) · TMS 3"
-[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] text 1090.0,397.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1090.0,413.0..1116.0,413.0
-[legend] text 1126.0,417.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · HV · 33 kV"
+[legend] text 1126.0,417.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · 33 kV"
 [legend] line 1090.0,439.0..1116.0,439.0
-[legend] text 1126.0,443.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · HV · 33 kV"
+[legend] text 1126.0,443.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · 33 kV"
 [legend] line 1090.0,465.0..1116.0,465.0
-[legend] text 1126.0,469.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · HV · 33 kV"
+[legend] text 1126.0,469.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · 33 kV"
 [legend] line 1090.0,491.0..1116.0,491.0
-[legend] text 1126.0,495.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · HV · 33 kV"
+[legend] text 1126.0,495.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · 33 kV"
 [legend] text 1126.0,511.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1126.0,524.0 class=tc-legend-muted font-size=10 "Normal running, both feeders closed"
 [legend] line 1090.0,543.0..1116.0,543.0
-[legend] text 1126.0,547.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · HV · 33 kV"
+[legend] text 1126.0,547.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · 33 kV"
 [legend] text 1126.0,563.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1126.0,576.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
 [legend] text 1090.0,609.0 class=tc-legend font-size=13 font-weight=600 "Notes"
@@ -270,7 +270,7 @@ domain-t 0.02,100
 [axes] text 96.0,124.3 text-anchor=end font-size=10 "50 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
 [axes] text 44.0,405.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · HV · 33 kV)"
+[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 33 kV)"
 [pickups] line 367.3,745.0..367.3,749.0
 [pickups] line 367.3,745.0..367.3,749.0
 [pickups] line 472.0,745.0..472.0,749.0
@@ -306,35 +306,35 @@ domain-t 0.02,100
 [legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "Feeder A · Phase TOC"
 [legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "ANSI MI · 480 A (6 A sec) · TMS 1"
-[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] rect 1090.0,161.0 26.0x10.0
 [legend] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "Feeder B · Phase TOC"
 [legend] text 1126.0,186.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1126.0,201.0 class=tc-legend-muted font-size=11 "ANSI MI · 480 A (6 A sec) · TMS 1"
-[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] rect 1090.0,232.0 26.0x10.0
 [legend] text 1126.0,241.0 class=tc-legend font-size=12 font-weight=600 "Source incomer · Phase TOC"
 [legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ANSI MI · 900 A (5.625 A sec) · TMS 2"
-[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] rect 1090.0,303.0 26.0x10.0
 [legend] text 1126.0,312.0 class=tc-legend font-size=12 font-weight=600 "Bus zone backup · Reverse-looking"
 [legend] text 1126.0,328.0 class=tc-legend font-size=12 font-weight=600 "TOC"
 [legend] text 1126.0,344.0 class=tc-legend-muted font-size=11 "ANSI VI · 1.2 kA (7.5 A sec) · TMS 3"
-[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] text 1090.0,397.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1090.0,413.0..1116.0,413.0
-[legend] text 1126.0,417.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · HV · 33 kV"
+[legend] text 1126.0,417.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · 33 kV"
 [legend] line 1090.0,439.0..1116.0,439.0
-[legend] text 1126.0,443.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · HV · 33 kV"
+[legend] text 1126.0,443.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · 33 kV"
 [legend] line 1090.0,465.0..1116.0,465.0
-[legend] text 1126.0,469.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · HV · 33 kV"
+[legend] text 1126.0,469.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · 33 kV"
 [legend] line 1090.0,491.0..1116.0,491.0
-[legend] text 1126.0,495.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · HV · 33 kV"
+[legend] text 1126.0,495.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · 33 kV"
 [legend] text 1126.0,511.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1126.0,524.0 class=tc-legend-muted font-size=10 "Normal running, both feeders closed"
 [legend] line 1090.0,543.0..1116.0,543.0
-[legend] text 1126.0,547.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · HV · 33 kV"
+[legend] text 1126.0,547.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · 33 kV"
 [legend] text 1126.0,563.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1126.0,576.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
 [legend] text 1090.0,609.0 class=tc-legend font-size=13 font-weight=600 "Notes"

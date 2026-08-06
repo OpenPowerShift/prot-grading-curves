@@ -114,7 +114,7 @@ domain-t 0.01,1000
 [axes] text 96.0,110.5 text-anchor=end font-size=10 "500 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 44.0,410.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,875.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · LV · 0.4 kV)"
+[axes] text 581.0,875.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 0.4 kV)"
 [pickups] line 517.8,755.0..517.8,759.0
 [pickups] line 578.0,755.0..578.0,759.0
 [faults] line 764.0,66.0..764.0,755.0 class=tc-fault data-fault=LV board min
@@ -314,10 +314,10 @@ domain-t 0.01,1000
 [curves] path n=2 bbox=464.8,347.9..464.8,658.7 class=tc-curve data-curve=sump_motor_start
 [curves] path n=2 bbox=106.0,658.7..1056.0,658.7 class=tc-curve data-curve=acb_operating
 [curves] path n=3 bbox=887.2,510.0..1206.2,665.0 class=tc-curve data-curve=recloser_R1
-[curves] path n=115 bbox=519.3,66.0..1056.0,676.7 class=tc-curve data-curve=Fastest LV protection (envelope)
-[curves] path n=102 bbox=581.0,66.0..1056.0,596.8 class=tc-curve data-curve=Worst case to grade against
-[curves] path n=102 bbox=581.0,66.0..1056.0,578.6 class=tc-curve data-curve=Relay + ACB total clearing time
-[curves] path n=115 bbox=519.3,66.0..1056.0,676.7 class=tc-curve data-curve=Whichever element picks up first
+[curves] path n=82 bbox=519.3,66.0..899.2,610.4 class=tc-curve data-curve=Fastest LV protection (envelope)
+[curves] path n=69 bbox=581.0,66.0..899.2,528.8 class=tc-curve data-curve=Worst case to grade against
+[curves] path n=69 bbox=581.0,66.0..899.2,522.3 class=tc-curve data-curve=Relay + ACB total clearing time
+[curves] path n=82 bbox=519.3,66.0..899.2,610.4 class=tc-curve data-curve=Whichever element picks up first
 [points] polygon 3 pts
 [points] polygon 3 pts
 [points] text 454.8,350.2 text-anchor=end font-size=11 "DOL start, 6.2x FLC for 9 s"
@@ -340,15 +340,15 @@ domain-t 0.01,1000
 [legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "MCC incomer · Phase TOC"
 [legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC VI · 1.6 kA · TMS 0.1 · to 21 kA"
-[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "LV · 0.4 kV"
+[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "0.4 kV"
 [legend] line 1090.0,166.0..1116.0,166.0
 [legend] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "LV board incomer · Phase TOC"
 [legend] text 1126.0,186.0 class=tc-legend-muted font-size=11 "IEC VI · 2.4 kA · TMS 0.25 · to 21 kA"
-[legend] text 1126.0,201.0 class=tc-legend-muted font-size=11 "LV · 0.4 kV"
+[legend] text 1126.0,201.0 class=tc-legend-muted font-size=11 "0.4 kV"
 [legend] line 1090.0,222.0..1116.0,222.0
 [legend] text 1126.0,226.0 class=tc-legend font-size=12 font-weight=600 "LV board incomer · Thermal overload"
 [legend] text 1126.0,242.0 class=tc-legend-muted font-size=11 "FlexCurve (3 pts)"
-[legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "LV · 0.4 kV"
+[legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "0.4 kV"
 [legend] rect 1090.0,273.5 26.0x9.0
 [legend] rect 1090.0,273.5 26.0x9.0
 [legend] line 1081.0,282.5..1090.0,273.5
@@ -394,6 +394,6 @@ domain-t 0.01,1000
 [legend] text 1126.0,742.0 class=tc-legend-muted font-size=11 "Combine · select_first"
 [legend] text 1090.0,780.0 font-size=13 font-weight=600 "Faults"
 [legend] line 1090.0,796.0..1116.0,796.0
-[legend] text 1126.0,800.0 class=tc-legend font-size=11 "LV board min · 8.4 kA · LV · 0.4 kV"
+[legend] text 1126.0,800.0 class=tc-legend font-size=11 "LV board min · 8.4 kA · 0.4 kV"
 [legend] line 1090.0,822.0..1116.0,822.0
-[legend] text 1126.0,826.0 class=tc-legend font-size=11 "LV board max · 21 kA · LV · 0.4 kV"
+[legend] text 1126.0,826.0 class=tc-legend font-size=11 "LV board max · 21 kA · 0.4 kV"

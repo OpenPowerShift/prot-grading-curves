@@ -148,7 +148,7 @@ export interface Stage {
    * ceiling available was the element's, which drew every stage to the
    * same place whatever its own datasheet said.
    */
-  current_max_A?: number;
+  I_cutoff_A?: number;
   /** Per-stage drawing overrides; fall back to the element's. */
   color?: string;
   style?: CurveStyle;
@@ -197,7 +197,7 @@ export interface Element {
    * describing a current that cannot flow. Drawing it there invites a
    * margin to be read at a fault that does not exist.
    */
-  current_max_A?: number;
+  I_cutoff_A?: number;
   /**
    * How this one curve is drawn, overriding the palette.
    *
@@ -1045,7 +1045,7 @@ function resolveElement(
     ref,
     stages: [],
     staged,
-    current_max_A: currentCeiling(member(node, 'current_max')),
+    I_cutoff_A: currentCeiling(member(node, 'I_cutoff')),
     views: ((): string[] | undefined => {
       const raw = member(node, 'views');
       return Array.isArray(raw) && raw.length > 0 ? raw as string[] : undefined;
@@ -1134,7 +1134,7 @@ function resolveStage(
     char_angle_deg: Number.isFinite(charAngle) ? charAngle : undefined,
     /* `pick` already falls back to the owning element, so a stage
      * inherits its ceiling and its ink without restating either. */
-    current_max_A: currentCeiling(pick('current_max')),
+    I_cutoff_A: currentCeiling(pick('I_cutoff')),
     ...drawingOverrides(pick),
     node,
   };

@@ -74,7 +74,7 @@ relay R_FDR {
     curve = iec.si;
     I_pickup = 960 A;
     tms = 0.12;
-    current_max = 12.5 kA;
+    I_cutoff = 12.5 kA;
     width_px = 2.8;
   }
 }
@@ -91,7 +91,7 @@ relay R_INC {
     curve = iec.si;
     I_pickup = 1.8 kA;
     tms = 0.30;
-    current_max = 12.5 kA;
+    I_cutoff = 12.5 kA;
   }
 
   # A breaker-fail stage: fixed delay, started by the same pickup.

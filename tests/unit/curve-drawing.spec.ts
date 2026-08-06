@@ -7,9 +7,9 @@
  * curve that is context rather than argument. `color`, `style` and
  * `width_px` on an element or a stage say so directly.
  *
- * `current_max` was an element-level ceiling only, so every stage of a
- * multi-stage element was drawn to the same place whatever its own
- * datasheet said.
+ * `I_cutoff` (then spelled `current_max`) was an element-level ceiling
+ * only, so every stage of a multi-stage element was drawn to the same
+ * place whatever its own datasheet said.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -33,11 +33,18 @@ const errors = (src: string): string[] => {
     .filter((d) => d.severity === 'error').map((d) => d.code);
 };
 
-/** The `<path>` element drawing one named curve. */
-const pathFor = (svg: string, label: string): string => {
-  const found = new RegExp(`<path [^>]*data-curve="${label.replace(/[:/]/g, '\\$&')}"[^>]*>`)
+/**
+ * The `<path>` element drawing one curve, selected by its *reference*.
+ *
+ * Not by `data-curve`, which is the caption: captions are typeset --
+ * a stage handle is shown in upper case now -- and a test that selects
+ * on one is testing the wording. `data-ref` is the identity the study
+ * wrote and what `grade` and `annotate` resolve against.
+ */
+const pathFor = (svg: string, ref: string): string => {
+  const found = new RegExp(`<path [^>]*data-ref="${ref.replace(/[:/]/g, '\\$&')}"[^>]*>`)
     .exec(svg);
-  expect(found, `no curve labelled ${label}`).not.toBeNull();
+  expect(found, `no curve referenced ${ref}`).not.toBeNull();
   return found![0];
 };
 
@@ -161,18 +168,18 @@ describe('where a stage stops', () => {
   });
 
   it('stops early when the stage declares its own ceiling', () => {
-    const svg = parseAndRender(src('current_max = 12 kA;'), { theme: 'light' }).svg;
+    const svg = parseAndRender(src('I_cutoff = 12 kA;'), { theme: 'light' }).svg;
     expect(rightEdge(svg, 'R:51/inst')).toBeLessThan(rightEdge(svg, 'R:51/main') - 20);
   });
 
   it('leaves the sibling stage alone', () => {
-    const bounded = parseAndRender(src('current_max = 12 kA;'), { theme: 'light' }).svg;
+    const bounded = parseAndRender(src('I_cutoff = 12 kA;'), { theme: 'light' }).svg;
     const free = parseAndRender(src(''), { theme: 'light' }).svg;
     expect(rightEdge(bounded, 'R:51/main')).toBeCloseTo(rightEdge(free, 'R:51/main'), 0);
   });
 
   it('falls back to the element ceiling when the stage declares none', () => {
-    const svg = parseAndRender(study(`current_max = 12 kA;
+    const svg = parseAndRender(study(`I_cutoff = 12 kA;
       stages {
         stage main { curve = iec.si; I_pickup = 400 A; tms = 0.2; }
         stage inst { curve = definite; I_pickup = 4 kA; t_delay = 50 ms; }

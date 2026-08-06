@@ -214,7 +214,7 @@ view { voltage = "HV"; current_min = 100 A; current_max = 40 kA; }
 
 describe('a mark past the end of the curve it marks', () => {
   /*
-   * `current_max` says where the characteristic stops, because past
+   * `I_cutoff` says where the characteristic stops, because past
    * the largest fault the network can deliver the curve describes a
    * current that cannot flow. A mark beyond it floated off the end of
    * its own curve, at an impossible current, looking exactly like a
@@ -223,7 +223,7 @@ describe('a mark past the end of the curve it marks', () => {
   const bounded = (at: string): string => parseAndRender(`${SYS}
 relay R { voltage = "HV"; ct_ratio = 600/5;
   element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 400 A;
-               tms = 0.35; current_max = 3 kA; } }
+               tms = 0.35; I_cutoff = 3 kA; } }
 annotate { on_curve = R:51; ${at} label = "MARK"; style = leader; }
 view { voltage = "HV"; current_min = 100 A; current_max = 50 kA; }
 `, { theme: 'light' }).svg;

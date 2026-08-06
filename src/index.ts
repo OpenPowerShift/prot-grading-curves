@@ -53,7 +53,24 @@ export function process(source: string): ProcessResult {
     document: parsed.document,
     study,
     parseErrors: parsed.errors,
-    diagnostics: validate(study, parsed.document),
+    /*
+     * Grading's own errors join the study's.
+     *
+     * A grade report carries diagnostics of its own, and the
+     * error-severity ones -- a margin taken past where a curve stops,
+     * a sequence current that cannot cross a transformer -- were
+     * printed inside the text report and nowhere else. So `check`
+     * exited 0 on a study it had refused to grade, and the playground
+     * showed no error beside a sheet that had none to draw.
+     */
+    diagnostics: [
+      ...validate(study, parsed.document),
+      ...reports.flatMap((r) => r.diagnostics
+        .filter((d) => d.severity === 'error')
+        /* A grade's finding is about a pair, not a place in the file,
+         * so it anchors at the top like the other study-wide ones. */
+        .map((d) => ({ ...d, line: 1, column: 1, offset: 0, length: 0 }))),
+    ],
     reports,
   };
 }

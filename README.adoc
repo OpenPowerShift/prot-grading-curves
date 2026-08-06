@@ -712,7 +712,7 @@ relay R_FDR {
     # The board cannot deliver more than 9.4 kA, so the curve stops
     # there. Drawn to the frame it would invite a margin to be read
     # at a fault this network cannot produce.
-    current_max = 9.4 kA;
+    I_cutoff = 9.4 kA;
   }
 
   element 51G {
@@ -721,7 +721,7 @@ relay R_FDR {
     curve = iec.si;
     I_pickup = 120 A;
     tms = 0.10;
-    current_max = 1.6 kA;
+    I_cutoff = 1.6 kA;
   }
 }
 
@@ -739,7 +739,7 @@ relay R_INC {
     curve = iec.vi;
     I_pickup = 260 A;
     tms = 0.40;
-    current_max = 3.2 kA;
+    I_cutoff = 3.2 kA;
   }
 }
 
@@ -1042,7 +1042,7 @@ relay R_MCC {
     curve = iec.vi;
     I_pickup = 1.6 kA;
     tms = 0.10;
-    current_max = 21 kA;
+    I_cutoff = 21 kA;
   }
 }
 
@@ -1057,7 +1057,7 @@ relay R_BOARD {
     curve = iec.vi;
     I_pickup = 2.4 kA;
     tms = 0.25;
-    current_max = 21 kA;
+    I_cutoff = 21 kA;
   }
 
   # An element can carry a table too, when the device it models is

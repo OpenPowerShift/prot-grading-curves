@@ -93,6 +93,26 @@ export const RENAMED_KEYS: Readonly<Record<string, string>> = {
   rating_A: 'rating_I', rating_kV: 'rating_V', rating_MVA: 'rating_S',
 };
 
+/**
+ * Keys renamed for a reason of their own, with the sentence that
+ * explains it.
+ *
+ * Separate from `RENAMED_KEYS`, whose every entry is the unit-suffix
+ * sweep and whose message says so. A rename made for a different
+ * reason needs a different sentence, or the diagnostic explains
+ * something that did not happen.
+ *
+ * `noteUnknownKey` returns before consulting either map when the block
+ * *accepts* the key, so a `view` keeps its `current_max` untouched.
+ */
+export const RENAMED_WITH_REASON: Readonly<Record<string, { to: string; why: string }>> = {
+  current_max: {
+    to: 'I_cutoff',
+    why: 'on an element or a stage it says where the characteristic stops, '
+      + 'which is not an axis bound; a view still takes current_min / current_max',
+  },
+};
+
 /** Keys removed outright, with why. */
 /**
  * Fields each `page` styling sub-block accepts.
@@ -186,7 +206,7 @@ export const KEYWORDS = new Set([
   // combine/view/page sub
   'sources', 'as', 'style', 'label', 'color', 'name', 'two_axes',
   'reference_ct', 'stages', 'axis', 'voltage', 'pickup',
-  'current_min', 'current_max', 'time_min', 'time_max',
+  'current_min', 'current_max', 'I_cutoff', 'time_min', 'time_max',
   'current_pad', 'current_pad_low', 'current_pad_high',
   'time_pad', 'time_pad_low', 'time_pad_high',
   'comment', 'description', 'reference',
@@ -550,6 +570,16 @@ class Parser {
      * it has anything wrong with it.
      */
     if (accepts.includes(at.image)) return;
+
+    const reasoned = RENAMED_WITH_REASON[at.image];
+    if (reasoned) {
+      this.errors.push({
+        message: `"${at.image}" was renamed to "${reasoned.to}": ${reasoned.why}`,
+        line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
+        severity: 'error', code: 'RENAMED_KEY',
+      });
+      return;
+    }
 
     const renamed = RENAMED_KEYS[at.image];
     if (renamed) {
@@ -1400,7 +1430,7 @@ if (kwName === 'flex_points') {
     this.errors.push({
       message: `unknown setting "${at.image}"; ${what} accepts function, measures, `
         + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
-        + 't_reset, char_angle, reset, directional, name, comment, current_max, '
+        + 't_reset, char_angle, reset, directional, name, comment, I_cutoff, '
         + 'color, style, width_px, view, views'
         + (what === 'an element' ? ', stages' : ''),
       line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
@@ -1598,7 +1628,7 @@ if (kwName === 'flex_points') {
           'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
           'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
           'char_angle', 'reset', 'directional', 'stages', 'comment',
-          'current_max',
+          'I_cutoff',
           /* How the curve is drawn, as opposed to how it operates. */
           'color', 'style', 'width_px',
           /* Which sheets it belongs on. */

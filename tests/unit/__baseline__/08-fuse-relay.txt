@@ -133,7 +133,7 @@ domain-t 0.01,1000
 [axes] text 96.0,115.7 text-anchor=end font-size=10 "500 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 44.0,454.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,962.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[axes] text 581.0,962.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 11 kV)"
 [pickups] line 433.4,842.0..433.4,846.0
 [faults] line 571.3,66.0..571.3,842.0 class=tc-fault data-fault=Spur fault
 [faults] line 712.6,66.0..712.6,842.0 class=tc-fault data-fault=Bus fault
@@ -343,7 +343,7 @@ domain-t 0.01,1000
 [legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "R_FEEDER:51"
 [legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "SEL SEL-751"
 [legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC VI · 200 A · TMS 0.35"
-[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] rect 1090.0,161.5 26.0x9.0
 [legend] rect 1090.0,161.5 26.0x9.0
 [legend] line 1081.0,170.5..1090.0,161.5

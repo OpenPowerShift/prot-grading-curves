@@ -150,6 +150,22 @@ export function tTripStage(stage: Stage, I_total: number): number {
   const producer = stage.producer;
   if (!producer || !Number.isFinite(I_total)) return Infinity;
 
+  /*
+   * Past its cutoff a stage does not operate, because it is not there.
+   *
+   * `I_cutoff` used to be read only where a curve was *drawn*, so a
+   * high-set blocked above the maximum through-fault was drawn
+   * stopping at its ceiling and then evaluated well past it -- the
+   * composite kept returning the blocked stage's 50 ms, and that was
+   * the figure the grade report printed. The sheet and the report
+   * disagreed about the same element and nothing said so.
+   *
+   * Answered here rather than in each caller so that every reader of a
+   * stage time -- composite, grading, solver, hover -- gets the same
+   * answer.
+   */
+  if (stage.I_cutoff_A != null && I_total > stage.I_cutoff_A) return Infinity;
+
   const I = I_total * (stage.current_pct / 100);
   const I_pu = stage.I_pu_A;
 

@@ -379,7 +379,7 @@ domain-t 0.02,100
 [axes] text 96.0,115.6 text-anchor=end font-size=10 "50 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
 [axes] text 44.0,352.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 717.0,758.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[axes] text 717.0,758.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 11 kV)"
 [pickups] line 467.8,638.0..467.8,642.0
 [pickups] line 612.8,638.0..612.8,642.0
 [pickups] line 612.8,638.0..612.8,642.0
@@ -420,9 +420,9 @@ domain-t 0.02,100
 [legend] text 168.0,246.0 class=tc-legend-muted font-size=11 "delay 250 ms"
 [legend] text 132.0,276.0 font-size=13 font-weight=600 "Faults"
 [legend] line 132.0,292.0..158.0,292.0
-[legend] text 168.0,296.0 class=tc-legend font-size=11 "Board min · 3.1 kA · MV · 11 kV"
+[legend] text 168.0,296.0 class=tc-legend font-size=11 "Board min · 3.1 kA · 11 kV"
 [legend] line 132.0,310.0..158.0,310.0
-[legend] text 168.0,314.0 class=tc-legend font-size=11 "Board max · 12.5 kA · MV · 11 kV"
+[legend] text 168.0,314.0 class=tc-legend font-size=11 "Board max · 12.5 kA · 11 kV"
 [legend] text 132.0,340.0 font-size=13 font-weight=600 "Times"
 [legend] line 132.0,356.0..158.0,356.0
 [legend] text 168.0,360.0 class=tc-legend font-size=11 "Switchgear rating · 1 s"

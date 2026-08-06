@@ -1,6 +1,60 @@
 == Revision history
 
 [cols="1,1,3", options="header"]
+| 2026-08-06 | 0.2.0 | *Where a curve stops, and what that means.*
+                              `element { current_max }` becomes
+                              `I_cutoff`, on an element and a stage; a
+                              `view` keeps `current_min` /
+                              `current_max`, which are axis bounds and a
+                              different thing. One spelling had carried
+                              two concepts. Breaking; the old spelling
+                              is refused by name.
+
+                              The cutoff stops being a drawing
+                              instruction. It was read only where a
+                              curve was rendered, so a high-set blocked
+                              above the maximum through-fault was drawn
+                              stopping at its ceiling and then evaluated
+                              well past it: the composite kept returning
+                              the blocked stage's 50 ms at twice the
+                              current, and that figure was printed in
+                              the grade report beside the sheet that
+                              said otherwise.
+
+                              A stage now does not operate past its
+                              cutoff, so a composite steps back onto
+                              whatever stage is still there and a
+                              combined curve stops where its sources
+                              stop. A grade *asked for* past a curve's
+                              end is `GRADE_BEYOND_CUTOFF` -- refused,
+                              not answered, because "grade at this
+                              current" and "this curve ends before it"
+                              cannot both hold. An upstream sweep is
+                              clamped instead, being the tool's own
+                              choice of currents rather than the
+                              study's.
+
+                              Error-severity grade diagnostics now join
+                              the study's, so `check` exits non-zero on
+                              a study it has refused to grade. They were
+                              printed inside the text report and nowhere
+                              else.
+
+| 2026-08-06 | 0.2.0 | *Handles off the drawing.* A voltage level's
+                              id is no longer printed: the axis, the
+                              legend and every fault and condition
+                              caption carry the figure (`33 kV`) rather
+                              than the handle (`HV33 · 33 kV`). An id is
+                              how a study *refers* to a level, and on a
+                              study whose levels are called `L1` and
+                              `L2` it said nothing at all.
+
+                              A stage has no display name, so its id is
+                              what appears; shown in upper case, it
+                              reads as the designation it is --
+                              `IDMT`, `HIGH` -- beside the `51` and `50`
+                              it sits with. `data-ref` keeps the handle
+                              exactly as written.
 |===
 | Date       | Version | Summary
 
@@ -453,4 +507,58 @@
                               of that current at its own level under the
                               depicted condition. Suppressed elements are
                               named with the reason rather than counted.
+| 2026-08-06 | 0.2.0 | *Where a curve stops, and what that means.*
+                              `element { current_max }` becomes
+                              `I_cutoff`, on an element and a stage; a
+                              `view` keeps `current_min` /
+                              `current_max`, which are axis bounds and a
+                              different thing. One spelling had carried
+                              two concepts. Breaking; the old spelling
+                              is refused by name.
+
+                              The cutoff stops being a drawing
+                              instruction. It was read only where a
+                              curve was rendered, so a high-set blocked
+                              above the maximum through-fault was drawn
+                              stopping at its ceiling and then evaluated
+                              well past it: the composite kept returning
+                              the blocked stage's 50 ms at twice the
+                              current, and that figure was printed in
+                              the grade report beside the sheet that
+                              said otherwise.
+
+                              A stage now does not operate past its
+                              cutoff, so a composite steps back onto
+                              whatever stage is still there and a
+                              combined curve stops where its sources
+                              stop. A grade *asked for* past a curve's
+                              end is `GRADE_BEYOND_CUTOFF` -- refused,
+                              not answered, because "grade at this
+                              current" and "this curve ends before it"
+                              cannot both hold. An upstream sweep is
+                              clamped instead, being the tool's own
+                              choice of currents rather than the
+                              study's.
+
+                              Error-severity grade diagnostics now join
+                              the study's, so `check` exits non-zero on
+                              a study it has refused to grade. They were
+                              printed inside the text report and nowhere
+                              else.
+
+| 2026-08-06 | 0.2.0 | *Handles off the drawing.* A voltage level's
+                              id is no longer printed: the axis, the
+                              legend and every fault and condition
+                              caption carry the figure (`33 kV`) rather
+                              than the handle (`HV33 · 33 kV`). An id is
+                              how a study *refers* to a level, and on a
+                              study whose levels are called `L1` and
+                              `L2` it said nothing at all.
+
+                              A stage has no display name, so its id is
+                              what appears; shown in upper case, it
+                              reads as the designation it is --
+                              `IDMT`, `HIGH` -- beside the `51` and `50`
+                              it sits with. `data-ref` keeps the handle
+                              exactly as written.
 |===

@@ -637,6 +637,27 @@ breaks. They want one decision: implement, or delete the claim.
 
 === Closed 2026-08-06
 
+* *`current_max` was ink and nothing else.* It was read where a curve
+  was *drawn* and ignored everywhere a number was computed, so a
+  high-set blocked above the maximum through-fault was drawn stopping
+  at its ceiling and then evaluated well past it -- `tTripElement` is a
+  plain min over stages and had never seen a cutoff, so the composite
+  returned the blocked stage's 50 ms at twice the current and the grade
+  report printed it. Measured at 10 kA against a 5 kA cutoff: 0.05 s
+  reported where the surviving stage gives 0.42 s, eight times fast.
+  A stage now does not operate past its cutoff, a combined curve stops
+  where its sources stop, and a grade asked for beyond a curve's end is
+  `GRADE_BEYOND_CUTOFF` rather than a number. Renamed `I_cutoff` in the
+  same pass, because `current_max` also means an axis bound on a
+  `view` and one spelling was carrying two concepts.
+
+* *An error-severity grade diagnostic reached nothing.* Grade reports
+  carry their own diagnostics and they were printed inside the text
+  report only -- not in `result.diagnostics`, so not in the CLI's exit
+  code and not in the playground's error count. `check` exited 0 on a
+  study it had refused to grade. They are hoisted now; no shipped
+  example changes status.
+
 * *The plot pane was never measured.* `firstUpdated` attached the
   `ResizeObserver` to `div.pane-host`, which does not exist on that
   update -- the viewer is still showing its empty state -- so the guard

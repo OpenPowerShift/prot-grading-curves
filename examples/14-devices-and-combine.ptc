@@ -152,7 +152,7 @@ relay R_MCC {
     curve = iec.vi;
     I_pickup = 1.6 kA;
     tms = 0.10;
-    current_max = 21 kA;
+    I_cutoff = 21 kA;
   }
 }
 
@@ -167,7 +167,7 @@ relay R_BOARD {
     curve = iec.vi;
     I_pickup = 2.4 kA;
     tms = 0.25;
-    current_max = 21 kA;
+    I_cutoff = 21 kA;
   }
 
   # An element can carry a table too, when the device it models is

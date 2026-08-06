@@ -57,7 +57,7 @@ import { resolveCondition, type ResolvedCondition } from '../semantics/condition
 import { theme as loadTheme, type ThemeName } from './theme.js';
 import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, type CurveStyle, type Device, type Element, type Stage, type Study } from '../semantics/model.js';
 import { tTripStage } from '../semantics/curves.js';
-import { tTripElement } from '../semantics/stages.js';
+import { cutoffOf, tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
 import { tTripFlex } from '../semantics/curves.js';
 
@@ -449,7 +449,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const named = voltageKvs.get(tag.replace(/^"|"$/g, ''));
       if (named != null) {
         V_view_kV = named;
-        viewLabel = `${tag.replace(/^"|"$/g, '')} · ${named} kV`;
+        /*
+         * The level's figure, not its handle.
+         *
+         * `HV33` is how the study *refers* to the level; what a reader
+         * needs on an axis is the voltage. Printing both put an
+         * internal name on every sheet, and on a study whose levels
+         * are called `L1` and `L2` it said nothing at all.
+         */
+        viewLabel = `${named} kV`;
       } else {
         // try numeric "<n> kV" or "<n> V"
         const m = tag.match(/^(-?\d+(?:\.\d+)?)\s*(k?v)$/i);
@@ -482,7 +490,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (V_view_kV == null && study.voltages.size === 1) {
       const only = [...study.voltages.values()][0];
       V_view_kV = only.kV;
-      viewLabel = `${only.name} · ${only.kV} kV`;
+      viewLabel = `${only.kV} kV`;
     } else if (V_view_kV == null && study.voltages.size > 1) {
       viewLabel = 'primary, per relay';
     } else {
@@ -809,7 +817,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           I_A: declared,
           voltage: f.voltage,
           voltage_kV: V_fault,
-          voltageLabel: f.voltage ? `${f.voltage} · ${voltageKvs.get(f.voltage) ?? '?'} kV` : undefined,
+          voltageLabel: V_fault != null ? `${trimZeros(V_fault)} kV` : undefined,
           I_view,
         });
       }
@@ -914,7 +922,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       I_A: declared,
       voltage: c.voltage,
       voltage_kV: V_level,
-      voltageLabel: `${c.voltage} · ${V_level ?? '?'} kV`,
+      voltageLabel: V_level != null ? `${trimZeros(V_level)} kV` : undefined,
       I_view,
     });
   }
@@ -1516,6 +1524,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   };
 
   /** Legend detail for one stage, as discrete fields. */
+  /*
+   * A stage's handle, as the drawing shows it.
+   *
+   * A stage has no display name, so its id is what appears -- and an
+   * id is a handle, typed rather than typeset. Printed verbatim it
+   * came out as `idmt:` and `high:` beside `51` and `50`, which are
+   * the same kind of thing written the other way. Upper case says
+   * "this is a designation" and matches every other one on the sheet.
+   */
+  const stageCaption = (stage: Stage): string => stage.id.toUpperCase();
+
   const stageDetail = (stage: Stage, element: Element): string => {
     const bits: string[] = [];
     const producer = stage.producer;
@@ -1554,8 +1573,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * A curve that stops short of the frame looks like one the renderer
      * failed to finish, unless the sheet says the stop was asked for.
      */
-    if (element.current_max_A != null) {
-      bits.push(`to ${formatSi(element.current_max_A, 'A')}`);
+    if (stage.I_cutoff_A != null) {
+      bits.push(`to ${formatSi(stage.I_cutoff_A, 'A')}`);
     }
 
     return bits.join(' \u00b7 ');
@@ -1578,17 +1597,22 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       lines.push({ text: stageDetail(element.stages[0], element), role: 'settings' });
     } else {
       for (const stage of element.stages) {
-        lines.push({ text: `${stage.id}: ${stageDetail(stage, element)}`, role: 'settings' });
+        lines.push({
+          text: `${stageCaption(stage)}: ${stageDetail(stage, element)}`,
+          role: 'settings',
+        });
       }
     }
 
-    if (element.voltage) {
-      lines.push({
-        text: element.voltage_kV != null
-          ? `${element.voltage} \u00b7 ${trimZeros(element.voltage_kV)} kV`
-          : element.voltage,
-        role: 'context',
-      });
+    /*
+     * The level a curve is drawn in, as a voltage.
+     *
+     * Only where the study says what that voltage is: with no kV to
+     * print there is nothing to say, and the handle -- `HV33`, or
+     * worse `L2` -- is not an answer to "which level is this?".
+     */
+    if (element.voltage && element.voltage_kV != null) {
+      lines.push({ text: `${trimZeros(element.voltage_kV)} kV`, role: 'context' });
     }
     return lines.filter((l) => l.text);
   };
@@ -1909,11 +1933,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           stage.I_pu_A != null ? [project(stage.I_pu_A, V_source)] : [],
           factor,
           /* A stage may stop earlier than the element that owns it. */
-          stage.current_max_A ?? element.current_max_A,
+          stage.I_cutoff_A,
         );
         if (!pathD) continue;
         curves.push({
-          label: `${element.label}/${stage.id}`,
+          /* The caption is typeset; the ref is matched, so it keeps
+           * the handle exactly as the study wrote it. */
+          label: `${element.label}/${stageCaption(stage)}`,
           ref: `${element.ref}/${stage.id}`,
           color: drawn.color,
           pathD,
@@ -1936,7 +1962,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const drawn = styleFor(element, auto);
     const pathD = trace(
       V_source, (I) => tTripElement(element, I), breakpointsOf(element, V_source), factor,
-      element.current_max_A,
+      /*
+       * The element as a whole survives as long as any stage does, so
+       * a composite is clipped at the largest of its stages' cutoffs
+       * rather than at the element's own. `tTripStage` drops each
+       * stage at its own, so the composite steps back to whatever is
+       * still there above it.
+       */
+      cutoffOf(element),
     );
     if (!pathD) continue;
     curves.push({
@@ -3484,11 +3517,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * A stage may stop earlier than its element, so the ceiling is the
      * largest of the stages actually drawn.
      */
-    const ceiling = element
-      ? (element.stages.some((s) => s.current_max_A == null)
-        ? element.current_max_A
-        : Math.max(...element.stages.map((s) => s.current_max_A ?? 0)))
-      : undefined;
+    const ceiling = element ? cutoffOf(element) : undefined;
     if (ceiling != null && I > ceiling) {
       unplaceableAnnotations.push(
         `${annotation.label ?? annotation.on_curve?.text ?? 'an annotation'} `

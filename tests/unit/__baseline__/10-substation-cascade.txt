@@ -154,7 +154,7 @@ domain-t 0.01,1584.893192
 [axes] text 96.0,111.8 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 1064.0,111.8 text-anchor=start font-size=12 font-weight=600 "1000 s"
 [axes] text 44.0,345.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,722.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[axes] text 581.0,722.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 11 kV)"
 [pickups] line 689.9,602.0..689.9,606.0
 [pickups] line 597.4,602.0..597.4,606.0
 [pickups] line 543.6,602.0..543.6,606.0
@@ -379,24 +379,24 @@ domain-t 0.01,1584.893192
 [legend] text 1172.0,121.0 class=tc-legend font-size=12 font-weight=600 "R_INC:51"
 [legend] text 1172.0,137.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1172.0,152.0 class=tc-legend-muted font-size=11 "IEC SI · 700 A · TMS 0.4"
-[legend] text 1172.0,167.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1172.0,167.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1136.0,188.0..1162.0,188.0
 [legend] text 1172.0,192.0 class=tc-legend font-size=12 font-weight=600 "R_TIE:51"
 [legend] text 1172.0,208.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1172.0,223.0 class=tc-legend-muted font-size=11 "IEC SI · 900 A · TMS 0.3"
-[legend] text 1172.0,238.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 1172.0,238.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] line 1136.0,259.0..1162.0,259.0
 [legend] text 1172.0,263.0 class=tc-legend font-size=12 font-weight=600 "R_FDR:51"
 [legend] text 1172.0,279.0 class=tc-legend-muted font-size=11 "SEL SEL-751"
-[legend] text 1172.0,294.0 class=tc-legend-muted font-size=11 "main: IEC SI · 550 A · TMS 0.2"
-[legend] text 1172.0,309.0 class=tc-legend-muted font-size=11 "inst: Definite time · 7 kA ·"
+[legend] text 1172.0,294.0 class=tc-legend-muted font-size=11 "MAIN: IEC SI · 550 A · TMS 0.2"
+[legend] text 1172.0,309.0 class=tc-legend-muted font-size=11 "INST: Definite time · 7 kA ·"
 [legend] text 1172.0,324.0 class=tc-legend-muted font-size=11 "delay 60 ms"
-[legend] text 1172.0,339.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 1172.0,339.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] line 1136.0,360.0..1162.0,360.0
 [legend] text 1172.0,364.0 class=tc-legend font-size=12 font-weight=600 "R_SUB:51"
 [legend] text 1172.0,380.0 class=tc-legend-muted font-size=11 "SEL SEL-751"
 [legend] text 1172.0,395.0 class=tc-legend-muted font-size=11 "IEC VI · 280 A · TMS 0.15"
-[legend] text 1172.0,410.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 1172.0,410.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] rect 1136.0,426.5 26.0x9.0
 [legend] rect 1136.0,426.5 26.0x9.0
 [legend] line 1127.0,435.5..1136.0,426.5
@@ -412,12 +412,12 @@ domain-t 0.01,1584.893192
 [legend] text 1172.0,481.0 class=tc-legend-muted font-size=11 "min melt -&gt; total clear"
 [legend] text 1136.0,519.0 font-size=13 font-weight=600 "Faults"
 [legend] line 1136.0,535.0..1162.0,535.0
-[legend] text 1172.0,539.0 class=tc-legend font-size=11 "Sub min · 950 A · MV · 11 kV"
+[legend] text 1172.0,539.0 class=tc-legend font-size=11 "Sub min · 950 A · 11 kV"
 [legend] line 1136.0,561.0..1162.0,561.0
-[legend] text 1172.0,565.0 class=tc-legend font-size=11 "Spur max · 1.25 kA · MV · 11 kV"
+[legend] text 1172.0,565.0 class=tc-legend font-size=11 "Spur max · 1.25 kA · 11 kV"
 [legend] line 1136.0,587.0..1162.0,587.0
-[legend] text 1172.0,591.0 class=tc-legend font-size=11 "Sub max · 3.1 kA · MV · 11 kV"
+[legend] text 1172.0,591.0 class=tc-legend font-size=11 "Sub max · 3.1 kA · 11 kV"
 [legend] line 1136.0,613.0..1162.0,613.0
-[legend] text 1172.0,617.0 class=tc-legend font-size=11 "Feeder max · 5.6 kA · MV · 11 kV"
+[legend] text 1172.0,617.0 class=tc-legend font-size=11 "Feeder max · 5.6 kA · 11 kV"
 [legend] line 1136.0,639.0..1162.0,639.0
-[legend] text 1172.0,643.0 class=tc-legend font-size=11 "Bus max · 8.2 kA · MV · 11 kV"
+[legend] text 1172.0,643.0 class=tc-legend font-size=11 "Bus max · 8.2 kA · 11 kV"

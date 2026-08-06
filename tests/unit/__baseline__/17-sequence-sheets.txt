@@ -144,7 +144,7 @@ domain-t 0.0001,31622.7766
 [axes] text 82.0,101.2 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "10000 s"
 [axes] text 82.0,73.0 text-anchor=end font-size=10 "20000 s"
 [axes] text 30.0,436.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · HV · 33 kV)"
+[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 33 kV)"
 [pickups] line 461.2,820.0..461.2,824.0
 [pickups] line 348.0,820.0..348.0,824.0
 [pickups] line 497.6,820.0..497.6,824.0
@@ -193,51 +193,51 @@ domain-t 0.0001,31622.7766
 [legend] text 1140.0,85.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Phase TOC"
 [legend] text 1140.0,101.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,116.0 class=tc-legend-muted font-size=11 "IEC SI · 480 A · TMS 0.12"
-[legend] text 1140.0,131.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,131.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,152.0..1130.0,152.0
 [legend] text 1140.0,156.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Ground TOC"
 [legend] text 1140.0,172.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,187.0 class=tc-legend-muted font-size=11 "IEC SI · 240 A · TMS 0.1 · vs"
 [legend] text 1140.0,202.0 class=tc-legend-muted font-size=11 "residual 3I0"
-[legend] text 1140.0,217.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,217.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,238.0..1130.0,238.0
 [legend] text 1140.0,242.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Negative"
 [legend] text 1140.0,258.0 class=tc-legend font-size=12 font-weight=600 "sequence"
 [legend] text 1140.0,274.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,289.0 class=tc-legend-muted font-size=11 "Definite time · 200 A · delay 600 ms"
 [legend] text 1140.0,304.0 class=tc-legend-muted font-size=11 "· vs I2"
-[legend] text 1140.0,319.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,319.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,340.0..1130.0,340.0
 [legend] text 1140.0,344.0 class=tc-legend font-size=12 font-weight=600 "Ring incomer (ABB REF615) ·"
 [legend] text 1140.0,360.0 class=tc-legend font-size=12 font-weight=600 "Negative sequence backup"
 [legend] text 1140.0,376.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1140.0,391.0 class=tc-legend-muted font-size=11 "Definite time · 900 A · delay 1.2 s ·"
 [legend] text 1140.0,406.0 class=tc-legend-muted font-size=11 "vs 3I2"
-[legend] text 1140.0,421.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,421.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,442.0..1130.0,442.0
 [legend] text 1140.0,446.0 class=tc-legend font-size=12 font-weight=600 "Ring incomer (ABB REF615) · Ground"
 [legend] text 1140.0,462.0 class=tc-legend font-size=12 font-weight=600 "backup"
 [legend] text 1140.0,478.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1140.0,493.0 class=tc-legend-muted font-size=11 "IEC SI · 400 A · TMS 0.22 · vs"
 [legend] text 1140.0,508.0 class=tc-legend-muted font-size=11 "residual 3I0"
-[legend] text 1140.0,523.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,523.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,544.0..1130.0,544.0
 [legend] text 1140.0,548.0 class=tc-legend font-size=12 font-weight=600 "Ring incomer (ABB REF615) ·"
 [legend] text 1140.0,564.0 class=tc-legend font-size=12 font-weight=600 "Positive sequence backup"
 [legend] text 1140.0,580.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1140.0,595.0 class=tc-legend-muted font-size=11 "IEC SI · 500 A · TMS 0.3 · vs I1"
-[legend] text 1140.0,610.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,610.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] text 1104.0,648.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1104.0,664.0..1130.0,664.0
-[legend] text 1140.0,668.0 class=tc-legend font-size=11 "Ring max · 3.6 kA · HV · 33 kV"
+[legend] text 1140.0,668.0 class=tc-legend font-size=11 "Ring max · 3.6 kA · 33 kV"
 [legend] line 1104.0,690.0..1130.0,690.0
-[legend] text 1140.0,694.0 class=tc-legend font-size=11 "Phase-earth at the tee · 2.4 kA · HV"
-[legend] text 1140.0,710.0 class=tc-legend font-size=11 "· 33 kV"
+[legend] text 1140.0,694.0 class=tc-legend font-size=11 "Phase-earth at the tee · 2.4 kA · 33"
+[legend] text 1140.0,710.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,726.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1140.0,739.0 class=tc-legend-muted font-size=10 "Solid A-earth fault at the tee point"
 [legend] line 1104.0,758.0..1130.0,758.0
-[legend] text 1140.0,762.0 class=tc-legend font-size=11 "Phase-phase at the tee · 2.1 kA · HV"
-[legend] text 1140.0,778.0 class=tc-legend font-size=11 "· 33 kV"
+[legend] text 1140.0,762.0 class=tc-legend font-size=11 "Phase-phase at the tee · 2.1 kA · 33"
+[legend] text 1140.0,778.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,794.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1140.0,807.0 class=tc-legend-muted font-size=10 "B-C fault, no earth path"
 [legend] text 1104.0,840.0 class=tc-legend font-size=13 font-weight=600 "Notes"
@@ -359,7 +359,7 @@ domain-t 0.01,1000
 [axes] text 82.0,101.2 text-anchor=end font-size=10 "500 s"
 [axes] text 82.0,56.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 30.0,436.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · I2 · HV · 33 kV)"
+[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · I2 · 33 kV)"
 [pickups] line 281.9,820.0..281.9,824.0
 [pickups] line 168.7,820.0..168.7,824.0
 [pickups] line 318.3,820.0..318.3,824.0
@@ -432,12 +432,12 @@ domain-t 0.01,1000
 [legend] text 1140.0,390.0 class=tc-legend-muted font-size=11 "IEC SI · 500 A · TMS 0.3 · vs I1"
 [legend] text 1104.0,420.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1104.0,436.0..1130.0,436.0
-[legend] text 1140.0,440.0 class=tc-legend font-size=11 "Phase-earth at the tee · 800 A · HV ·"
-[legend] text 1140.0,456.0 class=tc-legend font-size=11 "33 kV"
+[legend] text 1140.0,440.0 class=tc-legend font-size=11 "Phase-earth at the tee · 800 A · 33"
+[legend] text 1140.0,456.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,472.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] line 1104.0,483.0..1130.0,483.0
-[legend] text 1140.0,487.0 class=tc-legend font-size=11 "Phase-phase at the tee · 1.21 kA · HV"
-[legend] text 1140.0,503.0 class=tc-legend font-size=11 "· 33 kV"
+[legend] text 1140.0,487.0 class=tc-legend font-size=11 "Phase-phase at the tee · 1.21 kA · 33"
+[legend] text 1140.0,503.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,519.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1104.0,542.0 font-size=13 font-weight=600 "Times"
 [legend] line 1104.0,558.0..1130.0,558.0
@@ -565,7 +565,7 @@ domain-t 0.01,1000
 [axes] text 82.0,101.2 text-anchor=end font-size=10 "500 s"
 [axes] text 82.0,56.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 30.0,436.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 3I2 · HV · 33 kV)"
+[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 3I2 · 33 kV)"
 [pickups] line 550.5,820.0..550.5,824.0
 [pickups] line 497.6,820.0..497.6,824.0
 [pickups] line 563.8,820.0..563.8,824.0
@@ -600,30 +600,30 @@ domain-t 0.01,1000
 [legend] text 1140.0,85.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Phase TOC"
 [legend] text 1140.0,101.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,116.0 class=tc-legend-muted font-size=11 "IEC SI · 480 A · TMS 0.12"
-[legend] text 1140.0,131.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,131.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,152.0..1130.0,152.0
 [legend] text 1140.0,156.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Negative"
 [legend] text 1140.0,172.0 class=tc-legend font-size=12 font-weight=600 "sequence"
 [legend] text 1140.0,188.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,203.0 class=tc-legend-muted font-size=11 "Definite time · 200 A · delay 600 ms"
 [legend] text 1140.0,218.0 class=tc-legend-muted font-size=11 "· vs I2"
-[legend] text 1140.0,233.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,233.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,254.0..1130.0,254.0
 [legend] text 1140.0,258.0 class=tc-legend font-size=12 font-weight=600 "Ring incomer (ABB REF615) ·"
 [legend] text 1140.0,274.0 class=tc-legend font-size=12 font-weight=600 "Negative sequence backup"
 [legend] text 1140.0,290.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1140.0,305.0 class=tc-legend-muted font-size=11 "Definite time · 900 A · delay 1.2 s ·"
 [legend] text 1140.0,320.0 class=tc-legend-muted font-size=11 "vs 3I2"
-[legend] text 1140.0,335.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,335.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] text 1104.0,373.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1104.0,389.0..1130.0,389.0
-[legend] text 1140.0,393.0 class=tc-legend font-size=11 "Phase-earth at the tee · 2.4 kA · HV"
-[legend] text 1140.0,409.0 class=tc-legend font-size=11 "· 33 kV"
+[legend] text 1140.0,393.0 class=tc-legend font-size=11 "Phase-earth at the tee · 2.4 kA · 33"
+[legend] text 1140.0,409.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,425.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1140.0,438.0 class=tc-legend-muted font-size=10 "Solid A-earth fault at the tee point"
 [legend] line 1104.0,457.0..1130.0,457.0
-[legend] text 1140.0,461.0 class=tc-legend font-size=11 "Phase-phase at the tee · 3.63 kA · HV"
-[legend] text 1140.0,477.0 class=tc-legend font-size=11 "· 33 kV"
+[legend] text 1140.0,461.0 class=tc-legend font-size=11 "Phase-phase at the tee · 3.63 kA · 33"
+[legend] text 1140.0,477.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,493.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1140.0,506.0 class=tc-legend-muted font-size=10 "B-C fault, no earth path"
 [legend] text 1104.0,537.0 font-size=13 font-weight=600 "Times"
@@ -753,7 +753,7 @@ domain-t 0.01,1000
 [axes] text 82.0,101.2 text-anchor=end font-size=10 "500 s"
 [axes] text 82.0,56.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 30.0,436.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · residual 3I0 · HV · 33 kV)"
+[axes] text 581.0,940.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · residual 3I0 · 33 kV)"
 [pickups] line 461.2,820.0..461.2,824.0
 [pickups] line 348.0,820.0..348.0,824.0
 [pickups] line 497.6,820.0..497.6,824.0
@@ -792,38 +792,38 @@ domain-t 0.01,1000
 [legend] text 1140.0,85.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Phase TOC"
 [legend] text 1140.0,101.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,116.0 class=tc-legend-muted font-size=11 "IEC SI · 480 A · TMS 0.12"
-[legend] text 1140.0,131.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,131.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,152.0..1130.0,152.0
 [legend] text 1140.0,156.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Ground TOC"
 [legend] text 1140.0,172.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,187.0 class=tc-legend-muted font-size=11 "IEC SI · 240 A · TMS 0.1 · vs"
 [legend] text 1140.0,202.0 class=tc-legend-muted font-size=11 "residual 3I0"
-[legend] text 1140.0,217.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,217.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,238.0..1130.0,238.0
 [legend] text 1140.0,242.0 class=tc-legend font-size=12 font-weight=600 "Tee point (SEL-751) · Negative"
 [legend] text 1140.0,258.0 class=tc-legend font-size=12 font-weight=600 "sequence"
 [legend] text 1140.0,274.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1140.0,289.0 class=tc-legend-muted font-size=11 "Definite time · 200 A · delay 600 ms"
 [legend] text 1140.0,304.0 class=tc-legend-muted font-size=11 "· vs I2"
-[legend] text 1140.0,319.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,319.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,340.0..1130.0,340.0
 [legend] text 1140.0,344.0 class=tc-legend font-size=12 font-weight=600 "Ring incomer (ABB REF615) ·"
 [legend] text 1140.0,360.0 class=tc-legend font-size=12 font-weight=600 "Negative sequence backup"
 [legend] text 1140.0,376.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1140.0,391.0 class=tc-legend-muted font-size=11 "Definite time · 900 A · delay 1.2 s ·"
 [legend] text 1140.0,406.0 class=tc-legend-muted font-size=11 "vs 3I2"
-[legend] text 1140.0,421.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,421.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1104.0,442.0..1130.0,442.0
 [legend] text 1140.0,446.0 class=tc-legend font-size=12 font-weight=600 "Ring incomer (ABB REF615) · Ground"
 [legend] text 1140.0,462.0 class=tc-legend font-size=12 font-weight=600 "backup"
 [legend] text 1140.0,478.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1140.0,493.0 class=tc-legend-muted font-size=11 "IEC SI · 400 A · TMS 0.22 · vs"
 [legend] text 1140.0,508.0 class=tc-legend-muted font-size=11 "residual 3I0"
-[legend] text 1140.0,523.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1140.0,523.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] text 1104.0,561.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1104.0,577.0..1130.0,577.0
-[legend] text 1140.0,581.0 class=tc-legend font-size=11 "Phase-earth at the tee · 2.4 kA · HV"
-[legend] text 1140.0,597.0 class=tc-legend font-size=11 "· 33 kV"
+[legend] text 1140.0,581.0 class=tc-legend font-size=11 "Phase-earth at the tee · 2.4 kA · 33"
+[legend] text 1140.0,597.0 class=tc-legend font-size=11 "kV"
 [legend] text 1140.0,613.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1140.0,626.0 class=tc-legend-muted font-size=10 "Solid A-earth fault at the tee point"
 [legend] text 1104.0,657.0 font-size=13 font-weight=600 "Times"

@@ -149,7 +149,7 @@ relay R_INCOMER {
     name = "Phase OC";
     function = phase_oc;
     measures = phase;
-    current_max = 20.82 kA;
+    I_cutoff = 20.82 kA;
 
     # This relay is a member of both chains, so it is drawn wherever
     # either is. An element may still override with its own `views`,
@@ -179,7 +179,7 @@ relay R_BESS_FEEDER {
     name = "Phase OC";
     function = phase_oc;
     measures = phase;
-    current_max = 20.73 kA;
+    I_cutoff = 20.73 kA;
     stages {
       stage idmt { curve = iec.si; I_pickup = 660 A; tms = 0.17; }
       stage high { curve = definite; I_pickup = 2640 A; t_delay = 350 ms; }
@@ -215,7 +215,7 @@ relay R_BESS_RMU {
     name = "Phase OC";
     function = phase_oc;
     measures = phase;
-    current_max = 20.73 kA;
+    I_cutoff = 20.73 kA;
     stages {
       stage idmt { curve = iec.si; I_pickup = 90 A; tms = 0.1; }
       stage high { curve = definite; I_pickup = 370 A; t_delay = 50 ms; }
@@ -245,7 +245,7 @@ relay R_AUX_FEEDER {
     name = "Phase OC";
     function = phase_oc;
     measures = phase;
-    current_max = 20.73 kA;
+    I_cutoff = 20.73 kA;
     stages {
       stage idmt { curve = iec.si; I_pickup = 200 A; tms = 0.25; }
       stage high { curve = definite; I_pickup = 260 A; t_delay = 350 ms; }
@@ -274,7 +274,7 @@ relay R_AUX_RMU {
     name = "Phase OC";
     function = phase_oc;
     measures = phase;
-    current_max = 20.73 kA;
+    I_cutoff = 20.73 kA;
     stages {
       stage idmt { curve = iec.si; I_pickup = 45 A; tms = 0.1; }
       stage high { curve = definite; I_pickup = 120 A; t_delay = 50 ms; }

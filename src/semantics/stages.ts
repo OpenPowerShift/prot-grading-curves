@@ -14,6 +14,25 @@
 import { tTripStage } from './curves.js';
 import type { Element, Stage } from './model.js';
 
+/**
+ * The largest current at which an element still has a characteristic.
+ *
+ * `undefined` where it has no end: the element declared no `I_cutoff`
+ * and at least one stage runs on unbounded.
+ *
+ * Not simply the element's own figure, because a stage may stop
+ * earlier than the element that owns it -- and the element as a whole
+ * survives as long as *any* stage does, so the ceiling is the largest
+ * of theirs. (`buildStudy` has already given a stage its element's
+ * cutoff where it declared none, so a stage with none here really has
+ * none.)
+ */
+export function cutoffOf(element: Element): number | undefined {
+  if (element.stages.length === 0) return element.I_cutoff_A;
+  if (element.stages.some((s) => s.I_cutoff_A == null)) return undefined;
+  return Math.max(...element.stages.map((s) => s.I_cutoff_A ?? 0));
+}
+
 /** Operate time of a whole element -- the envelope over its stages. */
 export function tTripElement(element: Element, I_total: number): number {
   let best = Infinity;

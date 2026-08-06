@@ -304,7 +304,7 @@ view { voltage = "HV"; }
      * "6.69 A · LV · 0.48 kV", which is its 33 kV equivalent and so
      * simply false at the level named.
      */
-    expect(svg).toContain('F_INV_max · 460 A · LV · 0.48 kV');
+    expect(svg).toContain('F_INV_max · 460 A · 0.48 kV');
     expect(svg).not.toContain('6.69 A · LV');
   });
 
@@ -510,9 +510,11 @@ relay R {
   });
 
   it('names the quantity on the axis, so the units are not a guess', () => {
-    expect(at('phase')).toMatch(/>Current \(A primary · hv · 33 kV\)</);
-    expect(at('I2')).toMatch(/>Current \(A primary · I2 · hv · 33 kV\)</);
-    expect(at('3I0')).toMatch(/>Current \(A primary · residual 3I0 · hv · 33 kV\)</);
+    /* The level's figure, not its handle: `hv` is how the study refers
+     * to it, and 33 kV is what a reader needs. */
+    expect(at('phase')).toMatch(/>Current \(A primary · 33 kV\)</);
+    expect(at('I2')).toMatch(/>Current \(A primary · I2 · 33 kV\)</);
+    expect(at('3I0')).toMatch(/>Current \(A primary · residual 3I0 · 33 kV\)</);
   });
 
   it('names the elements the axis left off, and why', () => {

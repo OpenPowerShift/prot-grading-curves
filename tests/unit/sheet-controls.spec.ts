@@ -40,7 +40,7 @@ describe('a curve can be told where to stop', () => {
      * against a calibration of my own: the two must land on the same
      * pixel, whatever the scale is doing.
      */
-    const svg = svgOf(BASE('current_max = 6 kA;'));
+    const svg = svgOf(BASE('I_cutoff = 6 kA;'));
     const rule = Number(/x1="([\d.]+)"[^>]*data-fault="Max fault"/.exec(svg)![1]);
     expect(curveRight(svg, 'R:51')).toBeCloseTo(rule, 1);
   });
@@ -54,7 +54,7 @@ describe('a curve can be told where to stop', () => {
   it('says so in the legend', () => {
     /* A curve that stops short reads as one the renderer failed to
      * finish unless the sheet says the stop was asked for. */
-    expect(svgOf(BASE('current_max = 6 kA;'))).toContain('to 6 kA');
+    expect(svgOf(BASE('I_cutoff = 6 kA;'))).toContain('to 6 kA');
   });
 });
 

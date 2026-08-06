@@ -261,15 +261,17 @@ element 51 {
             curve       = definite;
             I_pickup    = 4.5 kA;
             t_delay     = 50 ms;
-            current_max = 6 kA;     # this stage stops here
+            I_cutoff = 6 kA;     # this stage stops here
             style       = dashed;   # drawn as a shelf, not a curve
         }
     }
 }
 ----
 
-`current_max` works on the element too, and a stage falls back to its
-element's. `color`, `style` and `width_px` work on either: they
+`I_cutoff` works on the element too, and a stage falls back to its
+element's. It is not only ink: a stage does not operate past it, so a
+composite steps back onto whatever stage is still there, and a grade
+asked for beyond where a curve stops is refused rather than answered. `color`, `style` and `width_px` work on either: they
 override the palette for one curve, which is how you draw the curve
 your argument is about heavier than the ones that are only context.
 

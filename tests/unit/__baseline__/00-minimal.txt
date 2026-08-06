@@ -119,7 +119,7 @@ domain-t 0.01,1000
 [axes] text 82.0,69.8 text-anchor=end font-size=10 "500 s"
 [axes] text 82.0,36.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 30.0,321.0 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 481.0,730.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · MV · 11 kV)"
+[axes] text 481.0,730.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 11 kV)"
 [pickups] line 419.0,610.0..419.0,614.0
 [pickups] line 477.6,610.0..477.6,614.0
 [faults] line 635.1,32.0..635.1,610.0 class=tc-fault data-fault=Board max
@@ -131,11 +131,11 @@ domain-t 0.01,1000
 [legend] line 904.0,61.0..930.0,61.0
 [legend] text 940.0,65.0 class=tc-legend font-size=12 font-weight=600 "R_FDR:51"
 [legend] text 940.0,81.0 class=tc-legend-muted font-size=11 "IEC SI · 480 A · TMS 0.1"
-[legend] text 940.0,96.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 940.0,96.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] line 904.0,117.0..930.0,117.0
 [legend] text 940.0,121.0 class=tc-legend font-size=12 font-weight=600 "R_INC:51"
 [legend] text 940.0,137.0 class=tc-legend-muted font-size=11 "IEC SI · 960 A · TMS 0.25"
-[legend] text 940.0,152.0 class=tc-legend-muted font-size=11 "MV · 11 kV"
+[legend] text 940.0,152.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] text 904.0,190.0 font-size=13 font-weight=600 "Faults"
 [legend] line 904.0,206.0..930.0,206.0
-[legend] text 940.0,210.0 class=tc-legend font-size=11 "Board max · 6.2 kA · MV · 11 kV"
+[legend] text 940.0,210.0 class=tc-legend font-size=11 "Board max · 6.2 kA · 11 kV"

@@ -96,8 +96,8 @@ describe('naming a sheet for a picker', () => {
 
 describe('each sheet draws itself', () => {
   it('takes its own quantity and condition', () => {
-    expect(sheet(0)).toContain('Current (A primary · HV · 33 kV)');
-    expect(sheet(1)).toContain('Current (A primary · I2 · HV · 33 kV)');
+    expect(sheet(0)).toContain('Current (A primary · 33 kV)');
+    expect(sheet(1)).toContain('Current (A primary · I2 · 33 kV)');
   });
 
   it('draws the elements that condition allows', () => {

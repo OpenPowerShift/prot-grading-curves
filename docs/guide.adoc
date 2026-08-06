@@ -402,14 +402,17 @@ Past the largest fault the bus can deliver, the curve describes a
 current that cannot flow, and a margin taken off it is graded against
 a fault that does not exist.
 
-`element { current_max = 8 kA; }` stops the curve there. The legend
+`element { I_cutoff = 8 kA; }` stops the curve there, and the legend
 records the limit, so a curve that ends short reads as one that was
-told to rather than one the tool failed to finish.
+told to. A `stage` takes one too and falls back to its element's: a
+high-set blocked above the maximum through-fault stops where *its*
+data stops.
 
-A `stage` takes one too, and falls back to its element's. A high-set
-blocked above the maximum through-fault, or a thermal stage only
-characterised to a few multiples, stops where *its* data stops rather
-than where the element it happens to sit in does.
+Not only ink. Past its cutoff a stage does not operate, so a composite
+steps back onto whatever stage is still there, an upstream sweep stops
+where the curves do, and a grade taken beyond a curve's end is refused
+(`GRADE_BEYOND_CUTOFF`) rather than answered from a characteristic the
+study says is not there.
 ====
 
 ==== Drawing one curve differently
@@ -954,15 +957,10 @@ say where on it to sit: a current, a time or a condition, or else
 
 Where a mark cannot be placed for reasons that depend on the sheet --
 a curve that never reaches the time asked for, a pair that does not
-operate at the current given, a mark beyond the `current_max` of the
-curve it marks -- the sheet names it in its notes. That is distinct
-from the *count* of annotations outside the plotted range, which
-changes as you zoom.
-
-A mark past a curve's `current_max` is dropped rather than drawn
-floating off the end of it: the study has already said that current
-cannot flow, and a marker sitting out there reads as one taken from
-the line.
+operate at the current given, a mark past the `I_cutoff` of the curve
+it marks -- it is dropped rather than left floating, and the sheet
+names it in its notes. That is distinct from the *count* of
+annotations outside the plotted range, which changes as you zoom.
 
 `voltage` names the level the figure is read at, defaulting to the
 view's. Without it a bare current was taken in *each* referenced

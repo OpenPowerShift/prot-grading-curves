@@ -133,7 +133,7 @@ domain-t 0.01,1000
 [axes] text 96.0,109.9 text-anchor=end font-size=10 "500 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "1000 s"
 [axes] text 44.0,405.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · HV · 33 kV)"
+[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 33 kV)"
 [pickups] line 550.9,745.0..550.9,749.0
 [pickups] line 413.0,745.0..413.0,749.0
 [pickups] line 586.9,745.0..586.9,749.0
@@ -185,23 +185,23 @@ domain-t 0.01,1000
 [legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "R_TRF_HV:51"
 [legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "ABB REF615"
 [legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "IEC SI · 720 A · TMS 0.3"
-[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,145.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1090.0,166.0..1116.0,166.0
 [legend] text 1126.0,170.0 class=tc-legend font-size=12 font-weight=600 "R_FDR_LV:51"
 [legend] text 1126.0,186.0 class=tc-legend-muted font-size=11 "Schneider MiCOM_P122"
 [legend] text 1126.0,201.0 class=tc-legend-muted font-size=11 "IEC VI · 480 A · TMS 0.25"
-[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "LV · 11 kV"
+[legend] text 1126.0,216.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] line 1090.0,237.0..1116.0,237.0
 [legend] text 1126.0,241.0 class=tc-legend font-size=12 font-weight=600 "R_FDR_LV:50"
 [legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "Schneider MiCOM_P122"
 [legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "Definite time · 3.2 kA · delay 50 ms"
-[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "LV · 11 kV"
+[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "11 kV"
 [legend] text 1090.0,325.0 font-size=13 font-weight=600 "Faults"
 [legend] line 1090.0,341.0..1116.0,341.0
-[legend] text 1126.0,345.0 class=tc-legend font-size=11 "LV min · 2.5 kA · LV · 11 kV"
+[legend] text 1126.0,345.0 class=tc-legend font-size=11 "LV min · 2.5 kA · 11 kV"
 [legend] text 1126.0,361.0 class=tc-legend-muted font-size=10 "-&gt; 833 A on axis"
 [legend] line 1090.0,380.0..1116.0,380.0
-[legend] text 1126.0,384.0 class=tc-legend font-size=11 "LV max · 6.4 kA · LV · 11 kV"
+[legend] text 1126.0,384.0 class=tc-legend font-size=11 "LV max · 6.4 kA · 11 kV"
 [legend] text 1126.0,400.0 class=tc-legend-muted font-size=10 "-&gt; 2.13 kA on axis"
 [legend] line 1090.0,419.0..1116.0,419.0
-[legend] text 1126.0,423.0 class=tc-legend font-size=11 "HV max · 18.4 kA · HV · 33 kV"
+[legend] text 1126.0,423.0 class=tc-legend font-size=11 "HV max · 18.4 kA · 33 kV"

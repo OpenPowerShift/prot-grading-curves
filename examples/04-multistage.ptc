@@ -59,7 +59,7 @@ relay R_TGT {
         curve = definite;
         I_pickup = 4500 A;
         t_delay = 0.08 s;
-        current_max = 6000 A;
+        I_cutoff = 6000 A;
         style = dashed;
       }
     }

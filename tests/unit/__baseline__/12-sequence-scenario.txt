@@ -93,7 +93,7 @@ domain-t 0.02,100
 [axes] text 96.0,124.3 text-anchor=end font-size=10 "50 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
 [axes] text 44.0,405.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · I2 · HV · 33 kV)"
+[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · I2 · 33 kV)"
 [pickups] line 431.8,745.0..431.8,749.0
 [pickups] line 332.6,745.0..332.6,749.0
 [pickups] line 332.6,745.0..332.6,749.0
@@ -118,30 +118,30 @@ domain-t 0.02,100
 [legend] line 1090.0,95.0..1116.0,95.0
 [legend] text 1126.0,99.0 class=tc-legend font-size=12 font-weight=600 "LV ACB · Phase OC"
 [legend] text 1126.0,115.0 class=tc-legend-muted font-size=11 "IEC SI · 300 A · TMS 0.1"
-[legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "LV · 0.48 kV"
+[legend] text 1126.0,130.0 class=tc-legend-muted font-size=11 "0.48 kV"
 [legend] line 1090.0,151.0..1116.0,151.0
 [legend] text 1126.0,155.0 class=tc-legend font-size=12 font-weight=600 "HV relay (GE Multilin 850) · Phase"
 [legend] text 1126.0,171.0 class=tc-legend font-size=12 font-weight=600 "TOC (51)"
 [legend] text 1126.0,187.0 class=tc-legend-muted font-size=11 "GE Multilin 850"
 [legend] text 1126.0,202.0 class=tc-legend-muted font-size=11 "IEC SI · 4.2 A · TMS 0.2"
-[legend] text 1126.0,217.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,217.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1090.0,238.0..1116.0,238.0
 [legend] text 1126.0,242.0 class=tc-legend font-size=12 font-weight=600 "HV relay (GE Multilin 850) ·"
 [legend] text 1126.0,258.0 class=tc-legend font-size=12 font-weight=600 "Negative Sequence (46)"
 [legend] text 1126.0,274.0 class=tc-legend-muted font-size=11 "GE Multilin 850"
 [legend] text 1126.0,289.0 class=tc-legend-muted font-size=11 "Definite time · 1.5 A · delay 2 s · vs"
 [legend] text 1126.0,304.0 class=tc-legend-muted font-size=11 "I2"
-[legend] text 1126.0,319.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,319.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] line 1090.0,340.0..1116.0,340.0
 [legend] text 1126.0,344.0 class=tc-legend font-size=12 font-weight=600 "33 kV feeder (SEL-751) · Neg Seq"
 [legend] text 1126.0,360.0 class=tc-legend font-size=12 font-weight=600 "backup (46)"
 [legend] text 1126.0,376.0 class=tc-legend-muted font-size=11 "SEL 751"
 [legend] text 1126.0,391.0 class=tc-legend-muted font-size=11 "Definite time · 1.5 A · delay 2.6 s ·"
 [legend] text 1126.0,406.0 class=tc-legend-muted font-size=11 "vs I2"
-[legend] text 1126.0,421.0 class=tc-legend-muted font-size=11 "HV · 33 kV"
+[legend] text 1126.0,421.0 class=tc-legend-muted font-size=11 "33 kV"
 [legend] text 1090.0,459.0 font-size=13 font-weight=600 "Conditions"
 [legend] line 1090.0,475.0..1116.0,475.0
-[legend] text 1126.0,479.0 class=tc-legend font-size=11 "LV earth fault · 2.23 A · HV · 33 kV"
+[legend] text 1126.0,479.0 class=tc-legend font-size=11 "LV earth fault · 2.23 A · 33 kV"
 [legend] text 1126.0,495.0 class=tc-legend-muted font-size=10 "scenario"
 [legend] text 1126.0,508.0 class=tc-legend-muted font-size=10 "Single phase to earth at 0.48 kV, system"
 [legend] text 1126.0,521.0 class=tc-legend-muted font-size=10 "normal"

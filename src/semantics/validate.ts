@@ -292,7 +292,7 @@ function validateViewScopes(ctx: Ctx): void {
       add(ctx, 'UNRESOLVED_GROUP_MEMBER', 'error',
         `group ${g.id} lists ${member}, which is not a declared relay or device`
         + didYouMean(suggest(member, [...study.relays.keys(), ...study.devices.keys()])),
-        undefined);
+        g.loc);
     }
   }
   for (const p of study.points) check(p.views, `point ${p.id}`);
@@ -491,7 +491,7 @@ function validateVoltages(ctx: Ctx): void {
     if (!(level.kV > 0)) {
       add(ctx, 'VOLTAGE_LEVEL_INVALID', 'error',
         `voltage level "${level.name}" has kV = ${level.kV}; it must be strictly positive`,
-        undefined);
+        level.loc);
     }
   }
 
@@ -500,7 +500,7 @@ function validateVoltages(ctx: Ctx): void {
       add(ctx, 'VOLTAGE_UNKNOWN', 'error',
         `relay ${relay.id} references voltage level "${relay.voltage}", which is not declared in system.voltages` +
         didYouMean(suggest(relay.voltage, names)),
-        undefined);
+        relay.loc);
     }
   }
 }
@@ -661,12 +661,12 @@ function validateFaults(ctx: Ctx): void {
       add(ctx, 'VOLTAGE_UNKNOWN', 'error',
         `fault ${fault.id} references voltage level "${fault.voltage}", which is not declared in system.voltages` +
         didYouMean(suggest(fault.voltage, names)),
-        undefined);
+        fault.loc);
     }
     if (!(fault.I_A > 0)) {
       add(ctx, 'FAULT_CURRENT_INVALID', 'error',
         `fault ${fault.id} declares I_A = ${fault.I_A}; it must be strictly positive`,
-        undefined);
+        fault.loc);
     }
 
     /*
@@ -723,13 +723,13 @@ function validateFaults(ctx: Ctx): void {
           `fault ${fault.id} declares a ${key} range but no ${key}; the graded point `
           + 'would come from the fault type while the sweep came from the study, so the '
           + `two would not describe one condition. Declare ${key}`,
-          undefined);
+          fault.loc);
       }
       if (fault.range[minKey] == null || fault.range[maxKey] == null) {
         add(ctx, 'RANGE_INCOMPLETE', 'error',
           `fault ${fault.id} declares only one end of its ${key} range; `
           + `give both ${key}_min and ${key}_max`,
-          undefined);
+          fault.loc);
       }
     }
 
@@ -743,12 +743,12 @@ function validateFaults(ctx: Ctx): void {
     if (!anyRange && fault.min_A === fault.I_A && fault.max_A === fault.I_A) {
       add(ctx, 'FAULT_SINGLE_POINT', 'info',
         `fault ${fault.id} declares only I_A; min_A and max_A default to it`,
-        undefined);
+        fault.loc);
     }
     if (fault.min_A > fault.max_A) {
       add(ctx, 'FAULT_RANGE_INVERTED', 'error',
         `fault ${fault.id} has min_A (${fault.min_A}) above max_A (${fault.max_A})`,
-        undefined);
+        fault.loc);
     }
   }
 }
@@ -1132,7 +1132,7 @@ function validateDevices(ctx: Ctx): void {
       add(ctx, 'VOLTAGE_UNKNOWN', 'error',
         `device "${device.id}" declares voltage "${device.voltage}", which is not in ` +
         `system.voltages (known: ${[...ctx.study.voltages.keys()].join(', ') || 'none'})`,
-        undefined);
+        device.loc);
     }
   }
 
@@ -1156,11 +1156,11 @@ function validateDevices(ctx: Ctx): void {
     if (isFuse && !hasBand && !hasTable) {
       add(ctx, 'DEVICE_NO_CURVE', 'error',
         `fuse device "${device.id}" declares neither a min_melt/total_clear band nor flex_points`,
-        undefined);
+        device.loc);
     } else if (!isFuse && !hasTable && !hasBand) {
       add(ctx, 'DEVICE_NO_CURVE', 'error',
         `device "${device.id}" declares no flex_points; device TCCs are piecewise by definition`,
-        undefined);
+        device.loc);
     }
 
     /*
@@ -1834,7 +1834,7 @@ function validatePoints(ctx: Ctx): void {
       add(ctx, 'POINT_CURRENT_AND_CONDITION', 'error',
         `point "${point.id}" declares I and names the condition ` +
         `"${point.condition}"; they are alternatives -- drop one`,
-        undefined);
+        point.loc);
     } else if (point.condition) {
       checkConditionReference(ctx, point.condition, `point "${point.id}"`,
         point.voltage ?? viewLevel, undefined);
@@ -1850,25 +1850,25 @@ function validatePoints(ctx: Ctx): void {
         add(ctx, 'POINT_CURRENT_INVALID', 'error',
           `point "${point.id}" declares no current; give it I (or I1, I2, I0, ` +
           'residual), or name a fault or scenario to take it from',
-          undefined);
+          point.loc);
       } else if (declared.some((v) => v <= 0)) {
         add(ctx, 'POINT_CURRENT_INVALID', 'error',
           `point "${point.id}" declares a non-positive current; currents must be ` +
           'strictly positive to have a place on a logarithmic axis',
-          undefined);
+          point.loc);
       }
       checkResidual(ctx, `point "${point.id}"`, point.I0_A, point.earth_A, point.loc);
     }
     if (!(point.t_s > 0)) {
       add(ctx, 'POINT_TIME_INVALID', 'error',
         `point "${point.id}" declares t = ${point.t_s}; it must be strictly positive`,
-        undefined);
+        point.loc);
     }
     if (point.voltage && !ctx.study.voltages.has(point.voltage)) {
       add(ctx, 'VOLTAGE_UNKNOWN', 'error',
         `point "${point.id}" references voltage level "${point.voltage}", which is not declared` +
         didYouMean(suggest(point.voltage, names)),
-        undefined);
+        point.loc);
     }
   }
 }

@@ -72,6 +72,8 @@ export interface VoltageLevel {
   name: string;
   kV: number;
   description?: string;
+  /** Where it was written; see the note on `Fault.loc`. */
+  loc?: SourceLocation;
 }
 
 export interface Fault {
@@ -266,6 +268,8 @@ export interface Relay {
   ct_ratio?: number;
   faults: string[];
   elements: Element[];
+  /** Where it was written; see the note on `Fault.loc`. */
+  loc?: SourceLocation;
 }
 
 /** One level's symmetrical components under a scenario. */
@@ -304,6 +308,8 @@ export interface Group {
   description?: string;
   /** Relay ids, upstream first. */
   members: string[];
+  /** Where it was written; see the note on `Fault.loc`. */
+  loc?: SourceLocation;
 }
 
 export interface Scenario {
@@ -324,6 +330,8 @@ export interface Scenario {
 export interface Device {
   id: string;
   kind?: string;
+  /** Where it was written; see the note on `Fault.loc`. */
+  loc?: SourceLocation;
   /** Level this device sits on, as named in `system.voltages`. */
   voltage?: string;
   /** That level's kV, resolved. */
@@ -697,6 +705,7 @@ export function buildStudy(doc: Document): Study {
             name: lvl.name,
             kV: lvl.kV,
             description: lvl.description,
+            loc: lvl.loc ?? item.loc,
           });
         }
         break;
@@ -706,6 +715,7 @@ export function buildStudy(doc: Document): Study {
           name: item.name,
           description: item.description,
           members: item.members,
+          loc: item.loc,
         });
         break;
 
@@ -833,6 +843,7 @@ export function buildStudy(doc: Document): Study {
       case 'device':
         study.devices.set(item.id, {
           id: item.id,
+          loc: item.loc,
           kind: item.kind,
           voltage: item.voltage,
           voltage_kV: item.voltage ? study.voltages.get(item.voltage)?.kV : undefined,
@@ -1060,6 +1071,7 @@ function resolveRelay(node: Extract<TopLevel, { type: 'relay' }>, study: Study):
   const voltage = readString(get('voltage'));
   const relay: Relay = {
     id: node.id,
+    loc: node.loc,
     name: readString(get('name')),
     maker: readString(get('maker')),
     model: readString(get('model')),

@@ -417,18 +417,31 @@ running build. Everything below is [VERIFIED].
 
 *Diagnostics and the editor*
 
-. *21 diagnostics report at `1:1`*, 20 of them hard errors -- and the
-  location is a clickable go-to-line, so on a 300-line study it lands
-  at the top of the file and the reader searches by hand. Includes the
-  grade-report diagnostics hoisted in `src/index.ts:66-73`, which are
-  re-anchored to line 1 by construction.
+. *Diagnostics reporting at `1:1`* -- closed 2026-08-08. Twenty-one
+  of them, twenty hard errors, and the location is a clickable
+  go-to-line, so on a 300-line study every one landed at the top of the
+  file and the reader found the fault by reading.
++
+  The cause was structural, not per-site: `Fault`, `Relay`, `Device`,
+  `StudyPoint`, `VoltageLevel`, `Group` and `Annotation` carried no
+  source location at all, so every check about one had nothing to pass
+  and passed `undefined`. Seven model types gained a `loc` and all
+  seventeen remaining call sites were wired to it.
+  `diagnostic-locations.spec.ts` is the guard: one study with a
+  different mistake on every line, nothing at `1:1`, and each finding
+  checked against the line its own subject is declared on.
 
-. *One mistake is counted as two errors.* `UNRESOLVED_REFERENCE`
-  appears twice -- once at its real line, once at 1:1 -- because
-  `src/index.ts` concatenates `validate()` output with grade-report
-  errors that name the same fault. It inflates `counts.errors` in JSON
-  and is printed on the drawing: a `--force` sheet reads "DRAWN FROM A
-  STUDY WITH 2 ERRORS".
+
+. *One mistake counted as two errors* -- closed 2026-08-08.
+  `UNRESOLVED_REFERENCE` was reported twice for one typo, once at its
+  real line by the validator and once at `1:1` by the grade report,
+  because `src/index.ts` concatenated the two lists. It inflated
+  `counts.errors` in the JSON and reached the drawing, where a
+  `--force` sheet read "DRAWN FROM A STUDY WITH 2 ERRORS". They are
+  merged on code and message -- position being exactly what differs --
+  keeping the copy that knows where the mistake is. Findings only
+  grading can make still come through, which was the point of joining
+  the lists at all.
 
 . *"No issues" is shown while info diagnostics are listed beneath it.*
   The chip counts errors and warnings only.

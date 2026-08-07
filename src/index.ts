@@ -63,16 +63,42 @@ export function process(source: string): ProcessResult {
      * exited 0 on a study it had refused to grade, and the playground
      * showed no error beside a sheet that had none to draw.
      */
-    diagnostics: [
-      ...validate(study, parsed.document),
-      ...reports.flatMap((r) => r.diagnostics
-        .filter((d) => d.severity === 'error')
-        /* A grade's finding is about a pair, not a place in the file,
-         * so it anchors at the top like the other study-wide ones. */
-        .map((d) => ({ ...d, line: 1, column: 1, offset: 0, length: 0 }))),
-    ],
+    diagnostics: mergeDiagnostics(
+      validate(study, parsed.document),
+      reports.flatMap((r) => r.diagnostics.filter((d) => d.severity === 'error')),
+    ),
     reports,
   };
+}
+
+/**
+ * The study's findings and the grading's, with neither said twice.
+ *
+ * A grade's error is about a *pair*, so it has no line of its own and
+ * anchored at the top of the file. Where the validator has already
+ * reported the same thing -- an unresolved reference is found by both
+ * -- that produced one mistake stated twice: once at its real line,
+ * once at `1:1`. It inflated `counts.errors` in the JSON and was
+ * printed on the drawing, where a `--force` sheet read "DRAWN FROM A
+ * STUDY WITH 2 ERRORS" for one typo.
+ *
+ * Matched on code and message rather than position, since the position
+ * is exactly what differs. The validator's copy is the one kept: it
+ * knows where the mistake is.
+ */
+function mergeDiagnostics(
+  fromStudy: Diagnostic[],
+  /* A grade's finding carries no position, which is the point. */
+  fromGrading: Array<Pick<Diagnostic, 'code' | 'message' | 'severity'>>,
+): Diagnostic[] {
+  const seen = new Set(fromStudy.map((d) => `${d.code}\u0000${d.message}`));
+  return [
+    ...fromStudy,
+    ...fromGrading
+      .filter((d) => !seen.has(`${d.code}\u0000${d.message}`))
+      /* Still anchored at the top: a pair is not a place in the file. */
+      .map((d) => ({ ...d, line: 1, column: 1, offset: 0, length: 0 })),
+  ];
 }
 
 /**

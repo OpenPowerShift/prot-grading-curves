@@ -103,6 +103,15 @@ export interface Fault {
   voltage?: string;
   voltage_kV?: number;
   description?: string;
+  /**
+   * Where it was written.
+   *
+   * Every fault diagnostic passed `undefined` and so reported at `1:1`,
+   * which on a long study is a clickable go-to-line landing at the top
+   * of the file. The block is right here in the AST; nothing was
+   * carrying it across.
+   */
+  loc?: SourceLocation;
 }
 
 /** The four ways a stage can produce a time-current characteristic. */
@@ -449,6 +458,8 @@ export interface StudyPoint {
   shape?: 'circle' | 'square' | 'diamond' | 'triangle' | 'cross' | 'x';
   coords?: boolean;
   description?: string;
+  /** Where it was written; see the note on `Fault.loc`. */
+  loc?: SourceLocation;
 }
 
 /** A resolved annotation: either a point on a curve, or a margin. */
@@ -806,6 +817,7 @@ export function buildStudy(doc: Document): Study {
         voltage: f.voltage,
         voltage_kV: kV,
         description: f.description,
+        loc: f.loc,
       });
     }
   }
@@ -880,6 +892,7 @@ export function buildStudy(doc: Document): Study {
               shape: item.shape,
               coords: item.coords,
               description: item.description,
+              loc: item.loc,
             });
           }
         }

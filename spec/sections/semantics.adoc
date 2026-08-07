@@ -96,6 +96,26 @@ withdrawn.
 than the component; the two are interchangeable, and the processor
 derives whichever is not given.
 
+Where *both* are given they state one number twice, and they must
+agree: `residual = 3 * I0`, since that is what a residual connection
+sums rather than a matter of convention. A pair differing by more than
+1% -- the tolerance being there so a rounded figure off a fault study
+is not called a contradiction -- SHALL be reported as
+`SEQUENCE_RESIDUAL_CONFLICT` (*error*).
+
+The processor SHALL NOT reconcile them. `I0` is read from `I0` and
+`3I0` from `residual`, each preferring the figure written for it, so a
+contradictory pair evaluates a `3I0` element and an `I0` element
+against currents in a ratio the definition forbids -- at the same
+condition. Which of the two figures is the wrong one is not derivable,
+so the study is asked rather than a rule invented.
+
+This applies wherever the pair can be written: a `fault`, a
+`scenario`'s `level`, a `point`, and an `annotate`'s
+`at_I0` / `at_residual`. On a `fault` it applies to the centre and to
+each end of a declared range independently, a range being the same
+claim about the same condition made twice more.
+
 For `thermal`, the operate time is best modelled with `flex_points`
 (a heating curve table) rather than an IDMT formula, because thermal
 protection integrates current over time (I²t) and does not follow

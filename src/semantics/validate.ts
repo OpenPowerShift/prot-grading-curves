@@ -554,21 +554,9 @@ function validateScenarios(ctx: Ctx): void {
           `system.voltages (known: ${names.join(', ') || 'none'})`, level.loc);
       }
 
-      /*
-       * `earth_A` is the residual and `I0_A` its component, so one
-       * implies the other. Declaring both differently means one of the
-       * two figures is wrong and there is no way to tell which.
-       */
-      if (level.earth_A != null && level.I0_A != null) {
-        const implied = level.I0_A * 3;
-        const tolerance = Math.max(1e-6, Math.abs(implied) * 0.01);
-        if (Math.abs(level.earth_A - implied) > tolerance) {
-          add(ctx, 'SEQUENCE_RESIDUAL_CONFLICT', 'error',
-            `scenario "${scenario.name}" level ${level.voltage} declares earth_A = ` +
-            `${level.earth_A} A and I0_A = ${level.I0_A} A, but the residual is 3 x I0 ` +
-            `(${implied} A); declare one or make them agree`, level.loc);
-        }
-      }
+      checkResidual(ctx,
+        `scenario "${scenario.name}" level ${level.voltage}`,
+        level.I0_A, level.earth_A, level.loc);
 
       for (const [field, value] of [
         ['I_A', level.I_A], ['I1_A', level.I1_A], ['I2_A', level.I2_A],
@@ -595,6 +583,50 @@ function validateScenarios(ctx: Ctx): void {
       }
     }
   }
+}
+
+/**
+ * The residual is three times the zero-sequence component.
+ *
+ * `3I0` is not a convention or a scaling preference: it is what a
+ * residual connection sums. So a condition declaring both `I0` and
+ * `residual` has declared one number twice, and if the two disagree
+ * one of them is wrong with nothing to say which.
+ *
+ * The tool does not pick. `currentFor` reads `I0` from `I0` and `3I0`
+ * from `residual`, each preferring the figure written for it -- so a
+ * study with `I0 = 300 A; residual = 450 A` grades a `3I0` relay at
+ * 450 A and an `I0` relay at 300 A *at the same earth fault*, a ratio
+ * of 1.5 where the definition says 3. On a real pair that reported a
+ * margin of 0.563 s where the consistent figures give 0.710 s.
+ *
+ * One checker, used everywhere the pair can be written. It was written
+ * for `scenario` levels and only for those, so the identical
+ * contradiction inside a `fault`, a `point` or an `annotate` was taken
+ * in silence -- and a `fault` is where studies actually put it.
+ */
+function checkResidual(
+  ctx: Ctx,
+  where: string,
+  I0: number | undefined,
+  residual: number | undefined,
+  loc: SourceLocation | undefined,
+  /* `I0` / `residual` as written in this block, for the message. */
+  fields: [string, string] = ['I0', 'residual'],
+): void {
+  if (I0 == null || residual == null) return;
+  if (!Number.isFinite(I0) || !Number.isFinite(residual)) return;
+
+  const implied = I0 * 3;
+  /* 1%, so a figure rounded off a fault study is not called a
+   * contradiction: 316 A against 105 A is one measurement, not two. */
+  const tolerance = Math.max(1e-6, Math.abs(implied) * 0.01);
+  if (Math.abs(residual - implied) <= tolerance) return;
+
+  add(ctx, 'SEQUENCE_RESIDUAL_CONFLICT', 'error',
+    `${where} declares ${fields[1]} = ${residual} A and ${fields[0]} = ${I0} A, but the `
+    + `residual is 3 x I0 (${implied} A); declare one or make them agree`,
+    loc);
 }
 
 function validateFaults(ctx: Ctx): void {
@@ -636,6 +668,35 @@ function validateFaults(ctx: Ctx): void {
         `fault ${fault.id} declares I_A = ${fault.I_A}; it must be strictly positive`,
         undefined);
     }
+
+    /*
+     * The components too, which only `I_A` was checked for. A scenario
+     * level has always had every one of its five figures checked; a
+     * fault carries the same five and had one.
+     */
+    for (const [field, value] of [
+      ['I1', fault.I1_A], ['I2', fault.I2_A],
+      ['I0', fault.I0_A], ['residual', fault.earth_A],
+    ] as Array<[string, number | undefined]>) {
+      if (value != null && (!Number.isFinite(value) || value < 0)) {
+        add(ctx, 'FAULT_CURRENT_INVALID', 'error',
+          `fault ${fault.id} declares ${field} = ${value}; `
+          + 'a current must be finite and not negative', fault.loc);
+      }
+    }
+
+    /*
+     * The same relation at the centre and at each end of a range: a
+     * range is the same claim about the same condition, made twice
+     * more, and a sweep run between contradictory ends walks a
+     * condition that does not exist.
+     */
+    checkResidual(ctx, `fault ${fault.id}`, fault.I0_A, fault.earth_A, fault.loc);
+    checkResidual(ctx, `fault ${fault.id}`,
+      fault.range.I0_min, fault.range.earth_min, fault.loc, ['I0_min', 'residual_min']);
+    checkResidual(ctx, `fault ${fault.id}`,
+      fault.range.I0_max, fault.range.earth_max, fault.loc, ['I0_max', 'residual_max']);
+
     /*
      * A range needs a centre.
      *
@@ -1720,6 +1781,9 @@ function checkAnnotationPlacement(
   ];
   const given = declared.filter(([, , value]) => value != null);
 
+  checkResidual(ctx, `annotate on ${item.on_curve.text}`,
+    item.at_I0_A, item.at_earth_A, item.loc, ['at_I0', 'at_residual']);
+
   /* No current, no time, no condition: nothing says where it goes. */
   if (given.length === 0 && item.at_t_s == null && (item.conditions?.length ?? 0) === 0) {
     add(ctx, 'ANNOTATE_NO_POSITION', 'error',
@@ -1811,6 +1875,7 @@ function validatePoints(ctx: Ctx): void {
           'strictly positive to have a place on a logarithmic axis',
           undefined);
       }
+      checkResidual(ctx, `point "${point.id}"`, point.I0_A, point.earth_A, point.loc);
     }
     if (!(point.t_s > 0)) {
       add(ctx, 'POINT_TIME_INVALID', 'error',

@@ -307,6 +307,17 @@ faults {
 is the residual `3*I0` stated directly. Declare either -- the processor
 derives the other, and errors if you declare both inconsistently.
 
+That check applies wherever the pair can be written: a `fault`, a
+`scenario` level, a `point`, and an annotation's `at_I0` / `at_residual`
+-- and on a fault, at each end of a declared range as well as at its
+centre. Nothing reconciles a contradictory pair, because nothing can:
+`I0` is read from `I0` and `3I0` from `residual`, each preferring the
+figure written for it, so `I0 = 300 A; residual = 450 A` would evaluate
+a `3I0` relay at 450 A and an `I0` relay at 300 A *at the same earth
+fault*. Which of the two figures is the wrong one is not something the
+tool can work out, so it asks. A 1% tolerance keeps a rounded number
+off a fault study from being called a contradiction.
+
 If only `I` is given, `I_min` and `I_max` default to it.
 
 [IMPORTANT]

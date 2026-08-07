@@ -190,6 +190,13 @@ from. The pair is not graded; no other quantity is substituted.
 referred across a voltage ratio, which is not physical. Declare the
 component at the relay's own level.
 
+`SEQUENCE_RESIDUAL_CONFLICT`:: A condition declares both `I0` and
+`residual` and they do not satisfy `residual = 3 * I0` within 1%. One
+of the two figures is wrong and which is not derivable, so the study is
+asked. Reported for a `fault` (at its centre and at each end of a
+declared range), a `scenario`'s `level`, a `point`, and an `annotate`'s
+`at_I0` / `at_residual`.
+
 `MARGIN_FROM_DERIVED_COMPONENT`:: (*Warning*) A component the margin
 rests on was derived from the condition's fault type rather than
 declared. Still a margin, but it rests on an assumed fault shape rather

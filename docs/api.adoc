@@ -172,6 +172,7 @@ Frequently seen codes:
 | `ELEMENT_MIXED_FORMS` | error | Shorthand curve *and* a `stages { }` block
 | `UNRESOLVED_REFERENCE` | error | A `grade`/`combine` names something undeclared
 | `COMBINE_LEVEL_AMBIGUOUS` | error | A `combine` spans two levels and declares no `voltage`
+| `SEQUENCE_RESIDUAL_CONFLICT` | error | `I0` and `residual` declared, and `residual != 3*I0`
 | `MARGIN_BELOW_CTI` | error | `margin_s` below the `CTI_min_s` constraint
 | `SOLVE_WITHOUT_TARGET` | error | A `solve` block with nothing to aim at
 | `SOLVE_SUPERSEDED` | warning | Another grade's constraint set this stage's dial

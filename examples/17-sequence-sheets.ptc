@@ -45,6 +45,14 @@ scenario PHASE_EARTH_AT_THE_TEE {
 
   # I1 = I2 = I0 = If/3 for a solid phase-earth fault; the residual
   # 3*I0 is the whole fault current.
+  #
+  # Writing both `I0` and `residual` states one number twice, and the
+  # tool checks they agree (SEQUENCE_RESIDUAL_CONFLICT). It has to:
+  # `I0` is read from `I0` and `3I0` from `residual`, each preferring
+  # the figure written for it, so a contradictory pair would grade a
+  # 3I0 relay and an I0 relay at the same earth fault against currents
+  # in a ratio the definition forbids. Either figure alone is enough —
+  # both are written here because the fault study quotes both.
   level HV {
     I = 2.4 kA;
     I1 = 800 A;

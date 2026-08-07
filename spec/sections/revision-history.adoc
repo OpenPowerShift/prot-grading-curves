@@ -561,6 +561,40 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-08 | 0.2.0 | *The residual is three times I0, everywhere it
+                              is written.* A condition declaring both
+                              `I0` and `residual` states one number
+                              twice, and the check that they agree
+                              existed for a `scenario`'s `level` and for
+                              nothing else -- so the identical
+                              contradiction inside a `fault`, a `point`
+                              or an `annotate` was taken in silence, and
+                              a `fault` is where a study puts it.
+
+                              Nothing reconciles them: `I0` is read from
+                              `I0` and `3I0` from `residual`, each
+                              preferring the figure written for it. So
+                              `I0 = 300 A; residual = 450 A` graded a
+                              `3I0` relay at 450 A and an `I0` relay at
+                              300 A at the same earth fault -- a ratio
+                              of 1.5 where the definition says 3 --
+                              and reported a margin of 0.563 s where the
+                              consistent figures give 0.710 s.
+
+                              One checker now serves all four sites, and
+                              a `fault`'s declared range is checked at
+                              each end as well as at its centre. A 1%
+                              tolerance keeps a rounded figure off a
+                              fault study from being called a
+                              contradiction. A fault's four components
+                              are also checked for being finite and not
+                              negative, which only its phase figure was.
+
+                              `Fault`, `StudyPoint` and `Annotation`
+                              carry a source location, so these
+                              diagnostics report where they were written
+                              instead of at `1:1`.
+
 | 2026-08-07 | 0.2.0 | *One relay, one dial.* The solver wrote onto
                               the shared stage and recomputed only its
                               own rows, so every report that had already

@@ -371,17 +371,16 @@ makes that the code breaks outranks a promise never made.
 
 ==== Silently wrong answers
 
-One left, found by the 2026-08-07 review agents and [VERIFIED] by
-running the tool. The reproduction is minimal and complete -- paste and
-run `npx tsx src/cli.ts report <file>`. The other two -- `combine`
-having no voltage level, and the solver diverging from the drawing --
-were closed on 2026-08-07; see below.
+None left. All three the 2026-08-07 review found are closed -- `combine`
+having no voltage level, the solver diverging from the drawing, and
+`I0`/`residual` consistency checked in one place out of four. See
+_Closed_ below for what each was and what was done.
 
-. *`I0` / `residual` consistency is checked for a `scenario` level and
-  not for a `fault`.* `validate.ts:529` catches a level whose residual
-  is not three times its `I0`; the same inconsistency inside a `faults`
-  entry is taken silently. One checker should serve both, as the
-  device-table work did.
+This section is for *silently wrong answers*: a number the tool states
+confidently that is not true. It is empty, which is the state to keep
+it in. Everything below is a missing feature, a rough edge, or a
+promise the documentation makes that the code does not keep -- all of
+which outrank nothing and are outranked by anything that would go here.
 
 ===== Closed the same day it was opened
 
@@ -476,6 +475,17 @@ result rather than a refusal.
   where callers append a unit.
 . *PDF is not byte-reproducible*: 64 bytes differ per run (jsPDF
   `/CreationDate` and a random `/ID`). SVG and PNG are byte-identical.
+. *Nothing guards the README's images.* [VERIFIED 2026-08-08]
+  `readme:check` holds each `.Source` block to its example verbatim,
+  and the five `media/*.png` beside them are checked by nothing -- so
+  the picture and the source under it can say different things with the
+  build green. Found by regenerating them: four of five did not match
+  what the renderer now produces from their own example. All are now
+  current, and all are rendered at `--width 1400`, which was the house
+  size the first four were made at and is worth writing down since the
+  CLI's default is 2400. `sync-readme-gallery.mjs` is the obvious place
+  to extend, though a byte-compare of a PNG is a coarse test -- it will
+  fail on any pixel, including deliberate ones.
 
 ==== Documented, and absent
 
@@ -823,6 +833,38 @@ outputs, docs against code -- run against a running build. Every
 finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
+
+* *`I0` / `residual` consistency was checked in one place out of four.*
+  `residual = 3 x I0` is what a residual connection sums, not a
+  convention, so a condition declaring both has written one number
+  twice. The check existed for a `scenario`'s `level` and nowhere else
+  -- so the identical contradiction inside a `fault`, a `point` or an
+  `annotate` was taken in silence, and a `fault` is where a study puts
+  it.
++
+  Nothing reconciles the pair, because nothing can: `currentFor` reads
+  `I0` from `I0` and `3I0` from `residual`, each preferring the figure
+  written for it. So `I0 = 300 A; residual = 450 A` graded a `3I0`
+  relay at 450 A and an `I0` relay at 300 A *at the same earth fault*
+  -- a ratio of 1.5 where the definition says 3 -- and reported a
+  margin of *0.563 s* where the consistent figures give *0.710 s*.
+  Which of the two figures is wrong is not derivable, so the study is
+  asked rather than a precedence rule invented.
++
+  One checker now serves all four sites, and a `fault`'s declared range
+  is checked at each end as well as at its centre, a range being the
+  same claim made twice more. A 1% tolerance keeps a rounded figure off
+  a fault study from being called a contradiction. A fault's four
+  components are also checked for being finite and not negative, which
+  only its phase figure was -- a scenario level has always had all five
+  checked.
++
+  The guide already claimed "errors if you declare both
+  inconsistently". It was true for one of the four.
++
+  `Fault`, `StudyPoint` and `Annotation` now carry a source location.
+  They had none, so every diagnostic about one reported at `1:1` --
+  part of the 21 counted below.
 
 * *The solver moved the model under every report that had already
   run.* `reportGrades` mapped over the grades in source order, and each

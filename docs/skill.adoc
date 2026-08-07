@@ -507,6 +507,10 @@ what they mean when they appear.
                        one demands more. Not an error: one relay has one
                        dial and the larger requirement governs. Report
                        which constraint set it.
+| `SEQUENCE_RESIDUAL_CONFLICT` | You wrote both `I0` and `residual` and
+                                 they disagree; the residual is three
+                                 times `I0`. Copy whichever the report
+                                 gives and delete the other.
 | `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
                                 across a transformer whose windings do
                                 not settle how. Declare the

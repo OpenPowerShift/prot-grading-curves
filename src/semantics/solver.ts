@@ -43,10 +43,22 @@ export interface SolveRequest {
   free: FreeVariable[];
   /** Primary pickup, used to bound a free `I_pu` (IEEE 242 §15.3.2). */
   I_pu_primary_A?: number;
+  /**
+   * Share of `I_f_A` the backup carries, overriding the element's own.
+   *
+   * A `scenario { sees R { share } }` states what this relay takes of
+   * the condition's current, and grading evaluates the backup at it.
+   * The solver has to divide by the same figure or it dials the relay
+   * for a fault it never sees -- on a 50/50 parallel pair, twice the
+   * one being graded.
+   */
+  sharePct?: number;
 }
 
 export interface SolveResult {
   ok: boolean;
+  /** The strategy that produced it, for the report line. */
+  strategy?: SolveStrategy;
   /** The stage the solver adjusted. */
   stage?: Stage;
   /** Computed time multiplier, rounded per `strategy`. */
@@ -65,6 +77,15 @@ export interface SolveResult {
   quantisation_s?: number;
   /** True when the achieved margin sits inside the tolerance band. */
   within_tolerance?: boolean;
+  /**
+   * Set when another grade's constraint on the same stage governed.
+   *
+   * The figures above are then this solve's own answer and *not* the
+   * dial the sheet is drawn at, so the report prints the plain margin
+   * rather than a solved one and leaves the tolerance verdict to the
+   * grade that actually set the dial. `SOLVE_SUPERSEDED` names it.
+   */
+  superseded?: boolean;
   /** Diagnostic code when `ok` is false. */
   code?: 'SOLVER_NO_IDMT_STAGE' | 'SOLVER_UNSATISFIABLE' | 'SOLVER_NO_TARGET';
   message?: string;
@@ -137,7 +158,8 @@ export function solveGrade(req: SolveRequest): SolveResult {
   const target_margin = margin_s * (1 + tolerance_pct / 100);
   const t_b_target = t_primary_s + target_margin;
 
-  const stage = slowestStage(backup, I_f_A);
+  const { sharePct } = req;
+  const stage = slowestStage(backup, I_f_A, sharePct);
   if (!stage) {
     return { ok: false, code: 'SOLVER_NO_IDMT_STAGE', message: 'backup has no evaluable stage' };
   }
@@ -152,7 +174,7 @@ export function solveGrade(req: SolveRequest): SolveResult {
     };
   }
 
-  const bracket = tmsBracket(stage, I_f_A);
+  const bracket = tmsBracket(stage, I_f_A, sharePct);
   if (bracket == null || !(bracket > 0)) {
     return {
       ok: false,
@@ -171,7 +193,7 @@ export function solveGrade(req: SolveRequest): SolveResult {
   if (tms < range.min || tms > range.max) {
     const clamped = Math.min(Math.max(tms, range.min), range.max);
     const atMax = withTms(stage, range.max);
-    const t_at_max = tTripStage(atMax, I_f_A);
+    const t_at_max = tTripStage(atMax, I_f_A, sharePct);
     return {
       ok: false,
       stage,
@@ -210,7 +232,7 @@ export function solveGrade(req: SolveRequest): SolveResult {
       1e-6,
       req.I_pu_primary_A != null ? 1.2 * req.I_pu_primary_A : stage.I_pu_A * 0.5,
     );
-    I_pu_A = solvePickup(stage, tms, t_b_target, I_f_A, floor, stage.I_pu_A);
+    I_pu_A = solvePickup(stage, tms, t_b_target, I_f_A, floor, stage.I_pu_A, sharePct);
   } else if (req.free.includes('I_pickup') && backup.staged) {
     /* Spec _Multi-stage solve_: two free variables on a staged
      * element is deferred to v0.2; `tms` alone still applies. */
@@ -218,7 +240,7 @@ export function solveGrade(req: SolveRequest): SolveResult {
   }
 
   const solved = withTms({ ...stage, I_pu_A }, tms);
-  const t_backup_s = tTripStage(solved, I_f_A);
+  const t_backup_s = tTripStage(solved, I_f_A, sharePct);
   const achieved = t_backup_s - t_primary_s;
 
   /*
@@ -242,6 +264,7 @@ export function solveGrade(req: SolveRequest): SolveResult {
 
   return {
     ok: true,
+    strategy,
     stage,
     tms,
     tms_exact,
@@ -272,9 +295,10 @@ function solvePickup(
   I_f_A: number,
   floor: number,
   start: number,
+  sharePct?: number,
 ): number {
   const f = (I_pu: number): number =>
-    tTripStage(withTms({ ...stage, I_pu_A: I_pu }, tms), I_f_A) - t_target;
+    tTripStage(withTms({ ...stage, I_pu_A: I_pu }, tms), I_f_A, sharePct) - t_target;
 
   const fStart = f(start);
   if (!Number.isFinite(fStart)) return start;

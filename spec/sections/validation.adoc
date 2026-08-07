@@ -161,6 +161,10 @@ semantic error.
 . *A `solve` block on a multi-stage backup whose controlling
   stage is definite-time.* *Warning* (`SOLVER_NO_IDMT_STAGE`);
   the solver falls back to reporting the existing margin.
+. *A `solve` block whose stage is set by another grade's constraint.*
+  *Warning* (`SOLVE_SUPERSEDED`); the governing grade and the value it
+  set are named. One relay has one dial, and the largest requirement
+  satisfies every other -- see _Several grades solving one backup_.
 
 These rules are referenced from the conformance test suite; see
 <<conformance,Conformance>>.

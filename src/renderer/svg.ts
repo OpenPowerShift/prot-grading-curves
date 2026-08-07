@@ -1560,8 +1560,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     side: { element?: Element; device?: Device },
     I: number,
     role: 'primary' | 'backup',
+    /* Share of `I` this side carries under the condition being drawn.
+     * A device has none: a fuse is in the circuit or it is not. */
+    sharePct?: number,
   ): number => {
-    if (side.element) return tTripElement(side.element, I);
+    if (side.element) return tTripElement(side.element, I, sharePct);
     if (!side.device) return Infinity;
     const points = role === 'primary'
       ? side.device.total_clear ?? side.device.flex_points ?? side.device.min_melt
@@ -1720,13 +1723,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * `undefined` where the sheet depicts nothing, or depicts a `fault`
    * (which has no `sees`), leaving the element's own `share` to stand.
    */
-  const sheetShare = (element: Element): number | undefined => {
-    if (!conditionName) return undefined;
-    const scenario = study.scenarios.get(conditionName);
+  /**
+   * The share a relay takes of a named condition's current.
+   *
+   * `scenario { sees R { share } }` states what this relay carries under
+   * *this* condition, and grading evaluates it at exactly that. A margin
+   * annotation naming its own condition has to ask the same question of
+   * the same scenario, or the arrow it draws is not the margin the
+   * report computed: on sample 15's 50/50 parallel pair the annotation
+   * gave the feeder the whole 7.2 kA instead of its 3.6 kA and drew
+   * 752 ms where the report said 425 ms.
+   */
+  const shareUnder = (
+    element: Element | undefined,
+    condition: string | undefined,
+  ): number | undefined => {
+    if (!element || !condition) return undefined;
+    const scenario = study.scenarios.get(condition);
     if (!scenario) return undefined;
     const pct = element.relayId != null ? scenario.shares.get(element.relayId) : undefined;
     return pct != null && Number.isFinite(pct) ? pct : undefined;
   };
+
+  const sheetShare = (element: Element): number | undefined =>
+    shareUnder(element, conditionName);
 
   const pickupPxOf = (
     element: Element,
@@ -3512,6 +3532,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         side: { element?: Element; device?: Device },
         current: number,
         role: 'primary' | 'backup',
+        sharePct?: number,
       ): number[] => {
         const stages = side.element?.stages;
         /*
@@ -3527,20 +3548,29 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * narrows the side before it gets here.
          */
         if (!individual || !stages || stages.length < 2) {
-          const t = sideTime(side, current, role);
+          const t = sideTime(side, current, role, sharePct);
           return Number.isFinite(t) ? [t] : [];
         }
         return stages
-          .map((stage) => tTripStage(stage, current))
+          .map((stage) => tTripStage(stage, current, sharePct))
           .filter((t) => Number.isFinite(t) && t > 0);
       };
 
-      const primaryTimes = stageTimes(primary, I, 'primary');
+      /*
+       * Each side's share of *this annotation's* condition, which is
+       * the same figure `grades.ts` evaluates the pair at. Without it
+       * the arrow measured a margin at a current neither relay carries.
+       */
+      const annCondition = annotation.condition ?? conditionName;
+      const primaryShare = shareUnder(primary.element, annCondition);
+      const backupShare = shareUnder(backup.element, annCondition);
+
+      const primaryTimes = stageTimes(primary, I, 'primary', primaryShare);
       /* A point's own declared time is the far end; there is no curve
        * there to evaluate. */
       const backupTimes = marker != null
         ? (marker.t_s > 0 ? [marker.t_s] : [])
-        : stageTimes(backup, I_backup, 'backup');
+        : stageTimes(backup, I_backup, 'backup', backupShare);
       if (primaryTimes.length === 0 || backupTimes.length === 0) {
         /* One side never operates at this current, so there is no gap
          * between them to draw. */

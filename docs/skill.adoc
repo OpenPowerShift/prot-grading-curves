@@ -503,6 +503,10 @@ what they mean when they appear.
 | `COMBINE_LEVEL_AMBIGUOUS` | A `combine` draws on two voltage levels.
                               Add `voltage = <level>;` to say which bus
                               the envelope is read at.
+| `SOLVE_SUPERSEDED` | Two grades solve the same relay, and the other
+                       one demands more. Not an error: one relay has one
+                       dial and the larger requirement governs. Report
+                       which constraint set it.
 | `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
                                 across a transformer whose windings do
                                 not settle how. Declare the

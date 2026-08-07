@@ -212,11 +212,18 @@ export function tTripStage(stage: Stage, I_total: number, sharePct?: number): nu
  * Returns `undefined` for stages whose time does not scale linearly
  * with `tms` (definite time), which the solver cannot adjust.
  */
-export function tmsBracket(stage: Stage, I_total: number): number | undefined {
+export function tmsBracket(
+  stage: Stage,
+  I_total: number,
+  /* Overrides the stage's own share, exactly as `tTripStage` does: the
+   * solver has to divide by the current the element actually carries,
+   * or it dials the backup for a fault twice the one being graded. */
+  sharePct?: number,
+): number | undefined {
   const producer = stage.producer;
   if (!producer || producer.kind === 'definite') return undefined;
 
-  const I = I_total * (stage.current_pct / 100);
+  const I = I_total * ((sharePct ?? stage.current_pct) / 100);
   if (producer.kind === 'flex') {
     const t = tTripFlex(I, producer.points, 1);
     return Number.isFinite(t) ? t : undefined;

@@ -703,6 +703,54 @@ Multi-stage `free = ["tms", "I_pu"]` is *not* supported in v1
 (deferred to v0.2; requires a two-variable Newton iteration with
 stage-level constraints).
 
+==== Several grades solving one backup
+
+A backup relay has *one* dial, and several `grade` blocks may name it:
+an incomer backing two feeders, or one backup graded under two
+conditions, is the ordinary case rather than an exotic one. Which of
+their answers governs is *not* a matter of source order.
+
+For an IDMT stage
+
+[stem]
+++++
+t = "TMS" xx ["bracket"(M)], quad "bracket"(M) > 0
+++++
+
+and `bracket` does not depend on `TMS`, so operate time is strictly
+increasing in `TMS` at every current. A margin is a *lower* bound on
+the backup's time, so the largest `TMS` any constraint asks for
+satisfies every other. The processor SHALL therefore:
+
+. Solve each `grade` against the *declared* settings, so no solve is
+  computed from another solve's output.
+. For each stage, apply the `ok` result with the largest `tms` -- the
+  *governing* constraint -- together with that same solve's `I_pu`.
+. Report `SOLVE_SUPERSEDED` (*warning*) on every other grade solving
+  that stage, naming the governing grade and the value it set.
+. Recompute *every* grade report against the applied settings, whether
+  or not it declared a `solve`.
+
+The last step is normative and applies study-wide. A solved element is
+frequently another grade's `primary`, and a grade written above a
+`solve` refers to the same model: without recomputation such a report
+describes one curve at its declared dial and the other at its solved
+one, which is a third answer belonging to neither. Recomputation is
+also what allows a governing dial that *breaks* an earlier pair to be
+reported as a failure rather than as two contradictory passes.
+
+`SOLVE_OVERRODE_SETTING` is reported once, by the governing grade, and
+names the value written in the source -- not whatever an earlier solve
+left on the stage.
+
+A `grade` naming a `scenario` solves on the same terms as one naming a
+`fault`. The two differ in what current each side is evaluated at -- a
+scenario states the condition at every level rather than referring one
+across -- and not in whether a relay may be dialled to hold a margin
+open. Where the scenario declares a `sees ... share` for the backup,
+the solver uses that share, being the current the relay actually
+carries.
+
 ==== Interactive curve editing (v0.2, playground)
 
 The playground renders the TCC on a log-log canvas. In v0.2 the

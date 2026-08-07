@@ -829,6 +829,30 @@ legend says `TMS 0.175 (auto, was 0.45)` and the report carries a
 drawing and the settings sheet disagree with nothing saying which
 governs -- and a commissioning engineer sets from the drawing.
 
+*One relay has one dial.* An incomer backing two feeders, or one backup
+graded under two conditions, is the ordinary case -- and both grades
+want a say in the same setting. Which wins is not the order they are
+written in: operate time rises with `tms` at every current and a margin
+is a floor, so the *largest* `tms` any constraint asks for satisfies
+every other. That one is applied; the rest report `SOLVE_SUPERSEDED`
+naming the constraint that governed and the value it set:
+
+----
+[warning] SOLVE_SUPERSEDED: this solve asked for tms 1.050 on R_SRC:51;
+the governing constraint is R_FDR_A:51 / R_SRC:51 at BOTH_CIRCUITS_IN,
+which needs 1.350.
+----
+
+Every grade is then reported against the dial that was applied --
+including grades that solve nothing, and including the case where the
+solved element is another grade's *primary*. So a `solve` that breaks a
+margin reported further up the file shows as a failure rather than as
+two contradictory passes.
+
+A grade naming a `scenario` solves exactly as one naming a `fault`, and
+uses that scenario's `sees ... share` for the backup, being the current
+the relay actually carries.
+
 === combine
 
 A synthetic curve from several sources:

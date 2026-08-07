@@ -66,11 +66,15 @@ export function controllingStage(element: Element, I_total: number): Stage | und
  * (definite time) are only returned when nothing else is available,
  * so the caller can report SOLVER_NO_IDMT_STAGE.
  */
-export function slowestStage(element: Element, I_total: number): Stage | undefined {
+export function slowestStage(
+  element: Element,
+  I_total: number,
+  sharePct?: number,
+): Stage | undefined {
   let best: Stage | undefined;
   let bestT = -Infinity;
   for (const stage of element.stages) {
-    const t = tTripStage(stage, I_total);
+    const t = tTripStage(stage, I_total, sharePct);
     if (!Number.isFinite(t)) continue;
     if (t > bestT) { bestT = t; best = stage; }
   }

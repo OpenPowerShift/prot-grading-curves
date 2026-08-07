@@ -30,7 +30,7 @@ import {
 } from './quantity.js';
 import {
   resolveRef,
-  type Device, type Element, type Fault, type Grade, type Scenario, type Study,
+  type Device, type Element, type Fault, type Grade, type Scenario, type Stage, type Study,
 } from './model.js';
 
 export interface MarginRow {
@@ -433,6 +433,15 @@ function reportScenarioGrade(
    * to multiply, so a 50/50 pair was graded at a quarter of the level
    * current. `validateShares` warns where both are written.
    */
+  /*
+   * Carried on the side, so the solver and the recompute below evaluate
+   * at the same current this row was built from. Without it a solve
+   * under a 50/50 scenario dialled the backup for twice the fault it
+   * was being graded against.
+   */
+  primary.sharePct = atPrimary.sharePct;
+  backup.sharePct = atBackup.sharePct;
+
   const t_p = primary.tAt(I_p, atPrimary.sharePct);
   const t_b = backup.tAt(I_b, atBackup.sharePct);
 
@@ -462,6 +471,24 @@ function reportScenarioGrade(
       message: 'neither side operates under this scenario; no margin could be computed',
     });
   }
+
+  /*
+   * A scenario grade solves too.
+   *
+   * It never did: this function returned before `reportGrade` reached
+   * the solver, so `grade { scenario = ...; solve { ... } }` parsed,
+   * validated, and did nothing at all. Sample 15's own comment said
+   * "`solve` APPLIES the setting it computes" beside a block that
+   * computed nothing -- the tool's documentation contradicting the tool
+   * in the file meant to demonstrate it.
+   *
+   * There is no reason for the two paths to differ. A scenario states
+   * the condition at every level instead of referring one across, which
+   * changes what current each side is evaluated at and nothing about
+   * dialling a relay to hold a margin open.
+   */
+  registerRecompute(report, grade, primary, backup);
+  planSolve(grade, report, report.rows[0], primary, backup, diagnostics);
 
   return report;
 }
@@ -1074,123 +1101,283 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
     });
   }
 
-  /* ---- solver ---------------------------------------------------- */
-
-  if (grade.solve && declaredRow) {
-    if (grade.margin_s == null && grade.CTI_min_s == null) {
-      diagnostics.push({
-        code: 'SOLVE_WITHOUT_TARGET',
-        severity: 'error',
-        message: 'solve block declared with neither margin_target nor margin to aim at',
-      });
-    } else if (!backup.element) {
-      diagnostics.push({
-        code: 'SOLVER_READONLY_DEVICE',
-        severity: 'warning',
-        message: `backup "${backup.ref}" is a device; its published curve is not adjustable`,
-      });
-    } else if (!Number.isFinite(declaredRow.t_primary_s)) {
-      diagnostics.push({
-        code: 'SOLVER_NO_PRIMARY_OPERATION',
-        severity: 'warning',
-        message: `primary ${primary.ref} does not operate at ${declaredRow.I_f_A.toFixed(0)} A; nothing to grade against`,
-      });
-    } else {
-      const primaryStage = primary.element
-        ? controllingStage(primary.element, declaredRow.I_f_A)
-        : undefined;
-
-      /*
-       * The pickup-discrimination floor (IEEE 242 §15.3.2) compares two
-       * pickups, so both have to be in one frame before they can be
-       * compared. Refer the primary's pickup to the backup's level.
-       */
-      const ratioToBackup = declaredRow.I_f_A > 0
-        ? declaredRow.I_backup_A / declaredRow.I_f_A
-        : 1;
-      const I_pu_primary_at_backup = primaryStage?.I_pu_A != null
-        ? primaryStage.I_pu_A * ratioToBackup
-        : undefined;
-
-      const result = solveGrade({
-        backup: backup.element,
-        t_primary_s: declaredRow.t_primary_s,
-        margin_s: grade.margin_s ?? grade.CTI_min_s!,
-        /* The solver works in the backup's own frame. */
-        I_f_A: declaredRow.I_backup_A,
-        strategy: grade.solve.strategy,
-        tolerance_pct: grade.solve.tolerance_pct ?? grade.tolerance_pct,
-        free: grade.solve.free,
-        I_pu_primary_A: I_pu_primary_at_backup,
-      });
-      report.solve = result;
-      if (!result.ok && result.code) {
-        diagnostics.push({
-          code: result.code,
-          severity: result.code === 'SOLVER_NO_IDMT_STAGE' ? 'warning' : 'warning',
-          message: result.message ?? 'solver could not meet the declared target',
-        });
-      }
-      if (result.ok && result.tms != null && result.stage) {
-        /*
-         * The solved value is recorded on the model (not the source
-         * text) so the renderer can label the curve `tms=... (auto)`.
-         */
-        /*
-         * The declared dial is kept, not overwritten. What is drawn is
-         * what is used -- so the solved value governs -- but the figure
-         * in the file has to stay visible, or the drawing and the
-         * settings sheet disagree with nothing saying which is right.
-         */
-        if (result.stage.tms != null && result.stage.tms !== result.tms) {
-          result.stage.tms_declared = result.stage.tms;
-          diagnostics.push({
-            code: 'SOLVE_OVERRODE_SETTING',
-            severity: 'warning',
-            message:
-              `solve replaced the declared tms ${result.stage.tms} on ${backup.ref} with `
-              + `${result.tms.toFixed(3)}; the sheet is drawn at the solved value, so that `
-              + 'is the setting the study asserts',
-          });
-        }
-        result.stage.tms = result.tms;
-        result.stage.tms_auto = true;
-        if (result.I_pu_A != null) result.stage.I_pu_A = result.I_pu_A;
-
-        /* Recompute the rows now that the backup has moved, still in
-         * the backup's own frame. */
-        for (const row of report.rows) {
-          row.t_backup_s = backup.tAt(row.I_backup_A);
-          row.margin_s = row.t_backup_s - row.t_primary_s;
-          row.M_backup = multipleOf(backup, row.I_backup_A);
-          row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
-        }
-        const after = report.rows.filter((r) => Number.isFinite(r.margin_s));
-        if (after.length > 0) {
-          const worst = after.reduce((a, b) => (b.margin_s < a.margin_s ? b : a));
-          report.min_margin_s = worst.margin_s;
-          report.min_margin_at_A = worst.I_f_A;
-          if (grade.CTI_min_s != null) report.pass = worst.margin_s >= grade.CTI_min_s;
-        }
-        report.achieved_margin_s = report.rows.find((r) => r.at === 'I')?.margin_s;
-      }
-    }
-  } else if (grade.margin_s != null && !grade.solve) {
-    diagnostics.push({
-      code: 'MARGIN_NO_SOLVE',
-      severity: 'warning',
-      message:
-        'margin_target is declared without a solve block; it is reported as a target only. ' +
-        'Add solve { ... } to have the tool meet it, or use margin for a constraint',
-    });
-  }
+  registerRecompute(report, grade, primary, backup);
+  planSolve(grade, report, declaredRow, primary, backup, diagnostics);
 
   return report;
 }
 
-/** Margin reports for every `grade` block in the study, in source order. */
+/* ------------------------------------------------------------------ */
+/* Solving                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One grade's solve, computed but *not* applied.
+ *
+ * The solver used to run inside `reportGrade`, writing straight onto
+ * the shared stage and then recomputing only its own rows. Everything
+ * that had already reported was left describing a curve the sheet no
+ * longer drew: with two solves on one backup, grade 1 printed a margin
+ * of 0.313 s where the drawn dial gives 1.436 s. A single solve was
+ * enough to do it -- any plain grade written *above* one reported at
+ * the declared dial while the sheet showed the solved one.
+ *
+ * So nothing is applied here. `reportGrades` collects every plan, picks
+ * the one that governs each stage, applies it once, and then recomputes
+ * every report against the model that was actually drawn.
+ */
+interface SolvePlan {
+  grade: Grade;
+  report: GradeReport;
+  backupRef: string;
+  result: SolveResult;
+}
+
+const solvePlans = new WeakMap<GradeReport, SolvePlan>();
+
+function planSolve(
+  grade: Grade,
+  report: GradeReport,
+  declaredRow: MarginRow | undefined,
+  primary: Side,
+  backup: Side,
+  diagnostics: GradeReport['diagnostics'],
+): void {
+  if (!grade.solve) {
+    if (grade.margin_s != null) {
+      diagnostics.push({
+        code: 'MARGIN_NO_SOLVE',
+        severity: 'warning',
+        message:
+          'margin_target is declared without a solve block; it is reported as a target only. ' +
+          'Add solve { ... } to have the tool meet it, or use margin for a constraint',
+      });
+    }
+    return;
+  }
+  if (!declaredRow) return;
+
+  if (grade.margin_s == null && grade.CTI_min_s == null) {
+    diagnostics.push({
+      code: 'SOLVE_WITHOUT_TARGET',
+      severity: 'error',
+      message: 'solve block declared with neither margin_target nor margin to aim at',
+    });
+    return;
+  }
+  if (!backup.element) {
+    diagnostics.push({
+      code: 'SOLVER_READONLY_DEVICE',
+      severity: 'warning',
+      message: `backup "${backup.ref}" is a device; its published curve is not adjustable`,
+    });
+    return;
+  }
+  if (!Number.isFinite(declaredRow.t_primary_s)) {
+    diagnostics.push({
+      code: 'SOLVER_NO_PRIMARY_OPERATION',
+      severity: 'warning',
+      message: `primary ${primary.ref} does not operate at ${declaredRow.I_f_A.toFixed(0)} A; nothing to grade against`,
+    });
+    return;
+  }
+
+  const primaryStage = primary.element
+    ? controllingStage(primary.element, declaredRow.I_f_A)
+    : undefined;
+
+  /*
+   * The pickup-discrimination floor (IEEE 242 §15.3.2) compares two
+   * pickups, so both have to be in one frame before they can be
+   * compared. Refer the primary's pickup to the backup's level.
+   */
+  const ratioToBackup = declaredRow.I_f_A > 0
+    ? declaredRow.I_backup_A / declaredRow.I_f_A
+    : 1;
+  const I_pu_primary_at_backup = primaryStage?.I_pu_A != null
+    ? primaryStage.I_pu_A * ratioToBackup
+    : undefined;
+
+  const result = solveGrade({
+    backup: backup.element,
+    t_primary_s: declaredRow.t_primary_s,
+    margin_s: grade.margin_s ?? grade.CTI_min_s!,
+    /* The solver works in the backup's own frame. */
+    I_f_A: declaredRow.I_backup_A,
+    strategy: grade.solve.strategy,
+    tolerance_pct: grade.solve.tolerance_pct ?? grade.tolerance_pct,
+    free: grade.solve.free,
+    I_pu_primary_A: I_pu_primary_at_backup,
+    /* The share grading used, so the dial is computed for the current
+     * the relay actually carries. */
+    sharePct: backup.sharePct,
+  });
+  report.solve = result;
+
+  if (!result.ok && result.code) {
+    diagnostics.push({
+      code: result.code,
+      severity: 'warning',
+      message: result.message ?? 'solver could not meet the declared target',
+    });
+    return;
+  }
+  if (result.ok && result.tms != null && result.stage) {
+    solvePlans.set(report, { grade, report, backupRef: backup.ref, result });
+  }
+}
+
+/**
+ * Apply the solves, then re-report every grade against what was
+ * applied.
+ *
+ * A backup relay has one dial, and several grades may name it: an
+ * incomer backing two feeders is the ordinary case, not an exotic one.
+ * Which of their answers governs is not a matter of source order.
+ *
+ * `t = TMS x bracket(M)` with `bracket > 0` and independent of `TMS`,
+ * so operate time is strictly increasing in `TMS` at every current. A
+ * margin is a *lower* bound on the backup's time, so the largest `TMS`
+ * any constraint asks for satisfies all of them -- which is also what
+ * an engineer does by hand: the governing pair sets the dial.
+ *
+ * Then every report is recomputed. Not only the ones that solved: a
+ * solved element may be another grade's *primary*, and a dial raised to
+ * satisfy one pair can break a pair reported earlier. Recomputing is
+ * what turns that from two contradictory PASSes into a FAIL somebody
+ * can act on.
+ */
 export function reportGrades(study: Study): GradeReport[] {
-  return study.grades.map((g) => reportGrade(study, g));
+  const reports = study.grades.map((g) => reportGrade(study, g));
+
+  /* Pass 2 -- one dial per stage, chosen by what it has to satisfy. */
+  const byStage = new Map<Stage, SolvePlan[]>();
+  for (const report of reports) {
+    const plan = solvePlans.get(report);
+    if (!plan?.result.stage) continue;
+    const list = byStage.get(plan.result.stage);
+    if (list) list.push(plan); else byStage.set(plan.result.stage, [plan]);
+  }
+
+  for (const [stage, plans] of byStage) {
+    const governing = plans.reduce((a, b) =>
+      (b.result.tms ?? -Infinity) > (a.result.tms ?? -Infinity) ? b : a);
+    applySolve(stage, governing);
+    for (const plan of plans) {
+      if (plan !== governing) noteSuperseded(plan, governing);
+    }
+  }
+
+  /* Pass 3 -- every report against the model the sheet is drawn from. */
+  if (byStage.size > 0) {
+    for (const report of reports) recomputers.get(report)?.();
+  }
+
+  return reports;
+}
+
+/** Write the governing dial onto the stage, keeping the file's value. */
+function applySolve(stage: Stage, plan: SolvePlan): void {
+  const { result } = plan;
+  /*
+   * The declared dial is kept, not overwritten. What is drawn is what
+   * is used -- so the solved value governs -- but the figure in the
+   * file has to stay visible, or the drawing and the settings sheet
+   * disagree with nothing saying which is right.
+   *
+   * Read before any solve is applied, so it is the study's own number
+   * rather than whatever a previous solve happened to leave here.
+   */
+  if (stage.tms != null && stage.tms !== result.tms) {
+    stage.tms_declared = stage.tms;
+    plan.report.diagnostics.push({
+      code: 'SOLVE_OVERRODE_SETTING',
+      severity: 'warning',
+      message:
+        `solve replaced the declared tms ${stage.tms} on ${plan.backupRef} with `
+        + `${result.tms!.toFixed(3)}; the sheet is drawn at the solved value, so that `
+        + 'is the setting the study asserts',
+    });
+  }
+  stage.tms = result.tms;
+  stage.tms_auto = true;
+  if (result.I_pu_A != null) stage.I_pu_A = result.I_pu_A;
+}
+
+/** Say that another grade's constraint set this dial, and which. */
+function noteSuperseded(plan: SolvePlan, governing: SolvePlan): void {
+  plan.result.superseded = true;
+
+  const differs: string[] = [];
+  if (plan.grade.solve!.strategy !== governing.grade.solve!.strategy) {
+    differs.push(`strategy ${plan.grade.solve!.strategy} vs `
+      + `${governing.grade.solve!.strategy}`);
+  }
+  const free = (g: Grade): string => (g.solve!.free ?? []).join('+');
+  if (free(plan.grade) !== free(governing.grade)) {
+    differs.push(`free [${free(plan.grade)}] vs [${free(governing.grade)}]`);
+  }
+
+  plan.report.diagnostics.push({
+    code: 'SOLVE_SUPERSEDED',
+    severity: 'warning',
+    message:
+      `this solve asked for tms ${plan.result.tms!.toFixed(3)} on ${plan.backupRef}; the `
+      + `governing constraint is ${governing.report.primaryRef} / ${governing.backupRef}`
+      + `${governing.report.fault ? ` at ${governing.report.fault}` : ''}, which needs `
+      + `${governing.result.tms!.toFixed(3)}. One relay has one dial, and the largest `
+      + 'requirement satisfies every other, so that is what the sheet is drawn at'
+      + (differs.length > 0
+        ? `. The two solve blocks also differ: ${differs.join('; ')}`
+        : ''),
+  });
+}
+
+/**
+ * How to re-evaluate a report once the solves have been applied.
+ *
+ * Registered by whichever path built the rows, so it closes over that
+ * path's own sides and shares rather than trying to re-derive them --
+ * a scenario's `sees ... share` is resolved against the condition, and
+ * rediscovering it here would be the same figure computed twice by two
+ * routes, which is how the two disagree.
+ */
+const recomputers = new WeakMap<GradeReport, () => void>();
+
+/**
+ * Re-evaluate a report's rows against the current model.
+ *
+ * Both sides, not just the backup: a solved element is often another
+ * grade's primary, and a report describing one curve at its declared
+ * dial and the other at its solved one is a third answer belonging to
+ * neither.
+ */
+function registerRecompute(
+  report: GradeReport,
+  grade: Grade,
+  primary: Side,
+  backup: Side,
+): void {
+  recomputers.set(report, () => {
+    for (const row of report.rows) {
+      row.t_primary_s = primary.tAt(row.I_f_A, primary.sharePct);
+      row.t_backup_s = backup.tAt(row.I_backup_A, backup.sharePct);
+      row.margin_s = row.t_backup_s - row.t_primary_s;
+      row.M_primary = multipleOf(primary, row.I_f_A, primary.sharePct);
+      row.M_backup = multipleOf(backup, row.I_backup_A, backup.sharePct);
+      row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
+    }
+
+    report.achieved_margin_s = report.rows.find((r) => r.at === 'I')?.margin_s;
+
+    const finite = report.rows.filter((r) => Number.isFinite(r.margin_s));
+    if (finite.length > 0) {
+      const worst = finite.reduce((a, b) => (b.margin_s < a.margin_s ? b : a));
+      report.min_margin_s = worst.margin_s;
+      report.min_margin_at_A = worst.I_f_A;
+      if (grade.CTI_min_s != null) report.pass = worst.margin_s >= grade.CTI_min_s;
+    }
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -1258,12 +1445,22 @@ export function formatGradeReport(report: GradeReport): string {
     const mB = declared.M_backup != null ? `        (M = ${declared.M_backup.toFixed(2)})` : '';
     out.push(`    t_primary       = ${s3(declared.t_primary_s)} s${mP}`);
 
-    const solve = report.solve;
+    /*
+     * A superseded solve prints as a plain margin.
+     *
+     * Its `tms` is what *it* asked for, while `t_backup_s` has been
+     * recomputed at the dial that governs -- so showing them on one
+     * line would pair a time with a multiplier that did not produce it.
+     */
+    const solve = report.solve?.superseded ? undefined : report.solve;
     if (solve?.ok && solve.tms != null) {
       const tol = report.tolerance_pct ?? 0;
       out.push(
         `    t_backup_auto   = ${s3(declared.t_backup_s)} s        ` +
-        `(TMS_b = ${solve.tms.toFixed(3)}  auto, tight, tol ${tol}%)`,
+        /* The strategy the solver actually ran, not the word "tight"
+         * hardcoded here: a study declaring `loose` was told its dial
+         * had been snapped by a rule it never asked for. */
+        `(TMS_b = ${solve.tms.toFixed(3)}  auto, ${solve.strategy ?? 'tight'}, tol ${tol}%)`,
       );
     } else {
       out.push(`    t_backup        = ${s3(declared.t_backup_s)} s${mB}`);
@@ -1276,8 +1473,8 @@ export function formatGradeReport(report: GradeReport): string {
      * conflating them made a passing point read as a failure.
      */
     const verdict =
-      report.solve?.ok
-        ? report.solve.within_tolerance
+      solve?.ok
+        ? solve.within_tolerance
           ? `-- within tolerance (${(report.tolerance_pct ?? 0).toFixed(1)} %)`
           : '-- outside tolerance'
         : declared.pass == null

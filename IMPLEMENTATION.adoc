@@ -371,19 +371,11 @@ makes that the code breaks outranks a promise never made.
 
 ==== Silently wrong answers
 
-Two left, both found by the 2026-08-07 review agents and both
-[VERIFIED] by running the tool. Reproductions are minimal and complete
--- paste and run `npx tsx src/cli.ts report <file>`. The third,
-`combine` having no voltage level, was closed on 2026-08-07; see below.
-
-. *Two `solve` blocks naming one backup diverge from the drawing.* The
-  solver mutates the shared model and only recomputes its own rows, so
-  the first grade asserts a TMS the sheet is not drawn at. Reported:
-  grade 1 states TMS 0.170 / margin 0.306 s while the sheet is drawn at
-  0.575 (true margin 1.509 s), and the legend's `(auto, was 0.17)`
-  names the *first solver's output* rather than the declared 0.45.
-  Either the second solve is refused, or every report is recomputed
-  after all solving is done.
+One left, found by the 2026-08-07 review agents and [VERIFIED] by
+running the tool. The reproduction is minimal and complete -- paste and
+run `npx tsx src/cli.ts report <file>`. The other two -- `combine`
+having no voltage level, and the solver diverging from the drawing --
+were closed on 2026-08-07; see below.
 
 . *`I0` / `residual` consistency is checked for a `scenario` level and
   not for a `fault`.* `validate.ts:529` catches a level whose residual
@@ -831,6 +823,54 @@ outputs, docs against code -- run against a running build. Every
 finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
+
+* *The solver moved the model under every report that had already
+  run.* `reportGrades` mapped over the grades in source order, and each
+  one wrote its answer straight onto the shared stage and then
+  recomputed only its own rows. With two solves on one backup, grade 1
+  printed a margin of *0.313 s* where the applied dial gives *1.436 s*
+  -- 4.6x apart on one page.
++
+  Broader than the review recorded: one solve was enough. A plain grade
+  written *above* a single `solve` reported 2.011 s at the declared
+  dial while the sheet was drawn at the solved one (1.436 s), and a
+  grade whose *primary* is the solved element was stale in the same
+  way. Both grades reported PASS, so `check` exited 0 on a study whose
+  own solve destroyed a margin it had just reported as passing.
++
+  Now three passes. Every grade is solved against the *declared*
+  settings, so no solve is computed from another's output. Per stage,
+  the governing constraint is applied -- the largest `tms`, which is
+  forced rather than chosen: `t = TMS x bracket(M)` with `bracket > 0`
+  and independent of `TMS`, so operate time rises with the dial at
+  every current, and a margin being a floor means the largest
+  requirement satisfies every other. That is also what an engineer
+  picks by hand. The rest report `SOLVE_SUPERSEDED` naming the grade
+  that governed. Then every report is recomputed against what was
+  applied, both sides, whether or not it declared a `solve` -- which is
+  what turns the contradiction above into a `FAIL` and exit 3.
+
+* *A `grade` naming a `scenario` never solved at all.*
+  `reportScenarioGrade` returned before `reportGrade` reached the
+  solver, so the block parsed, validated, and did nothing. Sample 15
+  shipped the comment "`solve` APPLIES the setting it computes" beside
+  a block that computed nothing -- the documentation contradicting the
+  tool in the file written to demonstrate it. Both paths now solve on
+  the same terms, and the solver takes the scenario's `sees ... share`
+  so the dial is computed for the current the relay carries rather than
+  for the whole level current.
+
+* *A margin annotation ignored the condition's share.* Found while
+  fixing the above, and pre-existing. `annotate { primary; backup;
+  scenario }` evaluated both sides at the level current, so on sample
+  15's 50/50 parallel pair the arrow read *752 ms* beside a report
+  saying *425 ms*. Fixed at the same place `sheetShare` already
+  answered the question -- generalised to any named condition -- and
+  the two now agree exactly.
+
+* *The report line had `tight` written into it*, so a study declaring
+  `strategy = loose` was told its dial had been snapped by a rule it
+  never asked for. It names the strategy the solver ran.
 
 * *`combine` had no concept of a voltage level.* `sourceTimes` handed
   every source the same `I_total`, which is right only while they all

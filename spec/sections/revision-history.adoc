@@ -561,6 +561,48 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-07 | 0.2.0 | *One relay, one dial.* The solver wrote onto
+                              the shared stage and recomputed only its
+                              own rows, so every report that had already
+                              run was left describing a curve the sheet
+                              no longer drew. With two solves on one
+                              backup, grade 1 printed a margin of
+                              0.313 s where the applied dial gives
+                              1.436 s. One solve was enough: a plain
+                              grade written *above* one reported at the
+                              declared dial while the sheet showed the
+                              solved one.
+
+                              Which answer governs is now settled by
+                              what the constraints demand rather than by
+                              source order. Operate time rises with
+                              `tms` at every current and a margin is a
+                              floor, so the largest `tms` any constraint
+                              asks for satisfies all of them; that one
+                              is applied, and the rest report
+                              `SOLVE_SUPERSEDED` naming it. Every grade
+                              report is then recomputed against what was
+                              applied -- including grades that solve
+                              nothing, and including the case where the
+                              solved element is another grade's
+                              *primary*. A governing dial that breaks an
+                              earlier pair is now a failure rather than
+                              two contradictory passes.
+
+                              A `grade` naming a `scenario` solves on
+                              the same terms as one naming a `fault`.
+                              It previously did not solve at all: the
+                              scenario path returned before the solver
+                              ran, so the block parsed, validated and
+                              did nothing. Where the scenario declares a
+                              `sees ... share` for the backup, the
+                              solver uses it, being the current the
+                              relay actually carries. Margin
+                              annotations apply the same share, having
+                              measured against the whole level current
+                              and captioned a margin 77% wide of the
+                              report printed beside it.
+
 | 2026-08-07 | 0.2.0 | *A combine is read at a bus.* `combine` folds
                               several curves into one and evaluates them
                               at a single current, which is right only

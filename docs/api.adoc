@@ -174,6 +174,7 @@ Frequently seen codes:
 | `COMBINE_LEVEL_AMBIGUOUS` | error | A `combine` spans two levels and declares no `voltage`
 | `MARGIN_BELOW_CTI` | error | `margin_s` below the `CTI_min_s` constraint
 | `SOLVE_WITHOUT_TARGET` | error | A `solve` block with nothing to aim at
+| `SOLVE_SUPERSEDED` | warning | Another grade's constraint set this stage's dial
 | `MARGIN_NO_SOLVE` | warning | `margin_s` declared but never acted on
 | `FAULT_OPTIONAL_NO_GRADE_CHECK` | warning | `grade` with no `fault`
 | `SOLVER_NO_IDMT_STAGE` | warning | Controlling stage is definite-time

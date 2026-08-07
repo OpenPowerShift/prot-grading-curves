@@ -111,15 +111,15 @@ domain-t 0.02,100
 [faults] line 798.7,66.0..798.7,745.0 class=tc-fault data-fault=One circuit out
 [curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
 [curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
-[curves] path n=124 bbox=476.5,15.2..1056.0,393.4 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
+[curves] path n=124 bbox=476.5,46.5..1056.0,424.7 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
 [curves] path n=114 bbox=524.0,-129.4..1056.0,397.3 class=tc-curve data-curve=Bus zone backup · Reverse-looking TOC data-ref=R_BUS:51 data-voltage=HV
-[annotations] line 818.3,430.1..818.3,355.3
+[annotations] line 818.3,408.2..818.3,386.7
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
-[annotations] line 812.3,430.1..824.3,430.1
-[annotations] line 812.3,355.3..824.3,355.3
-[annotations] path n=2 bbox=818.3,392.7..828.3,442.9
-[annotations] text 828.3,445.2 text-anchor=start font-size=11 font-weight=600 "CTI, both in 1.61 s"
+[annotations] line 812.3,408.2..824.3,408.2
+[annotations] line 812.3,386.7..824.3,386.7
+[annotations] path n=2 bbox=818.3,397.5..828.3,447.7
+[annotations] text 828.3,450.0 text-anchor=start font-size=11 font-weight=600 "CTI, both in 425 ms"
 [fault-band] line 782.3,745.0..782.3,770.0 class=tc-fault
 [fault-band] text 784.3,779.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Load end 2phE · 5.8 kA"
 [fault-band] line 793.4,745.0..793.4,784.0 class=tc-fault
@@ -144,30 +144,31 @@ domain-t 0.02,100
 [legend] rect 1090.0,232.0 26.0x10.0
 [legend] text 1126.0,241.0 class=tc-legend font-size=12 font-weight=600 "Source incomer · Phase TOC"
 [legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "ABB REF615"
-[legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ANSI MI · 900 A (5.625 A sec) · TMS 2"
-[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "33 kV"
-[legend] rect 1090.0,303.0 26.0x10.0
-[legend] text 1126.0,312.0 class=tc-legend font-size=12 font-weight=600 "Bus zone backup · Reverse-looking"
-[legend] text 1126.0,328.0 class=tc-legend font-size=12 font-weight=600 "TOC"
-[legend] text 1126.0,344.0 class=tc-legend-muted font-size=11 "ANSI VI · 1.2 kA (7.5 A sec) · TMS 3"
-[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "33 kV"
-[legend] text 1090.0,397.0 font-size=13 font-weight=600 "Conditions"
-[legend] line 1090.0,413.0..1116.0,413.0
-[legend] text 1126.0,417.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · 33 kV"
-[legend] line 1090.0,439.0..1116.0,439.0
-[legend] text 1126.0,443.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · 33 kV"
-[legend] line 1090.0,465.0..1116.0,465.0
-[legend] text 1126.0,469.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · 33 kV"
-[legend] line 1090.0,491.0..1116.0,491.0
-[legend] text 1126.0,495.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · 33 kV"
-[legend] text 1126.0,511.0 class=tc-legend-muted font-size=10 "scenario"
-[legend] text 1126.0,524.0 class=tc-legend-muted font-size=10 "Normal running, both feeders closed"
-[legend] line 1090.0,543.0..1116.0,543.0
-[legend] text 1126.0,547.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · 33 kV"
-[legend] text 1126.0,563.0 class=tc-legend-muted font-size=10 "scenario"
-[legend] text 1126.0,576.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
-[legend] text 1090.0,609.0 class=tc-legend font-size=13 font-weight=600 "Notes"
-[legend] text 1090.0,629.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for Both circuits in (three-phase)"
+[legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ANSI MI · 900 A (5.625 A sec) · TMS"
+[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "1.35 (auto, was 2)"
+[legend] text 1126.0,302.0 class=tc-legend-muted font-size=11 "33 kV"
+[legend] rect 1090.0,318.0 26.0x10.0
+[legend] text 1126.0,327.0 class=tc-legend font-size=12 font-weight=600 "Bus zone backup · Reverse-looking"
+[legend] text 1126.0,343.0 class=tc-legend font-size=12 font-weight=600 "TOC"
+[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "ANSI VI · 1.2 kA (7.5 A sec) · TMS 3"
+[legend] text 1126.0,374.0 class=tc-legend-muted font-size=11 "33 kV"
+[legend] text 1090.0,412.0 font-size=13 font-weight=600 "Conditions"
+[legend] line 1090.0,428.0..1116.0,428.0
+[legend] text 1126.0,432.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · 33 kV"
+[legend] line 1090.0,454.0..1116.0,454.0
+[legend] text 1126.0,458.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · 33 kV"
+[legend] line 1090.0,480.0..1116.0,480.0
+[legend] text 1126.0,484.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · 33 kV"
+[legend] line 1090.0,506.0..1116.0,506.0
+[legend] text 1126.0,510.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · 33 kV"
+[legend] text 1126.0,526.0 class=tc-legend-muted font-size=10 "scenario"
+[legend] text 1126.0,539.0 class=tc-legend-muted font-size=10 "Normal running, both feeders closed"
+[legend] line 1090.0,558.0..1116.0,558.0
+[legend] text 1126.0,562.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · 33 kV"
+[legend] text 1126.0,578.0 class=tc-legend-muted font-size=10 "scenario"
+[legend] text 1126.0,591.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
+[legend] text 1090.0,624.0 class=tc-legend font-size=13 font-weight=600 "Notes"
+[legend] text 1090.0,644.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for Both circuits in (three-phase)"
 
 === sheet: Multiples of pickup ===
 viewBox 0 0 1400 960
@@ -282,15 +283,15 @@ domain-t 0.02,100
 [faults] line 798.7,66.0..798.7,745.0 class=tc-fault data-fault=One circuit out
 [curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
 [curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
-[curves] path n=124 bbox=476.5,15.2..1056.0,393.4 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
+[curves] path n=124 bbox=476.5,46.5..1056.0,424.7 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
 [curves] path n=114 bbox=524.0,-129.4..1056.0,397.3 class=tc-curve data-curve=Bus zone backup · Reverse-looking TOC data-ref=R_BUS:51 data-voltage=HV
-[annotations] line 818.3,430.1..818.3,355.3
+[annotations] line 818.3,408.2..818.3,386.7
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
-[annotations] line 812.3,430.1..824.3,430.1
-[annotations] line 812.3,355.3..824.3,355.3
-[annotations] path n=2 bbox=818.3,392.7..828.3,409.4
-[annotations] text 828.3,411.7 text-anchor=start font-size=11 font-weight=600 "CTI, both in 1.61 s"
+[annotations] line 812.3,408.2..824.3,408.2
+[annotations] line 812.3,386.7..824.3,386.7
+[annotations] path n=2 bbox=818.3,330.5..828.3,397.5
+[annotations] text 828.3,332.7 text-anchor=start font-size=11 font-weight=600 "CTI, both in 425 ms"
 [fault-band] line 782.3,745.0..782.3,770.0 class=tc-fault
 [fault-band] text 784.3,779.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Load end 2phE · 5.8 kA"
 [fault-band] line 793.4,745.0..793.4,784.0 class=tc-fault
@@ -315,27 +316,28 @@ domain-t 0.02,100
 [legend] rect 1090.0,232.0 26.0x10.0
 [legend] text 1126.0,241.0 class=tc-legend font-size=12 font-weight=600 "Source incomer · Phase TOC"
 [legend] text 1126.0,257.0 class=tc-legend-muted font-size=11 "ABB REF615"
-[legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ANSI MI · 900 A (5.625 A sec) · TMS 2"
-[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "33 kV"
-[legend] rect 1090.0,303.0 26.0x10.0
-[legend] text 1126.0,312.0 class=tc-legend font-size=12 font-weight=600 "Bus zone backup · Reverse-looking"
-[legend] text 1126.0,328.0 class=tc-legend font-size=12 font-weight=600 "TOC"
-[legend] text 1126.0,344.0 class=tc-legend-muted font-size=11 "ANSI VI · 1.2 kA (7.5 A sec) · TMS 3"
-[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "33 kV"
-[legend] text 1090.0,397.0 font-size=13 font-weight=600 "Conditions"
-[legend] line 1090.0,413.0..1116.0,413.0
-[legend] text 1126.0,417.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · 33 kV"
-[legend] line 1090.0,439.0..1116.0,439.0
-[legend] text 1126.0,443.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · 33 kV"
-[legend] line 1090.0,465.0..1116.0,465.0
-[legend] text 1126.0,469.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · 33 kV"
-[legend] line 1090.0,491.0..1116.0,491.0
-[legend] text 1126.0,495.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · 33 kV"
-[legend] text 1126.0,511.0 class=tc-legend-muted font-size=10 "scenario"
-[legend] text 1126.0,524.0 class=tc-legend-muted font-size=10 "Normal running, both feeders closed"
-[legend] line 1090.0,543.0..1116.0,543.0
-[legend] text 1126.0,547.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · 33 kV"
-[legend] text 1126.0,563.0 class=tc-legend-muted font-size=10 "scenario"
-[legend] text 1126.0,576.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
-[legend] text 1090.0,609.0 class=tc-legend font-size=13 font-weight=600 "Notes"
-[legend] text 1090.0,629.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for One circuit out (three-phase)"
+[legend] text 1126.0,272.0 class=tc-legend-muted font-size=11 "ANSI MI · 900 A (5.625 A sec) · TMS"
+[legend] text 1126.0,287.0 class=tc-legend-muted font-size=11 "1.35 (auto, was 2)"
+[legend] text 1126.0,302.0 class=tc-legend-muted font-size=11 "33 kV"
+[legend] rect 1090.0,318.0 26.0x10.0
+[legend] text 1126.0,327.0 class=tc-legend font-size=12 font-weight=600 "Bus zone backup · Reverse-looking"
+[legend] text 1126.0,343.0 class=tc-legend font-size=12 font-weight=600 "TOC"
+[legend] text 1126.0,359.0 class=tc-legend-muted font-size=11 "ANSI VI · 1.2 kA (7.5 A sec) · TMS 3"
+[legend] text 1126.0,374.0 class=tc-legend-muted font-size=11 "33 kV"
+[legend] text 1090.0,412.0 font-size=13 font-weight=600 "Conditions"
+[legend] line 1090.0,428.0..1116.0,428.0
+[legend] text 1126.0,432.0 class=tc-legend font-size=11 "Load end 2phE · 5.8 kA · 33 kV"
+[legend] line 1090.0,454.0..1116.0,454.0
+[legend] text 1126.0,458.0 class=tc-legend font-size=11 "Load end 2ph · 6.2 kA · 33 kV"
+[legend] line 1090.0,480.0..1116.0,480.0
+[legend] text 1126.0,484.0 class=tc-legend font-size=11 "Load end 3ph · 7.2 kA · 33 kV"
+[legend] line 1090.0,506.0..1116.0,506.0
+[legend] text 1126.0,510.0 class=tc-legend font-size=11 "Both circuits in · 7.2 kA · 33 kV"
+[legend] text 1126.0,526.0 class=tc-legend-muted font-size=10 "scenario"
+[legend] text 1126.0,539.0 class=tc-legend-muted font-size=10 "Normal running, both feeders closed"
+[legend] line 1090.0,558.0..1116.0,558.0
+[legend] text 1126.0,562.0 class=tc-legend font-size=11 "One circuit out · 6.4 kA · 33 kV"
+[legend] text 1126.0,578.0 class=tc-legend-muted font-size=10 "scenario"
+[legend] text 1126.0,591.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
+[legend] text 1090.0,624.0 class=tc-legend font-size=13 font-weight=600 "Notes"
+[legend] text 1090.0,644.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for One circuit out (three-phase)"

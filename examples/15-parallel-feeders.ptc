@@ -239,12 +239,30 @@ grade {
   }
 }
 
+# The same relay, the same dial, a second condition to satisfy.
+#
+# R_SRC has ONE time multiplier and both of these grades want a say in
+# it. Which one wins is not a matter of which is written first: operate
+# time rises with tms at every current, and a margin is a floor, so the
+# LARGEST tms any condition asks for satisfies all of them. That is the
+# governing constraint, and it is what an engineer picks by hand.
+#
+# Here "both circuits in" needs 1.350 and this one needs less, so this
+# solve is reported as SOLVE_SUPERSEDED — naming the condition that
+# governs and the dial it set. Both grades are then reported against
+# that dial, which is the one drawn.
 grade {
   primary = R_FDR_A:51;
   backup = R_SRC:51;
   scenario = ONE_CIRCUIT_OUT;
   margin = 0.35 s;
   comment = "worst case for A: it now carries everything";
+
+  solve {
+    strategy = loose;
+    free = [tms];
+    comment = "the same dial, asked for by the other condition too";
+  }
 }
 
 annotate {

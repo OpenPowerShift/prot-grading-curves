@@ -59,7 +59,7 @@ import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, typ
 import { tTripStage } from '../semantics/curves.js';
 import { cutoffOf, tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
-import { transformerReferral } from '../semantics/xvoltage.js';
+import { faultCurrentAt, transformerReferral } from '../semantics/xvoltage.js';
 import { tTripFlex } from '../semantics/curves.js';
 
 /* ------------------------------------------------------------------ */
@@ -854,8 +854,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * table. It has to: a rule drawn at one current beside a margin
          * computed at another is two answers to one question.
          */
+        /*
+         * Only where this sheet is *drawn for* this fault.
+         *
+         * The shape factor is a property of a condition, not of a
+         * transformer: it says how one fault's phase currents
+         * redistribute. Applied to a rule on a sheet that depicts
+         * something else, it puts the rule in a frame none of the
+         * curves are in -- and a curve is placed by ampere-turns,
+         * which is a *uniform* map and therefore preserves every
+         * multiple on the sheet. Scaling one mark and not the others
+         * is what broke that: the rule stood 15.5% right of where the
+         * curves' own frame put it, so a multiple read off the sheet
+         * came out 6.30 where the truth was 5.45.
+         *
+         * With a condition named, `conditionPlacement` carries the
+         * same factor onto the cross-level curves, and the two agree.
+         */
         let shapeFactor = 1;
-        if (differentLevel && viewQuantity === 'phase') {
+        if (differentLevel && viewQuantity === 'phase' && conditionName === (f.id ?? f.name)) {
           const referral = transformerReferral(
             study, isFaultType(f.type) ? f.type : undefined, f.voltage, viewLevelName,
           );
@@ -1777,6 +1794,34 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     const own = resolveCondition(study, conditionName, element.voltage);
     const sheet = resolveCondition(study, conditionName, viewLevelName);
+
+    /*
+     * A `fault` states one current at one level, so it never answers
+     * for both -- which left every fault-conditioned sheet placing its
+     * curves by the plain turns ratio while the rule for the same
+     * fault carried the shape factor. The windings settle the
+     * difference now, so ask them, and place the curve on exactly the
+     * factor the rule used.
+     */
+    if (own?.kind === 'fault' && measures === 'phase' && onAxis === 'phase') {
+      /*
+       * The same two questions the scenario branch asks -- what is
+       * this condition's current at the element's level, and at the
+       * sheet's -- answered through `faultCurrentAt`, which is the
+       * path the *rule* and the *report* both take. Asking it here is
+       * what keeps all three saying one number.
+       */
+      const fault = study.faults.get(conditionName);
+      if (!fault) return null;
+      const there = faultCurrentAt(study, fault, element.voltage);
+      const here = faultCurrentAt(study, fault, viewLevelName);
+      /* A referral the windings do not settle: the caller falls back
+       * to the turns ratio and notes the caveat, as it always did. */
+      if (there.referralIssue || here.referralIssue) return null;
+      if (!(there.I_A > 0) || !(here.I_A > 0)) return null;
+      return there.I_A / here.I_A;
+    }
+
     /* `voltage` comes back undefined when the condition says nothing at
      * the level asked for, which is the case this must not guess at. */
     if (own?.voltage !== element.voltage || sheet?.voltage !== viewLevelName) return null;

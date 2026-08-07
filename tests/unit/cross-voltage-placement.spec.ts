@@ -150,7 +150,14 @@ describe('a condition that does not declare both levels', () => {
 
   it('stays quiet on a balanced condition, where the ratio is right', () => {
     const balanced = WITH_FAULT.replace('type = single_phase_earth', 'type = three_phase');
-    expect(notes(svgOf(balanced))).not.toContain('turns ratio');
+    /*
+     * The caveat is "fell back to the turns ratio", not any mention of
+     * the phrase. Since a `fault` condition can now place a curve from
+     * its own figures, the note here is the *good* one -- "from F, not
+     * the turns ratio" -- and a substring match cannot tell the two
+     * apart.
+     */
+    expect(notes(svgOf(balanced))).not.toContain('placed by the');
   });
 
   it('stays quiet where zero sequence is not declared blocked', () => {

@@ -127,14 +127,25 @@ describe('with no transformer declared', () => {
 });
 
 describe('the sheet and the report', () => {
-  it('put the fault at the same current', () => {
+  it('put the fault at the same current, on a sheet that depicts it', () => {
     /*
      * The recurring failure in this codebase is a drawing and a table
      * that disagree about one condition. The rule is placed from the
      * same factor the margin was computed from, so a reader measuring
      * off the sheet gets the number the report used.
+     *
+     * *On a sheet that depicts it.* The shape factor belongs to a
+     * condition, not to a transformer: a sheet drawn for something
+     * else places all its curves by ampere-turns, which is a uniform
+     * map and preserves every multiple, and moving one mark out of
+     * that frame would make the geometry lie. Such a sheet keeps the
+     * turns ratio and says so in its notes -- see
+     * `cross-level-multiple.spec.ts`.
      */
-    const src = study('two_phase', DYN);
+    const src = study('two_phase', DYN).replace(
+      'view { voltage = HV; quantity = phase;',
+      'view { voltage = HV; quantity = phase; condition = F;',
+    );
     const r = parse(src);
     const svg = renderStudy(r, { theme: 'light' });
     const graded_I = r.reports[0]!.rows[0]!.I_backup_A!;

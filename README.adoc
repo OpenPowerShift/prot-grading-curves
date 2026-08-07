@@ -525,6 +525,42 @@ grade {
   upstream = false;
 }
 
+# ---- the upstream backup, as one curve -------------------------------
+#
+# "Worst case, how long before something above the 11 kV bus clears?"
+# is the SLOWEST of the incomer and the tie — an `envelope_max`.
+#
+# The two sit on opposite sides of the transformer, so this combine
+# must say which bus it is READ at. A combined curve is evaluated at
+# one current, and across a transformer one current is two: at 8.2 kA
+# on the 11 kV bus the 33 kV incomer carries 2.73 kA, and that is the
+# current it has to be asked about.
+#
+# The difference is not cosmetic. Handed the 11 kV figure instead, the
+# incomer answers for a fault three times the one that happened:
+#
+#   at 8.2 kA (bus max)  1.11 s claimed   vs   2.03 s actual
+#   at 2.0 kA            2.64 s claimed   vs   does not operate
+#
+# — 83% optimistic at the current this study grades at, and at 2 kA a
+# clearance time for a path that never clears, because the incomer sees
+# 667 A against a 700 A pickup. That is why the curve below begins at
+# 2.1 kA (700 A referred) and not at 900 A.
+#
+# Omitted, this is an error (COMBINE_LEVEL_AMBIGUOUS) rather than a
+# guess. A combine whose sources all sit on one level needs no
+# `voltage` — sample 14's four take it from their sources.
+
+combine {
+  name = "Upstream backup";
+  sources = [R_INC:51, R_TIE:51];
+  as = envelope_max;
+  voltage = MV;
+  label = "Slowest upstream backup, read at 11 kV";
+  style = dashed;
+  color = "#6c3483";
+}
+
 # ---- each margin, on the sheet ---------------------------------------
 annotate {
   primary = R_TIE:51;

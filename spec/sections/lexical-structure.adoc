@@ -123,7 +123,7 @@ two_phase_earth, single_phase_earth
 
 *Axis quantities* (`view.quantity`) -- any, phase, I1, I2, 3I2, I0, 3I0
 
-*Inside `combine`* -- name, sources, as, color, style, label
+*Inside `combine`* -- name, sources, as, voltage, color, style, label
 
 *Inside `view`* -- stages, axis, two_axes, reference_ct, voltage,
 current_min, current_max, time_min, time_max, current_pad,

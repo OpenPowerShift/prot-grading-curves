@@ -21,8 +21,8 @@ import {
 import { isFaultType } from '../constants/sequence.js';
 import { parseVectorGroup } from '../constants/vector-groups.js';
 import {
-  allElements, isCurveStyle, resolveRef,
-  type Device, type Element, type Stage, type Study,
+  allElements, combineSourceLevels, isCurveStyle, resolveRef,
+  type Combine, type Device, type Element, type Stage, type Study,
 } from './model.js';
 import {
   MEASURED_QUANTITIES,
@@ -1175,7 +1175,55 @@ function validateCombines(ctx: Ctx): void {
           ref.loc, ref.text.length);
       }
     }
+
+    checkCombineLevel(ctx, combine);
   }
+}
+
+/**
+ * Which bus the envelope is read at.
+ *
+ * A combine is evaluated at one current, and across a transformer one
+ * current is two. Sources that all sit on one level settle it between
+ * them; sources on either side of a transformer do not, and until this
+ * check existed the fold simply handed both the same amps -- so an
+ * `envelope_max` of a feeder and its incomer reported the pair clearing
+ * a fault the incomer never sees.
+ *
+ * Reported against the first source on the *second* level, which is the
+ * line that makes the question unanswerable.
+ */
+function checkCombineLevel(ctx: Ctx, combine: Combine): void {
+  const { study } = ctx;
+  if (combine.voltage && !combine.voltageDerived) {
+    if (!study.voltages.has(combine.voltage)) {
+      add(ctx, 'COMBINE_UNKNOWN_VOLTAGE', 'error',
+        `combine "${combine.name}" is stated at voltage level "${combine.voltage}", `
+        + `which system.voltages does not declare${levelList(study)}`,
+        combine.sources[0]?.loc);
+    }
+    return;
+  }
+
+  const levels = combineSourceLevels(study, combine);
+  if (levels.length < 2) return;
+
+  const offender = combine.sources.find((ref) => {
+    const { element, device } = resolveRef(study, ref);
+    return (element?.voltage ?? device?.voltage) === levels[1];
+  });
+
+  add(ctx, 'COMBINE_LEVEL_AMBIGUOUS', 'error',
+    `combine "${combine.name}" draws on ${levels.join(' and ')}, so the current it is `
+    + 'read at is not one current: add `voltage = <level>;` to say which bus it is '
+    + 'stated at, and each source will be evaluated at the amps its own winding carries',
+    offender?.loc ?? combine.sources[0]?.loc, offender?.text.length);
+}
+
+/** ` (declared: HV, LV)`, or nothing where the study declares none. */
+function levelList(study: Study): string {
+  const names = [...study.voltages.keys()];
+  return names.length > 0 ? ` (declared: ${names.join(', ')})` : '';
 }
 
 /* ------------------------------------------------------------------ */

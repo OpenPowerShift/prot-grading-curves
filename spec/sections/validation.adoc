@@ -63,6 +63,13 @@ semantic error.
 . *A `combine` whose source list is empty.* *Error*.
 . *A `combine` whose source list contains another `combine`'s
   synthetic name* -- no chains of synthetic curves. *Error*.
+. *A `combine` whose sources sit on two voltage levels and which
+  declares no `voltage`.* *Error* (`COMBINE_LEVEL_AMBIGUOUS`). A
+  combined curve is evaluated at one current, and across a transformer
+  one current is two; the block must say which bus it is read at.
+  Reported against the source on the second level.
+. *A `combine` whose `voltage` names a level `system.voltages` does not
+  declare.* *Error* (`COMBINE_UNKNOWN_VOLTAGE`).
 . *A `view { two_axes = true; ... }` where `axis = "multiples"`.*
   *Error*.
 . *A `grade` block without a `fault` field.* *Warning*

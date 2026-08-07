@@ -2214,6 +2214,13 @@ if (kwName === 'flex_points') {
               if (v) c.as = v as any;
             }
             break;
+          case 'voltage':
+            {
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) c.voltage = unquote(tok.image);
+            }
+            break;
           case 'color':
             {
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
@@ -2238,7 +2245,8 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('a combine', k, ['name', 'sources', 'as', 'color', 'style', 'label']);
+            this.noteUnknownKey('a combine', k,
+              ['name', 'sources', 'as', 'voltage', 'color', 'style', 'label']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }

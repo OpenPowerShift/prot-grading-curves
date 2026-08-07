@@ -340,6 +340,18 @@ export interface Combine {
   name: string;
   sources: Ref[];
   as: 'envelope_min' | 'envelope_max' | 'sum' | 'select_first';
+  /**
+   * The level the combined curve is read at.
+   *
+   * A combine is evaluated at one current, and across a transformer one
+   * current is two: the sources have to be fed the amps their own
+   * windings carry. This is the frame that current is stated in --
+   * declared, or taken from the sources where they agree on one.
+   */
+  voltage?: string;
+  voltage_kV?: number;
+  /** True where `voltage` came from the sources rather than the study. */
+  voltageDerived?: boolean;
   color?: string;
   style?: string;
   label?: string;
@@ -934,6 +946,7 @@ export function buildStudy(doc: Document): Study {
           name: item.name,
           sources: item.sources,
           as: item.as,
+          voltage: item.voltage,
           color: item.color,
           style: item.style,
           label: item.label,
@@ -981,7 +994,53 @@ export function buildStudy(doc: Document): Study {
     }
   }
 
+  /*
+   * Pass 4 -- what level each combine is read at.
+   *
+   * After the loop rather than inside it: a combine's sources are
+   * relays and devices, which the same pass builds, and a study is free
+   * to write the `combine` block above them.
+   */
+  for (const combine of study.combines) resolveCombineLevel(study, combine);
+
   return study;
+}
+
+/**
+ * The levels a combine's sources sit on, deduplicated and in source
+ * order.
+ *
+ * A source that names no level contributes nothing: a study with one
+ * voltage never declares one, and a device may simply not say.
+ */
+export function combineSourceLevels(study: Study, combine: Combine): string[] {
+  const seen: string[] = [];
+  for (const ref of combine.sources) {
+    const { element, device } = resolveRef(study, ref);
+    const level = element?.voltage ?? device?.voltage;
+    if (level && !seen.includes(level)) seen.push(level);
+  }
+  return seen;
+}
+
+/**
+ * Settle the frame a combine's current is stated in.
+ *
+ * Declared wins. Otherwise the sources decide, and they can only decide
+ * when they agree: sources spanning a transformer leave the question
+ * genuinely open, and `validate` asks it rather than this picking one.
+ */
+function resolveCombineLevel(study: Study, combine: Combine): void {
+  if (!combine.voltage) {
+    const levels = combineSourceLevels(study, combine);
+    if (levels.length === 1) {
+      combine.voltage = levels[0];
+      combine.voltageDerived = true;
+    }
+  }
+  combine.voltage_kV = combine.voltage
+    ? study.voltages.get(combine.voltage)?.kV
+    : undefined;
 }
 
 function resolveRelay(node: Extract<TopLevel, { type: 'relay' }>, study: Study): Relay {

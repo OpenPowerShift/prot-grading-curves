@@ -587,6 +587,7 @@ combine-block   ::= "combine" "{" { combine-member } "}" ;
 combine-member  ::= "name"        "=" identifier ";"
                   | "sources"     "=" "[" source-list "]" ";"
                   | "as"          "=" combine-as-keyword ";"
+                  | "voltage"     "=" identifier ";"
                   | "color"       "=" string ";"
                   | "style"       "=" combine-style-keyword ";"
                   | "label"       "=" string ";" ;

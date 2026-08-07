@@ -235,7 +235,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
 
   /* Elsewhere. */
   name:        M('relay', 'Display name. Free text shown on the drawing; the id stays what references resolve against, so renaming for a reader never breaks a `grade`.', 'name = "Feeder 4 (Mill Road)";'),
-  voltage:     M('relay', 'Named level from `system.voltages`. On a `fault` it is the level the current was *measured* at, not where the fault is.', 'voltage = "HV";'),
+  voltage:     M('relay', 'Named level from `system.voltages`. On a `fault` it is the level the current was *measured* at, not where the fault is. On a `combine` it is the bus the envelope is read at, which sources spanning a transformer must state: each source is then evaluated at the amps its own winding carries.', 'voltage = "HV";'),
   label:       M('point', 'Text drawn beside the mark. A \\n breaks the line.', 'label = "Transformer inrush";'),
   t:           M('point', 'Time coordinate. On a `times` entry, the required clearance.', 't = 100 ms;'),
   I1:          M('faults', 'Positive-sequence component.', 'I1 = 1.2 kA;'),
@@ -388,7 +388,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
    * highlighter drew them as values while `left` and `right` -- which
    * the footer also uses -- came out as fields. */
   margins_mm:  ['top', 'right', 'bottom', 'left'],
-  combined:    ['name', 'sources', 'as', 'color', 'style', 'label'],
+  combined:    ['name', 'sources', 'as', 'voltage', 'color', 'style', 'label'],
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */
   annotate:    ['view', 'views', 'on_curve', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual',

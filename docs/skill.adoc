@@ -500,6 +500,9 @@ what they mean when they appear.
                           stops. Either the cutoff or the fault is wrong.
 | `SEQUENCE_ACROSS_LEVELS` | A sequence current cannot be referred
                              across that transformer. Use a `scenario`.
+| `COMBINE_LEVEL_AMBIGUOUS` | A `combine` draws on two voltage levels.
+                              Add `voltage = <level>;` to say which bus
+                              the envelope is read at.
 | `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
                                 across a transformer whose windings do
                                 not settle how. Declare the

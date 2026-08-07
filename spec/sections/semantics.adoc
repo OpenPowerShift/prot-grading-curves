@@ -1372,6 +1372,41 @@ or `combine` block as a source. (This constraint simplifies the
 language and prevents cycles; see
 <<validation,Validation>>.)
 
+==== The level a combine is read at
+
+A combined curve is evaluated at *one* current, and across a
+transformer one current is two: the windings carry currents in inverse
+proportion to their voltages. `voltage` names the level that current is
+stated in.
+
+[source]
+----
+combine {
+    name    = "Board and upstream recloser";
+    sources = [R_BOARD:51, recloser_R1];   // 400 V and 11 kV
+    as      = envelope_min;
+    voltage = LV;                          // read at the 400 V board
+}
+----
+
+Each source is then evaluated at the current *it* measures:
+
+[stem]
+++++
+I_"source" = I_"combine" xx V_"combine" / V_"source"
+++++
+
+which is the same per-relay ampere-turns rule
+<<_voltage_levels_and_cross_voltage_grading,Voltage levels and
+cross-voltage grading>> states for grading. Only the turns ratio applies; a combine states a curve rather
+than a fault, so no fault-shape factor is involved.
+
+`voltage` may be omitted where every source sits on one level, in which
+case it is taken from them. Sources spanning two levels without it are
+an *error* (`COMBINE_LEVEL_AMBIGUOUS`): the question of which bus the
+envelope is read at has no default answer, and answering it by feeding
+every source the same amps asks an 11 kV relay about a 400 V fault.
+
 == View (display directives)
 
 The optional top-level `view { ... }` block carries display-only

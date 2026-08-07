@@ -2202,14 +2202,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /* Synthetic `combine` curves, drawn in their declared style. */
   for (const combine of study.combines) {
     const color = combine.color ?? pickStyle().color;
-    const pathD = trace(undefined, (I) => tTripCombine(study, combine, I));
+    /*
+     * Drawn in the combine's own frame, as every other curve is drawn
+     * in its own. `trace` refers the axis reading into that frame and
+     * `sourceTimes` refers it on into each source's, so an envelope of
+     * curves either side of a transformer sits where the sheet's own
+     * ampere-turns put it -- rather than where feeding every source the
+     * sheet's amps happened to put it.
+     */
+    const pathD = trace(combine.voltage_kV, (I) => tTripCombine(study, combine, I));
     if (!pathD) continue;
+    const detailLines: DetailLine[] = [{ text: `Combine · ${combine.as}`, role: 'settings' }];
+    /*
+     * Named only where it differs from the sheet: on a single-voltage
+     * study, and on a sheet drawn at the combine's own level, the level
+     * is not news. Where they differ it is the whole reading -- the
+     * envelope stands at the current *this* bus carries.
+     */
+    if (combine.voltage && viewLevelName && combine.voltage !== viewLevelName) {
+      detailLines.push({ text: `Read at ${combine.voltage}`, role: 'settings' });
+    }
     curves.push({
       label: combine.label ?? combine.name,
       color,
       pathD,
       pickupPx: NaN,
-      detailLines: [{ text: `Combine · ${combine.as}`, role: 'settings' }],
+      detailLines,
       dashed: combine.style === 'dashed' || combine.style === 'dotted',
     });
   }

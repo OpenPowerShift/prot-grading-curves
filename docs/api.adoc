@@ -171,6 +171,7 @@ Frequently seen codes:
 | `TMS_OUT_OF_RANGE` | error | Outside `[0.025, 1.5]` (IEC) or `[0.5, 15]` (ANSI)
 | `ELEMENT_MIXED_FORMS` | error | Shorthand curve *and* a `stages { }` block
 | `UNRESOLVED_REFERENCE` | error | A `grade`/`combine` names something undeclared
+| `COMBINE_LEVEL_AMBIGUOUS` | error | A `combine` spans two levels and declares no `voltage`
 | `MARGIN_BELOW_CTI` | error | `margin_s` below the `CTI_min_s` constraint
 | `SOLVE_WITHOUT_TARGET` | error | A `solve` block with nothing to aim at
 | `MARGIN_NO_SOLVE` | warning | `margin_s` declared but never acted on

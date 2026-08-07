@@ -371,19 +371,10 @@ makes that the code breaks outranks a promise never made.
 
 ==== Silently wrong answers
 
-Three left, all found by the 2026-08-07 review agents and all
+Two left, both found by the 2026-08-07 review agents and both
 [VERIFIED] by running the tool. Reproductions are minimal and complete
--- paste and run `npx tsx src/cli.ts report <file>`.
-
-. *`combine` has no concept of a voltage level.* `sourceTimes`
-  evaluates every source at one `I_total`, so an envelope built from
-  curves on two levels claims a time from a current only one of them
-  sees. Reported: on an LV sheet an envelope claimed 50 ms from 600 A
-  while its own HV source curve, drawn beside it, does not pick up
-  until 1800 A. `check` reports nothing. The fix is the rule the rest
-  of the renderer now follows -- evaluate each source in its own frame
-  and combine in the sheet's -- but `combine` currently has no place to
-  put the level.
+-- paste and run `npx tsx src/cli.ts report <file>`. The third,
+`combine` having no voltage level, was closed on 2026-08-07; see below.
 
 . *Two `solve` blocks naming one backup diverge from the drawing.* The
   solver mutates the shared model and only recomputes its own rows, so
@@ -840,6 +831,34 @@ outputs, docs against code -- run against a running build. Every
 finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
+
+* *`combine` had no concept of a voltage level.* `sourceTimes` handed
+  every source the same `I_total`, which is right only while they all
+  sit on one bus. Across a transformer one current is two, so an
+  envelope of an 11 kV feeder and its 33 kV incomer asked the incomer
+  about a fault three times the one that happened. On sample 10's
+  cascade the slowest upstream path claimed *1.11 s* at the 8.2 kA bus
+  fault against a true *2.03 s* -- 83% optimistic at the current the
+  study grades at -- and at 2 kA claimed 2.64 s for a path that does
+  not clear at all, the incomer seeing 667 A against a 700 A pickup.
+  `check` said nothing.
++
+  `combine { voltage = <level>; }` now states the bus the curve is read
+  at, and each source is evaluated at the amps its own winding
+  carries -- the per-relay ampere-turns rule `xvoltage.ts` already
+  states for grading. The renderer traces the combine in that same
+  frame, so the drawing and the fold cannot disagree; a sheet drawn
+  elsewhere says `Read at <level>` in the legend.
++
+  Omitting it is an *error* where the sources span two levels
+  (`COMBINE_LEVEL_AMBIGUOUS`), reported against the source on the
+  second level rather than at `1:1`. Sources agreeing on one level
+  derive it and say nothing, so every existing single-level study is
+  untouched -- sample 14's four combines still take it from their
+  sources. A `voltage` naming a level `system.voltages` does not
+  declare is `COMBINE_UNKNOWN_VOLTAGE`, because an unresolved level
+  makes the projection the identity, which is precisely the behaviour
+  being removed.
 
 * *A fault crossed a transformer by its turns ratio alone.* Exact for
   a balanced fault and wrong for the rest. `system { transformer A to B

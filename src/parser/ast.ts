@@ -617,6 +617,17 @@ export interface CombineBlock extends BaseNode {
   name: string;
   sources: Ref[];
   as: CombineAsKeyword;
+  /**
+   * The level the combined curve is stated at, as named in
+   * `system.voltages`.
+   *
+   * A combine folds several curves into one, and a curve is only a
+   * curve at some voltage: the sources may sit on either side of a
+   * transformer, where one current is not the other. Left out, it is
+   * taken from the sources when they agree; where they do not, the
+   * study must say which bus the envelope is read at.
+   */
+  voltage?: string;
   color?: string;
   style?: 'solid' | 'dashed' | 'dotted';
   label?: string;

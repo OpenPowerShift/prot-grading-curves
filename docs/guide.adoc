@@ -845,6 +845,28 @@ combine {
 
 `as` is `envelope_min`, `envelope_max`, `sum`, or `select_first`.
 
+*Sources on two levels need `voltage`.* A combined curve is read at one
+current, and across a transformer one current is two -- so a combine
+spanning a transformer must say which bus it is stated at:
+
+[source,tc]
+----
+combine {
+    name    = "Board and upstream recloser";
+    sources = [R_BOARD:51, recloser_R1];   # 400 V and 11 kV
+    as      = envelope_min;
+    voltage = LV;                          # read at the 400 V board
+}
+----
+
+Each source is then asked about the amps its own winding carries: at
+21 kA on the 400 V board the 11 kV recloser sees 763 A, and answers for
+that. Feeding it the board's 21 kA instead asks it about a fault 27.5
+times the one that happened, and the envelope claims a clearance that
+does not exist -- which is why leaving `voltage` out here is an error
+rather than a default. Sources that all sit on one level take it from
+them and need say nothing.
+
 [NOTE]
 ====
 A mark is drawn only where the sheet can show it. Zoom in -- or declare

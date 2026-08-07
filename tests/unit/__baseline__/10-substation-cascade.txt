@@ -335,6 +335,7 @@ domain-t 0.01,1584.893192
 [curves] path n=98 bbox=600.0,88.0..1056.0,435.9 class=tc-curve data-curve=R_TIE:51 data-ref=R_TIE:51 data-voltage=MV
 [curves] path n=111 bbox=547.8,88.0..1056.0,525.1 class=tc-curve data-curve=R_FDR:51 data-ref=R_FDR:51 data-voltage=MV
 [curves] path n=125 bbox=471.8,88.0..1056.0,604.2 class=tc-curve data-curve=R_SUB:51 data-ref=R_SUB:51 data-voltage=MV
+[curves] path n=79 bbox=690.3,88.0..1056.0,413.5 class=tc-curve data-curve=Slowest upstream backup, read at 11 kV
 [annotations] line 838.7,407.4..838.7,374.0
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
@@ -410,14 +411,18 @@ domain-t 0.01,1584.893192
 [legend] text 1172.0,451.0 class=tc-legend-muted font-size=11 "Mersen 65T"
 [legend] text 1172.0,466.0 class=tc-legend-muted font-size=11 "Fuse · 65 A"
 [legend] text 1172.0,481.0 class=tc-legend-muted font-size=11 "min melt -&gt; total clear"
-[legend] text 1136.0,519.0 font-size=13 font-weight=600 "Faults"
-[legend] line 1136.0,535.0..1162.0,535.0
-[legend] text 1172.0,539.0 class=tc-legend font-size=11 "Sub min · 950 A · 11 kV"
-[legend] line 1136.0,561.0..1162.0,561.0
-[legend] text 1172.0,565.0 class=tc-legend font-size=11 "Spur max · 1.25 kA · 11 kV"
-[legend] line 1136.0,587.0..1162.0,587.0
-[legend] text 1172.0,591.0 class=tc-legend font-size=11 "Sub max · 3.1 kA · 11 kV"
-[legend] line 1136.0,613.0..1162.0,613.0
-[legend] text 1172.0,617.0 class=tc-legend font-size=11 "Feeder max · 5.6 kA · 11 kV"
-[legend] line 1136.0,639.0..1162.0,639.0
-[legend] text 1172.0,643.0 class=tc-legend font-size=11 "Bus max · 8.2 kA · 11 kV"
+[legend] line 1136.0,502.0..1162.0,502.0
+[legend] text 1172.0,506.0 class=tc-legend font-size=12 font-weight=600 "Slowest upstream backup, read"
+[legend] text 1172.0,522.0 class=tc-legend font-size=12 font-weight=600 "at 11 kV"
+[legend] text 1172.0,538.0 class=tc-legend-muted font-size=11 "Combine · envelope_max"
+[legend] text 1136.0,576.0 font-size=13 font-weight=600 "Faults"
+[legend] line 1136.0,592.0..1162.0,592.0
+[legend] text 1172.0,596.0 class=tc-legend font-size=11 "Sub min · 950 A · 11 kV"
+[legend] line 1136.0,618.0..1162.0,618.0
+[legend] text 1172.0,622.0 class=tc-legend font-size=11 "Spur max · 1.25 kA · 11 kV"
+[legend] line 1136.0,644.0..1162.0,644.0
+[legend] text 1172.0,648.0 class=tc-legend font-size=11 "Sub max · 3.1 kA · 11 kV"
+[legend] line 1136.0,670.0..1162.0,670.0
+[legend] text 1172.0,674.0 class=tc-legend font-size=11 "Feeder max · 5.6 kA · 11 kV"
+[legend] line 1136.0,696.0..1162.0,696.0
+[legend] text 1172.0,700.0 class=tc-legend font-size=11 "Bus max · 8.2 kA · 11 kV"

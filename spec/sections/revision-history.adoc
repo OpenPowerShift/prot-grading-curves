@@ -561,6 +561,39 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-07 | 0.2.0 | *A combine is read at a bus.* `combine` folds
+                              several curves into one and evaluates them
+                              at a single current, which is right only
+                              while every source sits on one level.
+                              Across a transformer one current is two,
+                              and the fold handed both sources the same
+                              amps: an envelope of an 11 kV feeder and
+                              its 33 kV incomer asked the incomer about
+                              a fault three times the one that happened,
+                              claiming 1.11 s at an 8.2 kA bus fault
+                              where the truth is 2.03 s, and 2.64 s at
+                              2 kA for a path that does not clear at
+                              all.
+
+                              `combine { voltage = <level>; }` states
+                              the bus the curve is read at; each source
+                              is then evaluated at the amps its own
+                              winding carries, by the same per-relay
+                              ampere-turns rule
+                              <<_voltage_levels_and_cross_voltage_grading,cross-voltage
+                              grading>> states. The renderer traces the
+                              combine in that frame, so the drawing and
+                              the fold agree.
+
+                              Sources agreeing on one level derive it
+                              and need say nothing, so every existing
+                              study is unaffected. Sources spanning two
+                              levels without it are
+                              `COMBINE_LEVEL_AMBIGUOUS` -- an error,
+                              reported against the source on the second
+                              level -- because which bus the envelope is
+                              read at has no default answer.
+
 | 2026-08-07 | 0.2.0 | *A fault crosses a transformer by its windings,
                               not only by its turns ratio.* The referral
                               was `I x V_from / V_to` for every fault

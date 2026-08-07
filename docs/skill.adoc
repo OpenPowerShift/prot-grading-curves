@@ -139,9 +139,9 @@ Write the standard's name. The tool carries the constants.
 | Family | Written
 
 | IEC 60255-151 | `iec.si`, `iec.vi`, `iec.ei`, `iec.lti`
-| IEEE C37.112  | `ieee.mi`, `ieee.vi`, `ieee.ei`
+| IEEE C37.112  | `ansi.mi`, `ansi.vi`, `ansi.ei`
 | Definite time | `definite` (with `t_delay`, not `tms`)
-| Vendor        | `sel.c1`, `abb.rel_ni`, and others -- see the reference
+| Vendor        | `sel.c1`, `abb.ri`, `ge.ur.mi`, and others -- see the reference
 | Tabulated     | `flex_points = [(I, t), ...]` when the report gives a table
 |===
 

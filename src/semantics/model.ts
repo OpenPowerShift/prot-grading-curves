@@ -48,6 +48,18 @@ import { amps, rawNumber, readBoolean, readRatio, readString, seconds } from './
 import { isFaultType, type FaultType } from '../constants/sequence.js';
 
 /** Key for a level pair, order-independent. */
+/**
+ * A `meta` value that is a number of seconds, or `undefined`.
+ *
+ * `meta` is deliberately free-form -- it carries whatever the office
+ * puts in a title block -- so a key read for meaning has to check that
+ * what it found is usable rather than assume it.
+ */
+function metaSeconds(study: Study, key: string): number | undefined {
+  const raw = study.meta[key];
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : undefined;
+}
+
 export function levelPairKey(a: string, b: string): string {
   return [a, b].sort().join('\u0000');
 }
@@ -933,7 +945,22 @@ export function buildStudy(doc: Document): Study {
           backup: item.backup,
           fault: item.fault,
           scenario: item.scenario,
-          CTI_min_s: item.CTI_min_s,
+          /*
+           * `meta { margin }` is the study-wide default, as four
+           * separate documents have always said it was.
+           *
+           * Nothing read it. `parseMeta` drops every key into a
+           * free-form map and the grade took `CTI_min_s` from its own
+           * block or not at all -- so a study that stated its margin
+           * once, at the top, graded against *no* requirement and
+           * reported "not evaluated" with exit 0. A study that plainly
+           * does not coordinate passed CI in silence, which is the
+           * gate this tool's own comments claim to have closed.
+           *
+           * The grade's own figure still wins; this is a default, not
+           * an override.
+           */
+          CTI_min_s: item.CTI_min_s ?? metaSeconds(study, 'margin'),
           margin_s: item.margin_s,
           tolerance_pct: item.tolerance_pct,
           comment: item.comment,

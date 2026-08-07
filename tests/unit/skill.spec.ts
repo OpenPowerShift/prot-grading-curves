@@ -86,6 +86,44 @@ describe('every example in the skill', () => {
   }
 });
 
+describe('every curve the skill names', () => {
+  it('exists in the constants table', () => {
+    /*
+     * The gap that let a wrong table ship. The blocks were parsed and
+     * the *tables* were not, so `ieee.mi`, `ieee.vi`, `ieee.ei` and
+     * `abb.rel_ni` sat in a table headed "the tool carries the
+     * constants" and none of them resolved. Worse than a typo: the
+     * suggester answers `ieee.vi` with "did you mean iec.vi?", and
+     * ANSI VI and IEC VI are different characteristics -- so a reader
+     * following this document plus the tool's own hint lands on the
+     * wrong curve family.
+     *
+     * Anything backtick-quoted that looks like a curve id is checked
+     * against a study, whether it is in a code block or a table.
+     */
+    const ids = new Set(
+      [...SKILL.matchAll(/`([a-z]+(?:\.[a-z0-9_]+){1,2})`/g)].map((m) => m[1]),
+    );
+    /* Only the ones shaped like a curve reference; the document also
+     * quotes keys and file names. */
+    const curveish = [...ids].filter((id) => /^(iec|ansi|sel|siemens|ge|abb|schneider)\./.test(id));
+    expect(curveish.length, 'the skill should name some curves').toBeGreaterThan(4);
+
+    for (const id of curveish) {
+      const r = processStudy(`
+system { voltages { HV { V = 33 kV; } } }
+relay R { voltage = HV; ct_ratio = 400/5;
+  element 51 { function = phase_oc; measures = phase;
+               curve = ${id}; I_pickup = 400 A; tms = 0.2; } }
+view { voltage = HV; }
+`);
+      const unknown = [...r.parseErrors, ...r.diagnostics]
+        .some((d) => d.code === 'CURVE_UNKNOWN');
+      expect(unknown, `${id} is named in the skill but is not a curve`).toBe(false);
+    }
+  });
+});
+
 describe('the smallest study the skill starts from', () => {
   const first = BLOCKS.find(isWholeStudy)!;
 

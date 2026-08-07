@@ -117,7 +117,22 @@ export function parseArgs(argv: string[]): Options {
     }
   }
 
-  const [command, input] = rest;
+  const [command, input, ...extra] = rest;
+  /*
+   * A second file is a mistake, not a thing to ignore.
+   *
+   * `check a.ptc b.ptc` read only the first and exited 0, so
+   * `tc-curves check *.ptc` in CI checked one study and reported green
+   * on the rest -- the same gate defeat the exit-status work below was
+   * done to close, arriving by a different door. Refused until the
+   * tool actually takes more than one input.
+   */
+  if (extra.length > 0) {
+    throw new Error(
+      `only one input file is read; ${extra.length + 1} were given `
+      + `(${[input, ...extra].join(', ')}). Run the tool once per study.`,
+    );
+  }
   if (command === 'render' || command === 'report' || command === 'check') {
     opts.command = command;
     opts.input = input;
@@ -382,7 +397,17 @@ export async function main(argv: string[]): Promise<number> {
     if (result.reports.length > 0) console.log(formatGradeReports(result.reports));
   }
 
-  return hasErrors ? 1 : 0;
+  /*
+   * `render` answers with the same status as `check`.
+   *
+   * It returned `hasErrors ? 1 : 0` and threw away the `3` computed
+   * above, so a study that does not coordinate rendered a sheet and
+   * exited 0 while `check` on the same file exited 3. The exit
+   * contract in the usage text is stated for the tool, not per
+   * command, and a pipeline that renders before it checks would have
+   * shipped the drawing.
+   */
+  return status;
 }
 
 /*

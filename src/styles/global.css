@@ -867,3 +867,57 @@ tc-app .zoom-group .side-btn {
 @media (max-width: 860px) {
   tc-app .zoom-group .side-btn { min-width: 40px; min-height: 40px; }
 }
+
+/* ==================================================================
+ * Rescued from tc-app's `static styles`
+ *
+ * These components render into the light DOM, so Lit never adopts
+ * their `static styles` -- `document.adoptedStyleSheets.length` is 0.
+ * The block reads as the place to edit and silently is not, and these
+ * nine selectors were styled *only* there.
+ *
+ * The report was the one that bit: it is written `max-height: 30vh;
+ * overflow: auto` and rendered 791px tall with `max-height: none`,
+ * squeezing the editor and the plot into what was left and putting
+ * the bottom of the sheet below the window, where `overflow: hidden`
+ * means nothing can scroll to it.
+ * ================================================================== */
+
+tc-app .report {
+  flex: 0 0 auto;
+  max-height: 30vh;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--tc-bg-sunken);
+  color: var(--tc-fg);
+  border-bottom: 1px solid var(--tc-border);
+  font-family: var(--tc-font);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+tc-app .report-toggle { margin-right: 10px; white-space: nowrap; }
+
+/*
+ * The counts and the verdict are what a reader scans for, so they
+ * have to differ at a glance. Live, "2 errors" was the same muted
+ * grey as "No issues", and a pass badge and a fail badge were both
+ * transparent -- `verdict.unevaluated` alone had been migrated, which
+ * is exactly backwards.
+ */
+tc-app .err-count,
+tc-app .warn-count,
+tc-app .verdict {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 11px;
+  margin-left: 6px;
+  color: var(--tc-bg-sunken);
+}
+tc-app .err-count  { background: var(--tc-error); }
+tc-app .warn-count { background: var(--tc-warning, #c78a2a); }
+tc-app .verdict.pass { background: var(--tc-ok, #3f9d58); }
+tc-app .verdict.fail { background: var(--tc-error); }
+tc-app .spacer { flex: 1 1 auto; }

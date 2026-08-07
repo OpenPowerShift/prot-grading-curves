@@ -1,5 +1,9 @@
 /**
- * The diagnostics themselves.
+ * The diagnostics themselves -- the refusal paths, exercised.
+ *
+ * Named `diagnostic-paths` rather than `diagnostics` so it is not
+ * confused with `diagnostic-registry.spec.ts`, which is about the
+ * *list* of codes rather than about any code firing.
  *
  * `validate.ts` and `grades.ts` are the two largest files in the
  * semantics layer, and most of what was untested in them was the

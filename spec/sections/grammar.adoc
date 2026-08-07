@@ -472,55 +472,28 @@ block is needed.
 A `breaker` device may carry only `t_delay` (no `flex_points`);
 the resulting curve is a single horizontal line.
 
-==== Built-in catalog (v0.1 effective)
+==== No built-in catalogue
 
-The processor ships with a built-in catalogue of common TCCs keyed
-by shorthand. The user references a catalogue entry by its shorthand
-in the language:
+A device carries its own table. There is no shipped catalogue of
+vendor curves and no shorthand that expands into one.
 
-[source,tc]
-----
-device "ferraz_abc_100a" { kind = "fuse"; }   // built-in catalog reference
-----
+Earlier drafts published a table of eight shorthands
+(`ferraz_abc_100a`, `tx_25mva_11kv` and so on) as *"real data sourced
+from the manufacturer's published TCC bulletin"*. Nothing ever read
+it: the lookup had no callers, so those shorthands resolved as
+ordinary device ids and produced `DEVICE_NO_CURVE`. It is withdrawn
+rather than implemented, for two reasons.
 
-Equivalent expansion (if the user wanted to override):
+A curve is a number a study depends on, and one taken from a table
+inside the tool is a number the reader cannot trace. The `reference`
+field exists so that a device says where its data came from --
+"Mersen T-link data sheet, table 2" -- which is the practice a
+coordination study is reviewed against. A built-in table replaces
+that with the processor's word for it.
 
-[source,tc]
-----
-device "ferraz_abc_100a" {
-    kind        = "fuse";
-    maker       = "Ferraz Shawmut";
-    model       = "ABC";
-    rating_I    = 100 A;
-    min_melt    = [(130 A, 1000 s), (200 A, 100 s),
-                   (500 A, 1.0 s), (1000 A, 0.05 s),
-                   (2000 A, 0.005 s)];
-    total_clear = [(130 A, 60 s), (200 A, 0.6 s),
-                   (500 A, 0.02 s), (1000 A, 0.005 s)];
-}
-----
-
-Reference table for the v0.1.0 built-in catalog (each entry is *real*
-data sourced from the manufacturer's published TCC bulletin; the
-*full* table is shipped in `src/constants/catalog.ts`):
-
-[cols="1,1,2,3", options="header"]
-|===
-| Shorthand | Kind | Rating | Source
-
-| `ferraz_abc_100a`   | fuse | 100 A  | Ferraz Shawmut ABC bulletin
-| `bussmann_jjl_50a`  | fuse |  50 A  | Bussmann JJL bulletin
-| `mersen_a4bt_63a`   | fuse |  63 A  | Mersen A4BT bulletin
-| `urd_4_0_aepr_no7`  | cable | 350 A | Okonite AEPR cable, ICEA P-32-382
-| `tx_25mva_11kv`     | transformer_damage | 25 MVA | IEEE C57.91.6 curve
-| `recloser_cooper_form6_fast`   | recloser | _varies_ | Cooper Form 6 TCC fast curve
-| `recloser_cooper_form6_slow`   | recloser | _varies_ | Cooper Form 6 TCC slow curve
-| `motor_startup_induction_500hp`| motor_startup | 500 hp  | NEMA MG-1 typical curve
-|===
-
-The catalogue entries are queried by shorthand; references that miss
-the catalogue are looked up as user-defined `device` blocks; if
-neither resolves, *Error*.
+The second is simpler: redistributing manufacturers' published curves
+is theirs to permit, and eight approximate five-point tables are not
+worth the question.
 
 ==== Reference syntax
 

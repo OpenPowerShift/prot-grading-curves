@@ -163,6 +163,11 @@ exit status, and the conformance suite all agree.
 
 Frequently seen codes:
 
+Every code, with its meaning, is in the spec's
+<<diagnostics,Diagnostic codes>> section -- generated from
+`src/constants/diagnostics.ts`, so it cannot drift from what the
+processor emits. The ones a caller handles most often:
+
 [cols="1,1,3",options="header"]
 |===
 | Code | Severity | Meaning

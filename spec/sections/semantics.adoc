@@ -87,7 +87,7 @@ margin for a comparison that was never made -- a wrong number that
 looks right, which is the failure mode this rule exists to prevent.
 
 Earlier drafts of this section specified a *Warning*
-`MISSING_SEQUENCE_DATA` and a fallback to `I`. That rule is
+`SEQUENCE_DATA_MISSING` and a fallback to `I`. That rule is
 withdrawn.
 ====
 
@@ -1012,9 +1012,9 @@ against the typical equipment current for the declared voltage:
   levels exist, *Warning* (`RELAY_VOLTAGE_UNSPECIFIED`) and the
   relay is treated as being on the fault's voltage.
 * `ct_ratio` on a relay: if absent, defaults to `1/1` (unity).
-  *Warning* (`CT_RATIO_UNSPECIFIED`) when `I_units = "secondary"`
-  is declared on any element (secondary amps require a CT ratio
-  for conversion).
+  *Error* (`CT_RATIO_MISSING`) when `I_units = "secondary"` is
+  declared on any element, secondary amps having nothing to be
+  converted by.
 * `faults` on a relay: optional. If absent, the relay has no
   named fault references; a `grade` block must reference a fault
   directly by name.
@@ -1025,11 +1025,11 @@ against the typical equipment current for the declared voltage:
 
 `annotate { on_curve = <device-ref>; at_I   = <A> A; ... }` places
 the annotation at the device's TCC at the declared current. The
-`at_I` value is interpreted in the *device's own* amps (the
-`flex_points` table's units); no voltage-level conversion is
-applied. If the device is on a different voltage level than the
-plot's axis mode, the renderer emits a *Warning*
-(`ANNOTATE_VOLTAGE_MISMATCH`).
+`at_I` value is interpreted in the *device's own* amps -- the units
+its `flex_points` table is written in -- and the mark is then
+referred onto the sheet's frame by the device's `voltage`, exactly as
+its curve is. A fuse on the low side of a transformer therefore sits
+under its own curve on a high-side sheet rather than at its own amps.
 
 ==== Views: one per sheet
 

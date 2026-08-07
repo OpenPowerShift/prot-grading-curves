@@ -45,6 +45,8 @@ include::sections/semantics.adoc[]
 
 include::sections/validation.adoc[]
 
+include::sections/diagnostics.adoc[]
+
 include::sections/worked-examples.adoc[]
 
 include::sections/style-guide.adoc[]

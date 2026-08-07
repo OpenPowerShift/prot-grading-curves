@@ -1,52 +1,75 @@
-== Linting rules (warnings)
+== Advisory findings
 
-The processor emits a *warning*, not an error, on the following
-situations. Warnings appear in the margin report and on the rendered
-plot but do not block grading computation.
+Findings the processor reports that are *not* refusals: the study
+still grades and still renders, and the reader is told something worth
+knowing about it.
 
-* *Unit confusion.* `I_pickup = 1.2` (no `A` or `xIn` suffix) in a
-  curve-bearing element. *Warning*.
-* *Bare curve names.* `curve = si;` -- resolved via the disambiguation
-  table, but flagged so the engineer chooses IEC vs ANSI explicitly.
-* *Non-monotonic `tms` backup.* `tms` for the backup element larger
-  than `tms` for the primary at the same fault level is fine; but
-  the inverse situation (backup with a steeper index, e.g. VI over
-  primary SI) -- flagged per Schneider NPAG Section 6.
-* *Pick-up discrimination insufficient.* `I_pu_backup / I_pu_primary`
-  less than 1.2 -- flagged per IEEE 242 Section 15.3.2 and BS 7671.
-* *TMS outside device characteristic range.* A TMS within the parser
-  range but outside the relay vendor range (e.g. 1.2 on a relay
-  that tops out at 1.0) -- flagged (v0.2; uses relay-compatibility
-  table).
-* *CT-ratio spread wide in a multi-relay study.* When the ratio of
-  largest to smallest `n_CT` exceeds 5:1 -- *Warning* in the renderer
-  when `axis = "secondary"` mode is requested (see
-  <<semantics,Semantics>> _Units and axes_).
-* *Curve producer both in shorthand form and in a `stages` sub-block.*
-  *Error* (see <<validation,Validation>>), but the parser reports it
-  as a clear warning when the file appears to come from an older
-  author across the v0.1.0 release.
-* *A `combine` whose `as` value is `envelope_min` with two curves
-  drawn on different elements* (typical OR logic) -- *info* in
-  grading report, since the resulting curve does not coordinate with
-  either source individually.
-* *Cross-voltage study requested in `primary`-axis display.* The
-  renderer recommends `multiples` when voltages differ --
-  *Warning* `CROSS_VOLTAGE_AXIS_PRIMARY_UNSUITABLE`.
-* *A curve with `kind = sub_kind = "fuse"` and only one of
-  `min_melt`/`total_clear` is declared.* The renderer warns
-  suggesting the user also declare the missing pair.
-* *Mixing `abb.ri` / `abb.rd` (hyperbolic / logarithmic) curves in the
-  same grading pair with IDMT curves.* *Warning* -- the operate-
-  time math is not aligned; the engineer should verify the
-  coordination intent.
-* *A `page { theme = "monochrome"; ... }` with curves whose
-  `line_width_px < 0.4`.* *Warning*; monochrome print with thin
-  lines is hard to read -- the engineer should bump to `~0.7`.
-* *Page block declares `legend = false` while a `combine` block
-  instructs the renderer to attach multiple synthetic curves.*  
-  *Warning* `-- without a legend the user cannot identify which
-  envelope is which.
-* *A `page { watermark = "DRAFT"; }` while a `meta.standard`
-  declaration is non-empty.* *Warning*; the user should consider
-  `watermark = "FOR REVIEW"` to differentiate the draft state.
+Every code is listed with its meaning in
+<<diagnostics,Diagnostic codes>>, which is generated from the
+processor's own table -- so this section describes the *kinds* of
+advice rather than repeating a list that would drift from it.
+
+=== What is advisory and what is not
+
+The distinction is what the finding does to the answer.
+
+A *warning* leaves a computed answer standing and questions it: a
+share declared twice where one wins, a dial the solver replaced, an
+upstream sweep with nothing above the fault to sweep. An *info*
+records a choice the study made implicitly, such as a fault stating
+one current so its range endpoints default to it.
+
+An *error* means there is no answer to give. A missing `tms` is not a
+lint: nothing can be drawn without it, and defaulting it to 1.0 would
+draw an IEC standard inverse about ten times slow and grade against
+it. The same goes for a bare `I_pickup = 1.2` with no unit, and for a
+curve id that is not in the constants table.
+
+That line is drawn on whether the tool would otherwise have to invent
+a number, and it is the reason this section is short.
+
+=== The advisory findings the processor emits
+
+*About the settings*
+
+`SHARE_DECLARED_TWICE`, `PICKUP_TOO_LOW_FOR_VOLTAGE`,
+`DEFINITE_NO_DELAY`, `ZERO_DELAY_NOT_PLOTTABLE`,
+`FLEX_TIME_NOT_POSITIVE`, `RELAY_VOLTAGE_UNSPECIFIED`.
+
+*About the grading*
+
+`GRADE_MIXED_QUANTITY`, `MARGIN_FROM_DERIVED_COMPONENT`,
+`MARGIN_NO_SOLVE`, `NO_OPERATION`, `FAULT_OPTIONAL_NO_GRADE_CHECK`,
+`UPSTREAM_RANGE_EMPTY`, `UPSTREAM_WITHOUT_CTI`,
+`UPSTREAM_DISABLED_WITH_CEILING`.
+
+*About the solver*
+
+`SOLVE_OVERRODE_SETTING`, `SOLVE_SUPERSEDED`, `SOLVER_NO_IDMT_STAGE`,
+`SOLVER_NO_PRIMARY_OPERATION`, `SOLVER_NO_TARGET`,
+`SOLVER_READONLY_DEVICE`, `SOLVER_UNSATISFIABLE`,
+`MULTISTAGE_MULTIVAR_SOLVE`.
+
+*About the drawing*
+
+`CT_SPREAD_WIDE`, `SECOND_AXIS_SAME_LEVEL`, `ANNOTATE_LABEL_NOT_DRAWN`,
+`SPAN_EMPTY`, `WATERMARK_ON_FINAL`, `UNKNOWN_KEY`.
+
+[NOTE]
+====
+This section previously published fourteen rules as processor
+behaviour, of which two behaved as written. Pickup discrimination
+below 1.2, a backup with a steeper curve index than its primary,
+monochrome print with thin lines, ABB RI/RD mixed with IDMT in one
+pair, a fuse declaring one half of its band, and a vendor-specific
+dial range all produced nothing at all. Two named codes
+(`FUSE_CLEARS_BEFORE_RELAY_VIOLATED`,
+`FUSE_AND_RELAY_BOTH_CURVE_ABOVE_CABLE`) were never emitted, and one
+rule described `curve = si;` as "resolved via the disambiguation
+table, but flagged" -- there is no such table and two hard errors.
+
+They are not deleted as ideas: several are good ones, and they are
+recorded as wanted work in `IMPLEMENTATION.adoc`. They are deleted as
+*claims about what the processor does*, which is what this section
+is for.
+====

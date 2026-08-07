@@ -218,23 +218,27 @@ At `I_f = 9400 A` on the `LV` side (`F_11_max`):
 
 A solver run with `margin_s = 0.30 s at fault = "F_11_max"`
 adjusts `tms` on `R_INC_330:51` until `t_b - t_p >= 0.30 s` at
-the same physical fault. The renderer overlays the two curves on
-a *multiples* axis (per-relay `M`), which is the conventional
-display for cross-voltage TCC overlays.
+the same physical fault.
 
-==== Single-rendered plot for cross-voltage TCC
+==== Reading a cross-voltage sheet
 
-By default `view { axis = "multiples"; }` is the right call for
-cross-voltage TCC overlays. Each curve's `M = 1.0` lands on the
-same vertical line, regardless of the relay's voltage level, and
-the operate times can be compared directly.
+The sheet is drawn in one level's amps -- `view { voltage }` -- and
+every curve is placed there by ampere-turns. That map is *uniform*:
+each current scales by the same ratio, so every multiple on the sheet
+is preserved and the geometry can be read directly.
 
-The renderer emits a *Warning* `CROSS_VOLTAGE_AXIS_PRIMARY_UNSUITABLE`
-when the user requests `axis = "primary"` for a study with at least
-two voltage levels -- unless the user has manually selected *one*
-voltage as the basis for the axis label. This is informational;
-primary-axis mode requires the engineer to make an explicit
-decision.
+`view { second_axis = <level>; }` adds a second scale across the top
+in the other level's amps, with the fault rules captioned in both
+frames, which is how such a sheet is normally read: the upstream
+relay's own pickup is legible without dividing by the turns ratio.
+
+Earlier drafts recommended `axis = "multiples"` here, on the reasoning
+that "each curve's `M = 1.0` lands on the same vertical line". It does
+not: one abscissa carries one scale, and putting every pickup on
+`M = 1` would mean moving the curves rather than labelling the axis.
+The mode is anchored to a single reference element and is useful for
+reading a sheet the way a relay manual states its curves, not for
+reconciling two voltage levels.
 
 === Multi-stage element
 

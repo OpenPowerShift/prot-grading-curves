@@ -74,7 +74,9 @@
     "test:coverage": "vitest run --coverage",
     "coverage:browser": "playwright test tests/visual/browser-only.spec.ts",
     "coverage:merge": "node scripts/merge-coverage.mjs",
-    "coverage:all": "npm run coverage:browser && npm run test:coverage; npm run coverage:merge"
+    "coverage:all": "npm run coverage:browser && npm run test:coverage; npm run coverage:merge",
+    "diagnostics:sync": "node scripts/sync-diagnostics.mjs",
+    "diagnostics:check": "node scripts/sync-diagnostics.mjs --check"
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.0",

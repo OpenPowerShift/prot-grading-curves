@@ -165,12 +165,11 @@ Keying it on the namespace string rejects a legal dial of 3.0 on
   output is `svg` (single page).* *Warning*; the macros resolve
   to "?" -- the user should remove `[of]` for single-page output.
 . *A `relay` without `ct_ratio` when any element declares
-  `I_units = "secondary"`.* *Warning* (`CT_RATIO_UNSPECIFIED`).
+  `I_units = "secondary"`.* *Error* (`CT_RATIO_MISSING`); a setting
+  in secondary amps cannot be converted without one.
 . *A `fault` with only `I` declared (no `I_min` / `I_max`).*
   *Info* (`FAULT_SINGLE_POINT`); `I_min` and `I_max` default to
   `I`.
-. *An `annotate` on a device whose voltage level differs from
-  the plot's axis mode.* *Warning* (`ANNOTATE_VOLTAGE_MISMATCH`).
 . *A `solve` block on a multi-stage backup whose controlling
   stage is definite-time.* *Warning* (`SOLVER_NO_IDMT_STAGE`);
   the solver falls back to reporting the existing margin.

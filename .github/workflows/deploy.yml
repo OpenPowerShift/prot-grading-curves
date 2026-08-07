@@ -26,6 +26,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      # The generated diagnostic reference, held to the registry it
+      # comes from. The test suite checks every code is listed; this
+      # catches the file having been hand-edited as well.
+      - run: npm run diagnostics:check
+      - run: npm run readme:check
       - run: npm test
       - run: npm run build
       - name: Upload artifact

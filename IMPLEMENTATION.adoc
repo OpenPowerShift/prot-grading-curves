@@ -506,24 +506,6 @@ Added by that pass, most misleading first:
   Varying `I_base` between 50 A and 2000 A changed nothing.
   *Deliberately deferred 2026-08-07 at the author's instruction.*
 
-. *Four documented diagnostic codes are never emitted*:
-  `ANNOTATE_VOLTAGE_MISMATCH` and
-  `CROSS_VOLTAGE_AXIS_PRIMARY_UNSUITABLE` (the checks do not exist),
-  `CT_RATIO_UNSPECIFIED` (implemented as `CT_RATIO_MISSING`) and
-  `MISSING_SEQUENCE_DATA` (implemented as `SEQUENCE_DATA_MISSING` --
-  and `validation.adoc` uses the right name while `semantics.adoc:90`
-  does not, so the spec contradicts itself). Conversely *76 of 129
-  emitted codes appear in no document*, and there is no
-  diagnostic-code reference anywhere in the set.
-
-. *`spec/sections/linting-rules.adoc` is largely fiction.* Of ~14
-  rules, two behave as written. Bare curve names (`curve = si`) are
-  documented as "resolved via the disambiguation table, but flagged" --
-  there are two hard errors and no such table. Pickup discrimination
-  below 1.2, monochrome thin-line and ABB RI/RD mixing produce nothing.
-  The header promises warnings that "do not block grading" while
-  `I_pickup = 1.2` is a hard `UNIT_MISSING` that blocks rendering.
-
 Verified *correct* by the same pass, and worth not re-checking: the
 tutorial's worked numbers reproduce exactly (0.267 s / 0.921 s /
 0.654 s PASS); all 15 `skill.adoc` blocks parse and its starter study
@@ -531,13 +513,6 @@ checks clean; its exit-status table is accurate; `[meta.*]` macros work
 including invented keys; IEC and ANSI TMS boundaries are exact at all
 four edges; 24 of 25 `api.adoc` exports resolve (`tTripLinear` should
 be `tTripRI`).
-
-. *The device catalogue is dead code.* [VERIFIED] `constants/catalog.ts`
-  holds eight sourced entries and `grammar.adoc` publishes a normative
-  shorthand table with an equivalent expansion. `lookupCatalog` and
-  `isKnownShorthand` have no callers outside their own module; the
-  shorthands produce `DEVICE_NO_CURVE`. The spec table also names
-  `tx_25mva_11kv` where the code key is `tx_25mva_33_11kv`.
 
 . *Device-model generation does not exist.* `semantics.adoc` promises
   transformer damage points generated from `rating_S` / `rating_V` per
@@ -552,9 +527,26 @@ be `tTripRI`).
   it and do not, which is a wrong *number* rather than an ignored key.
   Deferred at the user's instruction, 2026-08-07.
 
-. *`linting-rules.adoc` states 13 rules as processor behaviour*; two
-  are implemented. Five codes named in the spec are never emitted;
-  around forty implemented codes appear nowhere in it.
+. *Advisory checks worth having, deleted from the spec as claims but
+  kept as ideas.* `linting-rules.adoc` published these as processor
+  behaviour and none of them exists. Each is a real review question a
+  coordination study gets asked:
++
+--
+* *Pickup discrimination below 1.2* between a pair -- IEEE 242
+  §15.3.2. The solver already computes this floor when `I_pickup` is
+  free; nothing checks it when the pickups are declared.
+* *A backup with a steeper curve index than its primary* (VI backing
+  SI), which coordinates at one current and crosses at another.
+* *A fuse declaring one half of its band*, where the other half is
+  what the pair grades against in the opposite direction.
+* *ABB RI / RD mixed with IDMT in one grading pair*: the operate-time
+  forms are not comparable and the margin means less than it looks.
+* *Monochrome output with curves under ~0.4 px*, which does not
+  survive a plan copier.
+* *A vendor dial range narrower than the standard's* -- a relay that
+  tops out at 1.0 where IEC allows 1.5. Wants a per-model table.
+--
 
 ==== Output and integration
 
@@ -797,6 +789,39 @@ outputs, docs against code -- run against a running build. Every
 finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
+
+* *There was no diagnostic-code reference anywhere in the set.* 76 of
+  the 131 emitted codes appeared in no document; four the spec named
+  were never emitted; and two were documented under a name the code
+  does not use -- `CT_RATIO_UNSPECIFIED` for `CT_RATIO_MISSING`,
+  `MISSING_SEQUENCE_DATA` for `SEQUENCE_DATA_MISSING` -- so a reader
+  looking one up found nothing or the wrong thing.
++
+  The list could not be kept by hand, which is how it got into that
+  state. `src/constants/diagnostics.ts` now carries a one-line meaning
+  beside each code; `scripts/sync-diagnostics.mjs` generates
+  `spec/sections/diagnostics.adoc` from it, with a `--check` in CI; and
+  `diagnostic-registry.spec.ts` holds the registry equal to what the
+  source emits *in both directions*, so a code cannot be documented
+  without existing or exist without being documented. A third check
+  reads the rest of the prose and fails on any code-shaped name that is
+  not a code, which is what would have caught the two misspellings.
++
+  Of the four phantoms, two were renames and two were checks that never
+  existed. `ANNOTATE_VOLTAGE_MISMATCH` was doubly wrong: annotations
+  *do* refer a device by its own level now, so the paragraph describing
+  the warning described the opposite of the behaviour.
+
+* *The device catalogue was dead code, and the spec published it as
+  normative.* `constants/catalog.ts` held eight entries and
+  `grammar.adoc` a shorthand table describing them as "real data
+  sourced from the manufacturer's published TCC bulletin". Nothing read
+  it -- the lookup had no callers, so those shorthands resolved as
+  ordinary device ids and produced `DEVICE_NO_CURVE`. Both are deleted
+  rather than the lookup wired up: a curve taken from a table inside
+  the tool is a number the reader cannot trace, which is exactly what
+  `reference` exists to prevent, and redistributing vendors' published
+  curves is theirs to permit.
 
 * *The dial range was keyed on the namespace string.*
   `ANSI_NAMESPACES` held exactly `'ansi'`, so `ge.ur.mi` -- which the

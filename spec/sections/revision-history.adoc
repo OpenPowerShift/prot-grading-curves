@@ -561,6 +561,33 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-08 | 0.2.0 | *Every diagnostic code is documented, and
+                              nothing else is.* A new
+                              <<diagnostics,Diagnostic codes>> section
+                              lists all 133, generated from the
+                              processor's own table; the test suite
+                              holds the two equal in both directions. It
+                              replaces no reference at all: 76 of the
+                              emitted codes appeared in no document,
+                              four the spec named were never emitted,
+                              and two were documented under names the
+                              code does not use
+                              (`CT_RATIO_UNSPECIFIED`,
+                              `MISSING_SEQUENCE_DATA`).
+
+                              _Linting rules_ becomes _Advisory
+                              findings_ and describes what the processor
+                              actually reports. Of its fourteen
+                              published rules, two behaved as written.
+
+                              The built-in device catalogue is withdrawn
+                              -- eight shorthands documented as sourced
+                              vendor data that nothing ever read. A
+                              device carries its own table and says
+                              where it came from in `reference`, which
+                              is the practice a study is reviewed
+                              against.
+
 | 2026-08-08 | 0.2.0 | *The dial belongs to the curve, not to the
                               namespace.* An implementation SHALL carry
                               the dial family per curve: a vendor

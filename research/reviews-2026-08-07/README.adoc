@@ -1,0 +1,14 @@
+= Review agent findings, 2026-08-07
+
+Raw output from four review agents run against a running build:
+correctness, playground usability, CLI and outputs, and documentation
+against implementation.
+
+These are the agents' own words, kept because they carry minimal
+reproductions that `IMPLEMENTATION.adoc` summarises rather than
+repeats. Where the two disagree, `IMPLEMENTATION.adoc` is the record --
+its entries were re-verified first-hand before being written down, and
+several of these findings were re-checked and adjusted in the process.
+
+Not every claim here was independently confirmed. Each file marks its
+own findings VERIFIED or INFERRED; treat the rest as leads.

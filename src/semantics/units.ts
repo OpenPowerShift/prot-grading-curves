@@ -17,15 +17,18 @@ const CURRENT_A: Record<string, number> = { A: 1, kA: 1e3, mA: 1e-3, MA: 1e6 };
 const TIME_S: Record<string, number> = { s: 1, ms: 1e-3, min: 60, ks: 1e3 };
 const VOLTAGE_KV: Record<string, number> = { kV: 1, V: 1e-3, MV: 1e3 };
 /*
- * Power and angle were outside this table entirely, so `base_S = 25;`
- * and `char_angle = 60;` were the two united fields in the language a
- * bare number still passed on. Every shipped example already writes
- * the unit; nothing was enforcing it.
+ * Power was outside this table entirely, so `base_S = 25;` passed a
+ * bare number on. Every shipped example already writes the unit;
+ * nothing was enforcing it.
+ *
+ * `char_angle` was the other, and the only field in the language
+ * measured in degrees. It went with the directional keys on
+ * 2026-08-08, and the angle quantity went with it rather than being
+ * left as a category nothing is in.
  */
 const POWER_MVA: Record<string, number> = { MVA: 1, kVA: 1e-3, GVA: 1e3, MW: 1 };
-const ANGLE_DEG: Record<string, number> = { deg: 1 };
 
-export type Quantity = 'current' | 'time' | 'voltage' | 'power' | 'angle' | 'scalar';
+export type Quantity = 'current' | 'time' | 'voltage' | 'power' | 'scalar';
 
 /**
  * A per-unit pickup written as `2.5 xCT` / `1.2 pu` / `3 xIn` is a
@@ -63,7 +66,6 @@ export const KNOWN_UNITS: ReadonlySet<string> = new Set([
   ...Object.keys(TIME_S),
   ...Object.keys(VOLTAGE_KV),
   ...Object.keys(POWER_MVA),
-  ...Object.keys(ANGLE_DEG),
   ...PER_UNIT_SUFFIXES,
   ...SECONDARY_SUFFIXES,
   ...PRIMARY_SUFFIXES,
@@ -114,7 +116,6 @@ export function readNumber(v: unknown, quantity: Quantity = 'scalar'): NumberRea
     : quantity === 'time' ? TIME_S
     : quantity === 'voltage' ? VOLTAGE_KV
     : quantity === 'power' ? POWER_MVA
-    : quantity === 'angle' ? ANGLE_DEG
     : undefined;
   const factor = unit && table ? table[unit] : undefined;
   return { value: factor != null ? value * factor : value, unit, perUnit: false };
@@ -191,16 +192,15 @@ export const FIELD_QUANTITY: Readonly<Record<string, Quantity>> = {
   at_residual: 'current', rating_I: 'current',
 
   /* Times. */
-  t: 'time', t_delay: 'time', t_reset: 'time', at_t: 'time',
+  t: 'time', t_delay: 'time', at_t: 'time',
   margin: 'time', margin_target: 'time',
   time_min: 'time', time_max: 'time',
 
   /* Voltages. */
   V: 'voltage', rating_V: 'voltage',
 
-  /* Apparent power, and the one angle in the language. */
+  /* Apparent power. */
   base_S: 'power', rating_S: 'power',
-  char_angle: 'angle',
 
   /* Bounds on the current axis. */
   current_min: 'current', current_max: 'current', I_cutoff: 'current',
@@ -216,7 +216,6 @@ export function suffixesFor(quantity: Quantity): string[] {
     case 'time': return Object.keys(TIME_S);
     case 'voltage': return Object.keys(VOLTAGE_KV);
     case 'power': return Object.keys(POWER_MVA);
-    case 'angle': return Object.keys(ANGLE_DEG);
     default: return [];
   }
 }

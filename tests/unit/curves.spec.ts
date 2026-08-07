@@ -16,7 +16,6 @@ import {
   tTripFlex,
   tTripRI,
   tTripLog,
-  tReset,
   curveParamsFromId,
 } from '@tc/semantics/curves';
 import { CURVES, lookupCurve, allCurveIds, suggestCurveId } from '@tc/constants/curves';
@@ -173,12 +172,6 @@ describe('non-IDMT forms', () => {
     expect(tTripLog(74, 5.8, 1.35, 1)).toBe(Infinity);
   });
 
-  it('reset time follows t_r / (1 - M^2) below pickup', () => {
-    expect(tReset(0, 4.85, 1)).toBeCloseTo(4.85, 6);
-    expect(tReset(0.5, 4.85, 1)).toBeCloseTo(4.85 / 0.75, 6);
-    // no reset characteristic at or above pickup
-    expect(tReset(1, 4.85, 1)).toBe(0);
-  });
 });
 
 describe('FlexCurve piecewise interpolation', () => {

@@ -78,7 +78,6 @@ export const SNIPPETS: SnippetSpec[] = [
     curve    = #{iec.si};
     I_pickup = #{480 A};
     tms      = #{0.30};
-    reset    = "instant";
 }#{}`,
   },
   {

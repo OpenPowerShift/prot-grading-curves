@@ -16,7 +16,6 @@
  *   flex      log-log interpolation of a (I, t) table, scaled by TMS
  *   ABB RI    t(M) = a - b * M          (linear, not IDMT)
  *   ABB RD    t(M) = a - b * ln(M)      (logarithmic, not IDMT)
- *   reset     t_reset(M) = TMS * [ t_r / (1 - M^2) ]     for M < 1
  */
 
 import { lookupCurve, type CurveConstants } from '../constants/curves.js';
@@ -90,15 +89,6 @@ export function tTripLog(M: number, a: number, b: number, tms: number): number {
   if (!Number.isFinite(M) || M <= 1) return Infinity;
   const t = a - b * Math.log(M);
   return t > 0 ? tms * t : Infinity;
-}
-
-/**
- * Reset time for a dependent / disk-emulation reset characteristic.
- * Only defined below pickup, where the disc is travelling back.
- */
-export function tReset(M: number, t_r: number, tms: number): number {
-  if (!Number.isFinite(M) || M >= 1 || M < 0) return 0;
-  return tms * (t_r / (1 - M * M));
 }
 
 /**

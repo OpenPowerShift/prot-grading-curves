@@ -45,4 +45,19 @@ page {
   size = "A5";
   theme = "light";
   title = "Plant 480 V — single-relay OC study";
+
+  # One curve identifies itself. `style = none` drops the panel
+  # altogether, which is what a figure in a report wants when the text
+  # beside it already says which relay this is:
+  #
+  #   column   a panel down the right-hand gutter (the default)
+  #   inside   the same panel, floated over a corner of the plot
+  #   direct   no panel; each curve labelled where it runs
+  #   none     no identification at all
+  #
+  # Sample 11 shows `direct`, which is the one to reach for when there
+  # are several curves and the gutter is worth reclaiming.
+  legend = {
+    style = "none";
+  };
 }

@@ -1,25 +1,31 @@
-# Sample 15 — Parallel feeders: current share, direction, and the solver
+# Sample 15 — Parallel feeders: current share, and the solver
 #
 # Two feeders running in parallel to one load do not each see the whole
 # fault current. A fault out on the load side is fed from both ends, so
 # each relay measures roughly half of it — and a relay graded against
 # the full figure is graded against a current it never sees.
 #
-# Three things in this study exist for that:
+# Two things in this study exist for that:
 #
 #   share       what fraction of a condition's current this element
 #               carries, in percent
-#   direction   which way the relay looks — a parallel pair needs
-#               directional elements or they trip each other
 #   solve       let the tool pick a setting to hit a stated margin,
 #               instead of guessing and re-running
+#
+# A parallel pair also needs DIRECTIONAL elements, or a fault on one
+# circuit trips the healthy one. That is a real constraint and this
+# tool does not model it: directionality is not a time-current
+# property, so there is nothing for a TCC to draw. `direction`,
+# `directional` and `char_angle` were accepted and silently ignored
+# until 2026-08-08; record such settings in `description` or in the
+# page's `notes`.
 #
 # Press ? after `free =` to see what the solver may vary, and after
 # `strategy =` for how tightly it should land.
 
 meta {
   project = "Ardmore 33 kV double circuit";
-  study = "Parallel feeder grading with directional backup";
+  study = "Parallel feeder grading with a solved backup";
   engineer = "L. Vasquez";
   date = "2026-08-01";
   revision = "B";
@@ -110,7 +116,6 @@ relay R_FDR_A {
   reference = "Ardmore panel A";
   voltage = HV;
   ct_ratio = 400/5;
-  direction = forward;
 
   element 51 {
     name = "Phase TOC";
@@ -133,18 +138,6 @@ relay R_FDR_A {
     # installation rather than of a condition -- two identical feeders
     # off one board, graded against a plain `fault`.
 
-    # A directional element only operates for faults in front of it,
-    # which is what stops the healthy feeder tripping for a fault on
-    # its partner. The characteristic angle is where its maximum
-    # torque sits relative to the polarising quantity.
-    directional = true;
-    char_angle = 45 deg;
-
-    # An induction disc does not reset instantly: it unwinds. On a
-    # reclosing scheme that memory decides whether the second shot
-    # lands on a partly-run disc.
-    reset = disk_emulation;
-    t_reset = 6 s;
   }
 }
 
@@ -155,7 +148,6 @@ relay R_FDR_B {
   model = "751";
   voltage = HV;
   ct_ratio = 400/5;
-  direction = forward;
 
   element 51 {
     name = "Phase TOC";
@@ -164,21 +156,16 @@ relay R_FDR_B {
     I_pickup = 480 A;
     tms = 1.0;
     # Its share is stated by the `sees` blocks too.
-    directional = true;
-    char_angle = 45 deg;
-    reset = dependent;
-    t_reset = 6 s;
   }
 }
 
-# ---- The source-end backup: non-directional, sees everything. --------
+# ---- The source-end backup: sees the whole fault. ---------------------
 relay R_SRC {
   name = "Source incomer";
   maker = "ABB";
   model = "REF615";
   voltage = HV;
   ct_ratio = 800/5;
-  direction = none;
 
   element 51 {
     name = "Phase TOC";
@@ -186,20 +173,16 @@ relay R_SRC {
     curve = ansi.mi;
     I_pickup = 900 A;
     tms = 2.0;
-
-    # Non-directional: it backs up both circuits, so it must not
-    # care which way the current is flowing.
-    directional = false;
-    reset = instant;
   }
 }
 
-# ---- A reverse-looking element, for the busbar behind it. ------------
+# ---- The bus-zone backup. --------------------------------------------
+#      In the real scheme this element looks the other way; on a TCC it
+#      is simply another characteristic, drawn and graded on its times.
 relay R_BUS {
   name = "Bus zone backup";
   voltage = HV;
   ct_ratio = 800/5;
-  direction = reverse;
 
   element 51 {
     name = "Reverse-looking TOC";
@@ -207,8 +190,6 @@ relay R_BUS {
     curve = ansi.vi;
     I_pickup = 1.2 kA;
     tms = 3.0;
-    directional = true;
-    char_angle = 60 deg;
   }
 }
 
@@ -285,10 +266,6 @@ view PRIMARY_AMPS {
   subtitle = "Both circuits in service, 50% share each";
   axis = "primary";
 
-  # A second time axis down the right-hand edge, for reading a long
-  # sheet without tracking back across it.
-  two_axes = true;
-
   current_min = 100 A;
   current_max = 30 kA;
   time_min = 20 ms;
@@ -304,8 +281,12 @@ view MULTIPLES_OF_PICKUP {
   subtitle = "x pickup rather than amps — how a settings sheet reads";
 
   # `multiples` draws the abscissa as x-pickup instead of amps, which
-  # is how a relay manual states its curves.
+  # is how a relay manual states its curves. One axis carries one
+  # scale, so it is anchored to ONE curve's pickup -- named here, or
+  # else the highest on the sheet -- and every curve still computes
+  # against its own.
   axis = "multiples";
+  reference_ct = R_FDR_A:51;
 
   current_min = 100 A;
   current_max = 30 kA;

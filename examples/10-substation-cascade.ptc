@@ -282,7 +282,7 @@ page {
   }
   axes {
     mirror = true;
-  } # scales repeated top and right
+  } # time scale repeated down the right-hand edge
   faults {
     width_px = 1.5;
   } # a touch heavier; each gets its own dash
@@ -292,4 +292,20 @@ view {
   voltage = MV;
   current_max = 60 kA;
   time_pad_high = 0.2;
+
+  # A second current scale across the top, in the 33 kV incomer's own
+  # amps. Ampere-turns referral is a UNIFORM map -- every current on
+  # this sheet scales by the same 11/33 -- so the second scale is these
+  # same pixels relabelled: exact, and not one curve moves.
+  #
+  # It is how a cross-level sheet is meant to be read. R_INC's 700 A
+  # pickup is 2.1 kA down here; with the top scale you read 700 A off
+  # the sheet instead of doing the division. Each fault rule carries
+  # both figures for the same reason.
+  #
+  # `page { axes { mirror } }` would otherwise repeat the bottom scale
+  # up there; the second axis takes that strip, since two rows of
+  # numbers a few pixels apart -- one of them a copy -- is how a reader
+  # takes the wrong one.
+  second_axis = HV;
 }

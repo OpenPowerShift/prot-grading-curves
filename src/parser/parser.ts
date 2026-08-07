@@ -113,7 +113,6 @@ export const RENAMED_WITH_REASON: Readonly<Record<string, { to: string; why: str
   },
 };
 
-/** Keys removed outright, with why. */
 /**
  * Fields each `page` styling sub-block accepts.
  *
@@ -147,9 +146,45 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
  */
 type PageSubValue = string | number | boolean | string[];
 
+/**
+ * Keys removed outright, with why.
+ *
+ * A key that parsed for months and was read by nothing is worse than
+ * one that never existed: the study *looked* as though it said
+ * something. Deleting it in silence would be that same failure once
+ * more -- the author of `directional = true` would get "unknown
+ * setting" and no hint that the tool had accepted it all along and done
+ * nothing with it. So each entry says what it was.
+ *
+ * The 2026-08-08 group divides in two:
+ *
+ * - `direction`, `directional`, `char_angle` describe *directionality*,
+ *   which is not a time-current property. No TCC sheet can draw it, and
+ *   there was never a plan for one to.
+ * - `reset`, `t_reset` describe the reset characteristic, which *is* a
+ *   time-current behaviour and could be drawn -- `curves.ts` carried
+ *   the formula and nothing ever called it. Removed rather than kept as
+ *   a promise: if the reset curve is wanted it comes back as something
+ *   drawn, not as a field that is stored and forgotten.
+ * - `two_axes` promised a second abscissa and drew nothing.
+ *   `view { second_axis = <level>; }` is that feature, and unlike a
+ *   boolean it says which level the second scale is in.
+ */
 export const REMOVED_KEYS: Readonly<Record<string, string>> = {
   frequency_Hz: 'nothing in the tool reads it',
   grounding: 'nothing in the tool reads it; zero_sequence declares what mattered',
+  direction: 'directionality is not a time-current property, so it was stored and never '
+    + 'drawn or graded. Record it in `description`, or in a `notes` block on the page',
+  directional: 'directionality is not a time-current property, so it was stored and never '
+    + 'drawn or graded. Record it in `description`, or in a `notes` block on the page',
+  char_angle: 'the characteristic angle was stored and read by nothing; it belongs with '
+    + 'the directional settings this tool does not model',
+  reset: 'the reset characteristic was never drawn or graded, only stored. '
+    + 'Record it in `description` if the settings sheet needs it',
+  t_reset: 'the reset characteristic was never drawn or graded, only stored. '
+    + 'Record it in `description` if the settings sheet needs it',
+  two_axes: 'it drew nothing. Use `second_axis = <voltage level>` for a second scale '
+    + "across the top of the sheet, in that level's amps",
 };
 
 export const KEYWORDS = new Set([
@@ -166,13 +201,10 @@ export const KEYWORDS = new Set([
   'fuse', 'recloser', 'cable', 'transformer_damage', 'motor_startup', 'breaker',
   // function names
   'phase_oc', 'earth_fault', 'neg_seq', 'thermal', 'breaker_fail',
-  // reset keywords
-  'instant', 'dependent', 'disk_emulation',
   // formula / curve
   'definite', 'formula', 'flex_points', 'curve', 't_r',
   // attribute keys
-  'function', 'tms', 't_delay', 't_reset', 'I_units',
-  'char_angle', 'reset', 'directional', 'direction',
+  'function', 'tms', 't_delay', 'I_units',
   'tolerance_pct', 'upstream', 'upstream_to',
   /* Units-everywhere names. No key carries its own unit. */
   'I', 'I_min', 'I_max', 'residual', 't', 'V',
@@ -205,7 +237,7 @@ export const KEYWORDS = new Set([
   'from', 'to',
   'min_melt', 'total_clear',
   // combine/view/page sub
-  'sources', 'as', 'style', 'label', 'color', 'name', 'two_axes',
+  'sources', 'as', 'style', 'label', 'color', 'name', 'second_axis',
   'reference_ct', 'stages', 'axis', 'voltage', 'pickup',
   'current_min', 'current_max', 'I_cutoff', 'time_min', 'time_max',
   'current_pad', 'current_pad_low', 'current_pad_high',
@@ -1495,18 +1527,25 @@ if (kwName === 'flex_points') {
     this.eat('SEMI');
   }
 
+  /**
+   * A key an element or a stage does not take.
+   *
+   * Routed through `noteUnknownKey` rather than writing its own
+   * message: this had a second, hand-maintained copy of the accepted
+   * list, which drifted -- it went on offering `reset`, `char_angle`,
+   * `directional` and `t_reset` after they were removed, and being a
+   * separate path it never reached `REMOVED_KEYS`, so the author of a
+   * removed key was told it was a typo.
+   */
   private noteUnknownElementSetting(what: 'an element' | 'a stage'): void {
     const at = this.peek();
     if (!((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS')) return;
-    this.errors.push({
-      message: `unknown setting "${at.image}"; ${what} accepts function, measures, `
-        + 'curve, formula, flex_points, I_pickup, I_units, share, tms, t_delay, '
-        + 't_reset, char_angle, reset, directional, name, comment, I_cutoff, '
-        + 'color, style, width_px, view, views'
-        + (what === 'an element' ? ', stages' : ''),
-      line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
-      severity: 'error', code: 'UNKNOWN_SETTING',
-    });
+    this.noteUnknownKey(what, at, [
+      'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
+      'I_pickup', 'I_units', 'share', 'tms', 't_delay', 'comment', 'I_cutoff',
+      'color', 'style', 'width_px', 'view', 'views',
+      ...(what === 'an element' ? ['stages'] : []),
+    ], /* strict */ true);
   }
 
   private parseStageBody(id: string, head: Token): StageBlock {
@@ -1677,9 +1716,6 @@ if (kwName === 'flex_points') {
        */
       case 'function':
       case 'I_units':
-      case 'reset':
-      case 'directional':
-      case 'direction':
       case 'style': {
         const v = this.eat('KW') ?? this.eat('IDENT') ?? this.eat('STRING');
         this.eat('SEMI');
@@ -1697,9 +1733,8 @@ if (kwName === 'flex_points') {
          */
         this.noteUnknownKey('an element', k, [
           'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-          'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
-          'char_angle', 'reset', 'directional', 'stages', 'comment',
-          'I_cutoff',
+          'I_pickup', 'I_units', 'share', 'tms', 't_delay',
+          'stages', 'comment', 'I_cutoff',
           /* How the curve is drawn, as opposed to how it operates. */
           'color', 'style', 'width_px',
           /* Which sheets it belongs on. */
@@ -1764,7 +1799,6 @@ if (kwName === 'flex_points') {
         case 'maker':
         case 'model':
         case 'name':
-        case 'direction':
         case 'comment':
         case 'description':
         case 'reference':
@@ -1775,7 +1809,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a relay', k, ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults', 'comment', 'description', 'reference']);
+          this.noteUnknownKey('a relay', k, ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'faults', 'comment', 'description', 'reference']);
           // unknown relay scalar -- consume the value to avoid stuck loops
           this.parseScalarValue();
           this.eat('SEMI');
@@ -2404,8 +2438,15 @@ if (kwName === 'flex_points') {
             v.time_pad_low = this.parseNumber(); this.eat('SEMI'); break;
           case 'time_pad_high':
             v.time_pad_high = this.parseNumber(); this.eat('SEMI'); break;
-          case 'two_axes':
-            v.two_axes = this.parseBool(); this.eat('SEMI'); break;
+          case 'second_axis':
+            {
+              /* A voltage level's name, read the way `voltage` reads
+               * one -- an identifier or a quoted string. */
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) v.second_axis = unquote(tok.image);
+            }
+            break;
           case 'reference_ct':
             v.reference_ct = this.parseRef(); this.eat('SEMI'); break;
           /* Per-sheet heading, overriding `page { title }`. */
@@ -2419,7 +2460,7 @@ if (kwName === 'flex_points') {
           case 'default':
             v.isDefault = this.parseBool(); this.eat('SEMI'); break;
           default:
-            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'two_axes', 'reference_ct']);
+            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'reference_ct']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }

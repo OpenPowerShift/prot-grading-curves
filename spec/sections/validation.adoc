@@ -70,8 +70,11 @@ semantic error.
   Reported against the source on the second level.
 . *A `combine` whose `voltage` names a level `system.voltages` does not
   declare.* *Error* (`COMBINE_UNKNOWN_VOLTAGE`).
-. *A `view { two_axes = true; ... }` where `axis = "multiples"`.*
-  *Error*.
+. *A `view { second_axis = ... }` naming a level `system.voltages`
+  does not declare.* *Error* (`VOLTAGE_UNKNOWN`).
+. *A `view { second_axis = ... }` naming the level the sheet is already
+  drawn in.* *Warning* (`SECOND_AXIS_SAME_LEVEL`); both scales would
+  carry identical numbers.
 . *A `grade` block without a `fault` field.* *Warning*
   (`FAULT_OPTIONAL_NO_GRADE_CHECK`); the block renders but no
   margin is computed.
@@ -93,8 +96,8 @@ semantic error.
   suggestion (Levenshtein <= 2).
 . *`share` outside the range `(0, 100]`.* *Error*.
 . *`share` declared on an element with `function = "phase_oc"`
-  but using an inverse-time curve while `direction = "forward"`
-  but the relay participates in an `envelope_min` combine whose
+  but using an inverse-time curve, where the relay participates in an
+  `envelope_min` combine whose
   sources span multiple CT ratios that differ by more than 5:1.*
   *Warning* (the parallel-shared current is modelled, but downstream
   combine mixing may make the resulting synthetic curve

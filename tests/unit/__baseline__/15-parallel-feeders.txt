@@ -18,7 +18,7 @@ domain-t 0.02,100
 [chrome] text 947.8,912.0 font-size=10 "PROJECT"
 [chrome] text 947.8,930.0 font-size=11 "Ardmore 33 kV double circuit"
 [footer] text 21.0,947.0 text-anchor=start font-size=9 "Ardmore 33 kV double circuit"
-[footer] text 700.0,947.0 text-anchor=middle font-size=9 "Parallel feeder grading with directional backup"
+[footer] text 700.0,947.0 text-anchor=middle font-size=9 "Parallel feeder grading with a solved backup"
 [footer] text 1379.0,947.0 text-anchor=end font-size=9 "Rev B · 2026-08-01"
 [frame] rect 106.0,66.0 950.0x679.0
 [grid] line 106.0,66.0..106.0,745.0 class=tc-grid-major
@@ -190,7 +190,7 @@ domain-t 0.02,100
 [chrome] text 947.8,912.0 font-size=10 "PROJECT"
 [chrome] text 947.8,930.0 font-size=11 "Ardmore 33 kV double circuit"
 [footer] text 21.0,947.0 text-anchor=start font-size=9 "Ardmore 33 kV double circuit"
-[footer] text 700.0,947.0 text-anchor=middle font-size=9 "Parallel feeder grading with directional backup"
+[footer] text 700.0,947.0 text-anchor=middle font-size=9 "Parallel feeder grading with a solved backup"
 [footer] text 1379.0,947.0 text-anchor=end font-size=9 "Rev B · 2026-08-01"
 [frame] rect 106.0,66.0 950.0x679.0
 [grid] line 106.0,66.0..106.0,745.0 class=tc-grid-major
@@ -250,14 +250,14 @@ domain-t 0.02,100
 [grid] line 106.0,83.8..1056.0,83.8 class=tc-grid-minor
 [grid] line 106.0,74.4..1056.0,74.4 class=tc-grid-minor
 [grid] line 106.0,66.0..1056.0,66.0 class=tc-grid-major
-[axes] text 106.0,765.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "100 A"
-[axes] text 221.4,765.0 text-anchor=middle font-size=10 "200 A"
-[axes] text 374.1,765.0 text-anchor=middle font-size=10 "500 A"
-[axes] text 489.5,765.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "1 kA"
-[axes] text 605.0,765.0 text-anchor=middle font-size=10 "2 kA"
-[axes] text 757.6,765.0 text-anchor=middle font-size=10 "5 kA"
-[axes] text 873.0,765.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "10 kA"
-[axes] text 988.5,765.0 text-anchor=middle font-size=10 "20 kA"
+[axes] text 106.0,765.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "0.208x"
+[axes] text 221.4,765.0 text-anchor=middle font-size=10 "0.417x"
+[axes] text 374.1,765.0 text-anchor=middle font-size=10 "1.04x"
+[axes] text 489.5,765.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "2.08x"
+[axes] text 605.0,765.0 text-anchor=middle font-size=10 "4.17x"
+[axes] text 757.6,765.0 text-anchor=middle font-size=10 "10.4x"
+[axes] text 873.0,765.0 class=tc-current-axis text-anchor=middle font-size=12 font-weight=600 "20.8x"
+[axes] text 988.5,765.0 text-anchor=middle font-size=10 "41.7x"
 [axes] text 96.0,748.0 text-anchor=end font-size=10 "20 ms"
 [axes] text 96.0,675.0 text-anchor=end font-size=10 "50 ms"
 [axes] text 96.0,620.7 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 ms"
@@ -271,7 +271,7 @@ domain-t 0.02,100
 [axes] text 96.0,124.3 text-anchor=end font-size=10 "50 s"
 [axes] text 96.0,70.0 class=tc-current-axis text-anchor=end font-size=12 font-weight=600 "100 s"
 [axes] text 44.0,405.5 text-anchor=middle font-size=13 font-weight=600 "Operating time (s)"
-[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (A primary · 33 kV)"
+[axes] text 581.0,865.0 text-anchor=middle font-size=13 font-weight=600 "Current (× pickup · R_FDR_A:51 480 A · 33 kV)"
 [pickups] line 367.3,745.0..367.3,749.0
 [pickups] line 367.3,745.0..367.3,749.0
 [pickups] line 472.0,745.0..472.0,749.0

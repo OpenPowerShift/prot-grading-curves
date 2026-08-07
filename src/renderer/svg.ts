@@ -561,11 +561,83 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     return ratios.length > 0 ? Math.max(...ratios) : undefined;
   })();
 
+  /**
+   * Pickup anchoring a `multiples` axis.
+   *
+   * The spec described `multiples` as `M = I / I_p` *per curve*, "the
+   * only mode in which the curves line up by their pickup" -- which a
+   * shared abscissa cannot do: one axis carries one scale, and lining
+   * curves up by pickup would mean moving the curves, not labelling the
+   * axis. So it is anchored the way `secondary` is: to one reference
+   * curve, named by `reference_ct` or else the highest pickup on the
+   * sheet. Every curve still computes against its own pickup; only the
+   * labelling uses this one.
+   */
+  const referencePickup = ((): { I_pu: number; ref: string } | undefined => {
+    if (axisMode !== 'multiples') return undefined;
+    const lowestOf = (el: Element): number | undefined => {
+      const pus = el.stages
+        .map((s) => s.I_pu_A)
+        .filter((v): v is number => v != null && Number.isFinite(v) && v > 0);
+      return pus.length > 0 ? Math.min(...pus) : undefined;
+    };
+    const named = view?.reference_ct?.deviceId
+      ? study.relays.get(view.reference_ct.deviceId)
+      : undefined;
+    const namedEl = named?.elements.find(
+      (e) => view?.reference_ct?.elementId == null || e.id === view.reference_ct.elementId,
+    );
+    if (namedEl) {
+      const I_pu = lowestOf(namedEl);
+      if (I_pu != null) return { I_pu, ref: namedEl.ref };
+    }
+    let best: { I_pu: number; ref: string } | undefined;
+    for (const el of allElements(study)) {
+      const I_pu = lowestOf(el);
+      if (I_pu != null && (best == null || I_pu > best.I_pu)) best = { I_pu, ref: el.ref };
+    }
+    return best;
+  })();
+
   /** Tick label for a current, honouring the axis mode. */
-  const axisTickLabel = (I_primary: number): string =>
-    axisMode === 'secondary' && referenceCt
-      ? formatSi(I_primary / referenceCt, 'A')
-      : formatSi(I_primary, 'A');
+  const axisTickLabel = (I_primary: number): string => {
+    if (axisMode === 'secondary' && referenceCt) {
+      return formatSi(I_primary / referenceCt, 'A');
+    }
+    if (axisMode === 'multiples' && referencePickup) {
+      /* A multiple is a bare ratio, so `formatSi` (which appends a
+       * unit) is the wrong formatter: 0.5x, 2x, 20x. */
+      return `${trimZeros(Number((I_primary / referencePickup.I_pu).toPrecision(3)))}x`;
+    }
+    return formatSi(I_primary, 'A');
+  };
+
+  /**
+   * A second abscissa across the top, in another level's amps.
+   *
+   * Ampere-turns referral is a *uniform* map: every current on the
+   * sheet scales by the same `V_view / V_second`. So the second scale
+   * is the same pixels relabelled -- exact rather than approximate, and
+   * no curve moves by so much as a pixel. It is how a cross-level sheet
+   * is normally read: feeder amps along the bottom, incomer amps along
+   * the top, and no arithmetic done in the reader's head.
+   *
+   * `undefined` where the study names no second level, names one the
+   * system does not declare, or gives no kV for either end -- each of
+   * which `validate` reports rather than drawing a scale that silently
+   * repeats the first.
+   */
+  const secondAxis = ((): { kV: number; name: string; factor: number } | undefined => {
+    const name = view?.second_axis;
+    if (!name || V_view_kV == null || !(V_view_kV > 0)) return undefined;
+    const kV = study.voltages.get(name)?.kV;
+    if (kV == null || !(kV > 0)) return undefined;
+    return { kV, name, factor: V_view_kV / kV };
+  })();
+
+  /** Tick label for the second abscissa: the same current, other frame. */
+  const secondTickLabel = (I_primary: number): string =>
+    secondAxis ? formatSi(I_primary * secondAxis.factor, 'A') : '';
 
   /*
    * Which current the abscissa is.
@@ -594,7 +666,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const currentAxisTitle =
     axisMode === 'secondary' && referenceCt
       ? `Current (A secondary, ${quantityNote}CT ${trimZeros(referenceCt)}:1 · ${viewLabel})`
-      : `Current (A primary · ${quantityNote}${viewLabel})`;
+      : axisMode === 'multiples' && referencePickup
+        ? `Current (× pickup · ${quantityNote}${referencePickup.ref} `
+          + `${formatSi(referencePickup.I_pu, 'A')} · ${viewLabel})`
+        : `Current (A primary · ${quantityNote}${viewLabel})`;
+
+  /* The second scale names its own level, that being the whole reason
+   * it is there. */
+  const secondAxisTitle = secondAxis
+    ? `Current (A primary · ${quantityNote}${trimZeros(secondAxis.kV)} kV · ${secondAxis.name})`
+    : '';
 
   /*
    * The condition this sheet depicts, if it names one.
@@ -1206,17 +1287,53 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     ? labelExtraHeightPx(titleText, FONT_TITLE)
       + (subtitleText ? labelExtraHeightPx(subtitleText, FONT_SUBTITLE) : 0)
     : 0;
-  const topMargin =
-    (titleText ? 52 : 32) + (mirrorAxes ? 22 : 0) + headingExtra + sheetInset;
   const plotW = W - leftMargin - rightMargin;
 
   /*
    * The current scale is fixed by the horizontal margins alone, so it
    * can be built before the vertical ones are settled -- which is what
-   * lets the fault labels be packed into rows *first*, and the band
-   * below the axis then be sized to the rows it actually needs.
+   * lets the fault labels be packed into rows *first*, and each band
+   * then be sized to the rows it actually needs.
    */
   const xScale = new LogScale(I_min, I_max, leftMargin, leftMargin + plotW);
+
+  const showFaultLabels = opts.page?.faults?.labels !== false;
+  const showFaultCurrents = opts.page?.faults?.currents !== false;
+
+  /*
+   * A second band of fault rules across the top, in the second axis's
+   * amps.
+   *
+   * The figures belong beside the scale they are in. Bracketing them
+   * onto the bottom captions -- `Bus max 8.2 kA (2.73 kA HV)` -- puts
+   * the HV number at the far end of the sheet from the HV scale and
+   * makes the busiest labels on the drawing longer still. Up here each
+   * one sits under the tick it corresponds to.
+   *
+   * Packed separately rather than reusing the bottom rows: `2.73 kA`
+   * and `8.2 kA` are different widths, so they collide differently and
+   * may need a different number of rows.
+   */
+  const faultLayoutTop = secondAxis
+    ? packFaultLabels(
+      faults, xScale, I_min, I_max, showFaultLabels, leftMargin + plotW,
+      showFaultCurrents, { factor: secondAxis.factor })
+    : [];
+  const faultRowsTop = faultLayoutTop.reduce((n, f) => Math.max(n, f.row + 1), 0);
+
+  /*
+   * Room across the top for a repeated or a second scale.
+   *
+   * `mirror` wants a row of ticks; `second_axis` wants ticks, a title
+   * saying which level they are in -- an unlabelled second row of
+   * numbers is worse than none -- and a band for its fault rules. Not
+   * additive: the two occupy the same strip and the second axis takes
+   * it when both are asked for.
+   */
+  const topFaultBandH = faultRowsTop > 0 ? 12 + faultRowsTop * (LINE_DETAIL - 1) : 0;
+  const topScaleExtra = secondAxis ? 44 + topFaultBandH : mirrorAxes ? 22 : 0;
+  const topMargin =
+    (titleText ? 52 : 32) + topScaleExtra + headingExtra + sheetInset;
 
   /*
    * `page { stretch = true; }` gives the plot every pixel the
@@ -1230,8 +1347,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const stretch = opts.page?.stretch === true;
   const faultLayout = packFaultLabels(
-    faults, xScale, I_min, I_max, opts.page?.faults?.labels !== false, leftMargin + plotW,
-    opts.page?.faults?.currents !== false,
+    faults, xScale, I_min, I_max, showFaultLabels, leftMargin + plotW, showFaultCurrents,
   );
   const faultRows = faultLayout.reduce((n, f) => Math.max(n, f.row + 1), 0);
 
@@ -2502,14 +2618,33 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * value off the chart without crowding the axis. */
       axisText.push(`<text x="${px.toFixed(1)}" y="${(topMargin + plotH + AXIS_LABEL_DY).toFixed(1)}" text-anchor="middle" fill="${th.label}" fill-opacity="0.7" font-size="${FONT_AXIS - 2}">${escapeXml(axisTickLabel(t.value))}</text>`);
     }
-    /* `page { axes { mirror = true; } }` repeats the scale on top. */
-    if (mirrorAxes && (t.major || isLabelledInterval(t.value))) {
+    /*
+     * The top scale: a second level's amps where the view asks for
+     * one, otherwise `page { axes { mirror = true; } }` repeating this
+     * one. Never both -- two rows of numbers a few pixels apart, one
+     * of them a copy, is how a reader takes the wrong reading.
+     */
+    if ((secondAxis || mirrorAxes) && (t.major || isLabelledInterval(t.value))) {
+      const label = secondAxis ? secondTickLabel(t.value) : axisTickLabel(t.value);
+      /* Above the top fault band, so the rules and their captions sit
+       * between the scale and the plot exactly as they do at the
+       * bottom. */
+      const y = topMargin - 8 - topFaultBandH;
       axisText.push(
-        `<text x="${px.toFixed(1)}" y="${(topMargin - 8).toFixed(1)}" text-anchor="middle" fill="${th.label}" ` +
+        `<text x="${px.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" fill="${th.label}" ` +
         `${t.major ? `font-weight="600" font-size="${FONT_AXIS}"` : `fill-opacity="0.7" font-size="${FONT_AXIS - 2}"`}>` +
-        `${escapeXml(axisTickLabel(t.value))}</text>`,
+        `${escapeXml(label)}</text>`,
       );
     }
+  }
+
+  /* ...and what those numbers are, above them. */
+  if (secondAxis) {
+    axisText.push(
+      `<text x="${(leftMargin + plotW / 2).toFixed(1)}" y="${(topMargin - 26 - topFaultBandH).toFixed(1)}" `
+      + `text-anchor="middle" font-weight="600" font-size="${FONT_AXIS_TITLE}" `
+      + `fill="${th.label}">${escapeXml(secondAxisTitle)}</text>`,
+    );
   }
   for (const t of yTicks) {
     const py = yScale.toPx(t.value);
@@ -3832,6 +3967,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `${escapeXml(caption)}</text>`,
       );
     }
+
+    /*
+     * The same rules above the plot, captioned in the second scale's
+     * amps. Rows are counted upward from the plot's top edge, so the
+     * band reads outward from the frame exactly as the bottom one
+     * reads downward from it.
+     */
+    for (const { i, px, row, flipped, caption } of faultLayoutTop) {
+      const labelY = topMargin - 10 - row * (LINE_DETAIL - 1);
+      const dash = faultDash(i);
+      out.push(
+        `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY + 3).toFixed(1)}" ` +
+        `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
+        `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
+      );
+      out.push(
+        `<text x="${(px + (flipped ? -FAULT_LABEL_DX : FAULT_LABEL_DX)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
+        `text-anchor="${flipped ? 'end' : 'start'}" ` +
+        `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
+        `${escapeXml(caption)}</text>`,
+      );
+    }
   });
 
   /*
@@ -4369,9 +4526,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * repeats itself down the whole panel.
          */
         const provenance = f.kind === 'scenario' ? ['scenario'] : [];
+        /* And what it reads on the second scale, where there is one --
+         * the same figure the rule's own caption carries. */
+        const onSecond = secondAxis && f.I_view != null
+          ? [`= ${formatSi(f.I_view * secondAxis.factor, 'A')} at ${secondAxis.name}`]
+          : [];
         return [i, [
           ...provenance,
           ...(referred ? [`-> ${formatSi(f.I_view!, 'A')} on axis`] : []),
+          ...onSecond,
         ].flatMap((line) => wrapText(line, textWidth, FONT_DETAIL - 1))] as const;
       }));
       /* `description` is the author's note on what the fault *is*;
@@ -4797,6 +4960,17 @@ function packFaultLabels(
   plotRight: number,
   /** Print each current beside its name. */
   showCurrents: boolean,
+  /**
+   * Caption the current in another frame, scaled by this factor.
+   *
+   * The top band of a second-axis sheet is packed by a second call
+   * with the factor onto that level, so its captions read in the amps
+   * of the scale they sit under. Measured here with the name, because
+   * the caption's width is what decides which row it lands on -- and
+   * the two bands pack independently, since `2.73 kA` and `8.2 kA` are
+   * not the same width.
+   */
+  frame?: { factor: number },
 ): PlacedFault[] {
   if (!showLabels) return [];
 
@@ -4824,7 +4998,7 @@ function packFaultLabels(
      * this is what decides which row the label lands on.
      */
     const caption = showCurrents && Number.isFinite(I)
-      ? `${f.name} \u00b7 ${formatSi(I, 'A')}`
+      ? `${f.name} \u00b7 ${formatSi(I * (frame?.factor ?? 1), 'A')}`
       : f.name;
 
     const width = caption.length * FONT_DETAIL * CHAR_ADVANCE + 10;

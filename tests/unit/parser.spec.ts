@@ -78,12 +78,6 @@ describe('canonical example from the spec', () => {
     expect(study.relays.get('R_FDR_1')!.ct_ratio).toBeCloseTo(80, 9);
   });
 
-  it('reads a signed angle', () => {
-    const study = process(CANONICAL).study!;
-    const earth = study.relays.get('R_TRF_INC')!.elements[1];
-    expect(earth.stages[0].char_angle_deg).toBe(-45);
-  });
-
   it('keeps the flex table sorted and unit-folded', () => {
     const study = process(CANONICAL).study!;
     const flex = study.relays.get('R_TRF_INC')!.elements[4].stages[0].producer;

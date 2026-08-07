@@ -43,7 +43,6 @@ relay R_TRF_INC {
         curve    = iec.si;
         I_pickup = 720 A;
         tms      = 0.30;
-        reset    = "instant";
     }
 }
 
@@ -55,7 +54,6 @@ relay R_FDR_1 {
         curve    = iec.vi;
         I_pickup = 480 A;
         tms      = 0.25;
-        reset    = "instant";
     }
 }
 

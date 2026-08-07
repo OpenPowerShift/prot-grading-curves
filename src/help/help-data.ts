@@ -85,7 +85,6 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   maker:       M('relay', 'Vendor / maker name shown in reports.', 'maker = "ABB";'),
   model:       M('relay', 'Model name shown in reports.', 'model = "REL-615";'),
   ct_ratio:    M('relay', 'Current-transformer ratio (primary/secondary).', 'ct_ratio = 600/5;'),
-  direction:   M('relay', 'Direction control: "forward", "reverse", or "none".', 'direction = "forward";'),
   'relay.faults': M('relay', 'List of faults this relay explicitly considers. Optional.', 'faults = ["F1", "F2"];'),
   comment:     M('relay', 'Inline documentation. Free text. Inside page { legend } it is standing text drawn on the sheet under a "Comment" heading -- one string, or a list of lines -- as distinct from "Notes", which the tool writes about what it could not draw.', 'comment = "primary OC element";'),
 
@@ -98,9 +97,6 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   'element.I_units': M('element', "Element's per-element current-units override.", 'I_units = "secondary";'),
   tms:         M('element', 'Time Multiplier Setting -- scales an IDMT curve uniformly.', 'tms = 0.30;'),
   t_delay:     M('element', 'Definite-time delay in seconds.', 't_delay = 0.10 s;'),
-  char_angle:  M('element', 'Characteristic angle in degrees.', 'char_angle = 60 deg;'),
-  reset:       M('element', 'Reset mode: "instant", "dependent" (inverse time), or "disk_emulation".', 'reset = "instant";'),
-  directional: M('element', 'Boolean: enables direction-controlled behavior on a stage.', 'directional = true;'),
   stages:      M('element', 'Sub-block listing named stages for a multi-stage element.', 'stages { stage main { ... } stage inst { ... } }'),
 
   // stage
@@ -132,7 +128,6 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
 
   // element -- what it measures
   measures:    M('element', 'Which current the pickup is expressed in: phase, I1, I2, 3I2, I0, 3I0. Required for neg_seq, where IEDs differ over the factor of three.', 'measures = "I2";'),
-  t_reset:     M('element', 'Reset time for a dependent or disk-emulation reset.', 't_reset = 0.5 s;'),
 
   // conditions
   type:        M('faults', 'What kind of fault this is. Fixes the ratios between phase current and the components, so a component the study does not declare can be derived.', 'type = two_phase;'),
@@ -163,7 +158,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   // view
   'view.voltage': M('view', 'Voltage frame for the rendered plot. Named level or "<n> kV" or "pickup".', 'voltage = "HV";'),
   axis:        M('view', 'Axis mode: primary, secondary, or multiples.', 'axis = "primary";'),
-  two_axes:    M('view', 'Toggle a secondary axis below the primary.', 'two_axes = true;'),
+  second_axis: M('view', 'A second current scale across the top, in another voltage level\'s amps. Ampere-turns referral is a uniform map, so it is the same pixels relabelled -- no curve moves.', 'second_axis = HV;'),
   reference_ct:M('view', 'Curve whose CT anchors the secondary axis.', 'reference_ct = R_FDR:51;'),
   'view.stages': M('view', 'Composite (default) renders the pointwise-min of all stages; individual draws each.', 'stages = "composite";'),
   current_min: M('view', 'Minimum displayed current on the X-axis.', 'current_min = 100 A;'),
@@ -347,16 +342,16 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'view', 'views', 'description'],
   scenario:    ['type', 'description', 'level', 'sees'],
   'scenario.level': ['I', 'I1', 'I2', 'I0', 'residual', 'share'],
-  relay:       ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'direction', 'faults',
+  relay:       ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'faults',
                'comment', 'description', 'reference'],
   element:     ['name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-               'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_reset',
-               'char_angle', 'reset', 'directional', 'stages', 'I_cutoff',
+               'I_pickup', 'I_units', 'share', 'tms', 't_delay',
+               'stages', 'I_cutoff',
                'color', 'style', 'width_px', 'view', 'views',
                'comment'],
   stage:       ['function', 'measures', 'curve', 'formula', 'flex_points', 'I_pickup',
-               'I_units', 'share', 'tms', 't_delay', 'char_angle', 'reset',
-               'directional', 'I_cutoff', 'color', 'style', 'width_px', 'comment'],
+               'I_units', 'share', 'tms', 't_delay',
+               'I_cutoff', 'color', 'style', 'width_px', 'comment'],
   device:      ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S',
                'flex_points', 'min_melt', 'total_clear', 't_delay',
                'comment', 'description', 'reference'],
@@ -365,7 +360,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   solve:       ['strategy', 'tolerance_pct', 'free', 'comment'],
   view:        ['name', 'default', 'voltage', 'axis', 'quantity', 'condition',
                'title', 'subtitle',
-               'two_axes', 'reference_ct', 'stages',
+               'second_axis', 'reference_ct', 'stages',
                'current_min', 'current_max', 'time_min', 'time_max',
                'current_pad', 'current_pad_low', 'current_pad_high',
                'time_pad', 'time_pad_low', 'time_pad_high'],
@@ -440,17 +435,6 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
     V('"thermal"', 'Thermal overload (49)'),
     V('"breaker_fail"', 'Breaker failure (50BF)'),
   ],
-  reset: [
-    V('instant', 'Reset the instant current falls below pickup'),
-    V('dependent', 'Reset time depends on how far the disc travelled'),
-    V('disk_emulation', 'Emulate an induction disc running back'),
-  ],
-  direction: [
-    V('forward', 'Operates for current away from the busbar'),
-    V('reverse', 'Operates for current towards the busbar'),
-    V('none', 'Non-directional'),
-  ],
-  directional: [V('true', 'Directional element'), V('false', 'Non-directional')],
   kind: [
     V('fuse', 'Fuse: draws a min-melt / total-clear band'),
     V('recloser', 'Recloser characteristic'),
@@ -595,7 +579,7 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
 /** Fields that take `true` / `false`. */
 export const BOOLEAN_FIELDS = new Set([
   'border', 'stretch', 'mirror', 'coords', 'show', 'labels', 'frame',
-  'auto', 'auto_color', 'outline', 'two_axes', 'solve', 'directional',
+  'auto', 'auto_color', 'outline', 'solve',
 ]);
 
 /**
@@ -629,7 +613,6 @@ export const FIELD_UNITS: Record<string, ValueChoice[]> = {
    */
   __voltage: [V('kV', 'kilovolts'), V('V', 'volts'), V('MV', 'megavolts')],
   __power: [V('MVA', 'megavolt-amperes'), V('kVA', 'kilovolt-amperes'), V('MW', 'megawatts')],
-  __angle: [V('deg', 'degrees')],
 };
 
 /** Which unit family a field belongs to. */
@@ -652,10 +635,9 @@ export const UNIT_FAMILY: Record<string, keyof typeof FIELD_UNITS> = {
   at_I0: '__current', at_residual: '__current',
   current_min: '__current', current_max: '__current', I_cutoff: '__current',
   upstream_to: '__current',
-  t_delay: '__time', t_reset: '__time', t: '__time', at_t: '__time',
+  t_delay: '__time', t: '__time', at_t: '__time',
   time_min: '__time', time_max: '__time',
   margin: '__time', margin_target: '__time',
   V: '__voltage', rating_V: '__voltage', voltage: '__voltage',
   rating_S: '__power', base_S: '__power',
-  char_angle: '__angle',
 };

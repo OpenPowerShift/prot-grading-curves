@@ -291,7 +291,7 @@ export interface RelayElementMember {
 
 export type RelayScalarKey =
   | 'name'
-  | 'maker' | 'model' | 'voltage' | 'ct_ratio' | 'direction'
+  | 'maker' | 'model' | 'voltage' | 'ct_ratio'
   | 'faults' | 'comment' | 'description' | 'reference';
 
 export interface RelayBlock extends BaseNode {
@@ -721,7 +721,16 @@ export interface ViewBlock extends BaseNode {
    * elements whose quantity that condition does not carry.
    */
   condition?: string;
-  two_axes?: boolean;
+  /**
+   * A second abscissa across the top, in another voltage level's amps.
+   *
+   * Ampere-turns referral is a uniform map -- every current on the
+   * sheet scales by the same `V_view / V_second` -- so the second scale
+   * is the same pixels relabelled, exact rather than approximate, and
+   * no curve moves. It is the ordinary way to read a cross-level sheet:
+   * feeder amps along the bottom, incomer amps along the top.
+   */
+  second_axis?: string;
   reference_ct?: Ref;
   /** Optional explicit axis bounds in seconds / amps. */
   current_min?: number;

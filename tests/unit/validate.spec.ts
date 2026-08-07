@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { process } from '@tc/index';
+import { parse } from '@tc/parser';
 
 /** Codes reported for a source, with their severities. */
 function codes(src: string): Map<string, string> {
@@ -144,25 +145,40 @@ describe('flex points', () => {
   });
 });
 
-describe('reset characteristic', () => {
-  it('rejects reset = "dependent" on a curve with no published t_r', () => {
-    // spec: iec.si / vi / ei / lti / sti leave t_r to the manufacturer
-    const found = codes(`${BASE}
-      relay R { voltage = "LV";
-        element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; reset = "dependent"; }
-      }
-    `);
-    expect(found.get('RESET_NO_TR')).toBe('error');
-  });
-
-  it('accepts it on an ANSI curve, which publishes one', () => {
-    const found = codes(`${BASE}
-      relay R { voltage = "LV";
-        element 51 { curve = ansi.mi; I_pickup = 400 A; tms = 2.0; reset = "dependent"; }
-      }
-    `);
-    expect(found.has('RESET_NO_TR')).toBe(false);
-  });
+describe('the keys removed on 2026-08-08', () => {
+  /*
+   * `reset` and `t_reset` had a validator of their own and a formula
+   * in `curves.ts`, and nothing ever drew or graded a reset
+   * characteristic. `direction`, `directional` and `char_angle`
+   * described directionality, which is not a time-current property at
+   * all. All five parsed, were stored on the model, and were read by
+   * nothing.
+   *
+   * Refused now -- and refused with a *reason*, because a key that
+   * behaved for months is one a study is entitled to have been
+   * written with. A bare "unknown setting" would leave its author with
+   * no idea the tool had been ignoring it all along.
+   */
+  for (const [key, source] of [
+    ['reset', 'element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; reset = "instant"; }'],
+    ['t_reset', 'element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; t_reset = 6 s; }'],
+    ['directional', 'element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; directional = true; }'],
+    ['char_angle', 'element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; char_angle = 45 deg; }'],
+    ['direction', 'element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; }'],
+  ] as const) {
+    it(`refuses ${key}, and says why`, () => {
+      const body = key === 'direction'
+        ? `relay R { voltage = "LV"; direction = forward; ${source} }`
+        : `relay R { voltage = "LV"; ${source} }`;
+      const errors = parse(`${BASE}\n${body}`).errors
+        .filter((e) => e.severity === 'error');
+      const removed = errors.find((e) => e.code === 'REMOVED_KEY');
+      expect(removed, `${key} should be refused`).toBeDefined();
+      expect(removed!.message).toContain(key);
+      /* Not just "unknown": the sentence has to say what it was. */
+      expect(removed!.message.length).toBeGreaterThan(40);
+    });
+  }
 });
 
 describe('references', () => {
@@ -261,11 +277,30 @@ describe('grade intent combinations', () => {
 });
 
 describe('view and page', () => {
-  it('rejects two_axes together with axis = "multiples"', () => {
+  it('sends two_axes to the key that replaced it', () => {
+    /*
+     * `two_axes = true` parsed and drew nothing at all. It is refused
+     * now, naming `second_axis` -- which does the thing the boolean
+     * only promised, and says which level the second scale is in.
+     */
+    const removed = parse(`${BASE}\nview { two_axes = true; }`).errors
+      .find((e) => e.code === 'REMOVED_KEY');
+    expect(removed).toBeDefined();
+    expect(removed!.message).toContain('second_axis');
+  });
+
+  it('rejects a second_axis on a level the system does not declare', () => {
     const found = codes(`${BASE}
-      view { axis = "multiples"; two_axes = true; }
+      view { voltage = "LV"; second_axis = "HV"; }
     `);
-    expect(found.get('TWO_AXES_WITH_MULTIPLES')).toBe('error');
+    expect(found.get('VOLTAGE_UNKNOWN')).toBe('error');
+  });
+
+  it('warns where the second axis repeats the sheet\'s own level', () => {
+    const found = codes(`${BASE}
+      view { voltage = "LV"; second_axis = "LV"; }
+    `);
+    expect(found.get('SECOND_AXIS_SAME_LEVEL')).toBe('warning');
   });
 
   it('rejects an unknown paper size', () => {

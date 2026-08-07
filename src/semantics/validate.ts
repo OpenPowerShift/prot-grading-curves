@@ -1102,24 +1102,6 @@ function validateStage(
     }
   }
 
-  /* ---- reset ------------------------------------------------------ */
-  if (stage.reset === 'dependent' && stage.producer?.kind === 'standard') {
-    const t_r = stage.producer.constants.t_r;
-    if (t_r == null) {
-      add(ctx, 'RESET_NO_TR', 'error',
-        `${where} declares reset = "dependent" but ${stage.producer.id} has no published ` +
-        'reset constant; use "instant", or "disk_emulation" with an explicit t_reset',
-        loc);
-    }
-  }
-  if (stage.reset === 'disk_emulation' && stage.t_reset_s == null &&
-      stage.producer?.kind === 'standard' && stage.producer.constants.t_r == null) {
-    add(ctx, 'RESET_NO_TR', 'error',
-      `${where} declares reset = "disk_emulation" without an explicit t_reset, and ` +
-      `${stage.producer.id} has no published reset constant`,
-      loc);
-  }
-
   /* ---- current share ---------------------------------------------- */
   if (!(stage.current_pct > 0 && stage.current_pct <= 100)) {
     add(ctx, 'CURRENT_PCT_OUT_OF_RANGE', 'error',
@@ -1891,16 +1873,44 @@ function validatePoints(ctx: Ctx): void {
   }
 }
 
+/**
+ * The second abscissa names a level the study declares, and a
+ * different one from the sheet's.
+ *
+ * Both failures draw a scale silently: an unknown level resolves to no
+ * kV and the top axis repeats the bottom one, and naming the sheet's
+ * own level does the same by a ratio of exactly 1. A reader would take
+ * either for a genuine second reading.
+ */
+function checkSecondAxis(ctx: Ctx, view: NonNullable<Study['view']>): void {
+  const second = view.second_axis;
+  if (!second) return;
+
+  const names = [...ctx.study.voltages.keys()];
+  if (!ctx.study.voltages.has(second)) {
+    add(ctx, 'VOLTAGE_UNKNOWN', 'error',
+      `view declares second_axis = "${second}", which is not in system.voltages `
+      + `(known: ${names.join(', ') || 'none'})${didYouMean(suggest(second, names))}`,
+      view.loc);
+    return;
+  }
+
+  /* `view.voltage` may be a level name or a written magnitude; only a
+   * name can be compared, which is the case worth catching. */
+  const own = view.voltage?.trim().replace(/^"|"$/g, '');
+  if (own && own === second) {
+    add(ctx, 'SECOND_AXIS_SAME_LEVEL', 'warning',
+      `view draws a second_axis in ${second}, which is the level the sheet is already `
+      + 'drawn in; the two scales would carry identical numbers',
+      view.loc);
+  }
+}
+
 function validateView(ctx: Ctx): void {
   const view = ctx.study.view;
   if (!view) return;
 
-  if (view.two_axes === true && view.axis === 'multiples') {
-    add(ctx, 'TWO_AXES_WITH_MULTIPLES', 'error',
-      'view declares two_axes = true with axis = "multiples"; the second axis has no meaning ' +
-      'in multiples mode',
-      view.loc);
-  }
+  checkSecondAxis(ctx, view);
   if (view.current_min != null && view.current_max != null && view.current_min >= view.current_max) {
     add(ctx, 'VIEW_RANGE_INVERTED', 'error',
       `view declares current_min (${view.current_min}) at or above current_max (${view.current_max})`,

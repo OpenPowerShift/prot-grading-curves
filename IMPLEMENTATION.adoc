@@ -537,20 +537,6 @@ Added by that pass, most misleading first:
   The header promises warnings that "do not block grading" while
   `I_pickup = 1.2` is a hard `UNIT_MISSING` that blocks rendering.
 
-. *`directional`, `char_angle`, `reset`, `t_reset` and relay
-  `direction` are all inert*, and `guide.adoc:553-575` gives them real
-  protection meaning ("`directional = true` restricts the element to
-  faults in front of it, which is what stops one of a parallel pair
-  tripping for a fault on the other"). `tReset()` is exported and
-  unit-tested with no production consumer. `semantics.adoc:745-747` is
-  honest that v1 does not compute a directional characteristic, so the
-  spec and the guide contradict each other.
-
-. *`two_axes` is inert and documented two incompatible ways*:
-  `guide.adoc:1368` says it repeats the *time* scale on the right
-  edge, `semantics.adoc:1391` says it adds a second *X* axis below.
-  Neither happens.
-
 Verified *correct* by the same pass, and worth not re-checking: the
 tutorial's worked numbers reproduce exactly (0.267 s / 0.921 s /
 0.654 s PASS); all 15 `skill.adoc` blocks parse and its starter study
@@ -566,27 +552,18 @@ be `tTripRI`).
   shorthands produce `DEVICE_NO_CURVE`. The spec table also names
   `tx_25mva_11kv` where the code key is `tx_25mva_33_11kv`.
 
-. *`view { axis = "multiples" }` is a no-op.* [VERIFIED] `axisMode` is
-  read once in `renderer/svg.ts` and thereafter only compared to
-  `'secondary'`. `semantics.adoc` names it as the answer to
-  cross-voltage plotting and `guide.adoc` repeats it; the same study
-  renders byte-identically with `multiples` and with `primary`.
-
-. *`two_axes` is parsed, validated, documented two contradictory ways,
-  and rendered by nothing.* `semantics.adoc` calls it a secondary
-  *horizontal* axis; `guide.adoc` calls it a repeat of the *time* scale
-  on the right-hand edge.
-
 . *Device-model generation does not exist.* `semantics.adoc` promises
   transformer damage points generated from `rating_S` / `rating_V` per
   C57.109, and recloser `number_of_shots` / `reclosing_time_s`
   metadata. All are `UNKNOWN_KEY` or `DEVICE_NO_CURVE`.
 
-. *Dead settings offered in completions.* `directional`, `char_angle`,
-  relay `direction` and `system { I_base }` are parsed, stored and read
-  by nothing. Either mark them informational on the sheet, or remove
-  them as `frequency_Hz` and `grounding` were. `I_base` belongs with
-  the multiples axis above.
+. *`system { I_base }` is parsed, stored and read by nothing.*
+  The other dead settings in this entry -- `directional`, `char_angle`,
+  relay `direction` -- were removed on 2026-08-08, as `frequency_Hz`
+  and `grounding` were before them. `I_base` is the one left, and it is
+  a different case: `pu` pickups are documented as resolving against
+  it and do not, which is a wrong *number* rather than an ignored key.
+  Deferred at the user's instruction, 2026-08-07.
 
 . *`linting-rules.adoc` states 13 rules as processor behaviour*; two
   are implemented. Five codes named in the spec are never emitted;
@@ -833,6 +810,71 @@ outputs, docs against code -- run against a running build. Every
 finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
+
+* *Five keys were accepted, stored, and read by nothing; one promised
+  a second axis and drew nothing.* Removed: `direction`, `directional`,
+  `char_angle`, `reset`, `t_reset`, `two_axes`. Removed *with a
+  sentence each* (`REMOVED_KEY`) rather than as unknown settings -- a
+  key that behaved for months is one a study is entitled to have been
+  written with, and "unknown setting" would leave its author never
+  knowing the tool had been discarding the figure all along.
++
+  The first three describe directionality, which is not a time-current
+  property: it decides *which faults an element responds to*, not how
+  long it takes at a current, so there is nothing for a TCC to draw.
+  That limit is now stated in the spec and the guide, which is more use
+  than a key that took the number and dropped it. `reset` / `t_reset`
+  described a characteristic that *could* be drawn -- `curves.ts`
+  carried the formula, `tReset`, and nothing ever called it. Removed
+  rather than kept as a promise. `t_r` stays in the constants table:
+  that table's purpose is to be a transcription checkable line by line
+  against the standard, and dropping a published constant would make it
+  a worse copy.
++
+  `char_angle` was the only field in the language measured in degrees,
+  so the `angle` quantity went with it rather than being left as a
+  category nothing is in.
++
+  Found while doing it: `noteUnknownElementSetting` carried a *second,
+  hand-maintained copy* of the element's accepted-key list and wrote
+  its own message, so it never reached `REMOVED_KEYS` and went on
+  offering the removed keys in its suggestion text. Routed through
+  `noteUnknownKey` like every other block.
+
+* *`view { second_axis = <level>; }`* -- what `two_axes` promised, and
+  more, since a level name says which scale rather than merely asking
+  for one. A second current scale across the top in that level's amps,
+  with its own title and its own captions on the fault rules.
++
+  Exact rather than approximate: ampere-turns referral is a *uniform*
+  map, so every current scales by the same `V_view / V_second` and the
+  second scale is the same pixels relabelled. No curve moves. On sample
+  10's 33/11 kV cascade the incomer's 700 A pickup reads 700 A on the
+  top scale where the sheet's own frame puts it at 2.1 kA.
++
+  The fault figures go *at the top*, beside the scale they are in.
+  Bracketing them onto the bottom captions was tried first and is
+  wrong: it puts the HV number at the far end of the sheet from the HV
+  scale and lengthens the busiest labels on the drawing. The two bands
+  pack independently, since `2.73 kA` and `8.2 kA` are not the same
+  width.
++
+  `page { axes { mirror } }` would repeat the bottom scale along the
+  top; the second axis takes that strip. `fault-band.spec.ts` now
+  checks each band against its own frame -- asking only "below the
+  lowest axis label" would have called the top band a failure, and
+  weakening it to pass would have stopped checking the bottom one.
+
+* *`axis = "multiples"` parsed and did nothing*, leaving the ticks in
+  primary amps. It now labels against one reference element's pickup --
+  `reference_ct`, or else the highest on the sheet.
++
+  The spec specified it as a *per-curve* multiple, "the only mode in
+  which the curves line up vertically by their pickup", which is not
+  implementable and never was: one abscissa carries one scale, and
+  lining every curve up on `M = 1` means *moving the curves*, which is
+  a different drawing. Corrected there rather than left as a claim the
+  code cannot meet.
 
 * *`I0` / `residual` consistency was checked in one place out of four.*
   `residual = 3 x I0` is what a residual connection sums, not a

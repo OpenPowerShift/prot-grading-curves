@@ -98,11 +98,11 @@ type, view, views, description
 *Inside `scenario.level.<level>`* -- I, I1, I2, I0, residual
 
 *Inside `element` / `stage`* -- name, function, measures, curve, formula,
-flex_points, I_pickup, I_units, share, tms, t_delay, t_reset,
-char_angle, reset, directional, direction, stages, stage, I_cutoff,
+flex_points, I_pickup, I_units, share, tms, t_delay,
+stages, stage, I_cutoff,
 color, style, width_px, view, views, comment
 
-*Inside `relay`* -- name, voltage, ct_ratio, direction, faults,
+*Inside `relay`* -- name, voltage, ct_ratio, faults,
 maker, model, comment, description, reference
 
 *Inside `grade`* -- primary, backup, fault, scenario, margin,
@@ -125,7 +125,7 @@ two_phase_earth, single_phase_earth
 
 *Inside `combine`* -- name, sources, as, voltage, color, style, label
 
-*Inside `view`* -- stages, axis, two_axes, reference_ct, voltage,
+*Inside `view`* -- stages, axis, second_axis, reference_ct, voltage,
 current_min, current_max, time_min, time_max, current_pad,
 current_pad_low, current_pad_high, time_pad, time_pad_low,
 time_pad_high
@@ -246,7 +246,6 @@ was meant.
 
 | `tms`            | _none_
 | `t_delay`        | `s`
-| `t_reset`        | `s`
 | `margin`      | `s`
 | Flex curve times | `s`
 | Char-angle       | `deg`

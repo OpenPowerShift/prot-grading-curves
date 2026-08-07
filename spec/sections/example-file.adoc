@@ -44,7 +44,6 @@ relay R_TRF_INC {
     voltage       = "HV";
     ct_ratio      = 600/5;
     faults        = ["F_INC_max", "F_INC_min"];
-    direction     = "forward";        # forward (default), reverse, none
 
     // phase overcurrent, IEC standard inverse -------------------------
     element 51 {
@@ -52,19 +51,14 @@ relay R_TRF_INC {
         curve        = iec.si;
         I_pickup = 720  A;               // primary amps on the HV side
         tms          = 0.30;
-        reset        = "instant";
-        directional  = false;
     }
 
-    // directional earth-fault, IEEE very inverse ----------------------
+    // earth-fault, IEEE extremely inverse -----------------------------
     element 67N {
         function     = "earth_fault";
         curve        = ansi.ei;
         I_pickup =  120 A;
         tms          = 2.40;             # ANSI time dial: 0.5 .. 15
-        char_angle   = -45 deg;
-        reset        = "dependent";
-        directional  = true;
     }
 
     // instantaneous definite-time stage -----------------------------
@@ -81,7 +75,6 @@ relay R_TRF_INC {
         formula      = { k = 4.0 s; c = 0.10 s; alpha = 0.50 };
         I_pickup = 600 A;
         tms          = 0.30;
-        reset        = "instant";
     }
 
     // piecewise FlexCurve-style table -------------------------------
@@ -104,7 +97,7 @@ relay R_FDR_1 {
     element 50 { function = "phase_oc"; curve = definite;
                  I_pickup = 3200 A; t_delay = 0.05 s; }
     element 51 { function = "phase_oc"; curve = iec.vi;
-                 I_pickup = 480 A; tms = 0.25; reset = "instant"; }
+                 I_pickup = 480 A; tms = 0.25; }
 }
 
 // ---- grading pairs: upstream is the backup; downstream is the primary -

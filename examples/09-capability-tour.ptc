@@ -100,7 +100,6 @@ relay R_INC {
     curve = iec.si;
     I_pickup = 720 A;
     tms = 0.30;
-    reset = "instant";
   }
 }
 

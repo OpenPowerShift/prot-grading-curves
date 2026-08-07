@@ -173,7 +173,6 @@ relay-scalar   ::= "name"       "=" string   # display name; id stays the refere
                   | "model"      "=" string
                   | "voltage"    "=" voltage-ref
                   | "ct_ratio"   "=" ratio
-                  | "direction"  "=" direction-keyword
                   | "faults"     "=" "[" fault-ref-list "]" ";"
                   | "comment"    "=" string ";"
                   | "description" "=" string ";"
@@ -184,7 +183,6 @@ voltage-ref     ::= string ;
 fault-ref-list  ::= fault-ref { "," fault-ref } ;
 fault-ref       ::= fault-id ;
 fault-id        ::= string ;
-direction-keyword ::= "forward" | "reverse" | "none" ;
 ----
 
 A `relay` block declares its voltage level by reference (using
@@ -231,10 +229,6 @@ element-member  ::= name-asg
                   | current_pct-asg
                   | tms-asg
                   | t_delay-asg
-                  | t_reset-asg
-                  | char_angle-asg
-                  | reset-asg
-                  | directional-asg
                   | I_cutoff-asg
                   | curve-drawing-asg
                   | scoped-view-asg
@@ -296,13 +290,6 @@ current_pct-asg ::= "share" "="
                   number "%" ";" ;
 tms-asg         ::= "tms"       "=" number ";" ;
 t_delay-asg     ::= "t_delay"   "=" number time-unit ";" ;
-t_reset-asg     ::= "t_reset"   "=" number time-unit ";" ;
-char_angle-asg  ::= "char_angle" "=" number "deg" ";" ;
-reset-asg       ::= "reset"     "=" reset-keyword ";" ;
-reset-keyword   ::= "instant"     # immediate reset (t_r = 0)
-                  | "dependent"   # inverse-time reset using curve's t_r
-                  | "disk_emulation" ;  # inverse-time reset, requires t_reset
-directional-asg ::= "directional" "=" boolean ";" ;
 
 stages-block    ::= "stages" "{" { stage-block } "}" ;
 stage-block     ::= "stage" stage-id "{" { stage-member } "}" ;
@@ -315,10 +302,6 @@ stage-member    ::= curve-asg
                   | current_pct-asg
                   | tms-asg
                   | t_delay-asg
-                  | t_reset-asg
-                  | char_angle-asg
-                  | reset-asg
-                  | directional-asg
                   | I_cutoff-asg
                   | curve-drawing-asg
                   | comment-asg ;
@@ -626,7 +609,7 @@ view-member     ::= "name"          "=" string ";"
                   | "current_max"   "=" number current-unit ";"
                   | "time_min"      "=" number time-unit ";"
                   | "time_max"      "=" number time-unit ";"
-                  | "two_axes"      "=" boolean ";"
+                  | "second_axis"   "=" identifier ";"
                   | "reference_ct"  "=" ref ";" ;
 view-stages-keyword ::= "composite" | "individual" ;
 view-axis-keyword ::= "primary" | "secondary" | "multiples" ;
@@ -928,7 +911,7 @@ hex-digit       ::= digit | "a" ... "f" | "A" ... "F" ;
 boolean         ::= "true" | "false" ;
 string          ::= '"' { char } '"' ;
 value           ::= number | string | boolean | ratio | relay-ref
-                  | function-keyword | reset-keyword | curve-id
+                  | function-keyword | curve-id
                   | flex-points-literal ;
 
 current-unit    ::= "A" | "kA" | "mA" ;

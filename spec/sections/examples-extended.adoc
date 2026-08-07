@@ -242,7 +242,7 @@ The following element block reproduces a typical ABB REF615 function:
 
 * one IDMT low-set stage (51P1, IEC standard inverse),
 * one definite-time instantaneous high-set stage (51P2T),
-* one directional earth-fault (67N1) on a separate *element*.
+* one earth-fault element (67N1) on a separate *element*.
 
 The `view` block at the bottom of the file requests the composite
 plot:
@@ -254,7 +254,6 @@ relay R_330_11_INC {
     model         = "REF615";
     voltage       = "LV";
     ct_ratio      = 600/5;
-    direction     = "forward";
 
     element 51 {
         function  = "phase_oc";
@@ -264,7 +263,6 @@ relay R_330_11_INC {
                 curve      = iec.si;
                 I_pickup   = 720 A;
                 tms        = 0.30;
-                reset      = "instant";
             }
             stage hi_set {
                 curve      = definite;
@@ -286,15 +284,11 @@ element 67N {
     curve        = ansi.e;
     I_pickup     = 120 A;
     tms          = 0.40;
-    directional  = true;
-    char_angle   = -45 deg;
-    reset        = "dependent";
 }
 
 view {
     stages        = "composite";      // one curve per element
     axis          = "primary";
-    two_axes      = false;
 }
 ----
 
@@ -324,25 +318,40 @@ combine {
 The synthetic curve is *not* part of any grading; it is documentation
 for visual inspection.
 
-=== Two-axes primary + secondary
+=== A second scale, in another level's amps
 
 [source,tc]
 ----
 view {
+    voltage       = "MV";                // the sheet is drawn in 11 kV amps
     axis          = "primary";
-    two_axes      = true;
+    second_axis   = "HV";                // ...and reads 33 kV amps on top
+}
+----
+
+The plot carries its own scale along the bottom and a second one
+across the top in the named level's amps, with its own title and its
+own captions on the fault rules. Ampere-turns referral is a uniform
+map, so the second scale is the same pixels relabelled: no curve
+moves, and a multiple read off either scale is the same multiple.
+
+`page { axes { mirror = true; } }` would otherwise repeat the bottom
+scale along the top; the second axis takes that strip.
+
+=== Anchoring the scale to one curve
+
+[source,tc]
+----
+view {
+    axis          = "secondary";
     reference_ct  = R_330_11_INC:51;     // n_CT = 600/5 = 120x
 }
 ----
 
-The plot shows a primary-amp axis at the top and a secondary-amp
-axis at the bottom (using the reference CT ratio of R_330_11_INC).
-Curves whose pickup is referenced to a different CT-ratio are drawn
-as before, with their own markings; only the *reference* of the
-secondary axis changes.
-
-A CT-ratio spread warning is emitted if any relay in the study has a
-CT ratio outside a 5:1 band of `reference_ct`.
+`axis = "secondary"` divides the scale by the named relay's CT ratio;
+`axis = "multiples"` divides by the named element's pickup. Curves
+whose pickup is referenced to a different CT ratio are drawn as
+before, with their own markings; only the *labelling* changes.
 
 === Fuse-relay coordination with cable-withstand
 

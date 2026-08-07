@@ -151,8 +151,6 @@ export interface Stage {
    */
   tms_declared?: number;
   t_delay_s?: number;
-  t_reset_s?: number;
-  reset?: 'instant' | 'dependent' | 'disk_emulation';
   /** Share of the total fault current this stage sees, in percent. */
   current_pct: number;
   function?: string;
@@ -162,8 +160,6 @@ export interface Stage {
    * `src/semantics/quantity.ts`.
    */
   measures?: string;
-  directional?: boolean;
-  char_angle_deg?: number;
   /**
    * Current this stage's curve stops at, in primary amps.
    *
@@ -268,7 +264,6 @@ export interface Relay {
   voltage_kV?: number;
   /** `600/5` resolved to 120. */
   ct_ratio?: number;
-  direction?: string;
   faults: string[];
   elements: Element[];
 }
@@ -1071,7 +1066,6 @@ function resolveRelay(node: Extract<TopLevel, { type: 'relay' }>, study: Study):
     voltage,
     voltage_kV: voltage ? study.voltages.get(voltage)?.kV : undefined,
     ct_ratio: readRatio(get('ct_ratio')),
-    direction: readString(get('direction')),
     faults: readStringList(get('faults')),
     elements: [],
   };
@@ -1243,9 +1237,7 @@ function resolveStage(
 
   const tmsRaw = rawNumber(pick('tms'));
   const tDelay = seconds(pick('t_delay'));
-  const tReset = seconds(pick('t_reset'));
   const currentPct = rawNumber(pick('share'));
-  const charAngle = rawNumber(pick('char_angle'));
 
   return {
     id,
@@ -1256,13 +1248,9 @@ function resolveStage(
     I_units,
     tms: Number.isFinite(tmsRaw) ? tmsRaw : undefined,
     t_delay_s: Number.isFinite(tDelay.value) ? tDelay.value : undefined,
-    t_reset_s: Number.isFinite(tReset.value) ? tReset.value : undefined,
-    reset: readString(pick('reset')) as Stage['reset'],
     current_pct: Number.isFinite(currentPct) ? currentPct : 100,
     function: readString(pick('function')),
     measures: readString(pick('measures')),
-    directional: readBoolean(pick('directional')),
-    char_angle_deg: Number.isFinite(charAngle) ? charAngle : undefined,
     /* `pick` already falls back to the owning element, so a stage
      * inherits its ceiling and its ink without restating either. */
     I_cutoff_A: currentCeiling(pick('I_cutoff')),

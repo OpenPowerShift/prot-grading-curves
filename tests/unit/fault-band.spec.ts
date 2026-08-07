@@ -32,6 +32,10 @@ const plotBottom = (svg: string): number => {
   return Number(m[1]) + Number(m[2]);
 };
 
+/** Top edge of the plot, from the same data. */
+const plotTop = (svg: string): number =>
+  Number(/data-plot="[\d.]+,([\d.]+),/.exec(svg)![1]);
+
 const TWO = '"Fault A" { I = 2.0 kA; type = three_phase; voltage = "MV"; } '
   + '"Fault B" { I = 2.8 kA; type = three_phase; voltage = "MV"; }';
 
@@ -156,6 +160,14 @@ describe('where the band sits', () => {
      * A sheet in secondary amps draws a second row of axis labels, so
      * a clearance that holds on the default study does not
      * necessarily hold on all of them -- which is how this was missed.
+     *
+     * A `second_axis` sheet draws a *second band* of rules above the
+     * plot, in the other level's amps. Each band is checked against
+     * its own frame: the bottom one below the bottom scale, the top
+     * one inside the strip between the top scale and the plot. Asking
+     * only "below the lowest axis label" would have called the top
+     * band a failure, and weakening it to pass would have stopped
+     * checking the bottom one.
      */
     const { readFileSync, readdirSync } = await import('node:fs');
     const files = readdirSync('examples').filter((f) => f.endsWith('.ptc'));
@@ -168,10 +180,47 @@ describe('where the band sits', () => {
         const svg = renderStudy(result, { theme: 'light', view });
         const drawn = labels(svg);
         if (drawn.length === 0) continue;
-        const first = Math.min(...drawn.map((l) => l.y));
-        expect(first, `${file}${view ? ` (${view.name})` : ''}`)
-          .toBeGreaterThan(lowestAxisLabel(svg));
+        const where = `${file}${view ? ` (${view.name})` : ''}`;
+        const top = plotTop(svg);
+
+        const below = drawn.filter((l) => l.y > top);
+        if (below.length > 0) {
+          expect(Math.min(...below.map((l) => l.y)), where)
+            .toBeGreaterThan(lowestAxisLabel(svg));
+        }
+
+        /* The top band, where there is one: above the plot and clear
+         * of the scale that sits above it. */
+        const above = drawn.filter((l) => l.y <= top);
+        for (const l of above) {
+          expect(l.y, `${where}: top band label "${l.text}"`).toBeLessThan(top);
+          expect(l.y, `${where}: top band label "${l.text}"`).toBeGreaterThan(0);
+        }
       }
     }
+  });
+
+  it('puts the second scale above its own band of rules', async () => {
+    /*
+     * The order outward from the plot has to mirror the bottom: ticks
+     * first, then the fault names, then the axis title. Drawing the
+     * band over the ticks was the same collision this whole describe
+     * block exists for, in the other direction.
+     */
+    const { readFileSync } = await import('node:fs');
+    const result = process(readFileSync('examples/10-substation-cascade.ptc', 'utf8'));
+    const svg = renderStudy(result, { theme: 'light' });
+
+    const top = plotTop(svg);
+    const band = labels(svg).filter((l) => l.y <= top);
+    expect(band.length, 'sample 10 should draw a top fault band').toBeGreaterThan(0);
+
+    /* The topmost current-scale label above the plot. */
+    const ticks = [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)"[^>]*>([\d.]+ ?k?A)</g)]
+      .map((m) => Number(m[1]))
+      .filter((y) => y < top);
+    expect(ticks.length, 'sample 10 should draw a second scale').toBeGreaterThan(0);
+
+    expect(Math.max(...ticks)).toBeLessThan(Math.min(...band.map((l) => l.y)));
   });
 });

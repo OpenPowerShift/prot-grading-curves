@@ -13,6 +13,9 @@
 #
 #   legend { style = "inside"; }   the same panel, floated on the plot
 #   legend { style = "direct"; }   no panel; each curve labelled in place
+#   legend { style = "none"; }     no identification at all — for a
+#                                  sheet that is one figure in a report
+#                                  whose text names the curves
 #
 # This study uses `direct`. Each characteristic carries its own boxed
 # name with a leader back to the curve, so the reader never has to

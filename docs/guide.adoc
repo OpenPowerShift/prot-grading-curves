@@ -466,7 +466,6 @@ relay R_FDR {
     model     = "MiCOM_P122";
     voltage   = "LV";
     ct_ratio  = 400/5;             # -> n_CT = 80
-    direction = "forward";
 
     element 51 {
         name     = "Phase OC";
@@ -474,7 +473,6 @@ relay R_FDR {
         curve    = iec.si;
         I_pickup = 320 A;
         tms      = 0.12;
-        reset    = "instant";
     }
 
     element 50 {
@@ -549,9 +547,20 @@ element 51 {                                    # a published point table
 linearly. Use them for anything the catalogue does not cover -- ACB
 trip units, thermal curves, manufacturer data.
 
-==== Reset, direction, and the settings that are not a curve
+==== What a time-current sheet cannot say
 
-Three element fields describe behaviour a characteristic curve cannot:
+Directionality and the reset characteristic are real settings and this
+tool records neither. `direction`, `directional`, `char_angle`, `reset`
+and `t_reset` existed until 2026-08-08, were stored, and were read by
+nothing; they are refused now, with a sentence saying so.
+
+Whether an element is directional decides *which faults it responds
+to*, not how long it takes at a current, so there is nothing for a TCC
+to draw. That is a real limit on what a coordination sheet argues: a
+parallel pair needs directional elements or a fault on one circuit
+trips the healthy one, and this drawing cannot show it. Put such
+settings in `description`, or in the page's `notes` block where they
+appear on the sheet:
 
 [source,tc]
 ----
@@ -560,33 +569,9 @@ element 51 {
     curve       = ansi.mi;
     I_pickup    = 480 A;
     tms         = 1.0;
-
-    reset       = disk_emulation;   # instant, dependent, disk_emulation
-    t_reset     = 6 s;
-
-    directional = true;
-    char_angle  = 45 deg;
+    description = "Directional, forward, MTA 45 deg; disc reset 6 s";
 }
 ----
-
-`reset` is what the element does *after* a fault clears but before it
-has finished timing. `instant` drops out at once, which is what a
-numeric relay does unless told otherwise. `dependent` and
-`disk_emulation` unwind over `t_reset`, the way an induction disc
-spins back -- and on a reclosing scheme that memory decides whether the
-second shot lands on a partly-run disc. A curve whose standard leaves
-the reset time to the manufacturer cannot take `dependent`; the tool
-says so rather than inventing one.
-
-`directional = true` restricts the element to faults in front of it,
-which is what stops one of a parallel pair tripping for a fault on the
-other. `char_angle` is where its maximum torque sits relative to the
-polarising quantity. The relay itself carries `direction = forward`,
-`reverse` or `none` -- `reverse` for an element looking back into the
-busbar behind it, `none` for a non-directional backup that must not
-care which way the current flows.
-
-Sample 15 grades a parallel pair using all of these.
 
 === What an element measures
 
@@ -1417,22 +1402,47 @@ view {
     time_pad_low     = 2;
     time_pad_high    = 2;
 
-    two_axes         = true;   # repeat the time scale down the right edge
-    reference_ct     = R_FDR;  # whose CT ratio secondary amps are quoted in
+    second_axis      = "HV";   # a second current scale, in HV amps
+    reference_ct     = R_FDR;  # the curve the axis is anchored to
 }
 ----
 
-`two_axes` repeats the time scale on the right-hand edge, so a wide
-sheet can be read without tracking back across it.
+===== A second scale, in another level's amps
 
-`reference_ct` matters when `axis = "secondary"` or the legend quotes
-secondary amps: a sheet carrying several relays has several CT ratios,
-and the sheet has to say which one its secondary figures are in. Name
-the relay whose panel the reader will have in front of them.
+`second_axis` names a voltage level and puts a second current scale
+across the top, in that level's amps. Ampere-turns referral is a
+*uniform* map -- every current scales by the same `V_view / V_second`
+-- so it is the same pixels relabelled: exact, and no curve moves.
+
+It is how a cross-level sheet is meant to be read. On sample 10's
+33/11 kV cascade the incomer's 700 A pickup is 2.1 kA in the 11 kV
+frame the sheet is drawn in; the top scale reads 700 A instead. Each
+fault rule is captioned up there too, the HV figure belonging beside
+the HV scale rather than bracketed onto a label at the other end of
+the sheet.
+
+Where `page { axes { mirror } }` would repeat the bottom scale along
+the top, the second axis takes that strip -- two rows of numbers a few
+pixels apart, one a copy, is how a reader takes the wrong one. The
+mirrored *time* scale on the right is unaffected. An undeclared level
+is an error; the sheet's own level is a warning.
+
+===== Anchoring the scale
+
+`reference_ct` names the curve the axis is anchored to:
+`axis = "secondary"` divides by that relay's CT ratio, so the numbers
+match the settings sheet in front of the reader; `axis = "multiples"`
+divides by that element's *pickup*, so the scale reads `0.5x`, `2x`,
+`20x` as a relay manual states its curves.
+
+One axis carries one scale, so `multiples` anchors to one curve rather
+than -- as the spec used to claim -- each curve's own pickup: lining
+them all up on `M = 1` would mean moving the curves. Every curve still
+*computes* against its own; only the labelling uses the reference.
+Omitted, the highest on the sheet is used.
 
 `axis` itself takes `"primary"` (the default), `"secondary"`, or
-`"multiples"` -- the last drawing the abscissa in multiples of pickup,
-which is how a relay manual states its curves.
+`"multiples"`.
 
 ==== Keeping a mark to one sheet
 

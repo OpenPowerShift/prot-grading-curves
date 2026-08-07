@@ -24,8 +24,15 @@
  * so a family may itself contain dots (`ur.vi`).
  *
  * `t_r: null` means the standard leaves the reset time to the
- * manufacturer (spec writes this as `_mfr_`); `reset = "dependent"`
- * on such a curve is a validation error.
+ * manufacturer (spec writes this as `_mfr_`).
+ *
+ * Nothing reads `t_r`. The `reset` key that did was removed on
+ * 2026-08-08, having been stored and never drawn. The column stays
+ * because this table's purpose is to be a *transcription* a reader can
+ * check line by line against IEC 60255-151 and IEEE C37.112 -- dropping
+ * a published constant because the current code path does not use it
+ * would make it a worse copy of the standard, and the reset
+ * characteristic is the obvious thing to draw next.
  */
 
 export type CurveForm = 'idmt' | 'ri' | 'log';

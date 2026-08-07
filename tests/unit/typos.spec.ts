@@ -41,8 +41,8 @@ describe('a misspelt setting', () => {
       'I_pickup = 400 A; tms = 0.1;',
       'I_pickup = 400 A; tms = 0.1; comment = "note";',
       'function = "phase_oc"; measures = "phase"; I_pickup = 400 A; tms = 0.1;',
-      'I_pickup = 400 A; tms = 0.1; reset = "instant"; directional = true;',
-      'I_pickup = 400 A; tms = 0.1; name = "Phase OC"; t_reset = 0.1 s;',
+      'I_pickup = 400 A; tms = 0.1; I_cutoff = 20 kA; share = 50;',
+      'I_pickup = 400 A; tms = 0.1; name = "Phase OC"; style = dashed;',
     ]) {
       expect(errorsIn(body), body).toEqual([]);
     }
@@ -81,7 +81,7 @@ view { voltage = "HV"; }`;
       'I_pu = 2 pu; tms = 0.1;',
       'I_pickup = 400 A; tms = 0.1; t_delay = 60 ms;',
       'I_pickup = 400 A; tms = 0.1; t_delay = 1 min;',
-      'I_pickup = 400 A; tms = 0.1; char_angle = 60 deg;',
+      'I_pickup = 400 A; tms = 0.1; I_cutoff = 20 kA;',
     ]) {
       expect(errorsIn(body), body).not.toContain('UNIT_UNKNOWN');
     }

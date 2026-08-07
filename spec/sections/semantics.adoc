@@ -807,13 +807,21 @@ Rules (planned for v0.2):
 This feature does not change the grammar; it is a renderer +
 editor integration that reuses the solver's mathematics.
 
-=== Directional elements
+=== Directionality
 
-A relay or element with `direction = "forward"` (default) or
-`directional = true` is flagged as a *directional* element on the
-TCC. The processor does not (v1) compute the directional
-characteristic itself; v0.2 is the first cut at directional logic
-and polarised curves.
+Directionality is *not* modelled, and there is no key for it.
+
+`direction`, `directional` and `char_angle` existed until 2026-08-08,
+were stored on the model, and were read by nothing. They are removed
+(`REMOVED_KEY`): whether an element is directional decides which faults
+it responds to, not how long it takes to operate at a current, so there
+is nothing a time-current sheet can draw from it. A study that has to
+record the setting puts it in `description` or in the page's `notes`.
+
+This is a real constraint on what a TCC can say -- a parallel pair
+needs directional elements or a fault on one circuit trips the healthy
+one -- and stating it here is more use than a key that accepted the
+figure and discarded it.
 
 === Voltage levels and cross-voltage grading
 
@@ -1486,18 +1494,27 @@ controls only what is *drawn*.
 view {
     stages        = "composite";        // composite | individual
     axis          = "primary";          // primary | secondary | multiples
-    two_axes      = true;
-    reference_ct  = R_TRF_INC:67N;      // anchors the secondary axis
+    second_axis   = "HV";               // a second scale, in HV amps
+    reference_ct  = R_TRF_INC:67N;      // anchors secondary / multiples
 }
 ----
 
-`two_axes = true` adds a second X-axis below the primary, labelled in
-the alternate unit (`primary` ↔ `secondary`). The `reference_ct`
-selects which curve's CT anchors that secondary axis. If
-`reference_ct` is omitted, the renderer pegs the secondary axis to
-the *highest-ratio* curve in the plot (largest n_CT) and labels
-accordingly. If both axes are `multiples`, `two_axes` has no
-effect (single-axis mode).
+`second_axis` names a voltage level and adds a second current scale
+across the *top* of the plot, labelled in that level's amps, with its
+own title and its own captions on the fault rules.
+
+Ampere-turns referral is a uniform map -- every current on the sheet
+scales by the same `V_view / V_second` -- so the second scale is the
+same pixels relabelled. No curve moves, and a multiple read off either
+scale is the same multiple. Where `page { axes { mirror = true; } }`
+would repeat the bottom scale along the top, the second axis takes that
+strip.
+
+`reference_ct` names the curve the axis is anchored to: its `ct_ratio`
+for `axis = "secondary"`, its pickup for `axis = "multiples"`. Omitted,
+the renderer takes the highest ratio (or the highest pickup) in the
+plot. Every curve still computes against its own; only the labelling
+uses the reference.
 
 == Page (layout / theme / legend / colours)
 
@@ -2177,11 +2194,20 @@ time:
   the most upstream primary in the first `grade` block). Every curve
   in the plot still uses its own CT for its own computation; only
   the *labelling* of the axis is affected by the reference CT.
-* `multiples` -- current axis labelled in `M = I / I_p` (per-curve
-  multiple), so each curve's pickup lands on `M = 1`. This mode is
-  the only one in which the curves line up vertically by their
-  pickup; primary and secondary do not since the curves have
-  different physical CTs.
+* `multiples` -- current axis labelled in `M = I / I_p` against *one*
+  reference element's pickup, named by `reference_ct` or else the
+  highest pickup on the sheet.
++
+[NOTE]
+====
+Earlier drafts specified this as a *per-curve* multiple, "the only
+mode in which the curves line up vertically by their pickup". That is
+not implementable and never was: one abscissa carries one scale, and
+lining every curve up on `M = 1` would mean *moving the curves*, which
+is a different drawing of different characteristics. The mode is a
+relabelling, exactly as `secondary` is, and every curve still computes
+against its own pickup.
+====
 
 NOTE: A study mixing radically different CTs (e.g. incomer 600/5
 A, feeder 100/5 A) is still displayed with one X-axis option in
@@ -2189,21 +2215,26 @@ either `primary` or `secondary`. The renderer warns the user when
 the spread between CT ratios exceeds 5:1 (the secondary axis would
 become effectively un-readable with the same one-axis treatment).
 
-==== Two-axes display (optional)
+==== The second axis
 
-The user can toggle a *secondary horizontal axis* below the
-*primary* one when the primary is `primary` or `secondary`. Both axes
-carry distinct labels and tick marks; curves are drawn against the
-*primary* axis while the secondary axis provides reference guidance
-for the chosen CT.
+`view { second_axis = <level>; }` draws a second current scale across
+the *top* of the plot, in the named voltage level's amps. Both scales
+carry their own titles and tick marks, and each fault rule is
+captioned in both frames -- the second-frame caption above the plot,
+beside the scale it is in.
 
-The renderer allows pegging the secondary axis to a single reference
-CT; the user selects which curve's CT anchors the secondary axis. If
-no reference is selected, the renderer pegs the secondary axis to the
-*highest-ratio* curve in the plot (the largest n_CT) and labels the
-axis accordingly, with the legend showing each curve's own pickup
-mark on its own effective I_p.
+Curves are drawn against the sheet's own scale and nothing moves.
+Ampere-turns referral is a uniform map, so the second scale is
+arithmetically the same axis: `I_second = I_view x V_view / V_second`
+at every point. That is what makes it exact rather than an
+approximation, and what makes a multiple read off either scale the
+same multiple.
 
-The two-axis toggle does not change the curve math; it is purely a
-display option.
+A level `system.voltages` does not declare is `VOLTAGE_UNKNOWN`
+(*error*); the sheet's own level is `SECOND_AXIS_SAME_LEVEL`
+(*warning*), both scales then carrying identical numbers.
+
+The second axis does not change the curve mathematics; it is purely a
+display option. It replaced `two_axes`, a boolean that promised a
+second abscissa and drew nothing.
 

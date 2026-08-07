@@ -1610,9 +1610,17 @@ built from `meta.project` / `meta.study`.
 === Paper sizes and orientation
 
 `size` accepts either a paper keyword (`A4`, `A3`, `A5`, `Letter`,
-`Legal`, `Tabloid`, `A0..A2`) or a literal `{ width_mm = ..., height_mm = ...; }`
-clause for custom paper. The processor's built-in paper sizes
-(in mm):
+`Legal`, `Tabloid`, `A0..A2`) or a literal
+`{ width_mm = ...; height_mm = ...; }` clause for custom paper --
+a figure sized to a report's text column being the ordinary case a
+keyword cannot express.
+
+Both dimensions are required: one alone is `PAGE_SIZE_INCOMPLETE`
+(*error*), not a guess at the other. `orientation` governs either
+form, so the long edge is horizontal under `landscape` whichever way
+round the two were written.
+
+The processor's built-in paper sizes (in mm):
 
 [cols="1,2", options="header"]
 |===

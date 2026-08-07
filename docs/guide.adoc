@@ -1422,10 +1422,9 @@ the HV scale rather than bracketed onto a label at the other end of
 the sheet.
 
 Where `page { axes { mirror } }` would repeat the bottom scale along
-the top, the second axis takes that strip -- two rows of numbers a few
-pixels apart, one a copy, is how a reader takes the wrong one. The
-mirrored *time* scale on the right is unaffected. An undeclared level
-is an error; the sheet's own level is a warning.
+the top, the second axis takes that strip; the mirrored *time* scale
+on the right is unaffected. An undeclared level is an error; the
+sheet's own level is a warning.
 
 ===== Anchoring the scale
 
@@ -1605,6 +1604,12 @@ a mono plan copier, `monochrome` further still -- curves distinguished
 by dash pattern alone. `watermark` prints diagonally across the plot,
 for status. `margins_mm` takes one number for all four sides or a
 block naming each, and is the *paper* margin used on export.
+
+`size` takes a paper keyword or a sheet stated outright --
+`size = { width_mm = 180; height_mm = 120; };` -- which is what a
+figure sized to a report's text column wants and no keyword gives.
+Both dimensions are required; one alone is `PAGE_SIZE_INCOMPLETE`,
+not a guess at the other.
 
 *Legend*
 

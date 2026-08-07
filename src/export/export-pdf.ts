@@ -128,8 +128,20 @@ export function resolvePageMm(options: PdfOptions = {}): [number, number] {
   const orientation = options.orientation ?? 'landscape';
 
   let portrait: [number, number];
-  if (options.size && typeof options.size === 'object') {
-    portrait = [options.size.width_mm, options.size.height_mm];
+  /*
+   * A custom sheet needs *both* dimensions. With one, every figure
+   * downstream is NaN and the SVG comes out with no width at all --
+   * `PAGE_SIZE_INCOMPLETE` already says so, and a study is still
+   * rendered alongside its errors in the playground, so falling back
+   * to the default sheet is what keeps something on the screen to read
+   * the diagnostic against.
+   */
+  const custom = options.size && typeof options.size === 'object'
+    && Number.isFinite(options.size.width_mm) && Number.isFinite(options.size.height_mm)
+    ? options.size
+    : undefined;
+  if (custom) {
+    portrait = [custom.width_mm, custom.height_mm];
   } else {
     const key = typeof options.size === 'string' ? options.size : 'A4';
     const match = Object.keys(PAPER_MM).find((k) => k.toLowerCase() === key.toLowerCase());

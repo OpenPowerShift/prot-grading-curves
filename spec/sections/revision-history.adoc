@@ -561,6 +561,52 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-08 | 0.2.0 | *The dial belongs to the curve, not to the
+                              namespace.* An implementation SHALL carry
+                              the dial family per curve: a vendor
+                              namespace holds both, `ge.ur.mi` taking an
+                              IEEE C37.112 time dial and `ge.ur.si` an
+                              IEC TMS. Keying it on the namespace string
+                              rejected a legal dial of 3.0 on
+                              `ge.ur.mi`, and the obvious response --
+                              dividing by ten -- gives a curve ten times
+                              fast. The solver was worse: it clamped
+                              such a pair to the IEC maximum, called it
+                              unsatisfiable, and advised changing the
+                              curve family.
+
+| 2026-08-08 | 0.2.0 | *A sheet may be stated in millimetres.*
+                              `page { size = { width_mm = ...;
+                              height_mm = ...; } }` has been in the
+                              grammar since the first draft and never
+                              parsed -- the object was swallowed and the
+                              sheet stayed A4 with nothing said, which
+                              also made `PAGE_SIZE_INCOMPLETE`
+                              unreachable. Both dimensions are required;
+                              `orientation` governs either form.
+
+| 2026-08-08 | 0.2.0 | *Directionality and the reset characteristic
+                              are not modelled, and have no keys.*
+                              `direction`, `directional`, `char_angle`,
+                              `reset` and `t_reset` are removed
+                              (`REMOVED_KEY`), having been stored and
+                              read by nothing. Whether an element is
+                              directional decides which faults it
+                              responds to, not how long it takes at a
+                              current, so a time-current sheet has
+                              nothing to draw from it -- a real limit on
+                              what such a drawing argues, and better
+                              stated than papered over by a key that
+                              took the figure and discarded it.
+
+                              `two_axes` is removed with them, replaced
+                              by `second_axis`. `axis = "multiples"`,
+                              which parsed and did nothing, is
+                              implemented against one reference
+                              element's pickup; its earlier
+                              specification as a *per-curve* multiple is
+                              withdrawn as unimplementable.
+
 | 2026-08-08 | 0.2.0 | *The residual is three times I0, everywhere it
                               is written.* A condition declaring both
                               `I0` and `residual` states one number

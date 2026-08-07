@@ -23,9 +23,19 @@ semantic error.
   faults: a definite-time stage has no multiplier; a `flex_points`
   table is absolute in amps, so an absent scale means the table as
   printed; and an element whose `tms` a `solve` block computes.
-. *`tms` outside* `0.025 <= tms <= 1.5` for IEC curves, *or*
-  `0.5 <= tms <= 15` for ANSI curves. *Error* with the valid range
-  in the message.
+. *`tms` outside the range of the dial the curve is set in*:
+  `0.025 <= tms <= 1.5` for an IEC time multiplier setting, or
+  `0.5 <= tms <= 15` for an IEEE C37.112 *time dial*. *Error*, with
+  the valid range in the message.
++
+The dial is a property of the *curve*, not of the namespace it is
+filed under. A vendor namespace holds both: `ge.ur.mi` is C37.112 and
+takes a time dial, while `ge.ur.si` is IEC and takes a TMS, and the
+same split runs through SEL's `u`-curves against its `c`-curves. An
+implementation SHALL therefore carry the dial family per curve.
+Keying it on the namespace string rejects a legal dial of 3.0 on
+`ge.ur.mi`, and the obvious response to that error -- dividing by ten
+-- gives a curve ten times fast.
 . *`at_I` below `I_pickup`* for the anchored curve. *Warning*.
 . *`flex_points` with a repeated current* (tables are sorted by
   current before use, so row order is not a fault; two times at one

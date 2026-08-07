@@ -126,7 +126,7 @@ tTripCombine(study, combine, I)      // synthetic curve
 lookupCurve(namespace, family)   // CurveConstants | undefined
 allCurveIds()                    // every `namespace.family` accepted
 suggestCurveId(id, maxDistance)  // "did you mean" for a typo
-tmsRangeFor(curveId)             // { min, max, step } — IEC vs ANSI dials
+tmsRangeFor(curveId)             // { min, max, step } — from the curve's own dial
 ----
 
 === Solver
@@ -168,7 +168,7 @@ Frequently seen codes:
 | Code | Severity | Meaning
 
 | `CURVE_UNKNOWN` | error | `curve = ...` is not in the constants table
-| `TMS_OUT_OF_RANGE` | error | Outside `[0.025, 1.5]` (IEC) or `[0.5, 15]` (ANSI)
+| `TMS_OUT_OF_RANGE` | error | Outside the curve's own dial: `[0.025, 1.5]` (IEC TMS) or `[0.5, 15]` (C37.112 time dial)
 | `ELEMENT_MIXED_FORMS` | error | Shorthand curve *and* a `stages { }` block
 | `UNRESOLVED_REFERENCE` | error | A `grade`/`combine` names something undeclared
 | `COMBINE_LEVEL_AMBIGUOUS` | error | A `combine` spans two levels and declares no `voltage`

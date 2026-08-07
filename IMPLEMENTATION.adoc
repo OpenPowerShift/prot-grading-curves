@@ -506,19 +506,6 @@ Added by that pass, most misleading first:
   Varying `I_base` between 50 A and 2000 A changed nothing.
   *Deliberately deferred 2026-08-07 at the author's instruction.*
 
-. *The ANSI time-dial range is keyed on the namespace string.*
-  `validation.adoc` says "0.5 <= tms <= 15 for ANSI curves";
-  `curves.ts:192` has `ANSI_NAMESPACES = new Set(['ansi'])`. So
-  `ge.ur.mi` -- which the constants table itself labels "(C37.112 mi)"
-  -- rejects a dial of 3.0 as outside [0.025, 1.5]. Same for
-  `ge.ur.vi`, `sel.u1`, `sel.c1`. The obvious response to that error is
-  to divide the dial by ten, giving a curve ten times fast.
-
-. *`page { size = { width_mm; height_mm } }` never parses.*
-  `grammar.adoc:661` publishes the object form; `parser.ts:2551`
-  accepts only a bare token, so the object is silently swallowed and
-  the MediaBox stays A4. Makes `PAGE_SIZE_INCOMPLETE` unreachable.
-
 . *Four documented diagnostic codes are never emitted*:
   `ANNOTATE_VOLTAGE_MISMATCH` and
   `CROSS_VOLTAGE_AXIS_PRIMARY_UNSUITABLE` (the checks do not exist),
@@ -810,6 +797,41 @@ outputs, docs against code -- run against a running build. Every
 finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
+
+* *The dial range was keyed on the namespace string.*
+  `ANSI_NAMESPACES` held exactly `'ansi'`, so `ge.ur.mi` -- which the
+  constants table itself labels "(C37.112 mi)" -- rejected a legal time
+  dial of 3.0 as outside `[0.025, 1.5]`. The obvious response to that
+  error is to divide by ten, which gives a curve ten times fast. It was
+  worse in the solver: a satisfiable `ge.ur.mi` pair was clamped to the
+  IEC maximum, declared *unsatisfiable*, and advised to change its
+  curve family -- for a study correct as written. It now solves to a
+  dial of 2.620 and passes.
++
+  A namespace is a *vendor*, and vendors ship both dials: GE's UR
+  series carries `ur.mi` (C37.112) beside `ur.si` (IEC) in one table
+  under one name, and the same split runs through SEL's `u`-curves
+  against its `c`-curves. `CurveConstants` now carries `dial` as a
+  *required* field, so a new row cannot forget one, and it is written
+  out rather than derived -- this table exists to be checked line by
+  line against the standards. It correlates exactly with a non-zero
+  `c`, and a test asserts that, which is what would catch a mistyped
+  row.
+
+* *`page { size = { width_mm; height_mm } }` never parsed.*
+  `grammar.adoc` has published the object form since the first draft
+  and everything downstream was built for it -- `resolvePageMm`,
+  `sheetSize`, and a `PAGE_SIZE_INCOMPLETE` check that could not fire.
+  Only the parser was missing, and in two places: the `case 'size'`
+  arm read a single token, and before it could even be reached the
+  page loop routed anything followed by `{` to the styling-sub-block
+  handler, which had nowhere to put the dimensions and dropped them. A
+  study that asked for a custom sheet was issued on A4 in silence.
++
+  An incomplete size also made every figure downstream `NaN` and the
+  SVG came out with no width at all. `resolvePageMm` falls back to the
+  default sheet, since a study is still rendered alongside its errors
+  in the playground and the diagnostic needs something to sit beside.
 
 * *Five keys were accepted, stored, and read by nothing; one promised
   a second axis and drew nothing.* Removed: `direction`, `directional`,

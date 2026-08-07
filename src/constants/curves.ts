@@ -37,6 +37,31 @@
 
 export type CurveForm = 'idmt' | 'ri' | 'log';
 
+/**
+ * Which dial the multiplier is turned in.
+ *
+ * `iec` is the IEC 60255-151 time multiplier setting, `0.025 .. 1.5`;
+ * `ansi` is the IEEE C37.112 *time dial*, `0.5 .. 15`. They are
+ * different scales on different relays, and a study that mixes them up
+ * is out by a factor of ten.
+ *
+ * Declared per curve, not inferred from the namespace it is filed
+ * under. The namespace is a *vendor*, and vendors ship both: GE's UR
+ * series carries `ur.mi` (C37.112, time dial) beside `ur.si` (IEC,
+ * TMS), and SEL's `u`-curves are dialled in one while its `c`-curves
+ * are dialled in the other. Keying on the string `'ansi'` made
+ * `ge.ur.mi` reject a perfectly legal dial of 3.0 as outside
+ * `[0.025, 1.5]` -- and the obvious response to that error is to
+ * divide by ten, which gives a curve ten times fast.
+ *
+ * It correlates exactly with a non-zero `c` (the additive term is what
+ * makes a characteristic the C37.112 shape), but it is written out
+ * rather than derived: this table exists to be checked line by line
+ * against the standards, and a reader should not have to infer a dial
+ * range from a coefficient.
+ */
+export type DialFamily = 'iec' | 'ansi';
+
 export interface CurveConstants {
   /** family name as written after the namespace (e.g. "si", "ur.vi") */
   family: string;
@@ -57,6 +82,8 @@ export interface CurveConstants {
   t_r: number | null;
   /** `a` constant for the linear / logarithmic ABB forms */
   a?: number;
+  /** Which dial the multiplier is turned in; see `DialFamily`. */
+  dial: DialFamily;
   /** `b` constant for the linear / logarithmic ABB forms */
   b?: number;
   /** ceiling multiple G_D; undefined means "use the default of 20" */
@@ -78,11 +105,11 @@ export type CurveTable = Record<string, CurveConstants>;
 /* ------------------------------------------------------------------ */
 
 const iec: CurveTable = {
-  si:  { family: 'si',  name: 'IEC standard inverse',    k: 0.14, c: 0, alpha: 0.02, t_r: null, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 A' },
-  vi:  { family: 'vi',  name: 'IEC very inverse',        k: 13.5, c: 0, alpha: 1.0,  t_r: null, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 B' },
-  ei:  { family: 'ei',  name: 'IEC extremely inverse',   k: 80,   c: 0, alpha: 2.0,  t_r: null, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 C' },
-  lti: { family: 'lti', name: 'IEC long-time inverse',   k: 120,  c: 0, alpha: 1.0,  t_r: null, type: 'dependent', ref: 'IEC 60255-3:1989 §3.5.2 char. 1 (legacy)' },
-  sti: { family: 'sti', name: 'IEC short-time inverse',  k: 0.05, c: 0, alpha: 0.04, t_r: null, type: 'dependent', ref: 'IEC 60255-3:1989 §3.5.2 char. 2 (legacy)' },
+  si:  { family: 'si',  name: 'IEC standard inverse',    k: 0.14, c: 0, alpha: 0.02, dial: 'iec', t_r: null, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 A' },
+  vi:  { family: 'vi',  name: 'IEC very inverse',        k: 13.5, c: 0, alpha: 1.0,  dial: 'iec', t_r: null, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 B' },
+  ei:  { family: 'ei',  name: 'IEC extremely inverse',   k: 80,   c: 0, alpha: 2.0,  dial: 'iec', t_r: null, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 C' },
+  lti: { family: 'lti', name: 'IEC long-time inverse',   k: 120,  c: 0, alpha: 1.0,  dial: 'iec', t_r: null, type: 'dependent', ref: 'IEC 60255-3:1989 §3.5.2 char. 1 (legacy)' },
+  sti: { family: 'sti', name: 'IEC short-time inverse',  k: 0.05, c: 0, alpha: 0.04, dial: 'iec', t_r: null, type: 'dependent', ref: 'IEC 60255-3:1989 §3.5.2 char. 2 (legacy)' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -90,9 +117,9 @@ const iec: CurveTable = {
 /* ------------------------------------------------------------------ */
 
 const ansi: CurveTable = {
-  mi: { family: 'mi', name: 'ANSI/IEEE moderately inverse', k: 0.0515, c: 0.114,  alpha: 0.02, t_r: 4.85, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 D; IEEE C37.112 Table III' },
-  vi: { family: 'vi', name: 'ANSI/IEEE very inverse',       k: 19.61,  c: 0.491,  alpha: 2.0,  t_r: 21.6, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 E; IEEE C37.112 Table III' },
-  ei: { family: 'ei', name: 'ANSI/IEEE extremely inverse',  k: 28.2,   c: 0.1217, alpha: 2.0,  t_r: 29.1, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 F; IEEE C37.112 Table III' },
+  mi: { family: 'mi', name: 'ANSI/IEEE moderately inverse', k: 0.0515, c: 0.114,  alpha: 0.02, dial: 'ansi', t_r: 4.85, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 D; IEEE C37.112 Table III' },
+  vi: { family: 'vi', name: 'ANSI/IEEE very inverse',       k: 19.61,  c: 0.491,  alpha: 2.0,  dial: 'ansi', t_r: 21.6, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 E; IEEE C37.112 Table III' },
+  ei: { family: 'ei', name: 'ANSI/IEEE extremely inverse',  k: 28.2,   c: 0.1217, alpha: 2.0,  dial: 'ansi', t_r: 29.1, type: 'dependent', ref: 'IEC 60255-151:2009 Annex A.1 F; IEEE C37.112 Table III' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -103,16 +130,16 @@ const ansi: CurveTable = {
 /* ------------------------------------------------------------------ */
 
 const sel: CurveTable = {
-  c1: { family: 'c1', name: 'SEL C1 (IEC SI)',            k: 0.14,    c: 0,       alpha: 0.02, t_r: 13.5,  type: 'dependent', ref: 'SEL-451 IM; SEL IEC SI' },
-  c2: { family: 'c2', name: 'SEL C2 (IEC VI)',            k: 13.5,    c: 0,       alpha: 1.0,  t_r: 47.3,  type: 'dependent', ref: 'SEL-451 IM; SEL IEC VI' },
-  c3: { family: 'c3', name: 'SEL C3 (IEC EI)',            k: 80,      c: 0,       alpha: 2.0,  t_r: 80,    type: 'dependent', ref: 'SEL-451 IM; SEL IEC EI' },
-  c4: { family: 'c4', name: 'SEL C4 (IEC LTI, legacy)',   k: 120,     c: 0,       alpha: 1.0,  t_r: 120,   type: 'dependent', ref: 'SEL-451 IM; SEL IEC LTI' },
-  c5: { family: 'c5', name: 'SEL C5 (IEC STI, legacy)',   k: 0.05,    c: 0,       alpha: 0.04, t_r: 4.85,  type: 'dependent', ref: 'SEL-451 IM; SEL IEC STI' },
-  u1: { family: 'u1', name: 'SEL U1 (CO-2 emulation)',    k: 0.0226,  c: 0.0104,  alpha: 0.02, t_r: 1.08,  type: 'dependent', ref: 'SEL-451 IM; CO-2 emulation (NOT C37.112 U1)' },
-  u2: { family: 'u2', name: 'SEL U2 (IAC emulation)',     k: 0.180,   c: 5.95,    alpha: 2.0,  t_r: 5.95,  type: 'dependent', ref: 'SEL-451 IM; SEL IAC emulation' },
-  u3: { family: 'u3', name: 'SEL U3 (very inverse)',      k: 0.0963,  c: 3.88,    alpha: 2.0,  t_r: 3.88,  type: 'dependent', ref: 'SEL-451 IM; SEL very inverse' },
-  u4: { family: 'u4', name: 'SEL U4 (extreme inverse)',   k: 0.0352,  c: 5.67,    alpha: 2.0,  t_r: 5.67,  type: 'dependent', ref: 'SEL-451 IM; SEL extreme inverse' },
-  u5: { family: 'u5', name: 'SEL U5 (short-time inverse)', k: 0.00262, c: 0.00342, alpha: 0.02, t_r: 0.323, type: 'dependent', ref: 'SEL-451 IM; SEL short-time inverse' },
+  c1: { family: 'c1', name: 'SEL C1 (IEC SI)',            k: 0.14,    c: 0,       alpha: 0.02, dial: 'iec', t_r: 13.5,  type: 'dependent', ref: 'SEL-451 IM; SEL IEC SI' },
+  c2: { family: 'c2', name: 'SEL C2 (IEC VI)',            k: 13.5,    c: 0,       alpha: 1.0,  dial: 'iec', t_r: 47.3,  type: 'dependent', ref: 'SEL-451 IM; SEL IEC VI' },
+  c3: { family: 'c3', name: 'SEL C3 (IEC EI)',            k: 80,      c: 0,       alpha: 2.0,  dial: 'iec', t_r: 80,    type: 'dependent', ref: 'SEL-451 IM; SEL IEC EI' },
+  c4: { family: 'c4', name: 'SEL C4 (IEC LTI, legacy)',   k: 120,     c: 0,       alpha: 1.0,  dial: 'iec', t_r: 120,   type: 'dependent', ref: 'SEL-451 IM; SEL IEC LTI' },
+  c5: { family: 'c5', name: 'SEL C5 (IEC STI, legacy)',   k: 0.05,    c: 0,       alpha: 0.04, dial: 'iec', t_r: 4.85,  type: 'dependent', ref: 'SEL-451 IM; SEL IEC STI' },
+  u1: { family: 'u1', name: 'SEL U1 (CO-2 emulation)',    k: 0.0226,  c: 0.0104,  alpha: 0.02, dial: 'ansi', t_r: 1.08,  type: 'dependent', ref: 'SEL-451 IM; CO-2 emulation (NOT C37.112 U1)' },
+  u2: { family: 'u2', name: 'SEL U2 (IAC emulation)',     k: 0.180,   c: 5.95,    alpha: 2.0,  dial: 'ansi', t_r: 5.95,  type: 'dependent', ref: 'SEL-451 IM; SEL IAC emulation' },
+  u3: { family: 'u3', name: 'SEL U3 (very inverse)',      k: 0.0963,  c: 3.88,    alpha: 2.0,  dial: 'ansi', t_r: 3.88,  type: 'dependent', ref: 'SEL-451 IM; SEL very inverse' },
+  u4: { family: 'u4', name: 'SEL U4 (extreme inverse)',   k: 0.0352,  c: 5.67,    alpha: 2.0,  dial: 'ansi', t_r: 5.67,  type: 'dependent', ref: 'SEL-451 IM; SEL extreme inverse' },
+  u5: { family: 'u5', name: 'SEL U5 (short-time inverse)', k: 0.00262, c: 0.00342, alpha: 0.02, dial: 'ansi', t_r: 0.323, type: 'dependent', ref: 'SEL-451 IM; SEL short-time inverse' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -123,10 +150,10 @@ const sel: CurveTable = {
 /* ------------------------------------------------------------------ */
 
 const siemens: CurveTable = {
-  inv:      { family: 'inv',      name: 'Siemens inverse',              k: 0.0086, c: 0.0185, alpha: 0.02, t_r: 9.7,  type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual (vendor ext.; NOT C37.112 U1)' },
-  long_inv: { family: 'long_inv', name: 'Siemens long inverse',         k: 0.086,  c: 0.185,  alpha: 0.02, t_r: 9.7,  type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual' },
-  long_vi:  { family: 'long_vi',  name: 'Siemens long very inverse',    k: 28.55,  c: 0.712,  alpha: 2.0,  t_r: 43.2, type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual' },
-  long_ei:  { family: 'long_ei',  name: 'Siemens long extremely inv.',  k: 64.07,  c: 0.250,  alpha: 2.0,  t_r: 58.2, type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual' },
+  inv:      { family: 'inv',      name: 'Siemens inverse',              k: 0.0086, c: 0.0185, alpha: 0.02, dial: 'ansi', t_r: 9.7,  type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual (vendor ext.; NOT C37.112 U1)' },
+  long_inv: { family: 'long_inv', name: 'Siemens long inverse',         k: 0.086,  c: 0.185,  alpha: 0.02, dial: 'ansi', t_r: 9.7,  type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual' },
+  long_vi:  { family: 'long_vi',  name: 'Siemens long very inverse',    k: 28.55,  c: 0.712,  alpha: 2.0,  dial: 'ansi', t_r: 43.2, type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual' },
+  long_ei:  { family: 'long_ei',  name: 'Siemens long extremely inv.',  k: 64.07,  c: 0.250,  alpha: 2.0,  dial: 'ansi', t_r: 58.2, type: 'dependent', ref: 'SIPROTEC 5 7SJ85 manual' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -137,10 +164,10 @@ const siemens: CurveTable = {
 /* ------------------------------------------------------------------ */
 
 const ge: CurveTable = {
-  'ur.mi': { family: 'ur.mi', name: 'GE UR moderately inverse',  k: 0.0515, c: 0.114,  alpha: 0.02, t_r: 4.85, type: 'dependent', ref: 'UR-series T60 IM (C37.112 mi, default)' },
-  'ur.vi': { family: 'ur.vi', name: 'GE UR very inverse',        k: 19.61,  c: 0.491,  alpha: 2.0,  t_r: 21.6, type: 'dependent', ref: 'UR-series T60 IM (C37.112 vi)' },
-  'ur.ei': { family: 'ur.ei', name: 'GE UR extremely inverse',   k: 28.2,   c: 0.1217, alpha: 2.0,  t_r: 29.1, type: 'dependent', ref: 'UR-series T60 IM (C37.112 ei)' },
-  'ur.si': { family: 'ur.si', name: 'GE UR standard inverse',    k: 0.14,   c: 0,      alpha: 0.02, t_r: null, type: 'dependent', ref: 'UR-series T60 IM (IEC SI)' },
+  'ur.mi': { family: 'ur.mi', name: 'GE UR moderately inverse',  k: 0.0515, c: 0.114,  alpha: 0.02, dial: 'ansi', t_r: 4.85, type: 'dependent', ref: 'UR-series T60 IM (C37.112 mi, default)' },
+  'ur.vi': { family: 'ur.vi', name: 'GE UR very inverse',        k: 19.61,  c: 0.491,  alpha: 2.0,  dial: 'ansi', t_r: 21.6, type: 'dependent', ref: 'UR-series T60 IM (C37.112 vi)' },
+  'ur.ei': { family: 'ur.ei', name: 'GE UR extremely inverse',   k: 28.2,   c: 0.1217, alpha: 2.0,  dial: 'ansi', t_r: 29.1, type: 'dependent', ref: 'UR-series T60 IM (C37.112 ei)' },
+  'ur.si': { family: 'ur.si', name: 'GE UR standard inverse',    k: 0.14,   c: 0,      alpha: 0.02, dial: 'iec', t_r: null, type: 'dependent', ref: 'UR-series T60 IM (IEC SI)' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -158,8 +185,8 @@ const abb: CurveTable = {
    * ~9.7*tms at pickup towards an asymptote of ~2.95*tms, so it never
    * reaches zero. It previously carried RD's constants in a linear
    * form and so operated in 0.000 s above M ~ 4.3. */
-  ri: { family: 'ri', name: 'ABB RI-type (inverse)',     form: 'ri',  a: 0.339, b: 0.236, k: 0, c: 0, alpha: 0, t_r: null, ref: 'ABB RI (ASEA) inverse-time characteristic' },
-  rd: { family: 'rd', name: 'ABB RD-type (logarithmic)', form: 'log',    a: 5.8, b: 1.35, k: 0, c: 0, alpha: 0, t_r: null, ref: 'Relion 615 IM, RD-type' },
+  ri: { family: 'ri', name: 'ABB RI-type (inverse)',     form: 'ri',  a: 0.339, b: 0.236, k: 0, c: 0, alpha: 0, dial: 'iec', t_r: null, ref: 'ABB RI (ASEA) inverse-time characteristic' },
+  rd: { family: 'rd', name: 'ABB RD-type (logarithmic)', form: 'log',    a: 5.8, b: 1.35, k: 0, c: 0, alpha: 0, dial: 'iec', t_r: null, ref: 'Relion 615 IM, RD-type' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -172,9 +199,9 @@ const abb: CurveTable = {
 /* ------------------------------------------------------------------ */
 
 const schneider: CurveTable = {
-  sit: { family: 'sit', name: 'Schneider SIT (standard inverse)',  k: 0.14, c: 0, alpha: 0.02, t_r: null, type: 'dependent', ref: 'Sepam/MiCOM IEC SI alias' },
-  vit: { family: 'vit', name: 'Schneider VIT (very inverse)',      k: 13.5, c: 0, alpha: 1.0,  t_r: null, type: 'dependent', ref: 'Sepam/MiCOM IEC VI alias' },
-  eit: { family: 'eit', name: 'Schneider EIT (extremely inverse)', k: 80,   c: 0, alpha: 2.0,  t_r: null, type: 'dependent', ref: 'Sepam/MiCOM IEC EI alias' },
+  sit: { family: 'sit', name: 'Schneider SIT (standard inverse)',  k: 0.14, c: 0, alpha: 0.02, dial: 'iec', t_r: null, type: 'dependent', ref: 'Sepam/MiCOM IEC SI alias' },
+  vit: { family: 'vit', name: 'Schneider VIT (very inverse)',      k: 13.5, c: 0, alpha: 1.0,  dial: 'iec', t_r: null, type: 'dependent', ref: 'Sepam/MiCOM IEC VI alias' },
+  eit: { family: 'eit', name: 'Schneider EIT (extremely inverse)', k: 80,   c: 0, alpha: 2.0,  dial: 'iec', t_r: null, type: 'dependent', ref: 'Sepam/MiCOM IEC EI alias' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -195,12 +222,23 @@ export const DEFAULT_G_D = 20;
 export const TMS_RANGE_IEC = { min: 0.025, max: 1.5, step: 0.025 } as const;
 export const TMS_RANGE_ANSI = { min: 0.5, max: 15, step: 0.05 } as const;
 
-/** Namespaces whose curves are dialled in ANSI time-dial units. */
-const ANSI_NAMESPACES = new Set(['ansi']);
-
+/**
+ * The dial range a curve is set in.
+ *
+ * Looked up on the curve, not on the namespace it is filed under. The
+ * namespace is a vendor and vendors ship both dials -- `ge.ur.mi` is
+ * C37.112 (time dial 0.5 .. 15) and `ge.ur.si` is IEC (TMS
+ * 0.025 .. 1.5), in the same table under the same name.
+ *
+ * An unknown id falls back to IEC, which is what the validator wants:
+ * the curve itself is already `CURVE_UNKNOWN`, and a second complaint
+ * about a dial range for a curve that does not exist would send the
+ * reader after the wrong thing.
+ */
 export function tmsRangeFor(curveId: string): typeof TMS_RANGE_IEC | typeof TMS_RANGE_ANSI {
-  const ns = curveId.slice(0, Math.max(0, curveId.indexOf('.')));
-  return ANSI_NAMESPACES.has(ns) ? TMS_RANGE_ANSI : TMS_RANGE_IEC;
+  const known = isKnownCurveId(curveId);
+  const constants = known ? lookupCurve(known.ns, known.family) : undefined;
+  return constants?.dial === 'ansi' ? TMS_RANGE_ANSI : TMS_RANGE_IEC;
 }
 
 export function lookupCurve(namespace: string, family: string): CurveConstants | undefined {

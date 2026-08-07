@@ -2589,6 +2589,17 @@ if (kwName === 'flex_points') {
             this.eat('SEMI');
             continue;
           }
+          /*
+           * `size` takes a brace form too, and it is not a styling
+           * sub-block: a sheet in millimetres. Routed here because the
+           * generic handler below reads a styling block's fields and
+           * `applyPageSubBlock` has nowhere to put these, so it was
+           * dropped -- the study asked for a custom sheet and got A4.
+           */
+          if (k.image === 'size') {
+            p.size = this.parseSizeMm();
+            continue;
+          }
           const fields = this.parsePageSubBlock(k.image);
           this.eat('SEMI');
           applyPageSubBlock(p, k.image, fields);
@@ -2599,9 +2610,26 @@ if (kwName === 'flex_points') {
         switch (k.image) {
           case 'size':
             {
-              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
-              this.eat('SEMI');
-              if (tok) p.size = unquote(tok.image);
+              /*
+               * A paper keyword, or a sheet stated in millimetres.
+               *
+               * `grammar.adoc` has published the object form since the
+               * first draft and the parser took a single token, so
+               * `size = { width_mm = 200; height_mm = 300; }` was
+               * swallowed whole and the MediaBox stayed A4 -- a study
+               * that asked for a custom sheet was issued on the
+               * default one with nothing said. Everything downstream
+               * was already built for it: `resolvePageMm`, `sheetSize`
+               * and the `PAGE_SIZE_INCOMPLETE` check all handle the
+               * object, and the last was unreachable.
+               */
+              if (this.at('LBRACE')) {
+                p.size = this.parseSizeMm();
+              } else {
+                const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+                this.eat('SEMI');
+                if (tok) p.size = unquote(tok.image);
+              }
             }
             break;
           case 'border':
@@ -2706,6 +2734,34 @@ if (kwName === 'flex_points') {
       }
       return p;
     }, '}');
+  }
+
+  /**
+   * `{ width_mm = 200; height_mm = 300; }` -- a sheet in millimetres.
+   *
+   * Either dimension may be absent from the returned object; the
+   * validator reports that as `PAGE_SIZE_INCOMPLETE` rather than
+   * guessing the other, since half a sheet size is a study whose
+   * author meant something specific and mistyped it.
+   */
+  private parseSizeMm(): { width_mm: number; height_mm: number } {
+    const out: { width_mm: number; height_mm: number } =
+      {} as { width_mm: number; height_mm: number };
+    if (!this.eat('LBRACE')) return out;
+
+    while (!this.at('RBRACE') && !this.at('EOF')) {
+      const k = this.eat('KW') ?? this.eat('IDENT');
+      if (!k) { this.pos++; continue; }
+      this.expect('EQUALS', '=');
+      const v = this.parseNumber();
+      this.eat('SEMI');
+      if (k.image === 'width_mm') out.width_mm = v;
+      else if (k.image === 'height_mm') out.height_mm = v;
+      else this.noteUnknownKey('a page size', k, ['width_mm', 'height_mm'], /* strict */ true);
+    }
+    this.eat('RBRACE');
+    this.eat('SEMI');
+    return out;
   }
 
   /* ----------------------- helpers ----------------------- */

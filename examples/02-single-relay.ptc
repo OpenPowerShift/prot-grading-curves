@@ -41,8 +41,17 @@ relay R_FDR_480 {
 }
 
 page {
-  # One relay needs little paper; A5 is a page in a report.
-  size = "A5";
+  # One relay needs little paper.
+  #
+  # `size` takes a paper keyword -- A0..A5, Letter, Legal, Tabloid --
+  # or a sheet stated outright, which is what a figure sized to a
+  # report's text column wants and no keyword gives. Both dimensions
+  # are required; one alone is PAGE_SIZE_INCOMPLETE rather than a
+  # guess at the other.
+  size = {
+    width_mm = 180;
+    height_mm = 120;
+  };
   theme = "light";
   title = "Plant 480 V — single-relay OC study";
 

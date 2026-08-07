@@ -128,8 +128,41 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateTimeMultipliers(ctx);
   validateViewScopes(ctx);
   validateTransformers(ctx);
+  validateShares(ctx);
 
   return ctx.out.sort((a, b) => a.offset - b.offset || a.code.localeCompare(b.code));
+}
+
+/**
+ * A relay told twice what it carries.
+ *
+ * `scenario { sees R { share } }` says what this relay takes of *that*
+ * condition; `element { share }` says it generally. Both used to
+ * apply, multiplying -- a 50/50 pair was graded at a quarter of the
+ * level current, and the report printed the half as `I_f` on the line
+ * above a multiple computed from the quarter.
+ *
+ * The scenario now wins, being the statement about the condition being
+ * graded. That is a choice between two readings of the study, so it is
+ * said out loud rather than made quietly.
+ */
+function validateShares(ctx: Ctx): void {
+  for (const scenario of ctx.study.scenarios.values()) {
+    for (const [relayId, pct] of scenario.shares) {
+      if (!Number.isFinite(pct)) continue;
+      const relay = ctx.study.relays.get(relayId);
+      if (!relay) continue;
+      for (const element of relay.elements) {
+        if (!element.stages.some((st) => st.current_pct !== 100)) continue;
+        add(ctx, 'SHARE_DECLARED_TWICE', 'warning',
+          `${element.ref} declares a share and scenario "${scenario.name}" declares `
+          + `one for ${relayId}; the scenario's ${pct}% applies under that condition, and the `
+          + "element's is not applied on top",
+          element.node?.loc);
+        break;
+      }
+    }
+  }
 }
 
 /**

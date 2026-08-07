@@ -146,7 +146,7 @@ export function tTripFlex(I: number, points: FlexPoint[], tms = 1): number {
  * takes the share this particular stage actually measures (spec:
  * _Current-share factor_).
  */
-export function tTripStage(stage: Stage, I_total: number): number {
+export function tTripStage(stage: Stage, I_total: number, sharePct?: number): number {
   const producer = stage.producer;
   if (!producer || !Number.isFinite(I_total)) return Infinity;
 
@@ -166,7 +166,16 @@ export function tTripStage(stage: Stage, I_total: number): number {
    */
   if (stage.I_cutoff_A != null && I_total > stage.I_cutoff_A) return Infinity;
 
-  const I = I_total * (stage.current_pct / 100);
+  /*
+   * `sharePct` overrides the element's own `share`.
+   *
+   * A `scenario { sees R { share } }` states what this relay takes of
+   * that condition's current, and the element's `share` states the
+   * same thing generally. Both used to apply, multiplying: a 50/50
+   * pair came out at a quarter. The caller passes 100 where the
+   * current it handed in already carries the scenario's share.
+   */
+  const I = I_total * ((sharePct ?? stage.current_pct) / 100);
   const I_pu = stage.I_pu_A;
 
   if (producer.kind === 'definite') {

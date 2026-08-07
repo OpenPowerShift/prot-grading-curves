@@ -34,10 +34,10 @@ export function cutoffOf(element: Element): number | undefined {
 }
 
 /** Operate time of a whole element -- the envelope over its stages. */
-export function tTripElement(element: Element, I_total: number): number {
+export function tTripElement(element: Element, I_total: number, sharePct?: number): number {
   let best = Infinity;
   for (const stage of element.stages) {
-    const t = tTripStage(stage, I_total);
+    const t = tTripStage(stage, I_total, sharePct);
     if (t < best) best = t;
   }
   return best;

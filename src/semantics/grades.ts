@@ -116,7 +116,12 @@ interface Side {
   element?: Element;
   device?: Device;
   voltage?: string;
-  tAt: (I_A: number) => number;
+  /*
+   * `sharePct` overrides the element's own `share`, for the scenario
+   * case where the current handed in already carries one. A device
+   * has no share, so it ignores the argument.
+   */
+  tAt: (I_A: number, sharePct?: number) => number;
   /**
    * Current this side's pickup is expressed in.
    *
@@ -133,6 +138,15 @@ interface Side {
    * than answered.
    */
   cutoff_A?: number;
+  /**
+   * Set while grading a `scenario` that names this relay in `sees`.
+   *
+   * The scenario's figure wins: it states what this relay takes of
+   * *this* condition, which is the more specific claim, and the
+   * current handed to `tAt` already carries it. `100` then stops the
+   * element's own `share` being applied a second time.
+   */
+  sharePct?: number;
 }
 
 function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'): Side | undefined {
@@ -149,7 +163,7 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
       ref: ref?.stageId ? `${element.ref}/${ref.stageId}` : element.ref,
       element,
       voltage: element.voltage,
-      tAt: (I: number) => tTripElement(element, I),
+      tAt: (I: number, sharePct?: number) => tTripElement(element, I, sharePct),
       measures: elementQuantity(element.stages),
       cutoff_A: cutoffOf(element),
     };
@@ -181,6 +195,9 @@ function sideFor(study: Study, ref: Grade['primary'], role: 'primary' | 'backup'
 
 interface SideCurrent {
   I_A?: number;
+  /** Share to evaluate with, overriding the element's own. */
+  sharePct?: number;
+
   /**
    * True when the component came from the fault type's ratio table
    * rather than from a declared figure.
@@ -409,8 +426,15 @@ function reportScenarioGrade(
 
   if (refuseBeyondCutoff([[primary, I_p], [backup, I_b]], diagnostics)) return report;
 
-  const t_p = primary.tAt(I_p);
-  const t_b = backup.tAt(I_b);
+  /*
+   * Two ways of saying what a relay carries, and the more specific one
+   * wins: `scenario { sees R { share } }` names this relay under *this*
+   * condition, where `element { share }` states it generally. They used
+   * to multiply, so a 50/50 pair was graded at a quarter of the level
+   * current. `validateShares` warns where both are written.
+   */
+  const t_p = primary.tAt(I_p, atPrimary.sharePct);
+  const t_b = backup.tAt(I_b, atBackup.sharePct);
 
   const row: MarginRow = {
     at: 'I',
@@ -419,8 +443,8 @@ function reportScenarioGrade(
     t_primary_s: t_p,
     t_backup_s: t_b,
     margin_s: t_b - t_p,
-    M_primary: multipleOf(primary, I_p),
-    M_backup: multipleOf(backup, I_b),
+    M_primary: multipleOf(primary, I_p, atPrimary.sharePct),
+    M_backup: multipleOf(backup, I_b, atBackup.sharePct),
   };
   row.pass = verdictFor(row.margin_s, grade.CTI_min_s);
   report.rows.push(row);
@@ -494,9 +518,21 @@ function sideCurrentInScenario(
   /* The relay's share of that level's current, where one is declared. */
   const relayId = side.element?.relayId;
   const pct = relayId != null ? scenario.shares.get(relayId) : undefined;
-  const share = pct != null && Number.isFinite(pct) ? pct / 100 : 1;
+  const declaredShare = pct != null && Number.isFinite(pct);
+  const share = declaredShare ? pct / 100 : 1;
 
-  return { I_A: declared * share, derived: resolved?.derived };
+  return {
+    I_A: declared * share,
+    derived: resolved?.derived,
+    /*
+     * The scenario has spoken for this relay, so the element's own
+     * `share` must not be applied on top. Both used to, multiplying:
+     * example 15 declared 50 in each and reported a multiple computed
+     * from a quarter of the level current, two lines under an `I_f`
+     * that showed the half.
+     */
+    sharePct: declaredShare ? 100 : undefined,
+  };
 }
 
 /**
@@ -623,12 +659,14 @@ function upstreamCeiling(
   return Math.max(byPickup, from * 2);
 }
 
-function multipleOf(side: Side, I_A: number): number | undefined {
+function multipleOf(side: Side, I_A: number, sharePct?: number): number | undefined {
   if (!side.element) return undefined;
   const stage = controllingStage(side.element, I_A);
   const I_pu = stage?.I_pu_A;
   if (I_pu == null || !(I_pu > 0)) return undefined;
-  return (I_A * ((stage?.current_pct ?? 100) / 100)) / I_pu;
+  /* The same share the operate time was computed with, or the printed
+   * multiple contradicts the printed time. */
+  return (I_A * ((sharePct ?? stage?.current_pct ?? 100) / 100)) / I_pu;
 }
 
 /** Build the margin report for one `grade` block. */

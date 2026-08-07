@@ -119,8 +119,19 @@ relay R_FDR_A {
     I_pickup = 480 A;
     tms = 1.0;
 
-    # Half the fault current under the normal condition.
-    share = 50;
+    # No `share` here.
+    #
+    # This relay's share is stated per *condition* by the `sees` blocks
+    # above -- 50% with both circuits in, 100% with one out -- and that
+    # is the more specific claim, so it wins. An `element { share }` as
+    # well would be a second answer to the same question: they used to
+    # multiply, grading this pair at a quarter of the level current
+    # while the report printed the half beside it. Declaring both is
+    # now `SHARE_DECLARED_TWICE`.
+    #
+    # Use `element { share }` where the split is a property of the
+    # installation rather than of a condition -- two identical feeders
+    # off one board, graded against a plain `fault`.
 
     # A directional element only operates for faults in front of it,
     # which is what stops the healthy feeder tripping for a fault on
@@ -152,7 +163,7 @@ relay R_FDR_B {
     curve = ansi.mi;
     I_pickup = 480 A;
     tms = 1.0;
-    share = 50;
+    # Its share is stated by the `sees` blocks too.
     directional = true;
     char_angle = 45 deg;
     reset = dependent;

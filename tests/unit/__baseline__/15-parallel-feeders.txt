@@ -109,17 +109,17 @@ domain-t 0.02,100
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Load end 3ph
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Both circuits in
 [faults] line 798.7,66.0..798.7,745.0 class=tc-fault data-fault=One circuit out
-[curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
-[curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
+[curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
+[curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
 [curves] path n=124 bbox=476.5,15.2..1056.0,393.4 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
 [curves] path n=114 bbox=524.0,-129.4..1056.0,397.3 class=tc-curve data-curve=Bus zone backup · Reverse-looking TOC data-ref=R_BUS:51 data-voltage=HV
-[annotations] line 818.3,408.2..818.3,355.3
+[annotations] line 818.3,430.1..818.3,355.3
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
-[annotations] line 812.3,408.2..824.3,408.2
+[annotations] line 812.3,430.1..824.3,430.1
 [annotations] line 812.3,355.3..824.3,355.3
-[annotations] path n=2 bbox=818.3,381.8..828.3,398.5
-[annotations] text 828.3,400.8 text-anchor=start font-size=11 font-weight=600 "CTI, both in 1.29 s"
+[annotations] path n=2 bbox=818.3,392.7..828.3,409.4
+[annotations] text 828.3,411.7 text-anchor=start font-size=11 font-weight=600 "CTI, both in 1.61 s"
 [fault-band] line 782.3,745.0..782.3,770.0 class=tc-fault
 [fault-band] text 784.3,779.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Load end 2phE · 5.8 kA"
 [fault-band] line 793.4,745.0..793.4,784.0 class=tc-fault
@@ -280,17 +280,17 @@ domain-t 0.02,100
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Load end 3ph
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Both circuits in
 [faults] line 798.7,66.0..798.7,745.0 class=tc-fault data-fault=One circuit out
-[curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
-[curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
+[curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
+[curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
 [curves] path n=124 bbox=476.5,15.2..1056.0,393.4 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
 [curves] path n=114 bbox=524.0,-129.4..1056.0,397.3 class=tc-curve data-curve=Bus zone backup · Reverse-looking TOC data-ref=R_BUS:51 data-voltage=HV
-[annotations] line 818.3,408.2..818.3,355.3
+[annotations] line 818.3,430.1..818.3,355.3
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
-[annotations] line 812.3,408.2..824.3,408.2
+[annotations] line 812.3,430.1..824.3,430.1
 [annotations] line 812.3,355.3..824.3,355.3
-[annotations] path n=2 bbox=818.3,381.8..828.3,398.5
-[annotations] text 828.3,400.8 text-anchor=start font-size=11 font-weight=600 "CTI, both in 1.29 s"
+[annotations] path n=2 bbox=818.3,392.7..828.3,409.4
+[annotations] text 828.3,411.7 text-anchor=start font-size=11 font-weight=600 "CTI, both in 1.61 s"
 [fault-band] line 782.3,745.0..782.3,770.0 class=tc-fault
 [fault-band] text 784.3,779.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Load end 2phE · 5.8 kA"
 [fault-band] line 793.4,745.0..793.4,784.0 class=tc-fault

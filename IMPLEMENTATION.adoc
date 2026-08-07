@@ -371,7 +371,11 @@ makes that the code breaks outranks a promise never made.
 
 ==== Silently wrong answers
 
-. *The renderer does not apply a scenario's `sees ... share`.*
+Nothing outstanding.
+
+===== Closed the same day it was opened
+
+. *The renderer did not apply a scenario's `sees ... share`.*
   [VERIFIED 2026-08-07] Grading does, and now exclusively: the
   scenario's figure wins over `element { share }`, which stops the two
   multiplying. But `svg.ts` reads only `stage.current_pct`, so a sheet
@@ -385,11 +389,16 @@ makes that the code breaks outranks a promise never made.
   every grade. One curve cannot sit in two frames, which is exactly
   why a per-condition share does not belong on the element.
 +
-  The fix is for the renderer to place curves using the share the
-  sheet's declared `condition` gives, as it now does for cross-level
-  placement -- the same "draw what this sheet depicts" rule. Until
-  then a sheet showing a `sees` condition understates where its
-  shared relays pick up. The cross-voltage referral, the last entry here,
+  Fixed: the renderer places curves and pickup ticks from the share the
+  sheet's declared `condition` gives, which is the same "draw what this
+  sheet depicts" rule the cross-level placement follows. Sample 15's two
+  sheets now draw the same relay at 979 A and 494 A, being the 50% and
+  100% conditions they each declare.
++
+  It closed a second inconsistency nobody had reported: the pickup
+  *tick* was placed from the raw setting while the curve carried
+  `current_pct`, so the two sat half a decade apart on one sheet. Both
+  now come from one figure. The cross-voltage referral, the last entry here,
 was closed on 2026-08-07 -- see below.
 
 ==== The playground and the CLI

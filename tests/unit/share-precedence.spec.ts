@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { process as parse } from '@tc/index';
+import { process as parse, renderStudy } from '@tc/index';
 
 const study = (elementShare: string, seesShare: string): string => `
 system { voltages { HV { V = 33 kV; } } }
@@ -83,6 +83,59 @@ describe('a relay whose share only the element states', () => {
      * with no condition claiming to know better. */
     const { report } = row(study('share = 50;', ''));
     expect(report.rows[0].M_primary).toBeCloseTo(4, 2);
+  });
+});
+
+describe('the sheet a share is drawn on', () => {
+  /** Where a curve starts, in the axis's own amps. */
+  const startsAt = (src: string, view: number, ref: string): number => {
+    const r = parse(src);
+    expect(r.parseErrors).toEqual([]);
+    const svg = renderStudy(r, { theme: 'light', view: r.study!.views[view] });
+    const [lo, hi] = svg.match(/data-domain-i="([^"]+)"/)![1].split(',').map(Number);
+    const [x0, , w] = svg.match(/data-plot="([^"]+)"/)![1].split(',').map(Number);
+    const path = svg.match(new RegExp(`<path[^>]*data-ref="${ref}"[^>]*>`))![0];
+    const xs = [...path.match(/\sd="([^"]+)"/)![1].matchAll(/[ML]\s*(-?[\d.]+)/g)]
+      .map((m) => Number(m[1]));
+    return 10 ** (Math.log10(lo) + ((Math.min(...xs) - x0) / w) * (Math.log10(hi) - Math.log10(lo)));
+  };
+
+  it('draws the relay picking up where the condition says it does', () => {
+    /*
+     * The renderer read only `stage.current_pct`, so a relay taking
+     * half the level current was drawn picking up at its unshared
+     * figure -- 500 A of level current where it needs 1000. The sheet
+     * showed it operating for faults it does not see.
+     */
+    const src = study('', 'sees R_A { share = 50; }').replace(
+      'view { voltage = HV; }',
+      `view { voltage = HV; quantity = phase; condition = S;
+              current_min = 100 A; current_max = 30 kA; }`,
+    );
+    expect(startsAt(src, 0, 'R_A:51')).toBeGreaterThan(900);
+    expect(startsAt(src, 0, 'R_A:51')).toBeLessThan(1100);
+  });
+
+  it('leaves it alone on a sheet that depicts nothing', () => {
+    /* No condition, no share to draw from: the element's own stands. */
+    const src = study('', 'sees R_A { share = 50; }').replace(
+      'view { voltage = HV; }',
+      'view { voltage = HV; quantity = phase; current_min = 100 A; current_max = 30 kA; }',
+    );
+    expect(startsAt(src, 0, 'R_A:51')).toBeLessThan(600);
+  });
+
+  it('draws each of two sheets for its own condition', () => {
+    /*
+     * Sample 15 is the case: 50% with both circuits in, 100% with one
+     * out. One curve cannot sit in two frames, which is why the share
+     * cannot live on the element -- each sheet draws the condition it
+     * declares.
+     */
+    const src = readFileSync('examples/15-parallel-feeders.ptc', 'utf8');
+    const both = startsAt(src, 0, 'R_FDR_A:51');
+    const oneOut = startsAt(src, 1, 'R_FDR_A:51');
+    expect(both / oneOut).toBeCloseTo(2, 1);
   });
 });
 

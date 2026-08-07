@@ -1706,6 +1706,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     return lines.filter((l) => l.text);
   };
 
+  /*
+   * The share the *depicted condition* gives this relay.
+   *
+   * `scenario { sees R { share } }` says what a relay carries of that
+   * condition's current. Grading applies it; the renderer read only
+   * `stage.current_pct` and so drew a relay picking up at its unshared
+   * current -- 480 A of level current where it needs 960. One curve
+   * cannot sit in two frames, so it is drawn in the one the sheet says
+   * it depicts, which is the same rule the cross-level placement
+   * follows.
+   *
+   * `undefined` where the sheet depicts nothing, or depicts a `fault`
+   * (which has no `sees`), leaving the element's own `share` to stand.
+   */
+  const sheetShare = (element: Element): number | undefined => {
+    if (!conditionName) return undefined;
+    const scenario = study.scenarios.get(conditionName);
+    if (!scenario) return undefined;
+    const pct = element.relayId != null ? scenario.shares.get(element.relayId) : undefined;
+    return pct != null && Number.isFinite(pct) ? pct : undefined;
+  };
+
   const pickupPxOf = (
     element: Element,
     axisFactor = 1,
@@ -1719,6 +1741,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
     }
     if (!Number.isFinite(lowest)) return NaN;
+    /* A relay taking s% of the level current reaches its pickup when
+     * that level current is `I_pu * 100/s`, so the tick moves with the
+     * curve rather than staying at the setting. */
+    const share = sheetShare(element);
+    if (share != null && share > 0) lowest *= 100 / share;
     /* The pickup is in the element's own quantity, so it comes back onto
      * the axis by the same factor the curve did. */
     return xScale.toPx(project(lowest, V_source) / axisFactor);
@@ -2046,7 +2073,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         const drawn = styleFor(stage, auto);
         const pathD = trace(
           V_source,
-          (I) => tTripStage(stage, I),
+          (I) => tTripStage(stage, I, sheetShare(element)),
           stage.I_pu_A != null ? [project(stage.I_pu_A, V_source)] : [],
           factor,
           /* A stage may stop earlier than the element that owns it. */
@@ -2078,7 +2105,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     const drawn = styleFor(element, auto);
     const pathD = trace(
-      V_source, (I) => tTripElement(element, I), breakpointsOf(element, V_source), factor,
+      V_source, (I) => tTripElement(element, I, sheetShare(element)),
+      breakpointsOf(element, V_source), factor,
       /*
        * The element as a whole survives as long as any stage does, so
        * a composite is clipped at the largest of its stages' cutoffs

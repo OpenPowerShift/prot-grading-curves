@@ -1143,18 +1143,17 @@ function planSolve(
   backup: Side,
   diagnostics: GradeReport['diagnostics'],
 ): void {
-  if (!grade.solve) {
-    if (grade.margin_s != null) {
-      diagnostics.push({
-        code: 'MARGIN_NO_SOLVE',
-        severity: 'warning',
-        message:
-          'margin_target is declared without a solve block; it is reported as a target only. ' +
-          'Add solve { ... } to have the tool meet it, or use margin for a constraint',
-      });
-    }
-    return;
-  }
+  /*
+   * `MARGIN_NO_SOLVE` is raised once, by the validator.
+   *
+   * It was raised here as well, on the same condition, in wording that
+   * differed by three words -- "have the tool meet it" against "act on
+   * it" -- and both reached one `--json` document, so a caller saw the
+   * same finding twice and could not tell whether it was one grade or
+   * two. The validator's copy is the one kept: it carries a source
+   * location and this one did not.
+   */
+  if (!grade.solve) return;
   if (!declaredRow) return;
 
   if (grade.margin_s == null && grade.CTI_min_s == null) {
@@ -1384,8 +1383,20 @@ function registerRecompute(
 /* Text rendering                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A time, with its unit, or a word saying there is not one.
+ *
+ * The unit belongs here rather than at each call site: every caller
+ * appended ` s`, so the non-finite branch printed `no-op s` -- a unit
+ * on a word -- and the absent branch printed `-- s`. A reader meeting
+ * `achieved margin = no-op s` has to work out that it is not a
+ * quantity at all.
+ *
+ * `padStart` still works on the result, and the two sweep rows that
+ * use it are padded to the wider field the unit needs.
+ */
 const s3 = (n: number | undefined): string =>
-  n == null ? '--' : Number.isFinite(n) ? n.toFixed(3) : 'no-op';
+  n == null ? '--' : Number.isFinite(n) ? `${n.toFixed(3)} s` : 'does not operate';
 
 /**
  * Render one report in the console form shown in the spec
@@ -1400,13 +1411,13 @@ export function formatGradeReport(report: GradeReport): string {
     const u = report.solve.unsatisfiable;
     const row = report.rows.find((r) => r.at === 'I');
     out.push(`${head} unsatisfiable:`);
-    out.push(`    target margin ${s3(report.margin_s)} s at I_f = ${row ? row.I_f_A.toFixed(0) : '?'} A`);
-    out.push(`    primary t_p = ${s3(row?.t_primary_s)} s`);
+    out.push(`    target margin ${s3(report.margin_s)} at I_f = ${row ? row.I_f_A.toFixed(0) : '?'} A`);
+    out.push(`    primary t_p = ${s3(row?.t_primary_s)}`);
     out.push(`    required TMS = ${u.required_tms.toFixed(3)}`);
     out.push(`    -- fallback: increase tms backup to maximum allowed`);
     out.push(
-      `       (TMS_max = ${u.tms_max.toFixed(3)} gives t_b = ${s3(u.t_backup_at_max_s)} s, ` +
-      `margin = ${s3(u.margin_at_max_s)} s)`,
+      `       (TMS_max = ${u.tms_max.toFixed(3)} gives t_b = ${s3(u.t_backup_at_max_s)}, ` +
+      `margin = ${s3(u.margin_at_max_s)})`,
     );
     out.push('    -- suggested next:');
     u.suggestions.forEach((sug, i) => out.push(`       ${i + 1}. ${sug}`));
@@ -1424,8 +1435,8 @@ export function formatGradeReport(report: GradeReport): string {
     return out.join('\n');
   }
 
-  if (report.CTI_min_s != null) out.push(`    CTI_min         = ${s3(report.CTI_min_s)} s`);
-  if (report.margin_s != null) out.push(`    target margin   = ${s3(report.margin_s)} s`);
+  if (report.CTI_min_s != null) out.push(`    CTI_min         = ${s3(report.CTI_min_s)}`);
+  if (report.margin_s != null) out.push(`    target margin   = ${s3(report.margin_s)}`);
 
   if (declared) {
     /*
@@ -1443,7 +1454,7 @@ export function formatGradeReport(report: GradeReport): string {
 
     const mP = declared.M_primary != null ? `        (M = ${declared.M_primary.toFixed(2)})` : '';
     const mB = declared.M_backup != null ? `        (M = ${declared.M_backup.toFixed(2)})` : '';
-    out.push(`    t_primary       = ${s3(declared.t_primary_s)} s${mP}`);
+    out.push(`    t_primary       = ${s3(declared.t_primary_s)}${mP}`);
 
     /*
      * A superseded solve prints as a plain margin.
@@ -1456,14 +1467,14 @@ export function formatGradeReport(report: GradeReport): string {
     if (solve?.ok && solve.tms != null) {
       const tol = report.tolerance_pct ?? 0;
       out.push(
-        `    t_backup_auto   = ${s3(declared.t_backup_s)} s        ` +
+        `    t_backup_auto   = ${s3(declared.t_backup_s)}        ` +
         /* The strategy the solver actually ran, not the word "tight"
          * hardcoded here: a study declaring `loose` was told its dial
          * had been snapped by a rule it never asked for. */
         `(TMS_b = ${solve.tms.toFixed(3)}  auto, ${solve.strategy ?? 'tight'}, tol ${tol}%)`,
       );
     } else {
-      out.push(`    t_backup        = ${s3(declared.t_backup_s)} s${mB}`);
+      out.push(`    t_backup        = ${s3(declared.t_backup_s)}${mB}`);
     }
 
     /*
@@ -1480,7 +1491,7 @@ export function formatGradeReport(report: GradeReport): string {
         : declared.pass == null
           ? ''
           : declared.pass ? '-- pass' : '-- FAIL';
-    out.push(`    achieved margin = ${s3(declared.margin_s)} s        ${verdict}`.trimEnd());
+    out.push(`    achieved margin = ${s3(declared.margin_s)}        ${verdict}`.trimEnd());
   }
 
   /*
@@ -1502,9 +1513,9 @@ export function formatGradeReport(report: GradeReport): string {
       const flag = worst.pass == null ? '' : worst.pass ? '  pass' : '  FAIL';
       out.push(
         `        tightest at I_f = ${worst.I_f_A.toFixed(0)} A  ` +
-        `t_p = ${s3(worst.t_primary_s)} s  ` +
-        `t_b = ${s3(worst.t_backup_s)} s  ` +
-        `margin = ${s3(worst.margin_s)} s${flag}`,
+        `t_p = ${s3(worst.t_primary_s)}  ` +
+        `t_b = ${s3(worst.t_backup_s)}  ` +
+        `margin = ${s3(worst.margin_s)}${flag}`,
       );
       const failures = finite.filter((r) => r.pass === false).length;
       if (failures > 0) {
@@ -1524,9 +1535,9 @@ export function formatGradeReport(report: GradeReport): string {
         : '';
       out.push(
         `        I_f = ${row.I_f_A.toFixed(0).padStart(7)} A  ` +
-        `t_p = ${s3(row.t_primary_s).padStart(7)} s  ` +
-        `t_b = ${s3(row.t_backup_s).padStart(7)} s  ` +
-        `margin = ${s3(row.margin_s).padStart(7)} s${flag}${backupI}`,
+        `t_p = ${s3(row.t_primary_s).padStart(9)}  ` +
+        `t_b = ${s3(row.t_backup_s).padStart(9)}  ` +
+        `margin = ${s3(row.margin_s).padStart(9)}${flag}${backupI}`,
       );
     }
   }
@@ -1544,7 +1555,7 @@ export function formatGradeReport(report: GradeReport): string {
   const verdict = verdictOf(report);
   if (verdict !== 'unevaluated') {
     const where = report.min_margin_at_A != null
-      ? ` (worst ${s3(report.min_margin_s!)} s at ${report.min_margin_at_A.toFixed(0)} A)`
+      ? ` (worst ${s3(report.min_margin_s!)} at ${report.min_margin_at_A.toFixed(0)} A)`
       : '';
     out.push(
       `    overall         : ${verdict === 'pass' ? 'PASS' : 'FAIL'}${where} vs ${against}`,

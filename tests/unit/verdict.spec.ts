@@ -142,9 +142,15 @@ describe('a row where nothing operated', () => {
   });
 
   it('does not print a verdict beside a margin it does not have', () => {
+    /*
+     * It read `no-op s` -- a unit on a word -- because every caller
+     * appended the unit and only the finite branch was a quantity. It
+     * now says what it means, and still carries no verdict.
+     */
     const text = formatGradeReport(noOperation().reports[0]);
-    expect(text).toMatch(/achieved margin\s*=\s*no-op/);
-    expect(text).not.toMatch(/no-op s\s+--\s+pass/);
+    expect(text).toMatch(/achieved margin\s*=\s*does not operate/);
+    expect(text).not.toMatch(/no-op/);
+    expect(text).not.toMatch(/does not operate\s+--\s+pass/);
   });
 
   it('says why, rather than leaving the row unexplained', () => {

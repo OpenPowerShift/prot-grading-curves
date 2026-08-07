@@ -30,7 +30,7 @@ import { pathToFileURL } from 'node:url';
 import { basename, extname, resolve as resolvePath } from 'node:path';
 import { process as processStudy, renderStudy } from './index.js';
 import { exportPng } from './export/export-png.js';
-import { exportPdfSheets } from './export/export-pdf.js';
+import { exportPdfSheets, PAPER_MM } from './export/export-pdf.js';
 import { toExportableSvg } from './export/exportable-svg.js';
 import { formatGradeReports, anyGradeFails } from './semantics/grades.js';
 import { jsonResult } from './semantics/json-report.js';
@@ -75,14 +75,16 @@ Options:
       --all-views       PDF only: every declared view, one page each,
                         in declaration order. [page] and [of] in a
                         footer resolve against the page count
-      --width <px>      PNG width in pixels
-      --scale <n>       PNG scale factor when --width is absent (default 2)
+      --width <px>      PNG width in pixels (200 to 20000)
+      --scale <n>       PNG scale factor when --width is absent
+                        (0.1 to 20, default 2)
       --size <name>     PDF paper size: A0-A5, Letter, Legal, Tabloid (default A4)
       --portrait        PDF portrait orientation (default landscape)
       --landscape       PDF landscape orientation
-      --json            Machine-readable output: diagnostics and the
-                        grading result, for CI and downstream tools
-  -q, --quiet           Suppress the margin report on stdout
+      --json            check and report only: diagnostics and the
+                        grading result as JSON, for CI and downstream
+                        tools
+  -q, --quiet           Print only errors: no warnings, no margin report
       --force           Write the sheet even when the study has errors
   -h, --help            Show this message
 
@@ -105,11 +107,11 @@ export function parseArgs(argv: string[]): Options {
       case '-q': case '--quiet': opts.quiet = true; break;
       case '--force': opts.force = true; break;
       case '--json': opts.json = true; break;
-      case '-o': case '--output': opts.output = argv[++i]; break;
-      case '--width': opts.width = Number(argv[++i]); break;
-      case '--scale': opts.scale = Number(argv[++i]); break;
-      case '--size': opts.size = argv[++i]; break;
-      case '--view': opts.view = argv[++i]; break;
+      case '-o': case '--output': opts.output = stringArg(arg, argv[++i]); break;
+      case '--width': opts.width = numberArg(arg, argv[++i], 200, 20_000); break;
+      case '--scale': opts.scale = numberArg(arg, argv[++i], 0.1, 20); break;
+      case '--size': opts.size = paperArg(arg, argv[++i]); break;
+      case '--view': opts.view = stringArg(arg, argv[++i]); break;
       case '--all-views': opts.allViews = true; break;
       default:
         if (arg.startsWith('-')) throw new Error(`unknown option ${arg}`);
@@ -140,6 +142,75 @@ export function parseArgs(argv: string[]): Options {
     throw new Error(`unknown command "${command}"`);
   }
   return opts;
+}
+
+/*
+ * Argument readers that refuse rather than fall back.
+ *
+ * Every one of these was the same shape: a bad value produced a
+ * plausible result at exit 0. `--size ZZ9` drew A4; `--width abc` gave
+ * `Number('abc')` -> NaN, which passed a `!= null` test and fell
+ * through to the 1200x750 default, half the documented size; `-o
+ * --png` wrote a file literally called `--png` and left the format at
+ * SVG; `--view ""` drew the default sheet, which is the exact silent
+ * fall-back the *unknown*-name path already refuses to do.
+ *
+ * A study path that refuses a bad paper size while the CLI accepts one
+ * is two answers from one tool.
+ */
+
+/** A value that is present, non-empty, and not the next flag. */
+function stringArg(flag: string, raw: string | undefined): string {
+  if (raw == null) throw new Error(`${flag} needs a value`);
+  if (raw.trim() === '') throw new Error(`${flag} was given an empty value`);
+  if (raw.startsWith('-')) {
+    throw new Error(
+      `${flag} was given "${raw}", which is another option -- it needs a value of its own`,
+    );
+  }
+  return raw;
+}
+
+/**
+ * A finite number inside the range the flag can act on.
+ *
+ * Not routed through `stringArg`: a negative number begins with `-`
+ * and is not a misplaced flag, so `--width -100` should be told its
+ * value is out of range rather than that it looks like an option.
+ */
+function numberArg(flag: string, raw: string | undefined, min: number, max: number): number {
+  if (raw == null || raw.trim() === '') throw new Error(`${flag} needs a value`);
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    if (raw.startsWith('-')) {
+      throw new Error(
+        `${flag} was given "${raw}", which is another option -- it needs a value of its own`,
+      );
+    }
+    throw new Error(`${flag} was given "${raw}", which is not a number`);
+  }
+  /*
+   * The upper bound is not fussiness. `--scale 1e9` asks the native
+   * rasteriser for a canvas of about 10^19 pixels, and it aborts the
+   * process with rc=134 and a Rust panic -- outside the documented
+   * status set, and not catchable from JavaScript.
+   */
+  if (value < min || value > max) {
+    throw new Error(`${flag} was given ${value}; it must be between ${min} and ${max}`);
+  }
+  return value;
+}
+
+/** A paper keyword the exporter actually has. */
+function paperArg(flag: string, raw: string | undefined): string {
+  const value = stringArg(flag, raw);
+  const known = Object.keys(PAPER_MM);
+  if (!known.some((k) => k.toLowerCase() === value.toLowerCase())) {
+    throw new Error(
+      `${flag} was given "${value}"; valid sizes are ${known.join(', ')}`,
+    );
+  }
+  return value;
 }
 
 /** How many error-severity findings a processed study carries. */
@@ -226,6 +297,16 @@ export async function main(argv: string[]): Promise<number> {
     console.error(USAGE);
     return 2;
   }
+  /*
+   * `--json` describes a study; a render produces a picture. It was
+   * accepted on `render` and ignored, so a caller asking for machine
+   * output got prose on stdout and no way to tell. `--all-views`
+   * already refuses when it is misapplied; this is the same rule.
+   */
+  if (opts.json && opts.command === 'render') {
+    console.error('tc-curves: --json describes a study; use it with check or report');
+    return 2;
+  }
 
   const inputPath = resolvePath(opts.input);
   let source: string;
@@ -283,6 +364,14 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   if (opts.command === 'report') {
+    /*
+     * `--quiet` was documented as suppressing the margin report and
+     * did not: `report -q` printed it in full while `check -q` went
+     * silent about its warnings. One meaning now, obeyed by both --
+     * errors only -- so a CI job can gate on the status without
+     * capturing pages it will not read.
+     */
+    if (opts.quiet) return status;
     console.log(formatGradeReports(result.reports));
     return status;
   }

@@ -441,51 +441,34 @@ running build. Everything below is [VERIFIED].
 . *The diagnostics panel is capped at 28% and scrolls from the fourth
   message*, so a study with a handful of findings hides most of them.
 
-*The CLI's silent fallbacks*
+*The CLI's silent fallbacks* -- closed 2026-08-08
 
-Each of these is the same shape: a bad argument produces a plausible
-result rather than a refusal.
+Every one was the same shape: a bad argument produced a plausible
+result at exit 0, while the *study* path refused the same mistake.
+`--size ZZ9` drew A4 where a `page` block raises `PAGE_SIZE_UNKNOWN`;
+`--width abc` gave `Number()` -> NaN, which passed a `!= null` test and
+fell through to 1200x750, half the documented scale-2 default;
+`--scale 1e9` asked the rasteriser for about 10^19 pixels and aborted
+the process with rc=134 and a Rust panic, outside the documented status
+set and not catchable from JavaScript; `-o --png` wrote a file named
+`--png` and left the format at SVG; `--view ""` drew the default sheet,
+which is the exact fall-back the *unknown*-name path already refused.
 
-. `--size ZZ9`, `--size A9`, `--size ""` all yield A4 (MediaBox
-  841.89 x 595.28), rc=0. The study path correctly raises
-  `PAGE_SIZE_UNKNOWN`; `PAPER_MM[match ?? 'A4']` in `export-pdf.ts`
-  does not.
-. `--width abc` and `--width -100` yield 1200x750, rc=0 -- half the
-  documented scale-2 default -- because `Number()` gives NaN and
-  `options.width != null` lets it through.
-. `--scale 1e9` aborts with rc=134 and a Rust panic, outside the
-  documented status set; the `try/catch` cannot catch a native abort.
-. `-o --png` writes a file literally named `--png`, rc=0, format
-  silently still SVG.
-. `--view` with no value, and `--view ""`, fall back to the default
-  sheet at rc=0 -- the exact silent fall-back `cli.ts:150-153` refuses
-  to do for an *unknown* name.
-. `render --json` ignores the flag and prints prose, where
-  `--all-views` correctly errors when misapplied.
+Three readers now -- `stringArg`, `numberArg`, `paperArg` -- refuse
+instead, each naming what it got and what it will take. `--scale` and
+`--width` carry bounds, which is what turns the native abort into a
+usage error. A negative number is *not* treated as a misplaced flag,
+so `--width -100` is told its value is out of range rather than that it
+looks like an option.
 
-*Smaller*
-
-. *`--quiet` is inverted.* Usage says it suppresses the margin report;
-  `report -q` prints it anyway (`cli.ts:271` is unconditional) while
-  `check -q` emits nothing at all, hiding warnings.
-. *`MARGIN_NO_SOLVE` has two different message texts*
-  (`validate.ts:1267` and `grades.ts:1088`), both reaching one JSON
-  document.
-. *The report prints `no-op s`* -- a non-finite branch returning a word
-  where callers append a unit.
-. *PDF is not byte-reproducible*: 64 bytes differ per run (jsPDF
-  `/CreationDate` and a random `/ID`). SVG and PNG are byte-identical.
-. *Nothing guards the README's images.* [VERIFIED 2026-08-08]
-  `readme:check` holds each `.Source` block to its example verbatim,
-  and the five `media/*.png` beside them are checked by nothing -- so
-  the picture and the source under it can say different things with the
-  build green. Found by regenerating them: four of five did not match
-  what the renderer now produces from their own example. All are now
-  current, and all are rendered at `--width 1400`, which was the house
-  size the first four were made at and is worth writing down since the
-  CLI's default is 2400. `sync-readme-gallery.mjs` is the obvious place
-  to extend, though a byte-compare of a PNG is a coarse test -- it will
-  fail on any pixel, including deliberate ones.
+`--json` on `render` was accepted and ignored; it is refused, as
+`--all-views` already was on a non-PDF format. `--quiet` was documented
+as suppressing the margin report and did the opposite of that on one
+command and nothing on the other; it now means "errors only" on both.
+`MARGIN_NO_SOLVE` was emitted from two places on one condition in
+wording that differed by three words, both reaching one `--json`
+document; the located copy is the one kept. The report's `no-op s` --
+a unit on a word -- now reads `does not operate`.
 
 ==== Documented, and absent
 

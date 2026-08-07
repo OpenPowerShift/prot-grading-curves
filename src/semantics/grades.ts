@@ -535,20 +535,6 @@ function sideCurrentInScenario(
   };
 }
 
-/**
- * Ratio that converts a current in the primary's frame to the
- * backup's. 1 when both sit on the same level.
- */
-function backupRatio(
-  study: Study,
-  fault: Fault,
-  primaryVoltage: string | undefined,
-  backupVoltage: string | undefined,
-): number {
-  const atPrimary = faultCurrentAt(study, fault, primaryVoltage, 'I').I_A;
-  const atBackup = faultCurrentAt(study, fault, backupVoltage, 'I').I_A;
-  return atPrimary > 0 ? atBackup / atPrimary : 1;
-}
 
 /**
  * How far up the curve the upstream sweep should run.
@@ -806,13 +792,25 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
    * curve is steepest.
    */
   const RANGE_SAMPLES = 32;
-  const rangeSweep: number[] = [];
+  /*
+   * The sweep runs in each side's *own* current, not in phase amps.
+   *
+   * It used to walk `fault.min_A` to `fault.max_A` -- the phase range
+   * -- and hand the same figure to both sides, with the backup scaled
+   * by a voltage ratio. So an earth-fault pair measuring residual
+   * `3I0` had its three declared rows in residual amps and its
+   * thirty-two interior rows in phase amps: a report whose every row
+   * passed and whose verdict line read "worst at 4000 A", a current
+   * no row had been taken at and one neither element sees.
+   *
+   * Each side's endpoints already come from `sideCurrentAt`, which
+   * resolves the quantity that side measures. Interpolating between
+   * *those* keeps the interior in the same units as the ends, and
+   * keeps the two sides at one condition rather than at one number.
+   */
+  const sweepFractions: number[] = [];
   if (fault.min_A !== fault.max_A && fault.min_A > 0 && fault.max_A > fault.min_A) {
-    const lo = Math.log(fault.min_A);
-    const hi = Math.log(fault.max_A);
-    for (let i = 0; i <= RANGE_SAMPLES; i++) {
-      rangeSweep.push(Math.exp(lo + (i / RANGE_SAMPLES) * (hi - lo)));
-    }
+    for (let i = 0; i <= RANGE_SAMPLES; i++) sweepFractions.push(i / RANGE_SAMPLES);
   }
 
   /* Set where any row's current came from the type's ratios rather
@@ -876,8 +874,31 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
    * The interior of the declared range. Reported as `range` rows so the
    * three declared points stay identifiable in the table.
    */
-  for (const I_p of rangeSweep) {
-    const I_b = I_p * backupRatio(study, fault, primary.voltage, backup.voltage);
+  const primaryEnds = {
+    lo: sideCurrentAt(study, fault, primary, 'min'),
+    hi: sideCurrentAt(study, fault, primary, 'max'),
+  };
+  const backupEnds = {
+    lo: sideCurrentAt(study, fault, backup, 'min'),
+    hi: sideCurrentAt(study, fault, backup, 'max'),
+  };
+  /*
+   * A side whose endpoints could not be resolved has no interior
+   * either. Reporting one anyway is what printed `verdict: pass`
+   * beside `SEQUENCE_DATA_MISSING` -- phase current silently
+   * substituted for a quantity the study never gave.
+   */
+  const sweepable = [primaryEnds, backupEnds].every(
+    (e) => e.lo.I_A != null && e.hi.I_A != null && !e.lo.error && !e.hi.error,
+  );
+
+  /** Log-space interpolation between one side's own two endpoints. */
+  const between = (lo: number, hi: number, f: number): number =>
+    (lo > 0 && hi > 0 ? Math.exp(Math.log(lo) + f * (Math.log(hi) - Math.log(lo))) : lo);
+
+  for (const f of sweepable ? sweepFractions : []) {
+    const I_p = between(primaryEnds.lo.I_A!, primaryEnds.hi.I_A!, f);
+    const I_b = between(backupEnds.lo.I_A!, backupEnds.hi.I_A!, f);
     const t_p = primary.tAt(I_p);
     const t_b = backup.tAt(I_b);
     if (!Number.isFinite(t_p) && !Number.isFinite(t_b)) continue;
@@ -925,8 +946,27 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
    * `upstream = false` turns it off for a pair where it is not wanted.
    */
   const askedForSweep = grade.upstream === true || grade.upstream_to_A != null;
-  if (grade.upstream !== false) {
-    const from = faultCurrentAt(study, fault, primary.voltage, 'max').I_A;
+  /*
+   * Swept in the primary's own current, with the backup carried by the
+   * ratio the two sides have *at the declared fault*.
+   *
+   * That ratio already accounts for the level, the quantity each side
+   * measures and any share, because both figures came from
+   * `sideCurrentAt`. `backupRatio` computed a phase-and-voltage ratio
+   * instead, so a residual-measuring pair was swept along a phase axis
+   * and reported a worst point at a current neither element sees.
+   */
+  const declaredP = sideCurrentAt(study, fault, primary, 'I').I_A;
+  const declaredB = sideCurrentAt(study, fault, backup, 'I').I_A;
+  const sideRatio = declaredP != null && declaredB != null && declaredP > 0
+    ? declaredB / declaredP
+    : 1;
+  /* Above the *range*, not above the declared point: the rows between
+   * min and max are already covered, and starting lower would sweep
+   * them twice. */
+  const topOfRange = sideCurrentAt(study, fault, primary, 'max').I_A;
+  if (grade.upstream !== false && topOfRange != null && topOfRange > 0) {
+    const from = topOfRange;
     /*
      * The sweep stops where the curves do.
      *
@@ -937,8 +977,22 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
      * a margin from, and a sweep that carried on would be grading
      * against whichever stage happened to survive.
      */
+    /*
+     * The ceiling comes back in *phase* amps -- it is the largest fault
+     * the study declares at this level, and a fault's headline figure
+     * is its phase current. The sweep runs in the primary's own
+     * quantity, so it is carried across by the ratio this condition
+     * already gives between the two. Without that, a residual pair
+     * swept from 1.2 kA of residual to 4 kA of *phase* and reported a
+     * worst point at a current neither element sees.
+     */
+    const phaseHere = faultCurrentAt(study, fault, primary.voltage, 'max').I_A;
+    const toSideUnits = phaseHere > 0 ? from / phaseHere : 1;
     const ends = [primary.cutoff_A, backup.cutoff_A].filter((x): x is number => x != null);
-    const to = Math.min(upstreamCeiling(study, grade, primary, from), ...ends);
+    const to = Math.min(
+      upstreamCeiling(study, grade, primary, phaseHere) * toSideUnits,
+      ...ends,
+    );
     if (to > from) {
       const samples = 48;
       const lo = Math.log(from);
@@ -946,7 +1000,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
       /* Skip i = 0: that point is already covered by the declared rows. */
       for (let i = 1; i <= samples; i++) {
         const I_p = Math.exp(lo + (i / samples) * (hi - lo));
-        const I_b = I_p * backupRatio(study, fault, primary.voltage, backup.voltage);
+        const I_b = I_p * sideRatio;
         const t_p = primary.tAt(I_p);
         const t_b = backup.tAt(I_b);
         if (!Number.isFinite(t_p) && !Number.isFinite(t_b)) continue;

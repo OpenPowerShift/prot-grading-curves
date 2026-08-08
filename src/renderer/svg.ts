@@ -2009,6 +2009,29 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   interface CurvePlacement { factor: number; V_source: number | undefined }
 
   const placementFor = (element: Element): CurvePlacement | null => {
+    /*
+     * A curve the tool would have to invent a number for is not drawn.
+     *
+     * `--force` exists to let someone look at what a broken study
+     * draws, and the NOT VALID banner says the study is broken. But an
+     * inverse-time stage with no `tms` was still drawn, at the 1.0 the
+     * evaluator falls back to -- so under a banner warning that the
+     * study is wrong sat a confident characteristic about ten times
+     * slow, which is the *exact* thing `TMS_MISSING` says would
+     * happen. A sheet that invents the number the reader is missing is
+     * worse than one that says which number is missing.
+     */
+    const invented = element.stages.find((stage) => {
+      const kind = stage.producer?.kind;
+      return (kind === 'standard' || kind === 'formula') && stage.tms == null;
+    });
+    if (invented) {
+      blockedElements.set(element.label,
+        `${element.label} declares no tms, so it has no characteristic to draw `
+        + '(it would be drawn at 1.0)');
+      return null;
+    }
+
     const measures = elementQuantity(element.stages);
 
     if (axisQuantity === 'any') {

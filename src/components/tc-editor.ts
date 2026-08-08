@@ -7,7 +7,7 @@
  * once `src/editor/` files fill in (Phase 5 deliverable).
  */
 
-import { LitElement, css, html, type PropertyValues } from 'lit';
+import { LitElement, html, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, hoverTooltip } from '@codemirror/view';
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
@@ -101,83 +101,18 @@ export class TcEditor extends LitElement {
   /** Internal CM view. */
   private view?: EditorView;
 
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      background: var(--tc-bg-sunken);
-      color: var(--tc-fg);
-    }
-    .cm-editor {
-      flex: 1 1 0;
-      min-height: 0;
-      width: 100%;
-      height: auto;
-      font-family: var(--tc-font);
-      font-size: 13px;
-    }
-    .cm-scroller {
-      font-family: var(--tc-font) !important;
-    }
-    .cm-gutters {
-      background: var(--tc-bg-sunken);
-      color: var(--tc-fg-muted);
-      border: none;
-    }
-    .cm-content { caret-color: var(--tc-accent); }
-    .cm-line { padding-left: 6px; }
-
-    /* autocomplete dropdown + tooltip styling tuned for the dark
-       toolbar/background palette */
-    .cm-tooltip-autocomplete {
-      background: var(--tc-bg-elevated);
-      color: var(--tc-fg);
-      border: 1px solid var(--tc-border);
-      border-radius: 4px;
-      font-family: var(--tc-font);
-      font-size: 12px;
-    }
-    .cm-tooltip-autocomplete > ul > li[aria-selected] {
-      background: var(--tc-accent);
-      color: var(--tc-accent-fg);
-    }
-    .tc-help-tooltip {
-      background: var(--tc-bg-elevated);
-      color: var(--tc-fg);
-      border: 1px solid var(--tc-border);
-      border-radius: 4px;
-      padding: 6px 10px;
-      max-width: 420px;
-      font-family: var(--tc-font);
-      font-size: 12px;
-    }
-    .tc-help-tooltip .cm-help-line {
-      font-weight: 600;
-      color: var(--tc-accent);
-    }
-    .tc-help-tooltip .cm-help-scope {
-      color: var(--tc-fg-muted);
-      font-weight: 400;
-    }
-    .tc-help-tooltip .cm-help-summary {
-      margin: 4px 0;
-      color: var(--tc-fg);
-    }
-    .tc-help-tooltip .cm-help-example {
-      background: var(--tc-bg-sunken);
-      border: 1px solid var(--tc-border);
-      border-radius: 3px;
-      padding: 4px 6px;
-      margin: 4px 0 0;
-      white-space: pre-wrap;
-      font-family: var(--tc-font);
-      font-size: 11px;
-      color: var(--tc-accent);
-    }
-  `;
+  /*
+   * No `static styles` here, deliberately.
+   *
+   * `createRenderRoot()` returns `this`, so this component renders
+   * into the *light* DOM and Lit never adopts a `static styles`
+   * block. One sat here for months looking like the place to edit and
+   * doing nothing; two of the three carried rules that existed nowhere
+   * else, so what a reader could see was missing they could not find.
+   *
+   * The live sheet is `src/styles/global.css`, where every rule is
+   * scoped by the element tag.
+   */
 
   protected updated(changed: PropertyValues): void {
     if (!this.view) {
@@ -358,7 +293,16 @@ export class TcEditor extends LitElement {
     view.dispatch(setDiagnostics(view.state, marks));
   }
 
-  /** Move the caret to a 1-based line/column and reveal it. */
+  /**
+   * Move the caret to a 1-based line/column and reveal it, centred.
+   *
+   * `scrollIntoView: true` scrolls the *minimum* amount, so a line
+   * below the viewport arrives at the very bottom edge with nothing
+   * after it on screen. A diagnostic is read in its surroundings --
+   * the block it is in, the line before it -- and landing on the last
+   * visible row hides all of that. `y: 'center'` puts it in the middle
+   * of the pane, which is where a reader looks.
+   */
   gotoPosition(line: number, column: number): void {
     const view = this.view;
     if (!view) return;
@@ -367,7 +311,7 @@ export class TcEditor extends LitElement {
     const pos = Math.min(target.from + Math.max(0, column - 1), target.to);
     view.dispatch({
       selection: { anchor: pos },
-      scrollIntoView: true,
+      effects: EditorView.scrollIntoView(pos, { y: 'center' }),
     });
     view.focus();
   }

@@ -1333,7 +1333,17 @@ class Parser {
               break;
             }
             default: /* ignore */ this.parseScalarValue();
-              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max', 'residual_min', 'residual_max', 'type', 'voltage', 'view', 'views', 'name', 'description']);
+              /*
+               * Strict, like every other block whose keys are numbers.
+               *
+               * A misspelt key here was a *warning* and the value was
+               * dropped: `typ = two_phase` left the fault with no type
+               * at all, so its components were never derived and every
+               * margin resting on them changed -- reported as advice,
+               * at exit 0. A wrong key is a wrong number, and a
+               * `faults` block is nothing but numbers.
+               */
+              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max', 'residual_min', 'residual_max', 'type', 'voltage', 'view', 'views', 'name', 'description'], /* strict */ true);
           }
           this.eat('SEMI');
         }

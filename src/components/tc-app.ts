@@ -9,7 +9,7 @@
  * users that open it cold.
  */
 
-import { LitElement, css, html } from 'lit';
+import { LitElement, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { parse, type Document, type ParseError } from '../parser/index.js';
 import { buildStudy, type Study } from '../semantics/model.js';
@@ -483,128 +483,18 @@ export class TcApp extends LitElement {
     }, Math.max(0, debounce));
   }
 
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-    }
-    /* allow scrolling if the content (tabs + pane) overflows the
-     * window vertically; keep the tabs + counts visible at the top */
-    .tabs-shell {
-      flex: 0 0 auto;
-    }
-    .tabs {
-      display: flex;
-      flex: 0 0 auto;
-      background: var(--tc-bg-elevated);
-      border-bottom: 1px solid var(--tc-border);
-      padding: 0 12px;
-      align-items: center;
-    }
-    .tab {
-      padding: 8px 14px;
-      font-size: 13px;
-      cursor: pointer;
-      color: var(--tc-fg-muted);
-      border: none;
-      background: transparent;
-      font-family: inherit;
-    }
-    .tab.active {
-      color: var(--tc-accent);
-      border-bottom: 2px solid var(--tc-accent);
-      margin-bottom: -1px;
-    }
-    .tab:hover:not(.active) {
-      color: var(--tc-fg);
-    }
-    .picker {
-      margin-left: 16px;
-      padding: 4px 8px;
-      background: var(--tc-bg-sunken);
-      color: var(--tc-fg);
-      border: 1px solid var(--tc-border);
-      border-radius: 4px;
-      font-family: inherit;
-      font-size: 12px;
-    }
-    .picker:focus {
-      outline: 2px solid var(--tc-accent);
-      outline-offset: -2px;
-    }
-    .spacer { flex: 1 1 auto; }
-    .counts {
-      padding: 8px 14px;
-      font-size: 12px;
-      color: var(--tc-fg-muted);
-      align-self: center;
-    }
-    .pane {
-      flex: 1 1 0;
-      min-height: 0;
-      width: 100%;
-      box-sizing: border-box;
-      padding: 12px;
-      overflow: hidden;          /* the SVG fills 100% height; pane-host scrolls if needed */
-      background: #ffffff;
-    }
-    .pane > * {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-    .err-count {
-      background: var(--tc-error);
-      color: var(--tc-bg-sunken);
-      padding: 1px 6px;
-      border-radius: 8px;
-      font-weight: 600;
-      margin-left: 6px;
-      font-size: 11px;
-    }
-    .warn-count {
-      background: var(--tc-warning, #c78a2a);
-      color: var(--tc-bg-sunken);
-      padding: 1px 6px;
-      border-radius: 8px;
-      font-weight: 600;
-      margin-left: 6px;
-      font-size: 11px;
-    }
-    .report-toggle {
-      margin-right: 10px;
-      white-space: nowrap;
-    }
-    .verdict {
-      margin-left: 6px;
-      padding: 1px 6px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 11px;
-      color: var(--tc-bg-sunken);
-    }
-    .verdict.pass { background: var(--tc-ok, #3f9d58); }
-    .verdict.fail { background: var(--tc-error); }
-    /* The grading report is fixed-width text straight from the
-     * library, so the CLI and the playground show the same thing. */
-    .report {
-      flex: 0 0 auto;
-      max-height: 30vh;
-      overflow: auto;
-      margin: 0;
-      padding: 10px 14px;
-      background: var(--tc-bg-sunken);
-      color: var(--tc-fg);
-      border-bottom: 1px solid var(--tc-border);
-      font-family: var(--tc-font);
-      font-size: 12px;
-      line-height: 1.45;
-      white-space: pre;
-    }
-  `;
+  /*
+   * No `static styles` here, deliberately.
+   *
+   * `createRenderRoot()` returns `this`, so this component renders
+   * into the *light* DOM and Lit never adopts a `static styles`
+   * block. One sat here for months looking like the place to edit and
+   * doing nothing; two of the three carried rules that existed nowhere
+   * else, so what a reader could see was missing they could not find.
+   *
+   * The live sheet is `src/styles/global.css`, where every rule is
+   * scoped by the element tag.
+   */
 
   private handleSourceChange(src: string): void {
     this.src = src;
@@ -1040,9 +930,20 @@ export class TcApp extends LitElement {
     const parseErrors = this.visibleErrors().filter((e) => e.severity === 'error').length;
     const semanticErrors = this.diagnostics.filter((d) => d.severity === 'error').length;
     const warnings = this.diagnostics.filter((d) => d.severity === 'warning').length;
+    const infos = this.diagnostics.filter((d) => d.severity === 'info').length;
     const errors = parseErrors + semanticErrors;
 
-    if (errors === 0 && warnings === 0) return html`No issues`;
+    /*
+     * "No issues" was shown while info findings were listed directly
+     * beneath it, because the chip counted errors and warnings only.
+     * The panel and its own summary then disagreed on screen, which
+     * teaches a reader that the summary is not to be trusted -- and
+     * the summary is the part most people read.
+     */
+    if (errors === 0 && warnings === 0 && infos === 0) return html`No issues`;
+    if (errors === 0 && warnings === 0) {
+      return html`<span class="info-count">${infos}</span> note${infos === 1 ? '' : 's'}`;
+    }
     return html`
       ${errors > 0
         ? html`<span class="err-count">${errors}</span> error${errors === 1 ? '' : 's'}`
@@ -1050,6 +951,10 @@ export class TcApp extends LitElement {
       ${errors > 0 && warnings > 0 ? html`<span> · </span>` : null}
       ${warnings > 0
         ? html`<span class="warn-count">${warnings}</span> warning${warnings === 1 ? '' : 's'}`
+        : null}
+      ${(errors > 0 || warnings > 0) && infos > 0 ? html`<span> · </span>` : null}
+      ${infos > 0
+        ? html`<span class="info-count">${infos}</span> note${infos === 1 ? '' : 's'}`
         : null}
     `;
   }
@@ -1151,8 +1056,25 @@ export class TcApp extends LitElement {
                             ?selected=${st.name === this.savedName}>${st.name}</option>
                   `)}
                 </optgroup>` : null}
+              ${/*
+                 * The study the app opens on, above the rest.
+                 *
+                 * Alphabetical order is right *within* the list -- it
+                 * is the only order that helps someone looking for a
+                 * particular study -- but it buries the one a
+                 * first-time visitor has been reading, nineteen
+                 * entries deep under a name they have no reason to
+                 * remember. It is the one entry a newcomer needs to
+                 * find twice.
+                 */''}
+              <optgroup label="Start here">
+                <option value=${DEFAULT_EXAMPLE.id}
+                        ?selected=${DEFAULT_EXAMPLE.id === this.exampleId
+                          && !this.savedName && !this.linkName}
+                >${DEFAULT_EXAMPLE.name}</option>
+              </optgroup>
               <optgroup label="Examples">
-                ${EXAMPLES.map((ex) => html`
+                ${EXAMPLES.filter((ex) => ex.id !== DEFAULT_EXAMPLE.id).map((ex) => html`
                   <option value=${ex.id}
                           ?selected=${ex.id === this.exampleId && !this.savedName && !this.linkName}
                   >${ex.name}</option>

@@ -443,16 +443,6 @@ running build. Everything below is [VERIFIED].
   grading can make still come through, which was the point of joining
   the lists at all.
 
-. *"No issues" is shown while info diagnostics are listed beneath it.*
-  The chip counts errors and warnings only.
-
-. *A typo'd key inside `faults` is a warning, not an error*, and is
-  silently dropped with a 20-name "it accepts ..." list and no "did you
-  mean". Every other block treats a misspelled key as a refusal because
-  a wrong key is a wrong number.
-
-. *The diagnostics panel is capped at 28% and scrolls from the fourth
-  message*, so a study with a handful of findings hides most of them.
 
 *The CLI's silent fallbacks* -- closed 2026-08-08
 
@@ -598,50 +588,84 @@ Reconciled 2026-08-07: exit status `3`, `--json`, PDF pagination,
   covered at all (worst all-pairs ~ 1.1-1.5 across the three palettes).
   Bounded by dash encoding and legend naming, so real but not acute.
 
-==== Playground usability
+==== Playground usability -- closed 2026-08-08
 
-From a browser session on a running build, 2026-08-07. All [VERIFIED]
-by doing it; screenshot ids are in the agent transcript and not
-reproduced here. One agent could not finish -- clipboard *success* on
-the guide's Copy buttons, and any real touch gesture, remain untested
-in this environment.
+From a browser session on a running build, 2026-08-07. All nine acted
+on; four of them turned out to be narrower or wider than reported, and
+those differences are recorded here because they are the useful part.
 
-. *Every export is named `tcc`*, whatever the study. A folder of
-  issued sheets is `tcc.pdf`, `tcc (1).pdf`, `tcc (2).pdf`. `meta`
-  carries a project and a study name that would make a filename.
+. *A `--force` sheet drew the wrong curve under its NOT VALID banner.*
+  The substantive one. An inverse-time stage with no `tms` was drawn at
+  the 1.0 the evaluator falls back to -- which is *word for word* what
+  `TMS_MISSING` says would happen -- so under a banner warning that the
+  study is wrong sat a confident characteristic about ten times slow.
+  A curve the tool would have to invent a number for is not drawn now;
+  it is listed with the reason, so the sheet says which number is
+  missing rather than supplying one.
 
-. *The guide's filter matches section headings only*, so "tms" and
-  "margin" -- two of the likeliest things to search for -- find
-  nothing in any of the four tabs. It reads as a broken search rather
-  than a narrow one.
+. *A typo'd key inside `faults` was a warning, and the value dropped.*
+  `typ = two_phase` left the fault with no type, so its components were
+  never derived and every margin resting on them changed -- reported as
+  advice, at exit 0. Refused now, as in every other block whose keys
+  are numbers. A key that belongs in *another* block is still a
+  warning: that is misplaced rather than mistyped.
 
-. *At `displayScale > 1` the legend is clipped by the pane rather than
-  scrolled to.* The legend is the wrong thing to push off the edge when
-  a reader has just zoomed in to read something.
+. *Every export was named `tcc`* -- narrower than reported, and wider.
+  `exportStem` did consult `meta.project`, so every example but one
+  named itself correctly; the review generalised from the starter,
+  which declares no `meta` at all. But it never consulted `meta.study`,
+  and it used *one stem for every sheet*, so exporting a phase sheet
+  and an earth sheet from one study gave two files the browser had to
+  number. Both fixed: `project`, then `study`, then `tcc`; and the
+  sheet's own name appended where a study declares more than one.
 
-. *A `--force` sheet draws the wrong curve under its NOT VALID
-  banner.* The banner is good and the gating is right; the curve
-  beneath it is still built from whatever the broken settings defaulted
-  to, which is the thing the banner exists to warn about.
+. *The dead `static styles` blocks* -- wider than reported. All three
+  components render into the light DOM, so all three blocks were dead,
+  not just `tc-app`'s: about 7.5 kB of CSS that never applied and read
+  as the place to edit. Two carried rules with no equivalent in
+  `global.css`, so this was not only tidying -- `.tc-help-tooltip` is
+  set by `editor/hover.ts` and the editor's hover help was rendering
+  *entirely unstyled*, as was the selected row of the completion
+  dropdown and the viewer's "nothing to draw" message. Ported, then
+  deleted.
 
-. *The picker is sorted alphabetically*, which buries the starter
-  study the app opens on.
+. *The legend was clipped at `displayScale > 1`.* `setDisplayScale`
+  changed the scale and left `scrollLeft` at its old *pixel* value, so
+  the sheet grew under the viewport and slid towards the top-left,
+  taking a right-hand legend off the edge. Nothing was unreachable --
+  the pane scrolls -- but it had moved without being asked to. The
+  centre of the pane now stays the centre of the pane.
 
-. *A diagnostic's go-to-line lands at the bottom edge of the viewport*
-  rather than centring the line.
+. *Middle-drag pan was unclamped*, so the domain could be dragged
+  clean off the study: an empty grid, and no way back except a reset
+  button a reader who has just lost the drawing has no reason to
+  trust. The window must now keep a fifth of itself over the range the
+  study draws in -- the mildest rule that prevents it, and one that
+  still allows looking well outside the data.
 
-. *Middle-drag pan is unclamped*, so the domain can be dragged
-  entirely off the plotted range.
+. *A diagnostic's go-to-line landed at the bottom edge.*
+  `scrollIntoView: true` scrolls the *minimum* amount, so a line below
+  the viewport arrived on the last visible row with nothing after it. A
+  diagnostic is read in its surroundings. Centred now.
 
-. *The guide's per-snippet Copy buttons are invisible until the block
-  is hovered*, which is correct on a pointer device and hides them
-  from anyone scanning.
+. *The picker buried the study the app opens on*, nineteen entries deep
+  under a name a newcomer has no reason to remember. Alphabetical order
+  is right *within* the list; the default now sits above it under
+  "Start here".
 
-. *Two classes remain unstyled* from tc-app's dead `static styles`
-  block -- `tabs-shell` and `active`. `report`, `report-toggle`,
-  `err-count`, `warn-count`, `verdict.pass`, `verdict.fail` and
-  `spacer` were ported to `global.css` on 2026-08-07; the block itself
-  is still there and still dead, and still reads as the place to edit.
+. *The guide's Copy buttons were invisible until hovered*, so anyone
+  scanning could not see that copying was offered. Subdued rather than
+  hidden.
+
+. *The diagnostics panel was capped at 28%* and scrolled from the
+  fourth message. Raised to 45%: the panel is what a reader acts on
+  after a failed check, and a few lines of source above it are enough
+  to keep their place.
+
+. *"No issues" was shown above listed info findings*, the chip counting
+  errors and warnings only -- the summary and the panel disagreeing on
+  screen, which teaches a reader that the summary is not to be trusted.
+  Notes are counted now, in their own muted chip.
 
 ==== Opportunities, ranked by value to a practising engineer
 

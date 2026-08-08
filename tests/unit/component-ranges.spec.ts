@@ -157,14 +157,31 @@ scenario S {
 });
 
 describe('an unknown key in a fault', () => {
-  it('is reported rather than skipped', () => {
+  it('is refused rather than skipped', () => {
     /*
      * The fault block read keys with `eat('KW')` alone, so anything
      * that was not already a keyword was stepped over in silence --
      * which is how the first cut of these range keys did nothing at
      * all and said nothing about it.
+     *
+     * It was then a *warning*, and the value was still dropped:
+     * `typ = two_phase` left the fault with no type, so its components
+     * were never derived and every margin resting on them changed --
+     * reported as advice, at exit 0. A `faults` block is nothing but
+     * numbers, and a wrong key there is a wrong number, so it is
+     * refused as it is in every other such block.
      */
     expect(codes('type = two_phase; I = 2 kA; I2_mn = 300 A;'))
+      .toContain('UNKNOWN_SETTING');
+  });
+
+  it('still merely warns about a key that belongs in another block', () => {
+    /*
+     * A word the language knows, in the wrong place, is misplaced
+     * rather than mistyped: the author knows the term, the sheet is
+     * still drawable, and the distinction is worth keeping.
+     */
+    expect(codes('type = two_phase; I = 2 kA; upstream = true;'))
       .toContain('UNKNOWN_KEY');
   });
 });

@@ -275,7 +275,15 @@ tc-viewer .help-popover { top: 8px; }
 
 tc-app .diagnostics {
   flex: 0 0 auto;
-  max-height: 28%;
+  /*
+   * Capped at 28%, which scrolled from the fourth message -- so a
+   * study with a handful of findings showed three and hid the rest
+   * behind a scrollbar most readers never noticed. The panel is the
+   * thing a reader is *acting on* after a failed check; the source
+   * above it is what they are about to change, and a few lines of it
+   * are enough to keep their place.
+   */
+  max-height: 45%;
   overflow: auto;
   margin: 0;
   padding: 6px 0;
@@ -908,6 +916,7 @@ tc-app .report-toggle { margin-right: 10px; white-space: nowrap; }
  */
 tc-app .err-count,
 tc-app .warn-count,
+tc-app .info-count,
 tc-app .verdict {
   padding: 1px 6px;
   border-radius: 8px;
@@ -918,6 +927,92 @@ tc-app .verdict {
 }
 tc-app .err-count  { background: var(--tc-error); }
 tc-app .warn-count { background: var(--tc-warning, #c78a2a); }
+/* A note is not a problem, so it reads as furniture rather than as a
+ * lesser warning -- the chip exists so "No issues" cannot be shown
+ * above a list of them, not to make them look urgent. */
+tc-app .info-count { background: var(--tc-fg-muted, #7a7a78); }
 tc-app .verdict.pass { background: var(--tc-ok, #3f9d58); }
 tc-app .verdict.fail { background: var(--tc-error); }
 tc-app .spacer { flex: 1 1 auto; }
+
+/* ------------------------------------------------------------------
+ * Ported from the components' dead `static styles` blocks, 2026-08-08.
+ *
+ * All three components render into the *light* DOM
+ * (`createRenderRoot()` returns `this`), so Lit never adopts a
+ * `static styles` block. Three of them sat in the source looking like
+ * the place to edit and doing nothing -- roughly 7.5 kB of CSS. Two
+ * carried rules with no equivalent here, so deleting them outright
+ * would have removed styling that a reader could see was missing but
+ * not find:
+ *
+ *   .tc-help-tooltip   the editor's hover help. Set by `hover.ts` and
+ *                      rendered with no styling at all -- a panel of
+ *                      unstyled text over the source.
+ *   .cm-tooltip-autocomplete > ul > li[aria-selected]
+ *                      the highlighted completion, which was the
+ *                      browser default rather than the accent.
+ *   tc-viewer .empty   the "nothing to draw" message.
+ *
+ * They are here now, and the dead blocks are gone.
+ * ------------------------------------------------------------------ */
+
+tc-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--tc-accent);
+  color: var(--tc-accent-fg);
+}
+
+tc-editor .tc-help-tooltip {
+  background: var(--tc-bg-elevated);
+  color: var(--tc-fg);
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  max-width: 420px;
+  font-family: var(--tc-font);
+  font-size: 12px;
+}
+tc-editor .tc-help-tooltip .cm-help-line {
+  font-weight: 600;
+  color: var(--tc-accent);
+}
+tc-editor .tc-help-tooltip .cm-help-scope {
+  color: var(--tc-fg-muted);
+  font-weight: 400;
+}
+tc-editor .tc-help-tooltip .cm-help-summary {
+  margin: 4px 0;
+  color: var(--tc-fg);
+}
+tc-editor .tc-help-tooltip .cm-help-example {
+  background: var(--tc-bg-sunken);
+  border: 1px solid var(--tc-border);
+  border-radius: 3px;
+  padding: 4px 6px;
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  font-family: var(--tc-font);
+  font-size: 11px;
+  color: var(--tc-accent);
+}
+
+tc-viewer .empty {
+  padding: 24px;
+  color: var(--tc-fg-muted);
+  font-family: var(--tc-font);
+}
+
+/*
+ * `tabs-shell` and `active` -- the two classes the 2026-08-07 review
+ * found still unstyled after the rest of tc-app's block was ported.
+ */
+tc-app .tabs-shell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+tc-app .tabs-shell .active,
+tc-app .active {
+  font-weight: 600;
+  color: var(--tc-accent);
+}

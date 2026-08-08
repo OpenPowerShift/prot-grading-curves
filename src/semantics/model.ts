@@ -44,7 +44,7 @@ import type {
 import { displayName } from '../parser/ast.js';
 import type { SequenceRange } from './quantity.js';
 import { lookupCurve, type CurveConstants } from '../constants/curves.js';
-import { amps, rawNumber, readBoolean, readRatio, readString, seconds } from './units.js';
+import { amps, rawNumber, readRatio, readString, seconds } from './units.js';
 import { isFaultType, type FaultType } from '../constants/sequence.js';
 
 /** Key for a level pair, order-independent. */

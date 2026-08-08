@@ -20,7 +20,7 @@
  * polyline.
  */
 
-import { LitElement, css, html } from 'lit';
+import { LitElement, html } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { Document, ParseError } from '../parser/index.js';
@@ -229,92 +229,18 @@ export class TcViewer extends LitElement {
    * overlay group directly without re-running render(). */
   private svgEl: SVGSVGElement | null = null;
 
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      height: 100%;
-      background: #fff;
-      position: relative;
-      overflow: hidden;
-    }
-    .empty {
-      padding: 24px;
-      color: var(--tc-fg-muted);
-      font-family: var(--tc-font);
-    }
-    .diagnostics {
-      background: var(--tc-bg-elevated);
-      color: var(--tc-fg);
-      padding: 8px 12px;
-      border-radius: 4px;
-      margin: 0;
-      font-family: var(--tc-font);
-      font-size: 12px;
-      max-height: 33%;
-      overflow: auto;
-    }
-    .diagnostics li.error   { color: var(--tc-error);   }
-    .diagnostics li.warning { color: var(--tc-warning); }
-
-    svg { width: 100%; height: 100%; display: block; cursor: crosshair; }
-    .pane-host {
-      flex: 1 1 0;
-      min-height: 0;
-      width: 100%;
-      /*
-       * Scrolls rather than clipping, because the drawing may now be
-       * larger than the pane -- which on a phone it always is, and
-       * which is the point: a sheet shown at a readable size and
-       * panned is worth more than one shrunk to fit and unreadable.
-       */
-      overflow: auto;
-      position: relative;
-      overscroll-behavior: contain;
-    }
-    /*
-     * The drawing at its chosen size. The SVG fills this box, so the
-     * scale is applied once here rather than being threaded through
-     * every coordinate the renderer emits.
-     */
-    .sheet {
-      position: relative;
-      flex: none;
-    }
-    .toolbar {
-      display: flex;
-      gap: 6px;
-      padding: 4px 10px;
-      height: 28px;
-      flex: 0 0 28px;
-      background: var(--tc-bg-elevated);
-      border-bottom: 1px solid var(--tc-border);
-      font-family: var(--tc-font);
-      font-size: 11px;
-      color: var(--tc-fg);
-      align-items: center;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    .toolbar .dim-hint {
-      color: var(--tc-fg-muted);
-      font-size: 10px;
-      margin-left: 4px;
-    }
-    .toolbar button {
-      font-family: inherit;
-      font-size: 11px;
-      background: var(--tc-bg-sunken);
-      color: var(--tc-fg);
-      border: 1px solid var(--tc-border);
-      border-radius: 4px;
-      padding: 2px 8px;
-      cursor: pointer;
-    }
-    .toolbar button:hover { background: var(--tc-accent); color: var(--tc-accent-fg); }
-    .toolbar .readout { margin-left: auto; color: var(--tc-fg-muted); }
-  `;
+  /*
+   * No `static styles` here, deliberately.
+   *
+   * `createRenderRoot()` returns `this`, so this component renders
+   * into the *light* DOM and Lit never adopts a `static styles`
+   * block. One sat here for months looking like the place to edit and
+   * doing nothing; two of the three carried rules that existed nowhere
+   * else, so what a reader could see was missing they could not find.
+   *
+   * The live sheet is `src/styles/global.css`, where every rule is
+   * scoped by the element tag.
+   */
 
   protected createRenderRoot(): HTMLElement | DocumentFragment {
     return this;
@@ -713,6 +639,62 @@ export class TcViewer extends LitElement {
   /* ---------------- middle-drag panning ---------------- */
 
   /**
+   * The domain the study itself asks for, remembered the first time a
+   * reader moves away from it.
+   *
+   * There is nothing else to clamp against. `currentMin`/`currentMax`
+   * are the *current* window, so once a pan has moved them they no
+   * longer say where the drawing is; and the renderer's auto-fit is
+   * only visible while both are null. Captured at that moment, it is
+   * exact.
+   */
+  private naturalLog: { lo: number; hi: number } | null = null;
+
+  /** Remember where the sheet sits, before a gesture moves it. */
+  private rememberNaturalDomain(logLo: number, logHi: number): void {
+    if (this.currentMin == null && this.currentMax == null && logHi > logLo) {
+      this.naturalLog = { lo: logLo, hi: logHi };
+    }
+  }
+
+  /**
+   * Set the current-axis window, keeping some of the drawing on it.
+   *
+   * The pan was unclamped, so the domain could be dragged clean off
+   * the study -- an empty grid, no curves, no rules, and no way back
+   * except the reset button, which a reader who has just lost the
+   * drawing has no reason to trust. Zoom could reach the same place by
+   * a longer route.
+   *
+   * The rule is the mildest one that prevents it: the window must keep
+   * at least a fifth of itself over the range the study draws in. It
+   * still allows looking well outside the data -- which is a
+   * legitimate thing to want, to see where a curve is heading -- and
+   * only refuses to let the drawing leave entirely.
+   */
+  private setCurrentWindow(logLo: number, logHi: number): void {
+    let lo = logLo;
+    let hi = logHi;
+    const natural = this.naturalLog;
+    if (natural && hi > lo) {
+      const span = hi - lo;
+      const keep = span * 0.2;
+      if (lo > natural.hi - keep) {
+        const shift = lo - (natural.hi - keep);
+        lo -= shift;
+        hi -= shift;
+      } else if (hi < natural.lo + keep) {
+        const shift = (natural.lo + keep) - hi;
+        lo += shift;
+        hi += shift;
+      }
+    }
+    this.currentMin = Math.pow(10, lo);
+    this.currentMax = Math.pow(10, hi);
+  }
+
+
+  /**
    * Pan state, captured on middle-button press.
    *
    * The axis is logarithmic, so panning is a *translation in log
@@ -775,6 +757,7 @@ export class TcViewer extends LitElement {
     /* Middle-click otherwise triggers autoscroll in most browsers. */
     ev.preventDefault();
 
+    this.rememberNaturalDomain(logLo, logHi);
     this.pan = {
       active: true,
       startX: ev.clientX,
@@ -832,8 +815,7 @@ export class TcViewer extends LitElement {
 
     /* Drag right => look at lower currents, so the domain moves left. */
     const shift = -dxUser / pan.pxPerDecade;
-    this.currentMin = Math.pow(10, pan.logLo + shift);
-    this.currentMax = Math.pow(10, pan.logHi + shift);
+    this.setCurrentWindow(pan.logLo + shift, pan.logHi + shift);
   }
 
   /** True when the drawing is larger than the pane showing it. */
@@ -904,6 +886,7 @@ export class TcViewer extends LitElement {
     }
     const logLo = Math.log10(proj.domain.I_min);
     const logHi = Math.log10(proj.domain.I_max);
+    this.rememberNaturalDomain(logLo, logHi);
 
     /* Anchor: where the pointer sits, clamped to the plot area. */
     const frac = Math.min(1, Math.max(0, (px - xMin) / Math.max(1, xMax - xMin)));
@@ -925,8 +908,7 @@ export class TcViewer extends LitElement {
       newHi = mid + 3;
     }
 
-    this.currentMin = Math.pow(10, newLo);
-    this.currentMax = Math.pow(10, newHi);
+    this.setCurrentWindow(newLo, newHi);
   }
 
   /* ------------------- touch: drag and pinch ------------------- */
@@ -989,7 +971,38 @@ export class TcViewer extends LitElement {
   setDisplayScale(scale: number): void {
     const next = Math.min(4, Math.max(0.3, scale));
     if (Math.abs(next - this.displayScale) < 0.001) return;
+
+    /*
+     * Keep what is in the middle of the pane in the middle of the pane.
+     *
+     * The sheet grows under a scroll offset that was in *pixels*, so
+     * zooming in slid the drawing towards the top-left and pushed the
+     * right-hand legend off the edge -- which is the wrong thing to
+     * lose, since a reader who has just zoomed in is usually trying to
+     * read something and the legend is what tells them which curve it
+     * is. Nothing was clipped in the sense of being unreachable: the
+     * pane scrolls. But it had moved without being asked to, and the
+     * way back was not obvious.
+     */
+    const host = this.paneEl;
+    const ratio = next / this.displayScale;
+    const anchor = host
+      ? {
+          x: (host.scrollLeft + host.clientWidth / 2) * ratio - host.clientWidth / 2,
+          y: (host.scrollTop + host.clientHeight / 2) * ratio - host.clientHeight / 2,
+        }
+      : null;
+
     this.displayScale = next;
+
+    if (!anchor || !host) return;
+    void this.updateComplete.then(() => {
+      /* The sheet has its new size by now, so the scroll range exists
+       * to move into. Clamped by the browser, which is the right
+       * answer at the edges. */
+      host.scrollLeft = Math.max(0, anchor.x);
+      host.scrollTop = Math.max(0, anchor.y);
+    });
   }
 
   zoomDisplayBy(factor: number): void {
@@ -1046,6 +1059,7 @@ export class TcViewer extends LitElement {
     const logHi = Math.log10(proj.domain.I_max);
     const spanPx = proj.scale.xMax - proj.scale.xMin;
     if (!(spanPx > 0) || !(logHi > logLo)) return;
+    this.rememberNaturalDomain(logLo, logHi);
 
     this.touch = {
       logLo,
@@ -1135,8 +1149,7 @@ export class TcViewer extends LitElement {
       hi = mid + 3;
     }
 
-    this.currentMin = Math.pow(10, lo);
-    this.currentMax = Math.pow(10, hi);
+    this.setCurrentWindow(lo, hi);
   }
 
   private handleTouchEnd(): void {
@@ -1169,6 +1182,10 @@ export class TcViewer extends LitElement {
     this.currentMin = null;
     this.currentMax = null;
     this.displayScale = 1;
+    /* The next gesture re-reads it from whatever the study now draws;
+     * holding the old one would clamp a new sheet to an old sheet's
+     * range. */
+    this.naturalLog = null;
   }
 
   /**
@@ -1460,11 +1477,41 @@ export class TcViewer extends LitElement {
     } as import('../parser/index.js').ViewBlock;
   }
 
-  /** File stem for an export, taken from the study's project name. */
+  /**
+   * File stem for an export.
+   *
+   * A folder of issued sheets read `tcc.pdf`, `tcc (1).pdf`,
+   * `tcc (2).pdf`. Two separate causes, both real:
+   *
+   * A study with no `meta.project` -- the starter among them, which is
+   * what an exploring reader exports first -- fell straight to `tcc`.
+   * `meta.study` is the next-best name the file offers and was not
+   * consulted.
+   *
+   * And a study with several *sheets* used one stem for all of them,
+   * so exporting a phase sheet, an earth sheet and a sequence sheet
+   * from one file produced three files the browser had to number. The
+   * sheet's own name is what tells them apart on the screen, so it is
+   * what should tell them apart in a folder.
+   */
   private exportStem(): string {
-    const project = this.study?.meta?.project;
-    const base = typeof project === 'string' && project.trim() ? project : 'tcc';
-    return base.trim().replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    const meta = this.study?.meta;
+    const text = (v: unknown): string | undefined =>
+      typeof v === 'string' && v.trim() ? v.trim() : undefined;
+
+    const slug = (v: string): string =>
+      v.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+
+    const base = slug(text(meta?.project) ?? text(meta?.study) ?? 'tcc');
+
+    /* Only where there is more than one sheet to tell apart: a
+     * single-sheet study gains nothing from the suffix and reads
+     * better without it. */
+    const views = this.study?.views ?? [];
+    if (views.length < 2) return base;
+    const sheet = this.selectedView();
+    const name = text(sheet?.name) ?? text(sheet?.id);
+    return name ? `${base}-${slug(name)}` : base;
   }
 
   /**

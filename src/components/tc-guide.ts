@@ -238,16 +238,23 @@ export class TcGuide extends LitElement {
       border: 1px solid var(--tc-border, #d8d7d2);
       border-radius: 4px;
       cursor: pointer;
-      opacity: 0;
+      /*
+       * Present, not hidden.
+       *
+       * It was fully transparent until the block was hovered, a
+       * common pattern and the wrong one here: someone *scanning* the
+       * guide for something to copy cannot see that copying is
+       * offered at all, and there is nothing else on the page to
+       * suggest it. Subdued is enough to keep it out of the way of the
+       * code; it comes forward on hover and focus.
+       */
+      opacity: 0.45;
       transition: opacity 120ms ease-out;
     }
     .body .tc-snippet:hover .tc-copy,
+    .body .tc-copy:hover,
     .body .tc-copy:focus-visible { opacity: 1; }
     .body .tc-copy[data-copied] { opacity: 1; color: var(--tc-ok, #2e7d32); }
-    @media (hover: none) {
-      /* No hover to reveal it, so it is simply there. */
-      .body .tc-copy { opacity: 1; }
-    }
 
     .body table {
       border-collapse: collapse;
@@ -485,11 +492,76 @@ export class TcGuide extends LitElement {
     this.active = id;
   }
 
+  /**
+   * Plain text under each heading, keyed by anchor id.
+   *
+   * Built once per document and cached: it is the whole guide with the
+   * markup stripped, which is not free and does not change while a tab
+   * is open.
+   */
+  private bodyIndex = new Map<string, Map<string, string>>();
+
+  private sectionText(): Map<string, string> {
+    const key = this.which;
+    const cached = this.bodyIndex.get(key);
+    if (cached) return cached;
+
+    const index = new Map<string, string>();
+    const html = this.guide?.html ?? '';
+    /*
+     * Split on the headings the table of contents was built from, so
+     * every section's prose lands under the id the filter will offer.
+     * Anything before the first heading belongs to no section and is
+     * dropped, which is only the document's own preamble.
+     */
+    const parts = html.split(/<h[2-6][^>]*\bid="([^"]+)"[^>]*>/);
+    for (let i = 1; i < parts.length; i += 2) {
+      const id = parts[i]!;
+      const text = (parts[i + 1] ?? '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z]+;|&#\d+;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+      index.set(id, text);
+    }
+    this.bodyIndex.set(key, index);
+    return index;
+  }
+
+  /**
+   * Headings the filter leaves showing.
+   *
+   * It matched heading *text* only, so `tms` and `margin` -- two of
+   * the likeliest things anyone would type -- found nothing in any of
+   * the four documents, because neither is a section title. That reads
+   * as a broken search rather than a narrow one, and the reader's next
+   * move is to stop using it.
+   *
+   * A section now matches on its own prose as well, and a parent
+   * heading is kept when any child matches, so the path to a hit stays
+   * navigable rather than the tree collapsing to orphans.
+   */
   private visibleToc(): GuideHeading[] {
     const toc = this.guide?.toc ?? [];
     const needle = this.filter.trim().toLowerCase();
     if (!needle) return toc;
-    return toc.filter((h) => h.text.toLowerCase().includes(needle));
+
+    const text = this.sectionText();
+    const hit = toc.map((h) =>
+      h.text.toLowerCase().includes(needle) || (text.get(h.id)?.includes(needle) ?? false));
+
+    /* A parent is shown when it or anything beneath it matched. */
+    const keep = [...hit];
+    for (let i = toc.length - 1; i >= 0; i--) {
+      if (!keep[i]) continue;
+      for (let j = i - 1; j >= 0; j--) {
+        if (toc[j]!.level < toc[i]!.level) {
+          keep[j] = true;
+          if (toc[j]!.level === 2) break;
+        }
+      }
+    }
+    return toc.filter((_, i) => keep[i]);
   }
 
   render() {

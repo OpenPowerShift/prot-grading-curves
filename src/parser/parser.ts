@@ -127,7 +127,7 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
     'comment'],
   axes: ['color', 'grid_color', 'grid_minor_color', 'grid_style', 'grid_minor_style',
     'label_color', 'label_size_px', 'tick_size_px', 'frame', 'mirror'],
-  curves: ['palette', 'line_width_px', 'auto_color'],
+  curves: ['palette', 'line_width_px', 'auto_color', 'nudge_px'],
   points: ['color', 'shape', 'size_px', 'outline'],
   leaders: ['show', 'style', 'width_px', 'color', 'label_offset_px'],
   scale: ['auto', 'x_min', 'x_max', 'y_min', 'y_max', 'tick_density'],
@@ -245,7 +245,7 @@ export const KEYWORDS = new Set([
   'comment', 'description', 'reference',
   'size', 'orientation', 'margins_mm', 'scale', 'legend', 'border',
   'axes', 'curves', 'points', 'leaders', 'title', 'footer', 'theme', 'watermark',
-  'show', 'position', 'swatch', 'frame', 'line_width_px', 'auto_color',
+  'show', 'position', 'swatch', 'frame', 'line_width_px', 'auto_color', 'nudge_px',
   'palette', 'auto', 'x_min', 'x_max', 'y_min', 'y_max',
   'tick_density', 'label_color', 'label_size_px', 'tick_size_px', 'mirror',
   'grid_minor_color', 'grid_style', 'grid_minor_style',
@@ -2438,6 +2438,8 @@ if (kwName === 'flex_points') {
             v.time_pad_low = this.parseNumber(); this.eat('SEMI'); break;
           case 'time_pad_high':
             v.time_pad_high = this.parseNumber(); this.eat('SEMI'); break;
+          case 'nudge_px':
+            v.nudge_px = this.parseNumber(); this.eat('SEMI'); break;
           case 'second_axis':
             {
               /* A voltage level's name, read the way `voltage` reads
@@ -2460,7 +2462,7 @@ if (kwName === 'flex_points') {
           case 'default':
             v.isDefault = this.parseBool(); this.eat('SEMI'); break;
           default:
-            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'reference_ct']);
+            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'nudge_px', 'reference_ct']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -3183,6 +3185,7 @@ function applyPageSubBlock(
         palette: str('palette'),
         line_width_px: num('line_width_px'),
         auto_color: bool('auto_color'),
+        nudge_px: num('nudge_px'),
       };
       break;
     case 'points':

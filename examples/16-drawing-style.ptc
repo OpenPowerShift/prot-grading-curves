@@ -198,6 +198,11 @@ page {
   };
 
   curves = {
+    # Two curves at the same pixels read as one line. This is how far
+    # apart they are drawn -- perpendicular to the line, symmetric
+    # about the true position, and declared in the notes. 0 draws them
+    # exactly on top of one another.
+    nudge_px = 3;
     palette = "grayscale";
     line_width_px = 2.0;
     auto_color = true;

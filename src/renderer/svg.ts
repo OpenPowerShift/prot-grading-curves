@@ -59,6 +59,7 @@ import { buildStudy, allElements, levelPairKey, resolveRef, type Annotation, typ
 import { tTripStage } from '../semantics/curves.js';
 import { cutoffOf, tTripElement } from '../semantics/stages.js';
 import { tTripCombine } from '../semantics/combine.js';
+import { nudgeCoincident } from './nudge.js';
 import { faultCurrentAt, transformerReferral } from '../semantics/xvoltage.js';
 import { tTripFlex } from '../semantics/curves.js';
 
@@ -2368,6 +2369,27 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     });
   }
 
+  /*
+   * Pull apart the curves that coincide.
+   *
+   * Here, after every curve is collected and before anything reads a
+   * path: the label placer and the direct-label anchors both re-read
+   * `pathD`, so they follow the displacement rather than pointing at
+   * where a curve used to be. See `nudge.ts` for why the offset is
+   * perpendicular, in pixels, and what it deliberately does not touch.
+   *
+   * The default is on. Two relays with the same setting drawing as one
+   * line is a sheet that is missing information, and a reader has no
+   * way to know it -- which is worse than a 3 px displacement the
+   * notes declare.
+   */
+  const nudgePx = opts.view?.nudge_px ?? opts.page?.curves?.nudge_px ?? 3;
+  const nudged = nudgeCoincident(
+    curves.map((c) => ({ label: c.label, pathD: c.pathD })),
+    nudgePx,
+  );
+  for (const [i, path] of nudged.paths.entries()) curves[i]!.pathD = path;
+
   /* -------------------- compose SVG -------------------- */
   const out: string[] = [];
 
@@ -4146,6 +4168,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * still worth reading, and the fix is one line of source.
      */
     for (const note of referralCaveats.values()) axisNotes.push(note);
+    /*
+     * Curves drawn a few pixels off where they belong, because they
+     * are on top of one another. Said outright: the displacement is
+     * deliberate error, and a sheet that does not admit it is claiming
+     * two distinct settings.
+     */
+    for (const note of nudged.notes) axisNotes.push(note);
     /*
      * Counted, not named. Zooming is interactive, so this list changes
      * with every gesture; naming each one would turn the panel into a

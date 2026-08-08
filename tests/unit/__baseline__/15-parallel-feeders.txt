@@ -109,8 +109,8 @@ domain-t 0.02,100
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Load end 3ph
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Both circuits in
 [faults] line 798.7,66.0..798.7,745.0 class=tc-fault data-fault=One circuit out
-[curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
-[curves] path n=122 bbox=486.0,44.8..1056.0,447.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
+[curves] path n=122 bbox=484.0,44.6..1056.2,445.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
+[curves] path n=122 bbox=484.0,45.0..1055.8,449.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
 [curves] path n=124 bbox=476.5,46.5..1056.0,424.7 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
 [curves] path n=114 bbox=524.0,-129.4..1056.0,397.3 class=tc-curve data-curve=Bus zone backup · Reverse-looking TOC data-ref=R_BUS:51 data-voltage=HV
 [annotations] line 818.3,408.2..818.3,386.7
@@ -169,6 +169,8 @@ domain-t 0.02,100
 [legend] text 1126.0,591.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
 [legend] text 1090.0,624.0 class=tc-legend font-size=13 font-weight=600 "Notes"
 [legend] text 1090.0,644.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for Both circuits in (three-phase)"
+[legend] text 1090.0,657.0 class=tc-legend-muted font-size=10 font-style=italic "• Feeder A · Phase TOC and Feeder B · Phase TOC"
+[legend] text 1099.0,670.0 class=tc-legend-muted font-size=10 font-style=italic "coincide; drawn 4 px apart"
 
 === sheet: Multiples of pickup ===
 viewBox 0 0 1400 960
@@ -281,8 +283,8 @@ domain-t 0.02,100
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Load end 3ph
 [faults] line 818.3,66.0..818.3,745.0 class=tc-fault data-fault=Both circuits in
 [faults] line 798.7,66.0..798.7,745.0 class=tc-fault data-fault=One circuit out
-[curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
-[curves] path n=146 bbox=372.0,66.0..1056.0,460.3 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
+[curves] path n=146 bbox=373.5,66.0..1056.2,458.8 class=tc-curve data-curve=Feeder A · Phase TOC data-ref=R_FDR_A:51 data-voltage=HV
+[curves] path n=146 bbox=370.5,66.0..1055.8,461.8 class=tc-curve data-curve=Feeder B · Phase TOC data-ref=R_FDR_B:51 data-voltage=HV
 [curves] path n=124 bbox=476.5,46.5..1056.0,424.7 class=tc-curve data-curve=Source incomer · Phase TOC data-ref=R_SRC:51 data-voltage=HV
 [curves] path n=114 bbox=524.0,-129.4..1056.0,397.3 class=tc-curve data-curve=Bus zone backup · Reverse-looking TOC data-ref=R_BUS:51 data-voltage=HV
 [annotations] line 818.3,408.2..818.3,386.7
@@ -341,3 +343,5 @@ domain-t 0.02,100
 [legend] text 1126.0,591.0 class=tc-legend-muted font-size=10 "B out for maintenance; A carries the lot"
 [legend] text 1090.0,624.0 class=tc-legend font-size=13 font-weight=600 "Notes"
 [legend] text 1090.0,644.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for One circuit out (three-phase)"
+[legend] text 1090.0,657.0 class=tc-legend-muted font-size=10 font-style=italic "• Feeder A · Phase TOC and Feeder B · Phase TOC"
+[legend] text 1099.0,670.0 class=tc-legend-muted font-size=10 font-style=italic "coincide; drawn 3 px apart"

@@ -1677,6 +1677,9 @@ page {
                                        # grayscale, ieee, monochrome
         line_width_px = 1.8;
         auto_color    = true;
+        nudge_px      = 3;             # separation drawn between curves
+                                       # that coincide; 0 draws them on
+                                       # top of one another
     };
     points = {
         color   = "#111111";
@@ -1694,6 +1697,16 @@ page {
     };
 }
 ----
+
+`nudge_px` is why two relays with the same setting read as two lines
+rather than one. Coincident curves are separated perpendicular to the
+line and symmetrically, so the pair's centre is where the
+characteristic is, and only along the stretch where they are together.
+It is deliberate error, so the notes declare it and name them --
+`view { nudge_px }` overrides it per sheet. Nothing else moves: the
+report comes from the model, and the pickup tick below the axis is
+drawn from its own figure, so a sheet whose risers are 3 px apart
+still states every pickup exactly.
 
 `palette` is worth a moment. `default` is a general-purpose set;
 `okabe_ito` is chosen to stay distinguishable under the common forms of

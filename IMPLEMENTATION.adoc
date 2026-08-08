@@ -786,6 +786,35 @@ finding acted on below was re-verified first-hand before being fixed;
 what remains from that review is recorded in the outstanding sections
 above, so none of it needs re-deriving.
 
+* *Coincident curves drew as one line.* Requested 2026-08-08. Four
+  pairs in the shipped examples were byte-identical paths, the worst
+  being sample 15's `Feeder A` and `Feeder B` -- two different relays,
+  identical settings, one line on the sheet and two entries in the
+  legend, with no way for a reader to tell whether the second was
+  hidden, missing, or never drawn.
++
+  `page { curves { nudge_px } }` (default 3, `view { nudge_px }` per
+  sheet, `0` off) separates them: perpendicular to the local path
+  direction, in pixels, symmetric about the true position, and only
+  along the stretch where they coincide, easing out where they part.
+  `nudge.ts` carries the reasoning; the short version is that
+  perpendicular is the minimum displacement achieving a given
+  separation, and that it reduces to vertical on a shelf and
+  horizontal on a riser without a special case.
++
+  Applied to `pathD` after every curve is collected and before anything
+  reads one, so the label placer and the direct-label anchors follow
+  rather than pointing where a curve used to be. The report is
+  untouched, and so is the pickup *tick* -- a separate mark from a
+  separate figure -- so a sheet whose risers are displaced still states
+  every pickup exactly, which makes the error recoverable rather than
+  merely small.
++
+  It surfaced one real conflict: `share-precedence.spec.ts` measures a
+  pickup off the drawn path, and a displaced riser moved it by 5%. The
+  test now renders with `nudge_px = 0`, its subject being where the
+  condition puts the curve rather than the drawing device over it.
+
 * *There was no diagnostic-code reference anywhere in the set.* 76 of
   the 131 emitted codes appeared in no document; four the spec named
   were never emitted; and two were documented under a name the code

@@ -306,18 +306,18 @@ domain-t 0.01,1000
 [bands] line 1055.0,755.0..1744.0,66.0
 [bands] path n=4 bbox=208.9,341.6..517.8,707.8
 [bands] path n=4 bbox=208.9,313.5..517.8,665.0 data-curve=spur_fuse_100T
-[curves] path n=83 bbox=519.3,66.0..900.1,610.8 class=tc-curve data-curve=MCC incomer · Phase TOC data-ref=R_MCC:51 data-voltage=LV
-[curves] path n=70 bbox=581.0,66.0..900.1,529.1 class=tc-curve data-curve=LV board incomer · Phase TOC data-ref=R_BOARD:51 data-voltage=LV
+[curves] path n=83 bbox=522.3,66.0..901.3,608.1 class=tc-curve data-curve=MCC incomer · Phase TOC data-ref=R_MCC:51 data-voltage=LV
+[curves] path n=70 bbox=584.0,66.0..901.0,526.3 class=tc-curve data-curve=LV board incomer · Phase TOC data-ref=R_BOARD:51 data-voltage=LV
 [curves] path n=100 bbox=590.5,66.0..1056.0,258.6 class=tc-curve data-curve=LV board incomer · Thermal overload data-ref=R_BOARD:49 data-voltage=LV
 [curves] path n=4 bbox=653.8,254.3..962.6,503.4 class=tc-curve data-curve=sub_main_cable
 [curves] path n=4 bbox=638.2,138.1..947.0,386.8 class=tc-curve data-curve=tx_damage_1250
-[curves] path n=2 bbox=464.8,347.9..464.8,658.7 class=tc-curve data-curve=sump_motor_start
+[curves] path n=2 bbox=465.6,347.9..465.6,658.7 class=tc-curve data-curve=sump_motor_start
 [curves] path n=2 bbox=106.0,658.7..1056.0,658.7 class=tc-curve data-curve=acb_operating
 [curves] path n=3 bbox=887.2,510.0..1206.2,665.0 class=tc-curve data-curve=recloser_R1
 [curves] path n=82 bbox=519.3,66.0..899.2,610.4 class=tc-curve data-curve=Fastest LV protection (envelope)
 [curves] path n=69 bbox=581.0,66.0..899.2,528.8 class=tc-curve data-curve=Worst case to grade against
-[curves] path n=69 bbox=581.0,66.0..899.2,522.3 class=tc-curve data-curve=Relay + ACB total clearing time
-[curves] path n=82 bbox=519.3,66.0..899.2,610.4 class=tc-curve data-curve=Whichever element picks up first
+[curves] path n=69 bbox=578.0,66.0..898.1,525.1 class=tc-curve data-curve=Relay + ACB total clearing time
+[curves] path n=82 bbox=516.3,66.0..898.0,613.1 class=tc-curve data-curve=Whichever element picks up first
 [points] polygon 3 pts
 [points] polygon 3 pts
 [points] text 454.8,350.2 text-anchor=end font-size=11 "DOL start, 6.2x FLC for 9 s"
@@ -329,8 +329,8 @@ domain-t 0.01,1000
 [annotations] path n=2 bbox=900.1,570.0..910.1,586.7
 [annotations] text 910.1,589.0 text-anchor=start font-size=11 font-weight=600 "CTI 324 ms"
 [annotations] circle 764.0,461.4 r=3.5
-[annotations] path n=3 bbox=740.0,461.4..764.0,545.2
-[annotations] text 740.0,547.5 text-anchor=end font-size=11 "Board incomer at minimum fault"
+[annotations] path n=3 bbox=740.0,461.4..764.0,561.9
+[annotations] text 740.0,564.2 text-anchor=end font-size=11 "Board incomer at minimum fault"
 [fault-band] line 764.0,755.0..764.0,780.0 class=tc-fault
 [fault-band] text 766.0,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "LV board min · 8.4 kA"
 [fault-band] line 900.1,755.0..900.1,794.0 class=tc-fault
@@ -397,3 +397,4 @@ domain-t 0.01,1000
 [legend] text 1126.0,800.0 class=tc-legend font-size=11 "LV board min · 8.4 kA · 0.4 kV"
 [legend] line 1090.0,822.0..1116.0,822.0
 [legend] text 1126.0,826.0 class=tc-legend font-size=11 "LV board max · 21 kA · 0.4 kV"
+[legend] text 1090.0,862.0 class=tc-legend-muted font-size=10 font-style=italic "• 3 notes omitted for space; see the report"

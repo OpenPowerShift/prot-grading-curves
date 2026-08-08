@@ -266,6 +266,15 @@ view PRIMARY_AMPS {
   subtitle = "Both circuits in service, 50% share each";
   axis = "primary";
 
+  # A and B are identical plant with identical settings, so they draw
+  # at the same pixels: one line on the sheet and two entries in the
+  # legend, with no way to tell whether the second is hidden, missing
+  # or was never drawn. Coincident curves are pulled apart by default;
+  # 4 px rather than 3 because these two run together for the whole
+  # sheet and there is nothing else nearby to crowd. The notes say it
+  # was done, and to which curves.
+  nudge_px = 4;
+
   current_min = 100 A;
   current_max = 30 kA;
   time_min = 20 ms;

@@ -561,6 +561,36 @@
                               `IDMT`, `HIGH` -- beside the `51` and `50`
                               it sits with. `data-ref` keeps the handle
                               exactly as written.
+| 2026-08-08 | 0.2.0 | *Curves that coincide are drawn apart.* Two
+                              characteristics with the same settings
+                              occupy the same pixels, so a sheet showed
+                              one line where the study declared two --
+                              four such pairs in the shipped examples,
+                              the worst being two different relays.
+                              They are separated by
+                              `page { curves { nudge_px } }`, default 3,
+                              overridable per sheet and disabled by 0.
+
+                              Perpendicular to the line, which is the
+                              minimum displacement achieving a given
+                              separation and reduces to vertical on a
+                              definite-time shelf and horizontal on a
+                              pickup riser without a special case; in
+                              device pixels, so the error is bounded on
+                              the page rather than fixed in amps;
+                              symmetric about the true position, so no
+                              curve carries it all; and only where the
+                              curves are actually together.
+
+                              A display device that affects no computed
+                              figure. The margin report, the fault
+                              currents and the pickup marks come from
+                              the model and are unmoved. The
+                              displacement is recorded in the sheet's
+                              notes, naming the curves: a drawing that
+                              separates two curves without saying so
+                              asserts two distinct settings.
+
 | 2026-08-08 | 0.2.0 | *Every diagnostic code is documented, and
                               nothing else is.* A new
                               <<diagnostics,Diagnostic codes>> section

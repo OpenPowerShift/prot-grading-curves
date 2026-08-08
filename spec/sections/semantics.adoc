@@ -2223,6 +2223,38 @@ either `primary` or `secondary`. The renderer warns the user when
 the spread between CT ratios exceeds 5:1 (the secondary axis would
 become effectively un-readable with the same one-axis treatment).
 
+==== Coincident curves
+
+Two characteristics with the same settings occupy the same pixels, and
+a sheet that draws them so states one curve where the study declares
+two. An implementation SHALL separate them.
+
+The separation is `page { curves { nudge_px } }`, defaulting to `3`,
+overridable per sheet by `view { nudge_px }`, and disabled by `0`. It
+is applied:
+
+* *perpendicular to the local path direction*, that being the
+  minimum-magnitude displacement achieving a given separation -- and
+  the one that reduces to vertical on a definite-time shelf and
+  horizontal on a pickup riser without a special case;
+* *in device pixels*, after the scales have run, so the error is
+  bounded on the page at any sheet size rather than fixed in amps or
+  seconds;
+* *symmetrically about the true position*, ordered by declaration, so
+  no curve carries the whole displacement and the group's centre is
+  the characteristic;
+* *only where the curves are within the separation of one another*,
+  easing out where they part.
+
+It is a display device and SHALL NOT affect any computed figure. The
+margin report, the fault currents and the pickup marks below the axis
+are all drawn from the model and are unmoved; a sheet whose risers are
+displaced still states every pickup exactly.
+
+An implementation SHALL record the displacement in the sheet's notes,
+naming the curves involved. A drawing that separates two curves without
+saying so asserts two distinct settings.
+
 ==== The second axis
 
 `view { second_axis = <level>; }` draws a second current scale across

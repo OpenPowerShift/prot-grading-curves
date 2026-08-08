@@ -731,6 +731,8 @@ export interface ViewBlock extends BaseNode {
    * feeder amps along the bottom, incomer amps along the top.
    */
   second_axis?: string;
+  /** Per-sheet override of `page { curves { nudge_px } }`. */
+  nudge_px?: number;
   reference_ct?: Ref;
   /** Optional explicit axis bounds in seconds / amps. */
   current_min?: number;
@@ -871,6 +873,14 @@ export interface PageCurves extends BaseNode {
   palette?: string | string[];
   line_width_px?: number;
   auto_color?: boolean;
+  /**
+   * Separation drawn between curves that coincide, in pixels.
+   *
+   * Two relays with the same setting draw at the same pixels, so the
+   * sheet shows one line and the legend two entries. `0` switches it
+   * off and draws them exactly on top of one another.
+   */
+  nudge_px?: number;
 }
 
 export interface PagePoints extends BaseNode {

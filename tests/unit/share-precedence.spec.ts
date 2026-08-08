@@ -132,7 +132,22 @@ describe('the sheet a share is drawn on', () => {
      * cannot live on the element -- each sheet draws the condition it
      * declares.
      */
-    const src = readFileSync('examples/15-parallel-feeders.ptc', 'utf8');
+    /*
+     * Drawn without the coincidence nudge, which is a *drawing* device
+     * layered over the geometry: sample 15's two feeders are identical
+     * and are pulled 3 px apart, which shifts a pickup riser sideways
+     * and so shifts a pickup measured off the path. This test is about
+     * where the condition puts the curve, so it measures that.
+     *
+     * The displacement is bounded and declared on the sheet, and the
+     * pickup *tick* is not moved -- see `nudge.spec.ts`.
+     */
+    const src = readFileSync('examples/15-parallel-feeders.ptc', 'utf8')
+      /* Whatever the sheet declares, drop it and switch the nudge off
+       * -- the example sets its own figure, and a second key would
+       * merely be the one the parser read last. */
+      .replace(/nudge_px\s*=\s*[\d.]+;/g, '')
+      .replace(/view (\w+) \{/g, 'view $1 { nudge_px = 0;');
     const both = startsAt(src, 0, 'R_FDR_A:51');
     const oneOut = startsAt(src, 1, 'R_FDR_A:51');
     expect(both / oneOut).toBeCloseTo(2, 1);

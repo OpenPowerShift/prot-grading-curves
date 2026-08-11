@@ -493,11 +493,10 @@ relay R_FDR {
 }
 ----
 
-WARNING: `t_delay = 0 s` cannot be drawn. The time axis is logarithmic
-and has no position for zero, so the stage is omitted from the plot
-*and* the legend. Enter the relay's real operate time -- typically
-10-40 ms for an instantaneous stage. The diagnostic is
-`ZERO_DELAY_NOT_PLOTTABLE`.
+WARNING: `t_delay = 0 s` has no position on the logarithmic time axis,
+so it is drawn at 20 ms instead -- a plausible instantaneous operate
+time, not the figure written. Enter the relay's real one, typically
+10-40 ms. The diagnostic is `ZERO_DELAY_NOT_PLOTTABLE`.
 
 ==== Multi-stage elements
 
@@ -1908,7 +1907,7 @@ that relay's own winding.
 | `DUPLICATE_KEY` | error | A key assigned twice in one block.
 | `MISSING_VALUE` | error | An `=` with no value after it.
 | `MARGIN_BELOW_CTI` | error | A declared `margin_target` is below the `margin` floor.
-| `ZERO_DELAY_NOT_PLOTTABLE` | warning | `t_delay = 0 s`; the stage cannot be drawn on a log axis.
+| `ZERO_DELAY_NOT_PLOTTABLE` | warning | `t_delay = 0 s`, which has no log-axis position; drawn at 20 ms instead.
 | `GRADE_MIXED_QUANTITY` | warning | The two sides of a grade measure different currents. Legitimate, but stated.
 | `RELAY_VOLTAGE_UNSPECIFIED` | warning | A relay has no `voltage` in a study with several levels.
 | `FAULT_SINGLE_POINT` | info | Only `I` given, so `I_min` and `I_max` default to it.

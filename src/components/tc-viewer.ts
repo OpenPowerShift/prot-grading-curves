@@ -1717,12 +1717,19 @@ render() {
       for (const other of hover.alsoHere ?? []) describe(other);
     }
 
-    /* A fault rule asserts a current; a required-time rule asserts a
+    /*
+     * A fault rule asserts a current; a required-time rule asserts a
      * time. Each is drawn for one figure, and quoting the other would
-     * be quoting wherever the cursor happened to be. */
+     * be quoting wherever the cursor happened to be.
+     *
+     * A time rule needs no third line saying so: its bold name is
+     * already on screen from `describe(hover)` above, and "required
+     * time" under it added nothing the name and the figure had not
+     * already said -- unlike a fault, where a second line is what
+     * tells a reader whether the figure was referred or declared.
+     */
     if (hover.target !== 'time') lines.push({ text: `I = ${prettyNum(hover.I_A)}` });
     if (hover.target !== 'fault') lines.push({ text: `t = ${prettyTime(hover.t_s)}` });
-    if (hover.target === 'time') lines.push({ text: 'required time' });
     if (hover.target === 'fault') {
       /*
        * A scenario's figure was declared for this level, not referred

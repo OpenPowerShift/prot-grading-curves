@@ -155,6 +155,15 @@ export interface Stage {
    */
   tms_declared?: number;
   t_delay_s?: number;
+  /**
+   * `true` when the study declared `t_delay = 0` and this is 20 ms
+   * substituted for it, not the figure written. A literal zero cannot
+   * be placed on a logarithmic time axis, so drawing it plain would
+   * mean not drawing the stage at all; `ZERO_DELAY_NOT_PLOTTABLE`
+   * reads this rather than the (now non-zero) `t_delay_s` to still
+   * warn about it.
+   */
+  t_delay_zero_defaulted?: boolean;
   /** Share of the total fault current this stage sees, in percent. */
   current_pct: number;
   function?: string;
@@ -1353,6 +1362,19 @@ function resolveStage(
   const tDelay = seconds(pick('t_delay'));
   const currentPct = rawNumber(pick('share'));
 
+  /*
+   * A declared zero cannot be placed on a logarithmic time axis --
+   * `ZERO_DELAY_NOT_PLOTTABLE` says so -- so the stage used to vanish
+   * from the sheet entirely rather than being drawn wrong. A real
+   * instantaneous stage operates in tens of milliseconds; 20 ms puts
+   * the curve back where a plausible relay would be, under the same
+   * warning a made-up TMS gets, rather than leaving a gap the reader
+   * has to notice on their own.
+   */
+  const t_delay_s = Number.isFinite(tDelay.value)
+    ? (tDelay.value === 0 ? 0.02 : tDelay.value)
+    : undefined;
+
   return {
     id,
     producer: resolveProducer(node, fallback, declared),
@@ -1361,7 +1383,8 @@ function resolveStage(
     I_pu_in_secondary: I_pu_declared != null ? inSecondary : undefined,
     I_units,
     tms: Number.isFinite(tmsRaw) ? tmsRaw : undefined,
-    t_delay_s: Number.isFinite(tDelay.value) ? tDelay.value : undefined,
+    t_delay_s,
+    t_delay_zero_defaulted: tDelay.value === 0 || undefined,
     current_pct: Number.isFinite(currentPct) ? currentPct : 100,
     function: readString(pick('function')),
     measures: readString(pick('measures')),

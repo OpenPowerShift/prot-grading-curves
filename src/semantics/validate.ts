@@ -1081,17 +1081,17 @@ function validateStage(
    * error rather than a warning.
    */
   /*
-   * A definite stage set to zero seconds cannot be drawn: the time
-   * axis is logarithmic, and log(0) has no position on it. The curve
-   * disappeared from the plot *and* the legend with nothing said,
-   * which reads as the tool losing an element. A real relay has an
-   * operate time -- typically 10 to 40 ms for an instantaneous stage
-   * -- and entering it puts the curve back.
+   * A definite stage set to zero seconds has no position on a
+   * logarithmic time axis. `resolveStage` substitutes 20 ms -- a
+   * plausible instantaneous operate time -- so the stage is still
+   * drawn rather than silently missing, but that is an assumption the
+   * study did not make, and is worth saying so under the same warning
+   * a made-up TMS gets.
    */
-  if (stage.t_delay_s === 0) {
+  if (stage.t_delay_zero_defaulted) {
     add(ctx, 'ZERO_DELAY_NOT_PLOTTABLE', 'warning',
       `${where} declares t_delay = 0 s, which cannot be placed on a logarithmic ` +
-      'time axis, so the stage is not drawn; enter the relay\'s actual operate time',
+      'time axis; drawn at 20 ms instead. Enter the relay\'s actual operate time',
       loc);
   }
 

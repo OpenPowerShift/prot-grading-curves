@@ -4663,7 +4663,32 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           );
           cursorY += LINE_LABEL;
         }
-        const coords = coordText(project(point.I_A, point.voltage_kV), point.t_s);
+        /*
+         * The current, resolved the same way the plot itself resolves
+         * one for this point -- through a named condition, or through
+         * whichever component the axis reads. This used to be the raw
+         * `I_A` field alone, so a point declared only as `I2` or a
+         * residual (with no phase figure to show) printed a blank or
+         * a `NaN` here, even though it has a real current to name.
+         *
+         * Falls back to whichever component *was* declared where none
+         * resolves onto this sheet's own axis -- a legend entry is
+         * documentation for a point that could not be drawn, and
+         * showing no figure at all is worse than showing the one the
+         * study actually wrote, on a quantity other than this axis's.
+         */
+        const legendCurrent = (point.condition
+          ? conditionCurrentAt(point.condition, point.voltage ?? viewLevelName, viewQuantity)
+          : resolveCurrent(
+            viewQuantity,
+            {
+              phase: point.I_A, I1: point.I1_A, I2: point.I2_A,
+              I0: point.I0_A, residual: point.earth_A,
+            },
+            point.type,
+          )?.value ?? null)
+          ?? point.I_A ?? point.I1_A ?? point.I2_A ?? point.I0_A ?? point.earth_A ?? NaN;
+        const coords = coordText(project(legendCurrent, point.voltage_kV), point.t_s);
         for (const wrapped of showSomeDetail ? wrapText(coords, textWidth, FONT_DETAIL) : []) {
           lines.push(
             `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +

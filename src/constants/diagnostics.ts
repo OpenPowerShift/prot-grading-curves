@@ -129,7 +129,7 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
   DEFINITE_WITH_TMS: { severity: ['error'],
     gloss: 'A `tms` on a definite-time stage, whose time does not scale.' },
   ZERO_DELAY_NOT_PLOTTABLE: { severity: ['warning'],
-    gloss: 'A `t_delay` of zero, which has no position on a logarithmic time axis.' },
+    gloss: 'A `t_delay` of zero, which has no position on a logarithmic time axis; drawn at 20 ms instead.' },
   PICKUP_MISSING: { severity: ['error'],
     gloss: 'A stage with no `I_pickup`, so it has no multiple to evaluate.' },
   PICKUP_NOT_POSITIVE: { severity: ['error'],

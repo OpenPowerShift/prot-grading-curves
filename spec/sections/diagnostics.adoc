@@ -106,7 +106,7 @@ each, most serious first.
 | `STAGE_NO_CURVE` | error | A stage with no curve producer of its own and none to inherit.
 | `TMS_MISSING` | error | A dependent-time curve with no multiplier, which is never defaulted to 1.
 | `TMS_OUT_OF_RANGE` | error | A multiplier outside the range of the dial that curve is set in.
-| `ZERO_DELAY_NOT_PLOTTABLE` | warning | A `t_delay` of zero, which has no position on a logarithmic time axis.
+| `ZERO_DELAY_NOT_PLOTTABLE` | warning | A `t_delay` of zero, which has no position on a logarithmic time axis; drawn at 20 ms instead.
 |===
 
 === Devices

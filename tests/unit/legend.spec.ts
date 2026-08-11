@@ -74,6 +74,25 @@ describe('column legend (the default)', () => {
     expect(offPlot).toContain('>Points</text>');
   });
 
+  it('shows a current for a point declared in a component, not just I', () => {
+    /*
+     * The legend entry used to read `project(point.I_A, ...)` directly,
+     * so a point declared only as `I2` or a residual -- with no phase
+     * figure to show -- printed a blank or a `NaN` here even though it
+     * has a real current to name.
+     */
+    const src = `
+system { voltages { hv { V = 33 kV; } } }
+relay R { voltage = hv; ct_ratio = 400/5;
+  element 46 { function = neg_seq; measures = I2; curve = iec.si; I_pickup = 500 A; tms = 0.2; } }
+point "P2" { I2 = 800 A; t = 100 ms; label = "off plot"; voltage = hv; }
+view { voltage = hv; quantity = I2; current_min = 5 kA; current_max = 50 kA; }
+`;
+    const svg = parseAndRender(src, { theme: 'light' }).svg;
+    expect(svg).toMatch(/800 ?A.*100 ?ms/);
+    expect(svg).not.toContain('NaN');
+  });
+
   it('names every curve', () => {
     for (const label of CURVE_LABELS) expect(svg).toContain(`>${label}</text>`);
   });

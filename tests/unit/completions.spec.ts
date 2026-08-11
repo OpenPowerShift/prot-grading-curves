@@ -146,4 +146,45 @@ scenario "system normal" { level "HV" { I   = 900 A; } }
   it('names the declared voltage levels after `voltage =`', () => {
     expect(offer(`${WITH_CONDITIONS}view {\n  voltage = ‸\n}\n`)).toContain('HV');
   });
+
+  it('names the declared voltage levels after `second_axis =`', () => {
+    /*
+     * `second_axis` names a level exactly as `voltage` does -- the one
+     * the top scale is drawn in -- but was not wired to the same
+     * completion, so it offered nothing at all.
+     */
+    const TWO_LEVELS = `system {
+  voltages { "HV" { V = 33 kV; } "LV" { V = 11 kV; } }
+}
+`;
+    expect(offer(`${TWO_LEVELS}view {\n  voltage = LV;\n  second_axis = ‸\n}\n`)).toContain('HV');
+  });
+
+  const WITH_RELAYS = `relay R_INCOMER { voltage = "HV"; ct_ratio = 400/5; }
+relay R_FEEDER { voltage = "HV"; ct_ratio = 400/5; }
+group FEEDER_1 { members = [R_INCOMER, R_FEEDER]; }
+`;
+
+  it('names declared relays after `members =`', () => {
+    /* `group.members` takes bare relay ids, not `relay:element` refs,
+     * so `refCompletions` (built for the latter) cannot answer it. */
+    expect(offer(`${WITH_RELAYS}group FEEDER_2 {\n  members = [‸\n}\n`))
+      .toEqual(expect.arrayContaining(['R_INCOMER', 'R_FEEDER']));
+  });
+
+  it('names declared groups after `group =`', () => {
+    expect(offer(`${WITH_RELAYS}view {\n  group = ‸\n}\n`)).toContain('FEEDER_1');
+  });
+
+  it('offers group and combine their own fields, not nothing', () => {
+    /*
+     * `BLOCK_FIELDS` keyed `combine`'s fields under `combined` -- a
+     * typo `detectActiveBlock` (which reads the block name from the
+     * keyword that opened it, always `combine`) could never match --
+     * and had no entry for `group` at all. Both bodies offered nothing
+     * but the cross-cutting `comment`.
+     */
+    expect(offer('combine {\n  ‸\n}\n')).toContain('sources');
+    expect(offer('group G {\n  ‸\n}\n')).toContain('members');
+  });
 });

@@ -326,6 +326,30 @@ function viewCompletions(src: string): Completion[] {
   return out;
 }
 
+/** Protection-chain names declared as `group <id> { ... }`. */
+function groupCompletions(src: string): Completion[] {
+  const out: Completion[] = [];
+  const re = new RegExp(`\\bgroup\\s+${DECL_ID}\\s*\\{`, 'g');
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    out.push(namedValue(idOf(m), 'group', 4));
+  }
+  return out;
+}
+
+/**
+ * Relay ids declared as `relay <id> { ... }`, bare -- what
+ * `group.members` takes. `refCompletions` offers `relay:element` and
+ * cannot be reused here: a group is a chain of *relays*, not elements.
+ */
+function relayCompletions(src: string): Completion[] {
+  const out: Completion[] = [];
+  const re = /\brelay\s+([A-Za-z_]\w*)\s*\{/g;
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    out.push({ label: m[1], type: 'variable', detail: 'relay', boost: 4 });
+  }
+  return out;
+}
+
 /** Voltage level names declared in `system { voltages { ... } }`. */
 function voltageCompletions(src: string): Completion[] {
   const out: Completion[] = [];
@@ -550,10 +574,16 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
     /* `point` inside an annotate names a marked coordinate. */
     else if (target === 'point') options = pointCompletions(src);
     else if (target === 'view' || target === 'views') options = viewCompletions(src);
-    else if (target === 'voltage') {
-      /* `voltage` names a level everywhere except inside a fault or a
-       * device rating, so offer the declared levels first and fall
-       * back to the enumeration if none are declared yet. */
+    else if (target === 'group') options = groupCompletions(src);
+    else if (target === 'members') options = relayCompletions(src);
+    else if (target === 'voltage' || target === 'second_axis') {
+      /*
+       * `voltage` names a level everywhere except inside a fault or a
+       * device rating; `second_axis` names one too, in `view` -- the
+       * level the top scale is drawn in. Offer the declared levels
+       * first and fall back to the enumeration if none are declared
+       * yet.
+       */
       const levels = voltageCompletions(src);
       options = levels.length > 0 ? levels : valueCompletions(target, ctxBlock);
     } else {

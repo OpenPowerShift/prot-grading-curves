@@ -446,7 +446,16 @@ export interface GradeBlock extends BaseNode {
  * One end of a `from` / `to` span, and which axis it is measured on.
  */
 export interface SpanEnd {
-  value: number;
+  /** Set for a bare figure. Amps for `current`, seconds for `time`. */
+  value?: number;
+  /**
+   * Set instead of `value` for a named fault or scenario -- "from 840 A
+   * to F_HV_3PH" -- resolved to that condition's current at render
+   * time, the same way any other annotation's current is. Only
+   * meaningful for a `current` span: there is no such thing as a named
+   * time.
+   */
+  condition?: string;
   /** Amps for `current`, seconds for `time`. */
   quantity: 'current' | 'time';
 }

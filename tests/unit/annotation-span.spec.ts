@@ -144,6 +144,37 @@ describe('a span between two currents', () => {
   });
 });
 
+describe('a current span ending at a named condition', () => {
+  /*
+   * "from 840 A to F_HV_3PH": one end already has a declared current,
+   * so it needs no number typed in -- the same figure the fault rule
+   * itself is drawn from, kept in one place.
+   */
+  const SPAN = 'annotate { from = 840 A; to = "F"; at_t = 8 s; label = "reach"; }';
+
+  it('is drawn, at the condition\'s own current', () => {
+    /* "F" is 6 kA in BASE; 6000 / 840 = 714.3%. */
+    expect(labels(drawn(SPAN))).toContain('reach 714.3%');
+  });
+
+  it('reads the same with the condition on either end', () => {
+    expect(labels(drawn('annotate { from = "F"; to = 840 A; at_t = 8 s; label = "reach"; }')))
+      .toContain('reach 714.3%');
+  });
+
+  it('refuses a condition that is not declared', () => {
+    expect(codes('annotate { from = 840 A; to = NOPE; at_t = 8 s; label = "reach"; }'))
+      .toContain('UNRESOLVED_REFERENCE');
+  });
+
+  it('does not warn SPAN_EMPTY just because neither end is a bare figure', () => {
+    /* Two different condition names given no number to compare -- the
+     * check is skipped rather than comparing "undefined === undefined". */
+    expect(codesResidual('annotate { from = "F"; to = "F"; at_t = 8 s; label = "x"; }'))
+      .not.toContain('SPAN_EMPTY');
+  });
+});
+
 describe('a span that is not one', () => {
   it('refuses one end without the other', () => {
     expect(codes('annotate { from = 300 ms; at_I = 2 kA; }')).toContain('SPAN_INCOMPLETE');

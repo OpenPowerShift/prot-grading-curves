@@ -2972,6 +2972,18 @@ if (kwName === 'flex_points') {
     }
 
     /*
+     * A name instead of a figure: a fault or scenario condition, read
+     * the same way `fault = ...` reads one (including `name.level`) --
+     * "from 840 A to F_HV_3PH" needs no number for the end that is
+     * already a declared current. Only a `current` span can end this
+     * way; there is no such thing as a named time.
+     */
+    if (at.kind === 'IDENT' || at.kind === 'KW' || at.kind === 'STRING') {
+      const condition = this.parseConditionOrName();
+      return condition ? { condition, quantity: 'current' } : undefined;
+    }
+
+    /*
      * Anything else is read as a current, so an unknown or missing
      * unit produces the ordinary current diagnostic rather than a
      * second, vaguer one about not being able to tell what was meant.

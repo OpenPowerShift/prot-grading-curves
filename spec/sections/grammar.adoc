@@ -389,8 +389,11 @@ annotation-style ::= "leader" | "pin" | "tag" ;
 (* A dimension between two figures the study names, with no curve at
    either end. The *unit* selects the orientation: two times draw a
    vertical span, two currents a horizontal one. Both ends must be of
-   the same quantity. *)
-span-asg        ::= ( "from" | "to" ) "=" number ( current-unit | time-unit ) ";" ;
+   the same quantity. A currents end may instead name a declared fault
+   or scenario -- "from 840 A to F_HV_3PH" -- resolved to that
+   condition's own current; there is no such thing as a named time. *)
+span-asg        ::= ( "from" | "to" ) "=" span-end ";" ;
+span-end        ::= number ( current-unit | time-unit ) | condition-name ;
 
 point-block     ::= "point" point-id "{" { point-member } "}" ;
 point-id        ::= string | identifier ;

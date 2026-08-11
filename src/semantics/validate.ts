@@ -1695,7 +1695,29 @@ function checkAnnotationSpan(ctx: Ctx, item: AnnotateBlock): void {
     return;
   }
 
-  if (from.value === to.value) {
+  /*
+   * A span end naming a fault or scenario that does not exist used to
+   * fail silently at render time -- the mark simply did not appear,
+   * counted in the notes with every other annotation the sheet could
+   * not place, no different from one anchored outside the view. A
+   * broken reference is not that; it is refused the way every other
+   * one is.
+   */
+  for (const end of [from, to]) {
+    if (end.condition != null) {
+      checkConditionReference(ctx, end.condition, 'annotate', item.voltage, item.loc);
+    }
+  }
+
+  /*
+   * Only checked when both ends are bare figures. A named end resolves
+   * to a current per-view -- through whichever component the sheet
+   * reads and, for a scenario, whichever level -- so two different
+   * names cannot be compared here without deciding a view first, and
+   * two spellings of the same name already fail as a duplicate key
+   * long before validation sees this.
+   */
+  if (from.value != null && to.value != null && from.value === to.value) {
     add(ctx, 'SPAN_EMPTY', 'warning',
       'annotate spans from a figure to itself, which draws a dimension of nothing',
       item.loc);

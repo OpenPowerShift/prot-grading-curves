@@ -1150,6 +1150,13 @@ A vertical span is labelled with the elapsed time, a horizontal one
 with the larger over the smaller, exactly as a current margin is. Both
 read the same written either way round.
 
+A currents end may name a condition instead:
+
+[source,tc]
+----
+annotate { from = 840 A; to = F1; at_t = 8 s; label = "x"; }
+----
+
 ==== Taking the current from a condition
 
 Neither block needs the current typed in. Name a declared condition --
@@ -1189,15 +1196,12 @@ error rather than a precedence rule to remember. Naming a scenario that
 declares nothing at the point's level is an error too: the mark asks for
 a position that was never measured.
 
-A scenario condition may name its level directly, `name.level`, instead
-of a `voltage` field:
+A condition may name its level, `name.level`:
 
 [source,tc]
 ----
-point "LV" { scenario = "system normal".LV; t = 500 ms; }
+point "LV" { scenario = "normal".LV; t = 500 ms; }
 ----
-
-A list draws one mark per level; the named level wins over context.
 
 ==== Which current the sheet is drawn against
 

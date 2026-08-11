@@ -3455,8 +3455,25 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     if (annotation.kind === 'span') {
       const span = annotation.span!;
-      const lo = Math.min(span.from, span.to);
-      const hi = Math.max(span.from, span.to);
+      /*
+       * A span end is either a bare figure or a named condition --
+       * "from 840 A to F_HV_3PH" needs no number for the end that is
+       * already a declared current. Resolved through the same lookup
+       * every other annotation's condition goes through, at the level
+       * the span itself is drawn at.
+       */
+      const spanEnd = (end: typeof span.from): number | null =>
+        'value' in end
+          ? end.value
+          : conditionCurrentAt(end.condition, annotation.voltage ?? viewLevelName, viewQuantity);
+      const fromValue = spanEnd(span.from);
+      const toValue = spanEnd(span.to);
+      if (fromValue == null || toValue == null) {
+        unplaceableAnnotations.push(annotation.label ?? 'a span');
+        continue;
+      }
+      const lo = Math.min(fromValue, toValue);
+      const hi = Math.max(fromValue, toValue);
 
       if (span.quantity === 'time') {
         /*

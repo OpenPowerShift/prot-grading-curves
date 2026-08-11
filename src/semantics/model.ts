@@ -473,6 +473,14 @@ export interface StudyPoint {
   loc?: SourceLocation;
 }
 
+/**
+ * One end of a `span`. A bare figure carries its own `value`; a named
+ * fault or scenario carries `condition` instead, resolved to a current
+ * at render time the same way any other annotation's current is --
+ * the model stays view-agnostic, so the number cannot be fixed here.
+ */
+export type SpanEndValue = { value: number } | { condition: string };
+
 /** A resolved annotation: either a point on a curve, or a margin. */
 export interface Annotation {
   /** Sheets this belongs to, by `view` name. Absent means every sheet. */
@@ -492,7 +500,7 @@ export interface Annotation {
    * a range a supplier quotes -- none of these is a characteristic, so
    * before this none could be drawn at all.
    */
-  span?: { quantity: 'current' | 'time'; from: number; to: number };
+  span?: { quantity: 'current' | 'time'; from: SpanEndValue; to: SpanEndValue };
   on_curve?: Ref;
   primary?: Ref;
   backup?: Ref;
@@ -1163,14 +1171,22 @@ function drawingOverrides(
  * there is no line between a current and a time -- so it resolves to
  * nothing here and is reported by the validator.
  */
+/** `undefined` for a span end given neither a figure nor a condition. */
+function spanEndOf(end: SpanEnd): SpanEndValue | undefined {
+  if (end.condition != null) return { condition: end.condition };
+  return Number.isFinite(end.value) ? { value: end.value! } : undefined;
+}
+
 function spanOf(
   item: { from?: SpanEnd; to?: SpanEnd },
-): { quantity: 'current' | 'time'; from: number; to: number } | undefined {
+): { quantity: 'current' | 'time'; from: SpanEndValue; to: SpanEndValue } | undefined {
   const { from, to } = item;
   if (!from || !to) return undefined;
   if (from.quantity !== to.quantity) return undefined;
-  if (!Number.isFinite(from.value) || !Number.isFinite(to.value)) return undefined;
-  return { quantity: from.quantity, from: from.value, to: to.value };
+  const fromValue = spanEndOf(from);
+  const toValue = spanEndOf(to);
+  if (!fromValue || !toValue) return undefined;
+  return { quantity: from.quantity, from: fromValue, to: toValue };
 }
 
 function resolveElement(

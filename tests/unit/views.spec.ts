@@ -92,6 +92,19 @@ describe('naming a sheet for a picker', () => {
     expect(viewLabel({ quantity: 'any' }, 2)).toBe('Sheet 3');
     expect(viewLabel(undefined, 0)).toBe('Sheet 1');
   });
+
+  it('appends the handle in brackets when it differs from the caption', () => {
+    /* `views = [...]` elsewhere in the study matches the handle, not
+     * the caption, so a reader choosing from the picker needs both. */
+    expect(viewLabel({ id: 'PHASE', name: 'Phase grading' }, 0))
+      .toBe('Phase grading (PHASE)');
+  });
+
+  it('does not repeat the handle when nothing else was declared', () => {
+    /* No `name` means the handle stands in for the caption already;
+     * `id === label` here, so the bracket would only say it twice. */
+    expect(viewLabel({ id: 'PHASE', name: 'PHASE' }, 0)).toBe('PHASE');
+  });
 });
 
 describe('each sheet draws itself', () => {

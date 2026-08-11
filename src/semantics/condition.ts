@@ -158,13 +158,22 @@ export function conditionNames(study: Study): string[] {
  * The declared name, else the condition it depicts, else its position.
  * A study with several sheets and no names still gets a list a reader
  * can choose from rather than three entries reading "view".
+ *
+ * A view whose caption differs from its own handle gets the handle
+ * appended in brackets -- `Phase grading (PHASE)` -- since that
+ * handle, not the caption, is what a `views = [...]` entry elsewhere
+ * in the study has to match. Where the two are the same (the common
+ * case: no `name` was declared, so the handle stands in for it) the
+ * bracket would only repeat the label.
  */
 export function viewLabel(
-  view: { name?: string; condition?: string; quantity?: string } | undefined,
+  view: { id?: string; name?: string; condition?: string; quantity?: string } | undefined,
   index: number,
 ): string {
-  if (view?.name?.trim()) return view.name.trim();
-  if (view?.condition?.trim()) return view.condition.trim();
-  if (view?.quantity && view.quantity !== 'any') return `${view.quantity} sheet`;
-  return `Sheet ${index + 1}`;
+  const label = view?.name?.trim() ? view.name.trim()
+    : view?.condition?.trim() ? view.condition.trim()
+      : view?.quantity && view.quantity !== 'any' ? `${view.quantity} sheet`
+        : `Sheet ${index + 1}`;
+  const id = view?.id?.trim();
+  return id && id !== label ? `${label} (${id})` : label;
 }

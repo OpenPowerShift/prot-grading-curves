@@ -42,7 +42,16 @@ export class TcGuide extends LitElement {
     :host {
       position: fixed;
       inset: 0;
-      z-index: 40;
+      /*
+       * Above CodeMirror's own search panel, which ships a z-index of
+       * 300 (.cm-panels, from the search package's base theme) so it
+       * floats over ordinary editor content. At 40 the guide opened
+       * under an open search bar rather than over it -- a panel for
+       * finding one word in the source outranking a full-screen
+       * overlay is backwards, and the two are never meant to be used
+       * at once.
+       */
+      z-index: 500;
       display: none;
       /*
        * The app's own font is monospace, which suits a source editor

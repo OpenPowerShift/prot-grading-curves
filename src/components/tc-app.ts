@@ -58,6 +58,19 @@ const LINK_OPTION = 'link:current';
 export class TcApp extends LitElement {
   @state() private src: string = STARTER;
   /**
+   * `src` as it stood the moment the open study was loaded or saved.
+   *
+   * Compared against `src` to ask, before switching away, whether
+   * unsaved work would be discarded -- the picker used to switch
+   * straight to whatever was chosen, silently dropping edits the
+   * engineer had not saved. Updated everywhere a study is loaded, and
+   * on every successful save, so "unsaved" means exactly that.
+   */
+  private loadedSrc: string = STARTER;
+  private get hasUnsavedChanges(): boolean {
+    return this.src !== this.loadedSrc;
+  }
+  /**
    * Which panes are on screen.
    *
    * `split` is the two-pane desktop layout. The single-pane modes are
@@ -356,11 +369,13 @@ export class TcApp extends LitElement {
     if (named) {
       this.exampleId = named.id;
       this.src = named.source;
+      this.loadedSrc = named.source;
     }
 
     const shared = sourceFromLink();
     if (shared) {
       this.src = shared;
+      this.loadedSrc = shared;
       this.exampleId = null;
       /*
        * A study arriving by link becomes the working draft, named after
@@ -393,11 +408,24 @@ export class TcApp extends LitElement {
       const draft = loadDraft();
       if (draft) {
         this.src = draft.source;
+        /*
+         * The baseline for "unsaved" is what the draft's own study last
+         * looked like, not the draft itself -- a draft *is* the
+         * divergence, restored on every reload so a browser refresh
+         * mid-edit does not silently discard it. Where that original
+         * cannot be found (a shared link, an opened file: nothing
+         * named to look back up), there is nothing to compare against,
+         * so the draft is its own baseline rather than flagging a
+         * change that was never really unconfirmed.
+         */
         if (draft.exampleId?.startsWith(SAVED_PREFIX)) {
           this.savedName = draft.exampleId.slice(SAVED_PREFIX.length);
           this.exampleId = draft.exampleId;
+          this.loadedSrc = studySource(this.savedName) ?? draft.source;
         } else {
           this.exampleId = draft.exampleId;
+          const example = draft.exampleId ? EXAMPLES.find((e) => e.id === draft.exampleId) : undefined;
+          this.loadedSrc = example?.source ?? draft.source;
         }
       }
     }
@@ -578,11 +606,52 @@ export class TcApp extends LitElement {
     if (id === this.exampleId) return;     // no-op
     this.exampleId = id;
     this.src = ex.source;
+    this.loadedSrc = ex.source;
     this.parseSource(ex.source, 0);
     saveDraft(ex.source, id);
     // Schedule a cursor restore once tc-editor is re-mounted for the
     // new doc.
     requestAnimationFrame(() => { if (this.isConnected) this.restoreCursorForExample(id); });
+  }
+
+  /** The picker option value that names whatever is currently loaded. */
+  private get currentPickValue(): string | null {
+    if (this.savedName) return SAVED_PREFIX + this.savedName;
+    if (this.linkName) return LINK_OPTION;
+    return this.exampleId;
+  }
+
+  /**
+   * The picker's own `@change`: confirms before discarding unsaved
+   * work, then hands off to `pick`.
+   *
+   * Kept apart from `pick` because the internal callers that also
+   * switch studies -- deleting the open one and landing on its
+   * neighbour, resetting to the starter example -- must not re-ask
+   * about work the user has already told the tool to discard once,
+   * in the delete confirmation or by choosing Reset outright.
+   */
+  private handlePickChange(e: Event): void {
+    const select = e.target as HTMLSelectElement;
+    const value = select.value;
+    if (this.hasUnsavedChanges
+        && !window.confirm('This study has unsaved changes. Switch and discard them?')) {
+      /*
+       * The browser has already moved the control's own live selection
+       * to the option the user clicked -- a `<select>`'s selectedness,
+       * once the user has picked something, tracks its `.value`
+       * property, not the `selected` *attribute* Lit's `?selected`
+       * writes. Re-rendering the same (unchanged) boolean expressions
+       * is therefore a no-op twice over: Lit skips the write because
+       * nothing in state changed, and even a forced write would not
+       * move a selection the DOM now treats as user-set. Setting
+       * `.value` back directly is the only thing that un-does it.
+       */
+      const current = this.currentPickValue;
+      if (current != null) select.value = current;
+      return;
+    }
+    this.pick(value);
   }
 
   /**
@@ -603,6 +672,7 @@ export class TcApp extends LitElement {
       this.linkName = null;
       this.exampleId = value;
       this.src = source;
+      this.loadedSrc = source;
       this.parseSource(source, 0);
       saveDraft(source, value);
       return;
@@ -630,6 +700,7 @@ export class TcApp extends LitElement {
     this.savedName = entry.name;
     this.linkName = null;
     this.exampleId = SAVED_PREFIX + entry.name;
+    this.loadedSrc = this.src;
     this.saved = listStudies();
     saveDraft(this.src, this.exampleId);
   }
@@ -645,14 +716,37 @@ export class TcApp extends LitElement {
     return 'Untitled study';
   }
 
+  /**
+   * Delete the open saved study, and pick up wherever the list leaves
+   * a reader looking next.
+   *
+   * The picker used to clear to nothing selected -- `savedName` and
+   * `exampleId` both null -- with the deleted study's source still in
+   * the editor and no visible connection to anything in the list. The
+   * study that sat *above* the deleted one is still there and did not
+   * move, so it is the one to land on; only when the deleted study was
+   * itself the top of the list is there no "above" to fall back to,
+   * and the new top -- or, with none left, the starter example -- is
+   * used instead.
+   */
   private deleteSaved(): void {
     if (!this.savedName) return;
     if (!window.confirm(`Delete the saved study "${this.savedName}"?`)) return;
 
+    const before = this.saved;
+    const deletedIndex = before.findIndex((s) => s.name === this.savedName);
+
     deleteStudy(this.savedName);
-    this.savedName = null;
     this.saved = listStudies();
-    this.exampleId = null;
+
+    const above = deletedIndex > 0 ? before[deletedIndex - 1] : this.saved[0];
+    if (above) {
+      this.pick(SAVED_PREFIX + above.name);
+    } else {
+      this.savedName = null;
+      this.exampleId = null;
+      this.loadExample(DEFAULT_EXAMPLE.id);
+    }
   }
 
   /**
@@ -719,6 +813,10 @@ export class TcApp extends LitElement {
 
   /** Open a saved .ptc file from disk and load it into the editor. */
   private async openSourceViaPicker(): Promise<void> {
+    if (this.hasUnsavedChanges
+        && !window.confirm('This will replace the current study, which has unsaved changes. Continue?')) {
+      return;
+    }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.ptc,.txt,text/plain';
@@ -735,6 +833,7 @@ export class TcApp extends LitElement {
       reader.onload = () => {
         const text = String(reader.result ?? '');
         this.src = text;
+        this.loadedSrc = text;
         this.exampleId = null;
         saveDraft(text, null);
         this.parseSource(text, 0); // immediate
@@ -1033,7 +1132,7 @@ export class TcApp extends LitElement {
             <span class="side-title-label">Source</span>
             <select class="picker"
                     title="Load a saved study or a worked example"
-                    @change=${(e: Event) => { this.pick((e.target as HTMLSelectElement).value); }}>
+                    @change=${(e: Event) => this.handlePickChange(e)}>
               ${/*
                  * A study opened from a link is named here so the
                  * control agrees with what is on screen. Without it the

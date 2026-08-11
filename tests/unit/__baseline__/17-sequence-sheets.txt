@@ -165,19 +165,23 @@ domain-t 0.0001,31622.7766
 [points] text 666.9,551.2 text-anchor=end font-size=11 "Inrush, phase amps"
 [points] rect 717.2,471.9 13.5x13.5
 [points] rect 718.9,473.6 10.0x10.0
-[points] text 733.9,480.9 text-anchor=start font-size=11 "46 operates · Phase-earth at the tee"
+[points] path n=2 bbox=723.9,478.6..733.9,478.6
+[points] text 733.9,483.2 text-anchor=start font-size=11 "46 operates · Phase-earth atthe tee"
 [points] rect 695.4,471.9 13.5x13.5
 [points] rect 697.1,473.6 10.0x10.0
-[points] path n=2 bbox=692.1,478.6..702.1,512.1
-[points] text 692.1,514.4 text-anchor=end font-size=11 "46 operates · Phase-phase at the tee"
-[annotations] text 634.8,466.0 text-anchor=start font-size=11 "46 at the phase-earth fault"
+[points] path n=2 bbox=692.1,478.6..702.1,570.1
+[points] text 692.1,574.7 text-anchor=end font-size=11 "46 operates · Phase-phase atthe tee"
+[annotations] path n=2 bbox=634.8,447.0..723.9,478.6
+[annotations] text 634.8,449.3 text-anchor=start font-size=11 "46 at the phase-earth fault"
 [annotations] circle 723.9,506.2 r=3.5
-[annotations] path n=3 bbox=699.9,506.2..723.9,573.2
-[annotations] text 699.9,575.5 text-anchor=end font-size=11 "51G sees the whole residual"
-[annotations] text 601.8,438.9 text-anchor=start font-size=11 "declared as I2, read on a 3I2 element"
-[annotations] text 644.7,387.4 text-anchor=start font-size=11 "positive-sequence backup"
-[annotations] path n=2 bbox=664.5,416.9..723.9,465.2
-[annotations] text 664.5,419.2 text-anchor=start font-size=11 "I0 rather than 3I0"
+[annotations] path n=3 bbox=699.9,506.2..723.9,523.0
+[annotations] text 699.9,525.3 text-anchor=end font-size=11 "51G sees the whole residual"
+[annotations] path n=2 bbox=641.4,399.2..723.9,451.4
+[annotations] text 641.4,403.8 text-anchor=start font-size=11 "declared as I2, read on a3I2 element"
+[annotations] path n=2 bbox=644.7,368.4..723.9,400.0
+[annotations] text 644.7,370.7 text-anchor=start font-size=11 "positive-sequence backup"
+[annotations] path n=2 bbox=723.9,431.7..731.9,465.2
+[annotations] text 731.9,434.0 text-anchor=start font-size=11 "I0 rather than 3I0"
 [annotations] circle 905.9,505.8 r=3.5
 [annotations] path n=3 bbox=820.0,505.8..905.9,536.7
 [annotations] text 830.0,539.0 text-anchor=start font-size=11 "phase element at 300 ms"
@@ -375,22 +379,23 @@ domain-t 0.01,1000
 [curves] path n=169 bbox=253.4,52.0..1070.0,594.9 class=tc-curve data-curve=Ring incomer (ABB REF615) · Ground backup data-ref=R_RING:51G data-voltage=HV
 [curves] path n=125 bbox=468.5,52.0..1070.0,552.9 class=tc-curve data-curve=Ring incomer (ABB REF615) · Positive sequence backup data-ref=R_RING:51P data-voltage=HV
 [times] line 92.0,519.8..1070.0,519.8 class=tc-time data-time-name=Negative-sequence clearance
-[time-labels] text 378.8,509.2 text-anchor=start font-size=11 "Negative-sequence clearance · 900 ms"
+[time-labels] path n=2 bbox=408.5,500.1..497.6,519.8
+[time-labels] text 408.5,504.7 text-anchor=start font-size=11 "Negative-sequence clearance· 900 ms"
 [points] rect 537.8,540.1 13.5x13.5
 [points] rect 539.6,541.9 10.0x10.0
-[points] path n=2 bbox=534.6,546.9..544.6,613.9
-[points] text 534.6,616.2 text-anchor=end font-size=11 "46 operates · Phase-earth at the tee"
+[points] path n=2 bbox=534.6,546.9..544.6,607.9
+[points] text 534.6,612.5 text-anchor=end font-size=11 "46 operates · Phase-earth atthe tee"
 [points] rect 605.4,540.1 13.5x13.5
 [points] rect 607.1,541.9 10.0x10.0
-[points] path n=2 bbox=612.1,446.4..622.1,546.9
-[points] text 622.1,448.7 text-anchor=start font-size=11 "46 operates · Phase-phase at the tee"
+[points] path n=2 bbox=612.1,424.9..622.1,546.9
+[points] text 622.1,429.5 text-anchor=start font-size=11 "46 operates · Phase-phase atthe tee"
 [annotations] path n=2 bbox=536.6,546.9..544.6,630.6
 [annotations] text 536.6,632.9 text-anchor=end font-size=11 "46 at the phase-earth fault"
 [annotations] circle 544.6,593.8 r=3.5
 [annotations] path n=3 bbox=520.6,593.8..544.6,660.8
 [annotations] text 520.6,663.1 text-anchor=end font-size=11 "51G sees the whole residual"
-[annotations] path n=2 bbox=536.6,500.6..544.6,684.9
-[annotations] text 536.6,687.2 text-anchor=end font-size=11 "declared as I2, read on a 3I2 element"
+[annotations] path n=2 bbox=536.6,500.6..544.6,683.6
+[annotations] text 536.6,688.2 text-anchor=end font-size=11 "declared as I2, read on a3I2 element"
 [annotations] path n=2 bbox=536.6,413.3..544.6,714.8
 [annotations] text 536.6,717.0 text-anchor=end font-size=11 "positive-sequence backup"
 [annotations] path n=2 bbox=536.6,473.8..544.6,524.1
@@ -456,7 +461,7 @@ domain-t 0.01,1000
 [legend] text 1104.0,812.0 font-size=13 font-weight=600 "Times"
 [legend] line 1104.0,828.0..1130.0,828.0
 [legend] text 1140.0,832.0 class=tc-legend font-size=11 "Negative-sequence clearance · 900 ms"
-[legend] text 1104.0,868.0 class=tc-legend-muted font-size=10 font-style=italic "• 5 notes omitted for space; see the report"
+[legend] text 1104.0,868.0 class=tc-legend-muted font-size=10 font-style=italic "• 5 notes omitted for space"
 [footer] line 92.0,940.0..1070.0,940.0
 [footer] text 92.0,954.0 text-anchor=start font-size=10 "Cardross 33 kV · Sequence sheets for an unbalanced fault"
 [footer] text 581.0,954.0 text-anchor=middle font-size=10 "P. Nowak · rev A"
@@ -579,19 +584,20 @@ domain-t 0.01,1000
 [curves] path n=120 bbox=497.6,52.0..1070.0,546.9 class=tc-curve data-curve=Tee point (SEL-751) · Negative sequence data-ref=R_TEE:46 data-voltage=HV
 [curves] path n=106 bbox=563.8,52.0..1070.0,500.6 class=tc-curve data-curve=Ring incomer (ABB REF615) · Negative sequence backup data-ref=R_RING:46 data-voltage=HV
 [times] line 92.0,519.8..1070.0,519.8 class=tc-time data-time-name=Negative-sequence clearance
-[time-labels] text 558.1,509.2 text-anchor=start font-size=11 "Negative-sequence clearance · 900 ms"
+[time-labels] path n=2 bbox=587.8,500.1..676.9,519.8
+[time-labels] text 587.8,504.7 text-anchor=start font-size=11 "Negative-sequence clearance· 900 ms"
 [points] rect 717.2,540.1 13.5x13.5
 [points] rect 718.9,541.9 10.0x10.0
-[points] path n=2 bbox=713.9,546.9..723.9,563.6
-[points] text 713.9,565.9 text-anchor=end font-size=11 "46 operates · Phase-earth at the tee"
+[points] path n=2 bbox=713.9,546.9..723.9,577.4
+[points] text 713.9,582.0 text-anchor=end font-size=11 "46 operates · Phase-earth atthe tee"
 [points] rect 784.7,540.1 13.5x13.5
 [points] rect 786.4,541.9 10.0x10.0
-[points] path n=2 bbox=791.4,530.1..801.4,546.9
-[points] text 801.4,532.4 text-anchor=start font-size=11 "46 operates · Phase-phase at the tee"
-[annotations] path n=2 bbox=715.9,546.9..723.9,580.4
-[annotations] text 715.9,582.7 text-anchor=end font-size=11 "46 at the phase-earth fault"
-[annotations] path n=2 bbox=715.9,500.6..723.9,601.1
-[annotations] text 715.9,603.4 text-anchor=end font-size=11 "declared as I2, read on a 3I2 element"
+[points] path n=2 bbox=791.4,485.9..801.4,546.9
+[points] text 801.4,490.5 text-anchor=start font-size=11 "46 operates · Phase-phase atthe tee"
+[annotations] path n=2 bbox=715.9,546.9..723.9,613.9
+[annotations] text 715.9,616.2 text-anchor=end font-size=11 "46 at the phase-earth fault"
+[annotations] path n=2 bbox=715.9,500.6..723.9,653.1
+[annotations] text 715.9,657.7 text-anchor=end font-size=11 "declared as I2, read on a3I2 element"
 [annotations] circle 995.2,593.1 r=3.5
 [annotations] path n=3 bbox=971.2,593.1..995.2,609.9
 [annotations] text 971.2,612.2 text-anchor=end font-size=11 "phase element at 300 ms"
@@ -770,24 +776,24 @@ domain-t 0.01,1000
 [curves] path n=106 bbox=563.8,52.0..1070.0,500.6 class=tc-curve data-curve=Ring incomer (ABB REF615) · Negative sequence backup data-ref=R_RING:46 data-voltage=HV
 [curves] path n=132 bbox=434.3,52.0..1070.0,577.6 class=tc-curve data-curve=Ring incomer (ABB REF615) · Ground backup data-ref=R_RING:51G data-voltage=HV
 [times] line 92.0,527.7..1070.0,527.7 class=tc-time data-time-name=Earth-fault clearance
-[time-labels] path n=2 bbox=511.8,527.7..610.8,607.6
-[time-labels] text 511.8,609.9 text-anchor=start font-size=11 "Earth-fault clearance · 800 ms"
+[time-labels] path n=2 bbox=521.7,527.7..610.8,608.4
+[time-labels] text 521.7,613.0 text-anchor=start font-size=11 "Earth-fault clearance · 800ms"
 [points] rect 717.2,540.1 13.5x13.5
 [points] rect 718.9,541.9 10.0x10.0
-[points] path n=2 bbox=723.9,513.4..733.9,546.9
-[points] text 733.9,515.7 text-anchor=start font-size=11 "46 operates · Phase-earth at the tee"
-[annotations] path n=2 bbox=723.9,479.9..731.9,546.9
-[annotations] text 731.9,482.2 text-anchor=start font-size=11 "46 at the phase-earth fault"
+[points] path n=2 bbox=723.9,485.9..733.9,546.9
+[points] text 733.9,490.5 text-anchor=start font-size=11 "46 operates · Phase-earth atthe tee"
+[annotations] path n=2 bbox=723.9,513.4..731.9,546.9
+[annotations] text 731.9,515.7 text-anchor=start font-size=11 "46 at the phase-earth fault"
 [annotations] circle 723.9,593.8 r=3.5
-[annotations] path n=3 bbox=699.9,593.8..723.9,627.3
-[annotations] text 699.9,629.6 text-anchor=end font-size=11 "51G sees the whole residual"
-[annotations] path n=2 bbox=723.9,450.4..731.9,500.6
-[annotations] text 731.9,452.7 text-anchor=start font-size=11 "declared as I2, read on a 3I2 element"
+[annotations] path n=3 bbox=723.9,593.8..747.9,644.0
+[annotations] text 747.9,646.3 text-anchor=start font-size=11 "51G sees the whole residual"
+[annotations] path n=2 bbox=723.9,439.6..731.9,500.6
+[annotations] text 731.9,444.2 text-anchor=start font-size=11 "declared as I2, read on a3I2 element"
 [annotations] path n=2 bbox=715.9,473.8..723.9,524.1
 [annotations] text 715.9,476.1 text-anchor=end font-size=11 "I0 rather than 3I0"
 [annotations] circle 905.9,593.1 r=3.5
-[annotations] path n=3 bbox=820.0,593.1..905.9,640.7
-[annotations] text 830.0,643.0 text-anchor=start font-size=11 "phase element at 300 ms"
+[annotations] path n=3 bbox=881.9,593.1..905.9,626.6
+[annotations] text 881.9,628.9 text-anchor=end font-size=11 "phase element at 300 ms"
 [annotations] circle 610.8,569.4 r=3.5
 [fault-band] line 723.9,820.0..723.9,845.0 class=tc-fault
 [fault-band] text 725.9,854.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Phase-earth at the tee · 2.4 kA"

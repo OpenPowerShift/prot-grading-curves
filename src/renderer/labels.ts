@@ -188,59 +188,90 @@ export class LabelPlacer {
     const prefer = request.prefer ?? DEFAULT_PREFER;
 
     /*
-     * Curves are avoided on the first sweep and ignored on the second.
+     * One search, not two independent ones.
      *
-     * Two passes rather than one hard rule, because the constraints are
-     * not equally important. Two labels on top of each other are
-     * unreadable; a label crossing a curve is merely untidy. On a
-     * crowded sheet the plot is mostly curve, so treating a line as
-     * solid would have labels shoved to the far side of the drawing --
-     * worse than the crossing it avoided. Clear of everything if
-     * possible, clear of the other labels regardless.
+     * This used to run the whole preference-then-distance search twice:
+     * once dodging drawn lines, once not, and take whichever pass
+     * succeeded first. That let a position rejected in the first pass
+     * for sitting on a line win outright in the second, the moment the
+     * second pass reached it again -- and for a side like `above` or
+     * `below`, which centres the box *on* the anchor's own x, that is
+     * often the very first candidate tried. A margin annotation anchored
+     * at a fault current is anchored *on* that fault's own vertical
+     * rule, so `above`/`below` sits on the line by construction, and the
+     * line-blind pass picked it straight back up before ever reaching a
+     * later candidate -- still within the same search budget -- that
+     * cleared both.
+     *
+     * Now every candidate is tried once, in the one order, and asked
+     * two questions: is it clear of other labels and the plot bounds
+     * (`fits(rect, false)`), and is it *also* clear of drawn lines
+     * (`fits(rect, true)`)? The first candidate answering both wins
+     * outright. Where none ever does, the first candidate that answered
+     * only the first -- clear of boxes, merely touching a line -- is
+     * kept and used once the search is exhausted, which is the same
+     * "best available" the two-pass form intended, without letting an
+     * early on-line candidate pre-empt a later clean one.
      */
-    for (const dodgeLines of [true, false]) {
-      /* 1. The caller's preferred sides, in order. */
-      for (const side of prefer) {
-        const rect = this.rectFor(side, anchor, size, gap);
-        if (this.fits(rect, dodgeLines)) {
-          this.taken.push(rect);
-          /*
-           * A label that moved only to dodge a curve is still beside its
-           * anchor, so it needs no leader; one that had to leave its
-           * preferred side does.
-           */
-          return this.result(rect, side, size, false);
-        }
-      }
+    let lineFallback: { rect: Rect; side: LabelSide } | null = null;
 
-      /*
-       * 2. Nothing free: step away vertically, trying each preferred
-       * side in turn. Alternating up and down keeps a cluster balanced
-       * about its anchors rather than trailing off in one direction.
-       *
-       * Each candidate is pulled inside the plot first. Searching from
-       * an unclamped base means an anchor near a corner -- where every
-       * side fails on the bounds, not on a collision -- searches a
-       * column of positions that are all outside the plot, and the
-       * label ends up off the sheet.
-       */
-      const step = size.h + 3;
-      for (let n = 1; n <= 40; n++) {
-        for (const side of prefer) {
-          const base = this.clamp(this.rectFor(side, anchor, size, gap));
-          for (const direction of [-1, 1]) {
-            const rect = this.clamp({ ...base, y: base.y + direction * n * step });
-            if (this.fits(rect, dodgeLines)) {
-              this.taken.push(rect);
-              return this.result(rect, side, size, true);
-            }
-          }
+    /** Try one candidate; returns the placement if it can be taken outright. */
+    const attempt = (rect: Rect, side: LabelSide, displaced: boolean): Placement | null => {
+      if (!this.fits(rect, false)) return null;
+      if (this.fits(rect, true)) {
+        this.taken.push(rect);
+        return this.result(rect, side, size, displaced);
+      }
+      if (!lineFallback) lineFallback = { rect, side };
+      return null;
+    };
+
+    /* 1. The caller's preferred sides, in order. A label that lands
+     * here is still beside its anchor, so it needs no leader. */
+    for (const side of prefer) {
+      const placed = attempt(this.rectFor(side, anchor, size, gap), side, false);
+      if (placed) return placed;
+    }
+
+    /*
+     * 2. Nothing free: step away vertically, trying each preferred side
+     * in turn. Alternating up and down keeps a cluster balanced about
+     * its anchors rather than trailing off in one direction.
+     *
+     * Each candidate is pulled inside the plot first. Searching from an
+     * unclamped base means an anchor near a corner -- where every side
+     * fails on the bounds, not on a collision -- searches a column of
+     * positions that are all outside the plot, and the label ends up
+     * off the sheet.
+     */
+    const step = size.h + 3;
+    for (let n = 1; n <= 40; n++) {
+      for (const side of prefer) {
+        const base = this.clamp(this.rectFor(side, anchor, size, gap));
+        for (const direction of [-1, 1]) {
+          const rect = this.clamp({ ...base, y: base.y + direction * n * step });
+          const placed = attempt(rect, side, true);
+          if (placed) return placed;
         }
       }
     }
 
     /*
-     * 3. Nowhere clear at all. Placing it at the preferred spot and
+     * 3. Clear of every other label but sitting on a line: better than
+     * nothing found at all, and better than the plain fallback below,
+     * since it is at least not printed over another caption. Marked
+     * displaced regardless of which side it came from, since a box
+     * resting on a line is worth a leader back to its anchor even when
+     * it never had to move far to get there.
+     */
+    if (lineFallback) {
+      const { rect, side } = lineFallback;
+      this.taken.push(rect);
+      return this.result(rect, side, size, true);
+    }
+
+    /*
+     * 4. Nowhere clear at all. Placing it at the preferred spot and
      * saying so beats dropping it: an overlapping label can still be
      * read, a missing one cannot, and the caller draws a leader. It is
      * still clamped -- a label outside the plot is worse than one that

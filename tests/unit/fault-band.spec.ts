@@ -221,6 +221,6 @@ describe('where the band sits', () => {
       .filter((y) => y < top);
     expect(ticks.length, 'sample 10 should draw a second scale').toBeGreaterThan(0);
 
-    expect(Math.max(...ticks)).toBeLessThan(Math.min(...band.map((l) => l.y)));
+    expect(Math.max(...band.map((l) => l.y))).toBeLessThan(Math.min(...ticks));
   });
 });

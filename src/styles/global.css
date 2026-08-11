@@ -285,6 +285,7 @@ tc-app .diagnostics {
    */
   max-height: 45%;
   overflow: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 6px 0;
   list-style: none;
@@ -293,7 +294,30 @@ tc-app .diagnostics {
   font-family: var(--tc-font);
   font-size: 11.5px;
   line-height: 1.5;
+  /*
+   * A scrollbar drawn every time, not the OS's own.
+   *
+   * 45% still overflows on a study with a real handful of findings --
+   * raising the cap only moved the same failure further out. The list
+   * genuinely does scroll with the wheel; what a reader could not see
+   * was that there was anything *to* scroll, because the scrollbar
+   * that would have told them so is the platform's own overlay one,
+   * invisible until a scroll is already under way on most defaults
+   * (macOS "when scrolling", most Linux themes). A list that ends
+   * mid-sentence with nothing marking it as cut off reads as the whole
+   * story, not a page one of several.
+   */
+  scrollbar-width: thin;
+  scrollbar-color: var(--tc-border) transparent;
 }
+tc-app .diagnostics::-webkit-scrollbar { width: 9px; }
+tc-app .diagnostics::-webkit-scrollbar-track { background: transparent; }
+tc-app .diagnostics::-webkit-scrollbar-thumb {
+  background: var(--tc-border);
+  border-radius: 5px;
+  border: 2px solid var(--tc-bg-sunken);
+}
+tc-app .diagnostics::-webkit-scrollbar-thumb:hover { background: var(--tc-fg-muted); }
 tc-app .diagnostics li {
   display: grid;
   /*

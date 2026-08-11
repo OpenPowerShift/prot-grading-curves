@@ -83,6 +83,16 @@ const FONT_LABEL = 12;
 const FONT_DETAIL = 11;
 const FONT_AXIS = 12;
 /**
+ * Column width a point or annotation caption wraps to.
+ *
+ * Narrow enough that a two- or three-word caption stays on one line,
+ * but a sentence-length one -- a margin figure, an inrush point's
+ * description -- breaks before it is wide enough to span several
+ * fault lines at once, which is what made it impossible to place
+ * clear of all of them regardless of where the placer put it.
+ */
+const ON_PLOT_LABEL_WRAP_PX = 190;
+/**
  * Baseline of the x-axis tick labels, below the plot.
  *
  * Named because the fault band has to clear it, and clearing it by a
@@ -103,6 +113,20 @@ const AXIS_LABEL_DY = 20;
  * Still well short of the fixed 44 this started at.
  */
 const FAULT_BAND_DY = AXIS_LABEL_DY + FONT_AXIS + 2;
+
+/**
+ * Top-axis mirror of `AXIS_LABEL_DY` / `FAULT_BAND_DY`.
+ *
+ * The bottom axis reads, moving away from the plot: tick numbers, then
+ * the fault band. The top axis reads the same way outward from its
+ * edge of the plot: `TOP_TICK_DY` puts the ticks right on the plot
+ * edge -- adjacent to it, as at the bottom -- and `TOP_FAULT_BAND_DY`
+ * clears them by a font height plus a visible gap before the first row
+ * of fault names, which is what keeps the two from reading as one
+ * smear the way `FAULT_BAND_DY` was written to avoid at the bottom.
+ */
+const TOP_TICK_DY = 8;
+const TOP_FAULT_BAND_DY = TOP_TICK_DY + FONT_AXIS + 6;
 
 /**
  * How far a fault's caption sits from its own rule.
@@ -2497,15 +2521,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const fy = sheetInset / 2;
     const fw = W - sheetInset;
     const fh = H - sheetInset;
+    /*
+     * `shape-rendering="crispEdges"`, matching the plot's own frame
+     * below. Without it the border blurred away on some screens --
+     * `devicePixelRatio` need not be an integer (0.9 on at least one
+     * real session, from OS-level display scaling), and a 1.2 px
+     * stroke centred on an integer coordinate then straddles a device
+     * pixel boundary and anti-aliases to near nothing, worst on the
+     * *vertical* edges where the eye has no line above or below to
+     * infer it from. The plot's inner frame already asks for crisp
+     * edges; the sheet's outer border is the same kind of line and
+     * was the one place that had not.
+     */
     out.push(
       `<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="none" ` +
-      `stroke="${th.axis}" stroke-width="1.2"/>`,
+      `stroke="${th.axis}" stroke-width="1.2" shape-rendering="crispEdges"/>`,
     );
 
     /* Title block strip along the bottom of the sheet. */
     const tbY = fy + fh - titleBlockH;
     out.push(
-      `<line x1="${fx}" y1="${tbY}" x2="${fx + fw}" y2="${tbY}" stroke="${th.axis}" stroke-width="1.2"/>`,
+      `<line x1="${fx}" y1="${tbY}" x2="${fx + fw}" y2="${tbY}" stroke="${th.axis}" ` +
+      `stroke-width="1.2" shape-rendering="crispEdges"/>`,
     );
 
     const padX = 14;
@@ -2671,10 +2708,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     if ((secondAxis || mirrorAxes) && (t.major || isLabelledInterval(t.value))) {
       const label = secondAxis ? secondTickLabel(t.value) : axisTickLabel(t.value);
-      /* Above the top fault band, so the rules and their captions sit
-       * between the scale and the plot exactly as they do at the
-       * bottom. */
-      const y = topMargin - 8 - topFaultBandH;
+      /*
+       * Adjacent to the plot, not above the fault band.
+       *
+       * This used to subtract `topFaultBandH` as well, which pushed
+       * the ticks *above* the band -- so reading outward from the plot
+       * gave fault band, then ticks, then title: backwards from the
+       * bottom, where the reading is ticks, then fault band. The top
+       * now mirrors it: ticks sit right on the plot edge regardless of
+       * whether a band is drawn, and the band is what moves to make
+       * room, the same as the bottom axis never moves for its own
+       * fault band.
+       */
+      const y = topMargin - TOP_TICK_DY;
       axisText.push(
         `<text x="${px.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" fill="${th.label}" ` +
         `${t.major ? `font-weight="600" font-size="${FONT_AXIS}"` : `fill-opacity="0.7" font-size="${FONT_AXIS - 2}"`}>` +
@@ -2994,18 +3040,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       placer.avoidLine([{ x: leftMargin, y: py }, { x: leftMargin + plotW, y: py }]);
     }
   }
+  const faultXs: number[] = [];
   for (const f of faults) {
     const I = f.I_view ?? f.I_A;
     if (!inDomain(I)) continue;
     const fx = xScale.toPx(I);
     if (Number.isFinite(fx)) {
       placer.avoidLine([{ x: fx, y: topMargin }, { x: fx, y: topMargin + plotH }]);
+      faultXs.push(fx);
     }
   }
 
   if (legendMode === 'direct') {
     const direct = directLabels(curves, {
-      leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground,
+      leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground, faultXs,
     });
     layer('curve-labels', () => { out.push(...direct.markup); });
     /* The direct-label column is drawn first and must not be written
@@ -3048,11 +3096,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     colour: string,
     options: { prefer?: Parameters<typeof placer.place>[0]['prefer']; gap?: number; weight?: number } = {},
   ): string[] => {
-    const lines = labelLines(text);
+    /*
+     * A long caption wrapped to a column is both narrower and shorter
+     * to search around than the same words on one line -- a two-line
+     * box slots into gaps a wide single line never fits through, which
+     * on a sheet where faults sit close together is often the only
+     * room there is. Below the wrap width it comes back unchanged, so
+     * a short caption still reads as one line.
+     */
+    const wrapped = wrapLabel(text, ON_PLOT_LABEL_WRAP_PX, FONT_DETAIL).join('\n');
+    const lines = labelLines(wrapped);
     const placement: Placement = placer.place({
       anchor,
       size: {
-        w: labelWidthPx(text, FONT_DETAIL),
+        w: labelWidthPx(wrapped, FONT_DETAIL),
         h: Math.max(FONT_DETAIL + 2, lines.length * FONT_DETAIL * LINE_SPACING),
       },
       prefer: options.prefer,
@@ -3080,7 +3137,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
       `text-anchor="${placement.anchorText}" font-size="${FONT_DETAIL}"` +
       `${options.weight ? ` font-weight="${options.weight}"` : ''} fill="${colour}">` +
-      `${labelBody(text, placement.x, FONT_DETAIL)}</text>`,
+      `${labelBody(wrapped, placement.x, FONT_DETAIL)}</text>`,
     );
     return emitted;
   };
@@ -3940,9 +3997,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * wherever it fits. `above` is preferred so it still points away
        * from the curve it marks.
        */
+      const wrapped = wrapLabel(text, ON_PLOT_LABEL_WRAP_PX, FONT_DETAIL).join('\n');
       const size = {
-        w: labelWidthPx(text, FONT_DETAIL),
-        h: Math.max(FONT_DETAIL + 2, labelLines(text).length * FONT_DETAIL * LINE_SPACING),
+        w: labelWidthPx(wrapped, FONT_DETAIL),
+        h: Math.max(FONT_DETAIL + 2, labelLines(wrapped).length * FONT_DETAIL * LINE_SPACING),
       };
       const placement = placer.place({
         anchor: { x: px, y: py },
@@ -3970,7 +4028,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
         `text-anchor="${placement.anchorText}" ` +
         `font-size="${FONT_DETAIL}" fill="${colour}">` +
-        `${labelBody(text, placement.x, FONT_DETAIL)}</text>`,
+        `${labelBody(wrapped, placement.x, FONT_DETAIL)}</text>`,
       );
     } else if (annotation.style === 'tag') {
       /* A tag reads as a caption above its point, then beside it. */
@@ -4015,12 +4073,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
     /*
      * The same rules above the plot, captioned in the second scale's
-     * amps. Rows are counted upward from the plot's top edge, so the
-     * band reads outward from the frame exactly as the bottom one
-     * reads downward from it.
+     * amps.
+     *
+     * Reads outward from the frame exactly as the bottom band does:
+     * ticks adjacent to the plot, then the fault names beyond them --
+     * `TOP_FAULT_BAND_DY` clears the tick row rather than sitting
+     * between it and the plot, which is where this band used to sit,
+     * ahead of the ticks instead of past them.
+     *
+     * The rule line still runs the whole distance out to the caption,
+     * so it crosses behind the tick row exactly as the bottom rule
+     * crosses behind the bottom ticks.
      */
     for (const { i, px, row, flipped, caption } of faultLayoutTop) {
-      const labelY = topMargin - 10 - row * (LINE_DETAIL - 1);
+      const labelY = topMargin - TOP_FAULT_BAND_DY - row * (LINE_DETAIL - 1);
       const dash = faultDash(i);
       out.push(
         `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY + 3).toFixed(1)}" ` +
@@ -4338,15 +4404,21 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const emitNotes = (): void => {
       if (axisNotes.length === 0 || notesOff) return;
       if (countNotes) {
-        /* One line rather than nothing. The reader is told the sheet
-         * left something out and where to go for it, which is the
-         * whole job of the notes -- the detail is in the report. */
+        /*
+         * One line rather than nothing, so the reader knows the sheet
+         * left something out. It used to add "see the report", which
+         * is wrong rather than merely unhelpful: these notes are
+         * drawing-only -- off-axis elements, referral caveats, nudge
+         * notices -- and never appear in the text `report` at all.
+         * There is nowhere else to see them; widening the pane or the
+         * page is the only way to read them.
+         */
         cursorY += 10;
         lines.push(
           `<text x="${originX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
           `font-size="${FONT_DETAIL - 1}" font-style="italic">`
           + `${escapeXml(`• ${axisNotes.length} note${axisNotes.length === 1 ? '' : 's'} `
-            + 'omitted for space; see the report')}</text>`,
+            + 'omitted for space')}</text>`,
         );
         cursorY += LINE_DETAIL - 2;
         return;
@@ -5106,6 +5178,29 @@ interface DirectLabelGeometry {
   plotH: number;
   background: string;
   ink: string;
+  /** Pixel x of every fault line on this axis, so a box can dodge them. */
+  faultXs?: readonly number[];
+}
+
+/**
+ * The largest right edge no greater than `right` whose box -- `width` wide --
+ * clears every x in `faultXs`, without crossing `minRight`.
+ *
+ * A direct-label box shares one right-hand edge with its neighbours
+ * ({@link directLabels}), so unlike {@link LabelPlacer} it cannot step
+ * vertically to dodge a line: it is already pinned to its curve's row. The
+ * only room to move is left, past the fault the box would otherwise sit on.
+ */
+function dodgeFaultLines(right: number, width: number, faultXs: readonly number[], minRight: number): number {
+  if (faultXs.length === 0) return right;
+  const clearGap = 6;
+  for (let i = 0; i <= faultXs.length && right > minRight; i++) {
+    const left = right - width;
+    const blocking = faultXs.find((fx) => fx > left && fx < right);
+    if (blocking === undefined) break;
+    right = Math.max(minRight, blocking - clearGap);
+  }
+  return right;
 }
 
 /**
@@ -5186,15 +5281,25 @@ function directLabels(
     placed[i].y = Math.min(placed[i].y, ceiling);
   }
 
+  const faultXs = geo.faultXs ?? [];
   const out: string[] = [];
   for (const p of placed) {
-    /* Each box hangs off the right edge; the leader is the short run
+    /*
+     * Each box hangs off the right edge; the leader is the short run
      * from the curve to the box's own left edge. Drawn first, so the
-     * box paints over its end. */
-    const boxX = Math.max(leftMargin + 4, boxRight - p.width);
+     * box paints over its end.
+     *
+     * A box that would otherwise straddle a fault's vertical is pulled
+     * further left, clear of it -- the only direction open to a column
+     * that is already pinned to its row. Its leader lengthens to match,
+     * which is the same trade the point and annotation labels make when
+     * they step away from a line.
+     */
+    const right = dodgeFaultLines(boxRight, p.width, faultXs, leftMargin + 4 + p.width);
+    const boxX = Math.max(leftMargin + 4, right - p.width);
     out.push(
       `<path d="M${p.anchorX.toFixed(1)} ${p.anchorY.toFixed(1)} ` +
-      `L${(boxRight + 8).toFixed(1)} ${p.y.toFixed(1)} L${boxRight.toFixed(1)} ${p.y.toFixed(1)}" ` +
+      `L${(right + 8).toFixed(1)} ${p.y.toFixed(1)} L${right.toFixed(1)} ${p.y.toFixed(1)}" ` +
       `fill="none" stroke="${p.color}" stroke-width="1" stroke-opacity="0.8"/>`,
     );
     out.push(

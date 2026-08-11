@@ -44,8 +44,11 @@ domain-t 0.02,20
 [times] line 106.0,226.5..1056.0,226.5 class=tc-time data-time-name=Transformer withstand
 [times] line 106.0,387.1..1056.0,387.1 class=tc-time data-time-name=Grid code clearance
 [times] line 106.0,433.9..1056.0,433.9 class=tc-time data-time-name=Arc flash boundary
+[time-labels] path n=2 bbox=488.9,213.7..578.0,226.5
 [time-labels] text 488.9,215.9 text-anchor=start font-size=11 "Transformer withstand · 4 s"
+[time-labels] path n=2 bbox=621.6,374.2..714.0,387.1
 [time-labels] text 621.6,376.5 text-anchor=start font-size=11 "Grid code clearance · 800 ms"
+[time-labels] path n=2 bbox=727.9,421.1..817.0,433.9
 [time-labels] text 727.9,423.4 text-anchor=start font-size=11 "Arc flash boundary · 500 ms"
 [points] polygon 4 pts
 [points] polygon 4 pts
@@ -53,8 +56,8 @@ domain-t 0.02,20
 [points] text 568.0,262.3 text-anchor=end font-size=11 "Transformer withstand corner"
 [points] circle 680.9,594.5 r=6.8
 [points] circle 680.9,594.5 r=5.0
-[points] text 690.9,596.8 text-anchor=start font-size=11 "Transformer inrush, 12x for 100 ms"
-[annotations] text 731.9,537.0 text-anchor=start font-size=11 "Feeder clears the board fault (9.4 kA, 157 ms)"
+[points] text 690.9,599.1 text-anchor=start font-size=11 "Transformer inrush, 12x for100 ms"
+[annotations] text 891.7,554.2 text-anchor=start font-size=11 "Feeder clears the boardfault (9.4 kA, 157 ms)"
 [annotations] circle 723.6,309.5 r=3.5
 [annotations] path n=3 bbox=723.6,309.5..747.6,309.5
 [annotations] text 747.6,311.8 text-anchor=start font-size=11 "Incomer backup"
@@ -76,6 +79,7 @@ domain-t 0.02,20
 [annotations] polygon 3 pts
 [annotations] line 578.0,220.5..578.0,232.5
 [annotations] line 723.6,220.5..723.6,232.5
+[annotations] path n=2 bbox=584.8,226.5..650.8,241.4
 [annotations] text 584.8,243.7 text-anchor=start font-size=11 font-weight=600 "pickup window 266.7%"
 [fault-band] line 620.7,755.0..620.7,780.0 class=tc-fault
 [fault-band] text 622.7,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Earth max · 1.6 kA"

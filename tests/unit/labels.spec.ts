@@ -112,6 +112,50 @@ describe('placing labels that compete', () => {
     expect(overlaps(p.rect, { x: 400, y: 200, w: 300, h: 200 })).toBe(false);
   });
 
+  it('takes a position between two whole label-heights, when one is free there', () => {
+    /*
+     * Regression pin: the vertical search used to step in whole
+     * label-heights, so once the position one step away was taken it
+     * jumped straight to two full steps away -- even where something
+     * thinner than this label (a crossbar, another short caption)
+     * left a gap in between that was never a candidate at all.
+     *
+     * A same-height obstacle one step away would leave no such gap --
+     * its own height already spans most of the room between one step
+     * and two -- so this uses a thin one, the realistic case: most of
+     * what a label dodges on a crowded sheet is not another label of
+     * its own size. Pinned to a single side so the search cannot dodge
+     * sideways into 'above'/'below' instead, which would answer a
+     * different question. The exact offset landed on (25, for this
+     * size and gap) is asserted directly so a future change to the
+     * step formula is caught here rather than passing on a looser
+     * bound that happens to still hold.
+     */
+    const placer = new LabelPlacer(PLOT);
+    const gap = 8;
+    const base = { x: 400 + gap, y: 300 - SIZE.h / 2, w: SIZE.w, h: SIZE.h };
+    const oldStep = SIZE.h + 3; // 15
+
+    // Blocks the base itself, and every position below it for as far
+    // as this search could ever reach -- so only "up" is in play.
+    placer.reserve({ ...base, h: 400 });
+    // A thin obstacle centred where one old-style step would have
+    // landed -- covering that candidate and the ones immediately
+    // around it, but not reaching as far as a second full step.
+    placer.reserve({ x: base.x, y: base.y - oldStep + SIZE.h / 2 - 1, w: base.w, h: 2 });
+
+    const p = placer.place({
+      anchor: { x: 400, y: 300 }, size: SIZE, gap, prefer: ['right'],
+    });
+
+    expect(p.side).toBe('right');
+    expect(p.displaced).toBe(true);
+    const movedBy = base.y - p.rect.y;
+    expect(movedBy).toBe(25);
+    expect(movedBy).toBeLessThan(2 * oldStep);
+    expect(movedBy % oldStep).not.toBe(0);
+  });
+
   it('places rather than drops a label when nothing is free', () => {
     /* A missing label cannot be read at all; an overlapping one can,
      * and it is reported as displaced so a leader is drawn. */

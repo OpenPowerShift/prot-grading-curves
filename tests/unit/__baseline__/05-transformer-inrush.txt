@@ -145,11 +145,11 @@ domain-t 0.01,1000
 [curves] path n=100 bbox=590.5,66.0..1056.0,650.1 class=tc-curve data-curve=R_FDR_LV:50 data-ref=R_FDR_LV:50 data-voltage=LV
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
-[points] path n=2 bbox=733.0,578.7..743.0,609.2
-[points] text 743.0,583.3 text-anchor=start font-size=11 "TX1 inrush — 12 x FLC (5.25kA, 100 ms)"
+[points] path n=2 bbox=733.0,588.9..743.0,609.2
+[points] text 832.1,593.5 text-anchor=middle font-size=11 "TX1 inrush — 12 x FLC (5.25kA, 100 ms)"
 [points] polygon 3 pts
 [points] polygon 3 pts
-[points] text 810.0,437.1 text-anchor=start font-size=11 "TX1 through-fault limit(10.9 kA, 2 s)"
+[points] text 885.9,437.1 text-anchor=middle font-size=11 "TX1 through-fault limit(10.9 kA, 2 s)"
 [annotations] line 650.5,549.8..650.5,435.2
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
@@ -167,7 +167,7 @@ domain-t 0.01,1000
 [annotations] polygon 3 pts
 [annotations] line 646.2,426.5..646.2,438.5
 [annotations] line 800.0,426.5..800.0,438.5
-[annotations] text 650.5,415.4 text-anchor=start font-size=11 font-weight=600 "through-fault headroom535.6%"
+[annotations] text 723.1,415.4 text-anchor=middle font-size=11 font-weight=600 "through-fault headroom535.6%"
 [annotations] line 733.0,471.3..733.0,609.2
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts

@@ -243,9 +243,21 @@ export class LabelPlacer {
      * fails on the bounds, not on a collision -- searches a column of
      * positions that are all outside the plot, and the label ends up
      * off the sheet.
+     *
+     * Stepped at a third of a label-height rather than a whole one.
+     * A full-height step means the *first* position ever tried this
+     * far from the anchor is already a whole label away -- so a spot
+     * only a few pixels further out that would have cleared everything
+     * was never a candidate at all, and the label jumped past it to
+     * whatever the next full step landed on. Halved would still miss
+     * some of those; a third keeps the search only three times longer
+     * while finding the near side of a gap that used to be skipped
+     * outright. The total reach across all 40 steps is unchanged from
+     * before, since it is the number of steps that grew, not their
+     * count times the old size.
      */
-    const step = size.h + 3;
-    for (let n = 1; n <= 40; n++) {
+    const step = (size.h + 3) / 3;
+    for (let n = 1; n <= 120; n++) {
       for (const side of prefer) {
         const base = this.clamp(this.rectFor(side, anchor, size, gap));
         for (const direction of [-1, 1]) {

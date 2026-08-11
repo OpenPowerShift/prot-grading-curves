@@ -331,7 +331,7 @@ domain-t 0.01,1000
 [curves] path n=125 bbox=471.7,66.0..1056.0,645.3 class=tc-curve data-curve=R_FDR:51X data-ref=R_FDR:51X data-voltage=LV
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
-[points] text 743.0,613.8 text-anchor=start font-size=11 "TX1 inrush12 x FLC, 100 ms"
+[points] text 795.8,613.8 text-anchor=middle font-size=11 "TX1 inrush12 x FLC, 100 ms"
 [annotations] line 650.5,650.1..650.5,435.2
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts

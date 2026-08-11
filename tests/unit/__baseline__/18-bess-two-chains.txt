@@ -116,8 +116,8 @@ domain-t 0.01,100
 clearance
 [times] line 106.0,530.9..1056.0,530.9 class=tc-time data-time-name=33 kV bus primary
 clearance
-[time-labels] text 886.1,416.9 text-anchor=start font-size=11 "33 kV feeder backupclearance · 750 ms"
-[time-labels] text 892.9,515.7 text-anchor=start font-size=11 "33 kV bus primaryclearance · 200 ms"
+[time-labels] text 948.8,416.9 text-anchor=middle font-size=11 "33 kV feeder backupclearance · 750 ms"
+[time-labels] text 952.3,515.7 text-anchor=middle font-size=11 "33 kV bus primaryclearance · 200 ms"
 [annotations] line 948.8,634.6..948.8,489.0
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
@@ -260,8 +260,8 @@ domain-t 0.02,10
 [curves] path n=98 bbox=601.1,66.0..1056.0,454.8 class=tc-curve data-curve=BESS transformer RMU · Negative sequence OC data-ref=R_BESS_RMU:46 data-voltage=HV33
 [times] line 106.0,321.3..1056.0,321.3 class=tc-time data-time-name=660 V unbalanced
 backup clearance
-[time-labels] path n=2 bbox=910.8,271.0..1005.1,321.3
-[time-labels] text 910.8,275.6 text-anchor=start font-size=11 "660 V unbalancedbackup clearance · 1 s"
+[time-labels] path n=2 bbox=910.8,291.4..1005.1,321.3
+[time-labels] text 983.4,295.9 text-anchor=middle font-size=11 "660 V unbalancedbackup clearance · 1 s"
 [fault-band] line 1005.1,755.0..1005.1,780.0 class=tc-fault
 [fault-band] text 1003.1,789.0 class=tc-fault-label text-anchor=end font-size=11 font-weight=600 "BESS LV phase-phase minimum · 430 A"
 [legend] text 1090.0,79.0 class=tc-legend font-size=13 font-weight=600 "Curves"
@@ -438,8 +438,8 @@ domain-t 0.01,100
 clearance
 [times] line 106.0,530.9..1056.0,530.9 class=tc-time data-time-name=33 kV bus primary
 clearance
-[time-labels] text 896.5,416.9 text-anchor=start font-size=11 "33 kV feeder backupclearance · 750 ms"
-[time-labels] text 903.0,515.7 text-anchor=start font-size=11 "33 kV bus primaryclearance · 200 ms"
+[time-labels] text 959.2,416.9 text-anchor=middle font-size=11 "33 kV feeder backupclearance · 750 ms"
+[time-labels] text 962.4,515.7 text-anchor=middle font-size=11 "33 kV bus primaryclearance · 200 ms"
 [annotations] line 959.2,634.6..959.2,489.0
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
@@ -580,8 +580,8 @@ domain-t 0.04,2
 [annotations] polygon 3 pts
 [annotations] line 302.9,182.1..302.9,194.1
 [annotations] line 601.7,182.1..601.7,194.1
-[annotations] path n=2 bbox=452.3,188.1..460.3,389.1
-[annotations] text 460.3,391.4 text-anchor=start font-size=11 font-weight=600 "kiosk 46 window 342.2%"
+[annotations] path n=2 bbox=452.3,188.1..460.3,383.5
+[annotations] text 460.3,385.8 text-anchor=start font-size=11 font-weight=600 "kiosk 46 window 342.2%"
 [fault-band] line 601.7,755.0..601.7,780.0 class=tc-fault
 [fault-band] text 603.7,789.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Auxiliary LV earth minimum · 154 A"
 [legend] text 1090.0,79.0 class=tc-legend font-size=13 font-weight=600 "Curves"

@@ -122,7 +122,7 @@ domain-t 0.02,100
 [curve-labels] text 683.6,1090.0 class=tc-legend font-size=12 font-weight=600 "Feeder 4 (Mill Road) · Inst"
 [points] polygon 3 pts
 [points] polygon 3 pts
-[points] text 521.9,420.1 text-anchor=start font-size=11 "Largest motor start6 x FLC for 8 s (1.8 kA, 8s)"
+[points] text 607.7,420.1 text-anchor=middle font-size=11 "Largest motor start6 x FLC for 8 s (1.8 kA, 8s)"
 [annotations] line 706.6,883.6..706.6,752.7
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts

@@ -67,6 +67,29 @@ describe('point labels', () => {
     expect(new Set(xs).size).toBe(1);
   });
 
+  it('centres unequal lines on each other, rather than sharing an edge', () => {
+    /*
+     * Every line still shares one x (the block-stays-aligned test
+     * above), but that x is now the block's own centre, not its left
+     * edge -- so the outer <text> reads `text-anchor="middle"` for a
+     * multi-line label, where a single-line one still gets whichever
+     * side of the anchor it landed on. A ragged-right block read as a
+     * paragraph; a centred one reads as the one short phrase it is.
+     */
+    const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "A long first line\\nshort"; }');
+    const group = svg.match(/<g class="tc-point"[\s\S]*?<\/g>/)![0];
+    expect(group).toMatch(/<text x="[-\d.]+" y="[-\d.]+" text-anchor="middle"/);
+  });
+
+  it('keeps a single-line label on its own side of the anchor', () => {
+    /* The centring above must not spread to the ordinary case: a label
+     * with nothing to centre against still reads start/end, as every
+     * other label on the sheet does. */
+    const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "One line only"; }');
+    const group = svg.match(/<g class="tc-point"[\s\S]*?<\/g>/)![0];
+    expect(group).not.toContain('text-anchor="middle"');
+  });
+
   it('centres the block on the marker, so a second line does not shove it down', () => {
     const svg = render('point P { I   = 2 kA; t   = 0.3 s; label = "One\\nTwo"; }');
     const group = svg.match(/<g class="tc-point"[\s\S]*?<\/g>/)![0];

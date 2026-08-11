@@ -392,8 +392,8 @@ domain-t 0.02,100
 [time-labels] text 880.9,390.4 text-anchor=start font-size=11 "Switchgear rating · 1 s"
 [points] circle 956.8,375.3 r=6.3
 [points] circle 956.8,375.3 r=4.5
-[points] path n=2 bbox=946.8,358.5..956.8,375.3
-[points] text 946.8,360.8 text-anchor=end font-size=11 "Switchgear 1 s rating"
+[points] path n=2 bbox=946.8,364.1..956.8,375.3
+[points] text 946.8,366.4 text-anchor=end font-size=11 "Switchgear 1 s rating"
 [annotations] line 1059.7,452.0..1059.7,371.2
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts

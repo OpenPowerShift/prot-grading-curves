@@ -3193,11 +3193,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `stroke-width="${leaderWidth(0.8)}" stroke-opacity="0.6"/>`,
       );
     }
+    const { x: tx, textAnchor } = labelHAnchor(placement.rect, placement.anchorText, wrapped);
     emitted.push(
-      `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
-      `text-anchor="${placement.anchorText}" font-size="${FONT_DETAIL}"` +
+      `<text x="${tx.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
+      `text-anchor="${textAnchor}" font-size="${FONT_DETAIL}"` +
       `${options.weight ? ` font-weight="${options.weight}"` : ''} fill="${colour}">` +
-      `${labelBody(wrapped, placement.x, FONT_DETAIL)}</text>`,
+      `${labelBody(wrapped, tx, FONT_DETAIL)}</text>`,
     );
     return emitted;
   };
@@ -4154,11 +4155,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `L${nearX.toFixed(1)} ${labelCy.toFixed(1)}" ` +
         `fill="none" stroke="${leaderColour(colour)}" stroke-width="${leaderWidth(1)}"/>`,
       );
+      const { x: tx, textAnchor } = labelHAnchor(placement.rect, placement.anchorText, wrapped);
       out.push(
-        `<text x="${placement.x.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
-        `text-anchor="${placement.anchorText}" ` +
+        `<text x="${tx.toFixed(1)}" y="${placement.y.toFixed(1)}" ` +
+        `text-anchor="${textAnchor}" ` +
         `font-size="${FONT_DETAIL}" fill="${colour}">` +
-        `${labelBody(wrapped, placement.x, FONT_DETAIL)}</text>`,
+        `${labelBody(wrapped, tx, FONT_DETAIL)}</text>`,
       );
     } else if (annotation.style === 'tag') {
       /* A tag reads as a caption above its point, then beside it. */
@@ -5585,6 +5587,35 @@ function labelBody(
       `${escapeXml(line)}</tspan>`,
     )
     .join('');
+}
+
+/**
+ * The `x` and `text-anchor` a label's outer `<text>` should use.
+ *
+ * A one-line label keeps the block's own anchor side -- `start` beside
+ * a marker to its left, `end` beside one to its right -- so its edge
+ * sits at a known distance from the anchor, which is the point of
+ * choosing a side at all.
+ *
+ * A label of several lines is different: `placeLabel` wraps unequal
+ * words onto unequal-length lines, and anchoring every line to the
+ * same edge left the *other* edge ragged -- a caption that reads as a
+ * paragraph rather than the single short phrase it is. Centring each
+ * line on the block's own middle instead reads as one shape, which is
+ * how a multi-line caption is set by hand. The block still occupies
+ * the same placed rect either way, so this changes nothing about
+ * where the label sits or what it may collide with -- only how its
+ * lines are set inside that rect.
+ */
+function labelHAnchor(
+  rect: Rect,
+  side: 'start' | 'end',
+  text: string,
+): { x: number; textAnchor: 'start' | 'end' | 'middle' } {
+  if (labelLines(text).length <= 1) {
+    return { x: side === 'end' ? rect.x + rect.w : rect.x, textAnchor: side };
+  }
+  return { x: rect.x + rect.w / 2, textAnchor: 'middle' };
 }
 
 function placeholderSvg(message: string): string {

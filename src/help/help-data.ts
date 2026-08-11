@@ -347,7 +347,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'voltage', 'view', 'views', 'description', 'comment'],
   times:       ['t', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'type',
                'view', 'views', 'description', 'comment'],
-  currents:    ['I', 'I1', 'I2', 'I0', 'residual', 'at_t', 'type', 'name',
+  currents:    ['I', 'I1', 'I2', 'I0', 'residual', 'at_t', 'type', 'voltage', 'name',
                'view', 'views', 'description', 'comment'],
   scenario:    ['type', 'description', 'comment', 'level', 'sees'],
   'scenario.level': ['I', 'I1', 'I2', 'I0', 'residual', 'share'],

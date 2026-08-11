@@ -458,6 +458,9 @@ export interface RequiredCurrent {
   I0_A?: number;
   earth_A?: number;
   type?: FaultType;
+  /** The level this rating's figure was measured or nameplated at. */
+  voltage?: string;
+  voltage_kV?: number;
   /** Caption anchor along the rule, in seconds. */
   at_t_s?: number;
   description?: string;
@@ -823,6 +826,8 @@ export function buildStudy(doc: Document): Study {
             I0_A: c.I0_A,
             earth_A: c.earth_A,
             type: isFaultType(c.faultType) ? c.faultType : undefined,
+            voltage: c.voltage,
+            voltage_kV: c.voltage ? study.voltages.get(c.voltage)?.kV : undefined,
             at_t_s: c.at_t_s,
             views: c.views,
             description: c.description,

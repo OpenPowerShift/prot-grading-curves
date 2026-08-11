@@ -1041,12 +1041,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * through-fault limit -- drawn as the same kind of vertical rule a
    * fault is, styled and headed apart so the two are never mistaken.
    *
-   * No voltage level and no referral: a rating is a figure from a
-   * nameplate or a standard, not a current that exists at a bus, so
-   * there is nothing to refer it *from*. It resolves onto whichever
-   * component the sheet's axis reads exactly as a fault's declared
-   * current does, and stands there unchanged wherever the sheet is
-   * framed.
+   * `voltage` is optional: a rating with none declared is taken to
+   * already be in whatever level the sheet is drawn at, which is the
+   * only sensible reading of a study written before this field existed
+   * and still the right one for a rating that only ever means one
+   * level. Where it *is* declared and differs from the sheet's own,
+   * it is referred by the same turns ratio a fault's phase current
+   * would be -- a rating has no fault type driving a delta-star
+   * redistribution the way a *condition* does, so this is the plain
+   * ratio only, not `conditionPlacement`'s shape factor.
    */
   for (const rating of study.currents.values()) {
     if (!Number.isFinite(rating.I_A)) continue;
@@ -1063,14 +1066,28 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       continue;
     }
-    const I_view = resolved.value;
+    const declared = resolved.value;
+    const V_rating = rating.voltage ? voltageKvs.get(rating.voltage) : undefined;
+    const differentLevel = V_rating != null && V_view_kV != null && V_rating !== V_view_kV;
+    if (differentLevel
+        && !survivesVoltageReferral(viewQuantity, study, rating.voltage, viewLevelName)) {
+      continue;
+    }
+    if (differentLevel) {
+      noteReferralCaveat(`rating ${oneLine(rating.name)}`, viewQuantity,
+        rating.voltage, viewLevelName, rating.type);
+    }
+    const I_view = V_rating && V_view_kV ? declared * (V_rating / V_view_kV) : declared;
     if (I_view * 0.8 < I_lo) I_lo = I_view * 0.8;
     if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
     faults.push({
       name: rating.name,
       kind: 'rating',
       description: rating.description,
-      I_A: resolved.value,
+      I_A: declared,
+      voltage: rating.voltage,
+      voltage_kV: V_rating,
+      voltageLabel: V_rating != null ? `${trimZeros(V_rating)} kV` : undefined,
       I_view,
     });
   }

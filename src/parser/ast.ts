@@ -316,6 +316,15 @@ export interface CurrentDecl extends BaseNode {
   earth_A?: number;
   faultType?: FaultTypeKeyword;
   /**
+   * The level this rating's figure was measured or nameplated at, so a
+   * rating declared once in its own amps can still be drawn correctly
+   * on a sheet at another level -- an 11 kV switchgear rating shown on
+   * a 33 kV incomer's sheet, referred by the same turns ratio a fault
+   * would be. Undeclared, a rating is taken to already be in whatever
+   * level the sheet is drawn at, as before this existed.
+   */
+  voltage?: string;
+  /**
    * Where along the rule to put its caption, as a time. The rule spans
    * the whole plot height, so its name has no natural anchor; without
    * this it goes at the bottom, mirroring `times`'s left-hand default.

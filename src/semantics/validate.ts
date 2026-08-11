@@ -1685,7 +1685,15 @@ function validateCurrents(ctx: Ctx): void {
     }
   }
 
+  const voltageNames = [...ctx.study.voltages.keys()];
   for (const rating of ctx.study.currents.values()) {
+    if (rating.voltage && !ctx.study.voltages.has(rating.voltage)) {
+      add(ctx, 'VOLTAGE_UNKNOWN', 'error',
+        `rating "${rating.name}" references voltage level "${rating.voltage}", ` +
+        'which is not declared in system.voltages' +
+        didYouMean(suggest(rating.voltage, voltageNames)),
+        rating.loc);
+    }
     if (!(rating.I_A > 0)) {
       add(ctx, 'RATING_CURRENT_INVALID', 'error',
         `rating "${rating.name}" declares I = ${rating.I_A}; it must be strictly positive ` +

@@ -1512,6 +1512,7 @@ class Parser {
             case 'I0': c.I0_A = this.parseNumberWithUnit_A('I0'); break;
             case 'residual': c.earth_A = this.parseNumberWithUnit_A('residual'); break;
             case 'at_t': c.at_t_s = this.parseNumberWithUnit_s('at_t'); break;
+            case 'voltage': c.voltage = this.parseStringOrIdent(); break;
             case 'type': {
               const kw = this.matchKeyword(
                 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
@@ -1542,7 +1543,7 @@ class Parser {
             default:
               this.parseScalarValue();
               this.noteUnknownKey('a current rating', k, [
-                'I', 'I1', 'I2', 'I0', 'residual', 'at_t', 'type',
+                'I', 'I1', 'I2', 'I0', 'residual', 'at_t', 'type', 'voltage',
                 'view', 'views', 'name', 'description', 'comment'], /* strict */ true);
           }
           this.eat('SEMI');

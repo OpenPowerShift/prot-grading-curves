@@ -76,6 +76,53 @@ grade { primary = R:51; fault = CABLE; margin = 0.3 s; }`;
   });
 });
 
+describe('a rating declared at a level, drawn on another', () => {
+  const CROSS = `
+system {
+  voltages { HV { V = 33 kV; } LV { V = 11 kV; } }
+  transformer HV to LV { vector_group = "Dyn11"; }
+}
+faults { F1 { I = 6 kA; type = three_phase; voltage = LV; } }
+relay R { voltage = HV; ct_ratio = 400/5;
+  element 51 { function = phase_oc; curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
+view { voltage = HV; }
+`;
+
+  it('refers a declared voltage by the turns ratio, like a fault does', () => {
+    /* 630 A at 11 kV, referred to 33 kV: 630 * (11/33) = 210 A. */
+    const src = `${CROSS}\ncurrents { BUSBAR { I = 630 A; voltage = LV; } }`;
+    const svg = renderStudy(parse(src), { theme: 'light' });
+    expect(svg).toMatch(/data-fault="BUSBAR" data-current="210"/);
+  });
+
+  it('leaves an undeclared voltage exactly as it was before this field existed', () => {
+    /* No `voltage`: taken to already be in the sheet's own frame,
+     * unchanged -- the study written before this field existed. */
+    const src = `${CROSS}\ncurrents { BUSBAR { I = 630 A; } }`;
+    const svg = renderStudy(parse(src), { theme: 'light' });
+    expect(svg).toMatch(/data-fault="BUSBAR" data-current="630"/);
+  });
+
+  it('draws unchanged when declared at the sheet\'s own level', () => {
+    const src = `${CROSS}\ncurrents { XFMR { I = 5 kA; voltage = HV; } }`;
+    const svg = renderStudy(parse(src), { theme: 'light' });
+    expect(svg).toMatch(/data-fault="XFMR" data-current="5000"/);
+  });
+
+  it('refuses a voltage level the study does not declare', () => {
+    const src = `${CROSS}\ncurrents { BUSBAR { I = 630 A; voltage = MV; } }`;
+    const r = parse(src);
+    expect(r.diagnostics.map((d) => d.code)).toContain('VOLTAGE_UNKNOWN');
+  });
+
+  it('carries the level onto the legend, as a fault\'s voltage does', () => {
+    const src = `${CROSS}\ncurrents { BUSBAR { I = 630 A; voltage = LV; } }`;
+    const svg = renderStudy(parse(src), { theme: 'light' });
+    expect(svg).toContain('BUSBAR · 630 A · 11 kV');
+    expect(svg).toContain('-&gt; 210 A on axis');
+  });
+});
+
 describe('a currents rating on the legend', () => {
   it('is headed "Ratings" apart from the fault rules', () => {
     const src = `

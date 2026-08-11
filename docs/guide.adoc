@@ -96,7 +96,7 @@ view { voltage = "HV"; }           # draw everything in the 33 kV frame
 
 === Finding out what something means
 
-Two ways, both in the playground:
+Three ways, all in the playground:
 
 * **`?` or Ctrl-Space** while writing: on a blank line it lists what
   the enclosing block accepts; after an `=` it lists that field's
@@ -104,20 +104,19 @@ Two ways, both in the playground:
   the file itself declares.
 * **The help strip** under the source while reading: put the caret on
   anything and it explains it, including named values like `iec.si`.
-  Docked rather than floating, because a tooltip covers the line you
-  are reading -- which is exactly the line you were asking about. Shut
-  it with the `x` and it stays shut; the *Help* button brings it back.
+  Docked rather than floating, so it never covers the line you are
+  reading. Shut it with the `x` and it stays shut; the *Help* button
+  brings it back.
 * **Hovering the plot**: the readout names what the cursor has latched
   onto and, beneath that, the *reference* a `grade` or an `annotate`
   would use. Those differ as soon as anything declares a `name` -- a
-  curve drawn as "11 kV feeder · Phase TOC" is written `R_FDR:51` --
-  and the reference is the one you can type. Faults, marked points and
-  annotations answer with their declared names, which are already
-  their references.
+  curve drawn as "11 kV feeder · Phase TOC" is written `R_FDR:51`, the
+  one you can type. Faults, marked points and annotations answer with
+  their declared names already.
 +
 Where several curves lie on the same spot -- two feeders set
 identically, a composite and the stage that forms it -- *all* of them
-are named, not whichever the tool happened to find first.
+are named, not just the first found.
 
 === Running it
 
@@ -459,11 +458,13 @@ disagrees with its own file.
 === currents
 
 `times`'s answer the other way: a rating, drawn as a vertical rule,
-headed *Ratings* apart from the fault rules:
+headed *Ratings* apart from the fault rules. Takes a fault's components
+(`I1`, `I2`, `I0`, `residual`, `type`) and `voltage`, referred like a
+fault's current where the sheet is drawn at another level:
 
 [source,tc]
 ----
-currents { "Busbar rating" { I = 12.5 kA; at_t = 300 ms; } }
+currents { "Busbar rating" { I = 12.5 kA; voltage = "LV"; at_t = 300 ms; } }
 ----
 
 === relay and element
@@ -921,7 +922,8 @@ group FEEDER_1 { members = [R_INCOMER, R_FDR_1, R_RMU_1]; }
 A view names a group with `group = FEEDER_1;` and draws exactly those
 relays' elements, instead of every element listing every sheet it
 belongs on. `name` and `description` are the same two tiers every
-other block takes.
+other block takes. `comment` is a third, silent one: the author's own
+record, never drawn or listed -- unlike `legend { comment }`, which is.
 
 A group holds *relays*, not marks. `times`, `point` and `annotate` are
 scoped by `view` / `views`, the same as every other mark -- a group
@@ -1273,16 +1275,14 @@ view { voltage = "HV"; quantity = I2; condition = "F_2ph"; }
   a conversion is a constant shift, so operate times are untouched --
   only the abscissa moves. Each converted curve is named in the legend
   with the multiplier that placed it -- `R:51: phase drawn on the I2
-  axis, x0.577` -- because its position rests on the depicted
-  condition's ratios rather than on its own setting, and the multiplier
-  is what makes that checkable against the axis.
+  axis, x0.577` -- since its position rests on the depicted condition's
+  ratios, not its own setting.
 * **Elements the condition cannot operate are suppressed.** On a
   `three_phase` condition there is no `I2` and no `I0`, so earth-fault
-  and negative-sequence elements are left off rather than drawn where
-  they could never operate. So is an element whose current cannot reach
-  the sheet's level at all -- an HV residual element behind a delta is
-  off *every* sheet of an LV earth fault, not only the residual one.
-  Each is named in the legend with its reason:
+  and negative-sequence elements are left off, not drawn where they
+  cannot operate, as is one whose current cannot reach this level at
+  all -- an HV residual element behind a delta is off *every* LV sheet,
+  not only the residual one. Each is named with its reason:
 +
 [none]
 * `... 51G measures residual 3I0, which does not cross HV to LV`
@@ -1941,8 +1941,8 @@ A checklist, in the order that avoids rework:
   yours to write: `I_pickup = 480 A`, `V = 33 kV`, `margin = 0.3 s`.
   A suffix is checked against the quantity the field takes, so
   `I_pickup = 5 ms` is refused as well as `I_pickup = 4 KA`.
-* Using `t_delay = 0 s` for an instantaneous element. It will not
-  appear on the plot.
+* Declaring `t_delay = 0 s`. Warned, and drawn at an assumed 20 ms
+  rather than the figure written.
 * Grading with `primary` and `backup` the wrong way round. The primary
   is downstream and must be *faster*. A negative margin usually means
   they are swapped.

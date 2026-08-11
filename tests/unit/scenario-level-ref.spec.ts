@@ -57,7 +57,49 @@ describe('an annotate naming several levels of one scenario', () => {
   it('draws one mark per level, the same as a list of separate conditions', () => {
     const src = `${BASE}\nannotate { on_curve = R_HV:51; scenario = [S.HV, S.LV]; label = "both"; }`;
     const svg = renderStudy(parse(src), { theme: 'light' });
-    expect([...svg.matchAll(/both/g)]).toHaveLength(2);
+    /* Drawn text only -- the hover endpoint's `data-annotation` also
+     * carries the label, so a plain substring count would double it. */
+    expect([...svg.matchAll(/>both</g)]).toHaveLength(2);
+  });
+});
+
+describe('a scenario with exactly one level', () => {
+  /*
+   * Regression pin: a single-level scenario's "one level is
+   * unambiguous" fallback used to fire even when the reference named
+   * an explicit (and wrong) level, silently drawing that one level's
+   * figures under the wrong level's label instead of refusing. The
+   * two-level scenario `S` above never exercised this path -- its
+   * fallback never applies -- so the gap needed its own scenario.
+   */
+  const ONE_LEVEL = `
+system { voltages { HV { V = 33 kV; } MV { V = 11 kV; } } }
+scenario ONE {
+  type = two_phase;
+  level MV { I = 940 A; I2 = 543 A; }
+}
+relay R { voltage = MV; ct_ratio = 200/5;
+  element 51 { function = phase_oc; curve = iec.si; I_pickup = 300 A; tms = 0.2; } }
+view { voltage = MV; }
+`;
+
+  it('answers a caller with no level at all, as before', () => {
+    const r = parse(`${ONE_LEVEL}\npoint "p" { scenario = ONE; t = 500 ms; label = "x"; }`);
+    expect(r.diagnostics.map((d) => d.code)).not.toContain('SCENARIO_LEVEL_MISSING');
+  });
+
+  it('answers the level actually named, when it is the one declared', () => {
+    const r = parse(`${ONE_LEVEL}\npoint "p" { scenario = ONE.MV; t = 500 ms; label = "x"; }`);
+    expect(r.diagnostics.map((d) => d.code)).not.toContain('SCENARIO_LEVEL_MISSING');
+  });
+
+  it('refuses a level named explicitly that this scenario does not declare, ' +
+    'rather than silently substituting the one it does', () => {
+    const r = parse(`${ONE_LEVEL}\npoint "p" { scenario = ONE.HV; t = 500 ms; label = "x"; }`);
+    const d = r.diagnostics.find((diag) => diag.code === 'SCENARIO_LEVEL_MISSING');
+    expect(d).toBeDefined();
+    expect(d!.message).toContain('at HV');
+    expect(d!.message).toContain('it declares MV');
   });
 });
 

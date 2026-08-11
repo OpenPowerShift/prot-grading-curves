@@ -60,7 +60,9 @@ describe('~NAME in a condition list', () => {
   it('draws one mark per condition except the one named', () => {
     const src = `${BASE}\nannotate { on_curve = R:51; fault = [~F1]; label = "reach"; }`;
     const svg = renderStudy(parse(src), { theme: 'light' });
-    expect([...svg.matchAll(/reach/g)]).toHaveLength(1);
+    /* Drawn text only -- the hover endpoint's `data-annotation` also
+     * carries the label, so a plain substring count would double it. */
+    expect([...svg.matchAll(/>reach</g)]).toHaveLength(1);
   });
 
   it('still checks the excluded condition exists', () => {

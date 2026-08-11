@@ -51,6 +51,16 @@ export interface ResolvedCondition {
   currents: SequenceCurrents;
   /** Every level a scenario declares, for a diagnostic that lists them. */
   levels: readonly string[];
+  /**
+   * The level actually consulted, once a `NAME.LEVEL` suffix has been
+   * split out -- which may differ from the `level` a caller passed in,
+   * since the reference's own suffix wins. A diagnostic naming *why* a
+   * scenario had nothing to say needs this one, not the caller's
+   * guess: reporting the guess reads as "declares no currents at MV"
+   * for a reference that named `.HV`, which contradicts itself the
+   * moment the scenario turns out to declare MV after all.
+   */
+  requestedLevel?: string;
 }
 
 /**
@@ -85,6 +95,18 @@ export function resolveCondition(
    * naming it in the reference is more specific than inferring it from
    * context.
    */
+  /*
+   * Whether `level` was named in the reference itself, as opposed to
+   * inferred by a caller from its own context (a marker's `voltage`,
+   * the element an annotation points at). The distinction matters
+   * below: a scenario with one level answers a context guess with
+   * that level regardless of what the guess was, since there was
+   * never a choice to get wrong -- but a level spelled out in the
+   * reference is a specific claim, and one a single-level scenario
+   * does not happen to declare should refuse rather than quietly
+   * answer with the level that *is* there.
+   */
+  let levelWasNamed = false;
   if (!study.faults.has(name) && !study.scenarios.has(name)) {
     const dot = name.indexOf('.');
     if (dot > 0) {
@@ -93,6 +115,7 @@ export function resolveCondition(
       if (explicitLevel && study.scenarios.has(base)) {
         name = base;
         level = explicitLevel;
+        levelWasNamed = true;
       }
     }
   }
@@ -123,8 +146,15 @@ export function resolveCondition(
   const levels = [...scenario.levels.keys()];
   const chosen =
     (level != null ? scenario.levels.get(level) : undefined)
-    /* One level is unambiguous, so a caller with no level still gets it. */
-    ?? (scenario.levels.size === 1 ? [...scenario.levels.values()][0] : undefined);
+    /*
+     * One level is unambiguous, so a caller with no level still gets
+     * it -- but only where nothing more specific was actually named.
+     * `S.MV` naming a level a single-level scenario does not declare
+     * is a claim that turned out wrong, not an absent one, and
+     * substituting the level that *is* there would draw `.MV`'s
+     * figures under an `.MV` label that are actually `.LV`'s.
+     */
+    ?? (!levelWasNamed && scenario.levels.size === 1 ? [...scenario.levels.values()][0] : undefined);
 
   return {
     kind: 'scenario',
@@ -143,6 +173,7 @@ export function resolveCondition(
       }
       : {},
     levels,
+    requestedLevel: level,
   };
 }
 

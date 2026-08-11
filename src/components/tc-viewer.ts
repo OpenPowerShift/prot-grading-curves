@@ -132,7 +132,7 @@ interface SnapState {
    * a fault marker reports its declared current; a marked point
    * reports the coordinate it asserts.
    */
-  target?: 'curve' | 'fault' | 'point' | 'time';
+  target?: 'curve' | 'fault' | 'point' | 'time' | 'annotation';
   /**
    * Which form declared a condition rule: a `fault` is one current at
    * one level, a `scenario` the same condition at every level, and a
@@ -583,6 +583,48 @@ export class TcViewer extends LitElement {
          * worth naming, so it joins whatever else was coincident
          * rather than being dropped for having lost by a pixel.
          */
+        const alsoWas = displaced?.alsoHere ?? [];
+        const carried = displaced != null
+          && Math.hypot(displaced.pxI - x, displaced.pxT - y) <= COINCIDENT_PX
+          ? [{
+            curveLabel: displaced.curveLabel,
+            ref: displaced.ref,
+            voltage: displaced.voltage,
+          }, ...alsoWas]
+          : [];
+        best.alsoHere = carried.length > 0 ? carried : undefined;
+        bestDist = distSq;
+      }
+    }
+
+    /*
+     * Annotation endpoints, on the same footing as a marked point: a
+     * `annotate` block asserts a coordinate exactly as a `point` does,
+     * whether that is the single anchor of a point-style mark or one
+     * end of a span's dimension line, and a reader checking the drawing
+     * against a setting sheet wants the same figure back on hover.
+     */
+    for (const group of Array.from(svg.querySelectorAll('g[data-annotation]'))) {
+      const x = Number(group.getAttribute('data-px'));
+      const y = Number(group.getAttribute('data-py'));
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+      const distSq = (cursorPxI - x) ** 2 + (cursorPxT - y) ** 2;
+      /* Wins a tie for the same reason a point does: it is the more
+       * specific answer where it coincides with a curve. */
+      if (distSq <= bestDist) {
+        const displaced = best;
+        best = {
+          pxI: x,
+          pxT: y,
+          I_A: Number(group.getAttribute('data-current')),
+          t_s: Number(group.getAttribute('data-time')),
+          curveLabel: group.getAttribute('data-annotation') ?? 'annotation',
+          voltage: '',
+          protocol: 'snap',
+          pathD: '',
+          target: 'annotation',
+        };
         const alsoWas = displaced?.alsoHere ?? [];
         const carried = displaced != null
           && Math.hypot(displaced.pxI - x, displaced.pxT - y) <= COINCIDENT_PX

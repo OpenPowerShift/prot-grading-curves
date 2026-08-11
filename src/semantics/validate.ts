@@ -1522,9 +1522,16 @@ function checkConditionReference(
   }
 
   if (resolved.kind === 'scenario' && resolved.voltage == null) {
+    /*
+     * `resolved.requestedLevel`, not `level`: a `NAME.LEVEL` suffix in
+     * the reference overrides whatever level the caller's own context
+     * guessed, and reporting the guess instead reads as "declares no
+     * currents at MV" for a reference that named `.HV` -- backwards
+     * the moment the scenario turns out to declare MV after all.
+     */
     add(ctx, 'SCENARIO_LEVEL_MISSING', 'error',
       `${where} references scenario "${name}", which declares no currents at ` +
-      `${level ?? 'the level it is drawn on'}` +
+      `${resolved.requestedLevel ?? level ?? 'the level it is drawn on'}` +
       (resolved.levels.length > 0 ? ` (it declares ${resolved.levels.join(', ')})` : ''),
       loc, name.length);
   }

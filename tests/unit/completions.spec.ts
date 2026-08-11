@@ -160,6 +160,39 @@ scenario "system normal" { level "HV" { I   = 900 A; } }
     expect(offer(`${TWO_LEVELS}view {\n  voltage = LV;\n  second_axis = ‸\n}\n`)).toContain('HV');
   });
 
+  describe('naming the declared voltage levels in `transformer FROM to TO`', () => {
+    /*
+     * Neither name is a `field = value` assignment, so the pattern
+     * that drives every other value completion never matched here --
+     * the cursor read as still inside the `system` block's own body,
+     * and offered its field names (`voltages`, `base_S`, ...) instead
+     * of a level to pick from.
+     */
+    const TWO_LEVELS = 'system {\n  voltages { "HV" { V = 33 kV; } "LV" { V = 11 kV; } }\n';
+
+    it('after `transformer `, with nothing typed yet', () => {
+      expect(offer(`${TWO_LEVELS}\n  transformer ‸\n}\n`)).toEqual(
+        expect.arrayContaining(['HV', 'LV']));
+    });
+
+    it('after `transformer H`, mid-word', () => {
+      expect(offer(`${TWO_LEVELS}\n  transformer H‸\n}\n`)).toEqual(
+        expect.arrayContaining(['HV', 'LV']));
+    });
+
+    it('after `transformer HV to `, the second name', () => {
+      expect(offer(`${TWO_LEVELS}\n  transformer HV to ‸\n}\n`)).toEqual(
+        expect.arrayContaining(['HV', 'LV']));
+    });
+
+    it('does not offer levels for an ordinary field named "to"-adjacent text', () => {
+      /* A sentence containing "to" elsewhere on the line is not this
+       * position, and should fall through to the ordinary field list. */
+      expect(offer(`${TWO_LEVELS}\n  base_S = ‸\n}\n`)).not.toEqual(
+        expect.arrayContaining(['HV', 'LV']));
+    });
+  });
+
   const WITH_RELAYS = `relay R_INCOMER { voltage = "HV"; ct_ratio = 400/5; }
 relay R_FEEDER { voltage = "HV"; ct_ratio = 400/5; }
 group FEEDER_1 { members = [R_INCOMER, R_FEEDER]; }

@@ -415,6 +415,23 @@ function assignmentTarget(src: string, pos: number): string | null {
 }
 
 /**
+ * `transformer <from> to <to> { ... }`: the position just after
+ * `transformer` or just after `to`, where a voltage level name goes.
+ *
+ * Neither name is a `field = value` assignment, so `assignmentTarget`
+ * never saw them -- the cursor sat in what still read as the `system`
+ * block's own body, and completion offered `voltages`, `base_S` and
+ * the rest of that field list instead of a level to pick from.
+ */
+function transformerLevelContext(src: string, pos: number): number | null {
+  const lineStart = src.lastIndexOf('\n', pos - 1) + 1;
+  const line = src.slice(lineStart, pos);
+  const m = /\btransformer\s+"?[\w]*"?\s+to\s+"?(\w*)$/.exec(line)
+    ?? /\btransformer\s+"?(\w*)$/.exec(line);
+  return m ? pos - m[1].length : null;
+}
+
+/**
  * A number immediately before the cursor, with any partial unit.
  *
  * Units are required wherever they are not the field's default, and
@@ -544,6 +561,19 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
     const options = unitCompletions(unit.field);
     if (options.length > 0) {
       return { from: unit.from, options, validFor: /[A-Za-z_]*/ };
+    }
+  }
+
+  /*
+   * `transformer HV to MV { ... }`: also checked before the
+   * assignment target, for the same reason -- neither level name is
+   * written as `field = value`, so that pattern never matches here.
+   */
+  const transformerFrom = transformerLevelContext(src, pos);
+  if (transformerFrom != null) {
+    const options = voltageCompletions(src);
+    if (options.length > 0) {
+      return { from: transformerFrom, options, validFor: /[\w.:]*/ };
     }
   }
 

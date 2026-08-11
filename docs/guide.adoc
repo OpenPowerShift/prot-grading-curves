@@ -111,9 +111,9 @@ Two ways, both in the playground:
   onto and, beneath that, the *reference* a `grade` or an `annotate`
   would use. Those differ as soon as anything declares a `name` -- a
   curve drawn as "11 kV feeder · Phase TOC" is written `R_FDR:51` --
-  and the reference is the one you can type. Faults and marked points
-  answer with their declared names, which are already their
-  references.
+  and the reference is the one you can type. Faults, marked points and
+  annotations answer with their declared names, which are already
+  their references.
 +
 Where several curves lie on the same spot -- two feeders set
 identically, a composite and the stage that forms it -- *all* of them

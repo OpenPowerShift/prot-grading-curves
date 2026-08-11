@@ -3575,6 +3575,19 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
             `stroke="${colour}" stroke-width="1.4"/>`,
           );
         }
+        /*
+         * Each end is a coordinate the study named -- a fault level, a
+         * declared time -- and worth reading back the same way a fault
+         * rule or a marked point already is.
+         */
+        const spanLabel = escapeXml(oneLine(annotation.label ?? 'span'));
+        for (const [py, endT] of [[pyLo, lo], [pyHi, hi]] as const) {
+          out.push(
+            `<g class="tc-annotation" data-annotation="${spanLabel}" ` +
+            `data-current="${attrNum(I)}" data-time="${attrNum(endT)}" ` +
+            `data-px="${px.toFixed(1)}" data-py="${py.toFixed(1)}"></g>`,
+          );
+        }
 
         const figure = formatSi(hi - lo, 's');
         const text = annotation.label ? `${annotation.label} ${figure}` : figure;
@@ -3609,6 +3622,16 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           `<line x1="${px.toFixed(1)}" y1="${(py - 6).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(py + 6).toFixed(1)}" ` +
           `stroke="${colour}" stroke-width="1.4"/>`,
         );
+      }
+      {
+        const spanLabel = escapeXml(oneLine(annotation.label ?? 'span'));
+        for (const [px, endI] of [[pxLo, lo], [pxHi, hi]] as const) {
+          out.push(
+            `<g class="tc-annotation" data-annotation="${spanLabel}" ` +
+            `data-current="${attrNum(endI)}" data-time="${attrNum(t)}" ` +
+            `data-px="${px.toFixed(1)}" data-py="${py.toFixed(1)}"></g>`,
+          );
+        }
       }
 
       /*
@@ -3676,10 +3699,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           return declared == null ? null : project(declared, marker.voltage_kV);
         }
         if (annotation.condition) {
-          /* The condition's own rule, at the quantity the axis is in --
-           * the same figure the vertical rule stands at. */
-          const entry = faults.find((f) => f.name === annotation.condition);
-          return entry?.I_view ?? entry?.I_A ?? null;
+          /*
+           * The condition's own rule, at the quantity the axis is in --
+           * the same figure the vertical rule stands at.
+           *
+           * Through the same lookup every other condition reference
+           * uses, rather than a name match against the sheet's own
+           * fault list: that list never carries a scenario-level
+           * suffix (`S.HV`), so a dotted reference here matched
+           * nothing and drew nothing, silently, however the level was
+           * spelled.
+           */
+          return conditionCurrentAt(
+            annotation.condition, annotation.voltage ?? viewLevelName, viewQuantity,
+          );
         }
         return null;
       })();
@@ -4060,10 +4093,24 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     const base = annotation.label ?? annotation.on_curve?.text ?? '';
     const text = annotation.coords ? `${base} (${coordText(I_view, t)})` : base;
 
+    /*
+     * Interrogable like a point or a curve: an annotation asserts a
+     * specific coordinate too, and a reader checking the drawing
+     * against a setting sheet wants the exact figure, not a read-off
+     * against the axis grid. The `<g>` carries the data even for a
+     * `tag` style, which draws no circle -- the anchor is still a real
+     * coordinate worth hovering.
+     */
+    out.push(
+      `<g class="tc-annotation" data-annotation="${escapeXml(oneLine(base || 'annotation'))}" ` +
+      `data-current="${attrNum(I_view)}" data-time="${attrNum(t)}" ` +
+      `data-px="${px.toFixed(1)}" data-py="${py.toFixed(1)}">`,
+    );
     if (annotation.style !== 'tag') {
       out.push(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="${colour}"/>`);
       placer.reserve({ x: px - 5, y: py - 5, w: 10, h: 10 });
     }
+    out.push('</g>');
     if (annotation.style === 'leader') {
       /*
        * The label goes where there is room, and the leader follows it.

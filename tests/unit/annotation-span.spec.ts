@@ -214,3 +214,41 @@ describe('a span does not disturb the other annotate forms', () => {
       .not.toContain('ANNOTATE_NO_POSITION');
   });
 });
+
+describe('annotation endpoints are hoverable, like points and curves', () => {
+  /* One `<g data-annotation>` per endpoint, carrying the coordinate the
+   * playground reads back on hover -- the same pattern a marked point's
+   * `<g data-point>` already uses. */
+  const groups = (svg: string): Array<{ current: number; time: number }> =>
+    [...svg.matchAll(
+      /<g class="tc-annotation" data-annotation="[^"]*" data-current="([^"]*)" data-time="([^"]*)"/g,
+    )].map((m) => ({ current: Number(m[1]), time: Number(m[2]) }));
+
+  it('marks both ends of a time span, at the current it is anchored to', () => {
+    const found = groups(drawn('annotate { from = 300 ms; to = 800 ms; at_I = 2 kA; label = "band"; }'));
+    expect(found).toHaveLength(2);
+    expect(found[0].current).toBeCloseTo(2000, 0);
+    expect(found[1].current).toBeCloseTo(2000, 0);
+    expect(found.map((f) => f.time).sort((a, b) => a - b)).toEqual([0.3, 0.8]);
+  });
+
+  it('marks both ends of a current span, at the time it is anchored to', () => {
+    const found = groups(drawn('annotate { from = 400 A; to = 900 A; at_t = 1 s; label = "window"; }'));
+    expect(found).toHaveLength(2);
+    expect(found[0].time).toBeCloseTo(1, 3);
+    expect(found[1].time).toBeCloseTo(1, 3);
+    expect(found.map((f) => f.current).sort((a, b) => a - b)).toEqual([400, 900]);
+  });
+
+  it('marks a point-form annotation at the curve coordinate it names', () => {
+    const found = groups(drawn('annotate { on_curve = R:51; at_I = 3 kA; label = "p"; }'));
+    expect(found).toHaveLength(1);
+    expect(found[0].current).toBeCloseTo(3000, 0);
+    expect(found[0].time).toBeGreaterThan(0);
+  });
+
+  it('names the annotation, so the readout can show it', () => {
+    const svg = drawn('annotate { on_curve = R:51; at_I = 3 kA; label = "p"; }');
+    expect(svg).toContain('data-annotation="p"');
+  });
+});

@@ -63,7 +63,7 @@ The following are reserved and cannot be used as identifiers:
 
 ====
 *Top-level blocks* -- meta, system, faults, scenario, relay, element,
-device, grade, annotate, combine, view, page, point, notes
+device, grade, annotate, combine, group, view, page, point, notes
 
 *Inside `scenario`* -- description, level, sees
 
@@ -81,19 +81,19 @@ renderer's title block and the `[meta.*]` footer macros read, are
 `[meta.<key>]` macro.
 
 *Inside `system`* -- voltages, zero_sequence, transformer, base_S,
-I_base, I_units
+I_base, I_units, comment
 
 *Inside `system.transformer`* -- vector_group
 
-*Inside `system.voltages.<level>`* -- V, description
+*Inside `system.voltages.<level>`* -- V, description, comment
 
 *Inside `faults.<name>`* -- I, I_min, I_max, I1, I2, I0, residual,
-type, voltage, view, views, description
+type, voltage, view, views, description, comment
 
 *Inside `times.<name>`* -- t, at_I, at_I1, at_I2, at_I0, at_residual,
-type, view, views, description
+at_3I0, type, view, views, description, comment
 
-*Inside `scenario`* -- type, description, level, sees
+*Inside `scenario`* -- type, description, comment, level, sees
 
 *Inside `scenario.level.<level>`* -- I, I1, I2, I0, residual
 
@@ -108,9 +108,10 @@ maker, model, comment, description, reference
 *Inside `grade`* -- primary, backup, fault, scenario, margin,
 margin_target, tolerance_pct, upstream, upstream_to, comment, solve
 
-*Inside `annotate`* -- on_curve, at_I, at_I1, at_I2, at_I0, at_residual, at_t,
-from, to, primary, backup, point, fault, faults, scenario, scenarios,
-voltage, type, view, views, label, style, color, coords
+*Inside `annotate`* -- on_curve, at_I, at_I1, at_I2, at_I0, at_residual,
+at_3I0, at_t, from, to, primary, backup, point, fault, faults, scenario,
+scenarios, voltage, type, view, views, label, style, color, coords,
+comment
 
 *Inside `device`* -- kind, voltage, maker, model, rating_I, rating_V,
 rating_S, flex_points, min_melt, total_clear, t_delay, comment,
@@ -123,12 +124,15 @@ two_phase_earth, single_phase_earth
 
 *Axis quantities* (`view.quantity`) -- any, phase, I1, I2, 3I2, I0, 3I0
 
-*Inside `combine`* -- name, sources, as, voltage, color, style, label
+*Inside `combine`* -- name, sources, as, voltage, color, style, label,
+comment
+
+*Inside `group`* -- members, name, description, comment
 
 *Inside `view`* -- stages, axis, second_axis, reference_ct, voltage,
 current_min, current_max, time_min, time_max, current_pad,
 current_pad_low, current_pad_high, time_pad, time_pad_low,
-time_pad_high
+time_pad_high, comment
 
 *Inside `page`* -- size, orientation, margins_mm, scale, legend,
 axes, curves, points, leaders, title, footer, theme, watermark,
@@ -176,7 +180,7 @@ solid, dashed, dotted
 motor_startup, breaker
 
 *Inside `point`* -- I, I1, I2, I0, residual, type, t, fault, scenario,
-label, voltage, color, shape, coords, description
+label, voltage, color, shape, coords, description, comment
 
 *Meta keys* -- project, study, engineer, date, revision, standard,
 margin, curve_set

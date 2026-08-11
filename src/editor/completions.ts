@@ -601,8 +601,12 @@ export function tcCompletionSource(ctx: CompletionContext): CompletionResult | n
   } else {
     const fields = BLOCK_FIELDS[block] ?? [];
     options = fields.map((f) => makeCompletion(f));
-    // a couple of cross-cutting favourites the user might still want
-    if (block !== 'system.voltages') {
+    /*
+     * `comment` is accepted everywhere a block declares real fields --
+     * every block below lists its own, so this only needs to cover the
+     * few that would otherwise miss it.
+     */
+    if (!fields.includes('comment')) {
       options.push(makeCompletion('comment'));
     }
     /* `element` / `stages` skeletons are useful inside a relay too. */

@@ -22,6 +22,7 @@ top-level       ::= meta-block
                   | annotate-block
                   | point-block
                   | combine-block
+                  | group-block
                   | view-block
                   | page-block
                   | notes-block ;
@@ -50,7 +51,8 @@ system-assignment ::=
     | "I_units"        "=" pickup-units-keyword ";"
     | voltages-block
     | transformer-block
-    | zero-sequence-block ;
+    | zero-sequence-block
+    | comment-asg ;
 
 (* What is between two levels, off the nameplate. The turns ratio refers
    a *balanced* current correctly and nothing else: a delta-star
@@ -65,7 +67,8 @@ transformer-block ::= "transformer" voltage-ref "to" voltage-ref
 voltages-block  ::= "voltages" "{" { voltage-asg } "}" ;
 voltage-asg     ::= string "{" { voltage-member } "}" ;
 voltage-member  ::= "V"          "=" number voltage-unit ";"
-                  | "description" "=" string ";" ;
+                  | "description" "=" string ";"
+                  | comment-asg ;
 voltage-ref     ::= string ;
 ----
 
@@ -94,7 +97,8 @@ fault-member    ::= "type"    "=" fault-type-keyword ";"
                   | "I0"       "=" number current-unit ";"
                   | "residual"    "=" number current-unit ";"
                   | "voltage"    "=" voltage-ref
-                  | "description" "=" string ";" ;
+                  | "description" "=" string ";"
+                  | comment-asg ;
 ----
 
 There is no `bus` wrapper. A fault is a property of the system,
@@ -118,14 +122,18 @@ time-member     ::= "t"         "=" number time-unit ";"
                   | time-anchor-asg
                   | "type"      "=" fault-type-keyword ";"
                   | scoped-view-asg
-                  | "description" "=" string ";" ;
+                  | "description" "=" string ";"
+                  | comment-asg ;
 
 (* Where along the rule to write its caption. A rule spans the whole
    plot, so the name has no natural anchor and goes at the left-hand
    end without one. `at_I` alone is a *phase* current; on an abscissa
    in another quantity the component is named, on the same vocabulary
    a `fault`, a `point` and an `annotate` use. *)
-time-anchor-asg ::= ( "at_I" | "at_I1" | "at_I2" | "at_I0" | "at_residual" )
+(* "at_3I0" is an alias for "at_residual" -- the same figure, spelled
+   the way `quantity` itself names the residual component. *)
+time-anchor-asg ::= ( "at_I" | "at_I1" | "at_I2" | "at_I0"
+                    | "at_residual" | "at_3I0" )
                     "=" number current-unit ";" ;
 
 (* Which sheets a mark belongs to, by `view` name. Absent means every
@@ -144,6 +152,7 @@ name-asg        ::= "name" "=" string ";" ;
 
 scenario-block  ::= "scenario" string "{" { scenario-member } "}" ;
 scenario-member ::= "description" "=" string ";"
+                  | comment-asg
                   | scenario-level
                   | scenario-share ;
 scenario-level  ::= "level" string "{" { level-member } "}" ;
@@ -363,14 +372,18 @@ annotate-block  ::= "annotate" "{" { annotate-member } "}" ;
 annotate-member ::= "on_curve" "=" ref ";"          (* point form *)
                   | "primary"  "=" ref ";"          (* margin form *)
                   | "backup"   "=" ref ";"
-                  | "at_I"   "=" number current-unit ";"
+                  | "point"    "=" point-id ";"     (* curve-to-point margin *)
+                  | time-anchor-asg
                   | "at_t"   "=" number time-unit ";"
+                  | "type"     "=" fault-type-keyword ";"
                   | span-asg                          (* span form *)
                   | condition-asg
+                  | scoped-view-asg
                   | "label"    "=" string  ";"
                   | "style"    "=" annotation-style ";"
                   | "color"    "=" color-value ";"
-                  | "coords"   "=" boolean ";" ;
+                  | "coords"   "=" boolean ";"
+                  | comment-asg ;
 annotation-style ::= "leader" | "pin" | "tag" ;
 
 (* A dimension between two figures the study names, with no curve at
@@ -397,7 +410,8 @@ point-member    ::= "I"     "=" number current-unit ";"   # phase
                   | "shape"   "=" point-shape ";"
                   | "color"   "=" color-value ";"
                   | "coords"  "=" boolean ";"
-                  | "description" "=" string ";" ;
+                  | "description" "=" string ";"
+                  | comment-asg ;
 point-shape     ::= "circle" | "square" | "diamond" | "triangle"
                   | "cross" | "x" ;
 ----
@@ -546,7 +560,8 @@ combine-member  ::= "name"        "=" identifier ";"
                   | "voltage"     "=" identifier ";"
                   | "color"       "=" string ";"
                   | "style"       "=" combine-style-keyword ";"
-                  | "label"       "=" string ";" ;
+                  | "label"       "=" string ";"
+                  | comment-asg ;
 source-list     ::= ref { "," ref } ;
 combine-as-keyword ::=
       "envelope_min"       # pointwise min(t1, t2, ...)  -- "OR" of trips
@@ -563,6 +578,21 @@ relay-ref   ::= identifier ":" ( element-id | identifier ) ;
 device-ref  ::= identifier ;
 ----
 
+=== Group (a protection chain)
+
+A protection chain: the relays in series on one path, upstream first.
+A `view` selects by `group`, so a sheet draws exactly that chain
+instead of every element listing every sheet it belongs on.
+
+[source,ebnf]
+----
+group-block     ::= "group" identifier "{" { group-member } "}" ;
+group-member    ::= "members"     "=" "[" identifier { "," identifier } "]" ";"
+                  | "name"        "=" string ";"
+                  | "description" "=" string ";"
+                  | comment-asg ;
+----
+
 === View (display directives)
 
 [source,ebnf]
@@ -571,6 +601,8 @@ device-ref  ::= identifier ;
    name identifies it to a reader and to a sheet picker. *)
 view-block      ::= "view" [ string ] "{" { view-member } "}" ;
 view-member     ::= "name"          "=" string ";"
+                  | "default"       "=" boolean ";"
+                  | "group"         "=" identifier ";"
                   | "stages"        "=" view-stages-keyword ";"
                   | "axis"          "=" view-axis-keyword ";"
                   | "quantity"      "=" axis-quantity ";"
@@ -583,7 +615,8 @@ view-member     ::= "name"          "=" string ";"
                   | "time_min"      "=" number time-unit ";"
                   | "time_max"      "=" number time-unit ";"
                   | "second_axis"   "=" identifier ";"
-                  | "reference_ct"  "=" ref ";" ;
+                  | "reference_ct"  "=" ref ";"
+                  | comment-asg ;
 view-stages-keyword ::= "composite" | "individual" ;
 view-axis-keyword ::= "primary" | "secondary" | "multiples" ;
 ----

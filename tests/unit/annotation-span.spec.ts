@@ -33,6 +33,25 @@ const codes = (annotate: string): string[] => {
   return [...r.parseErrors, ...r.diagnostics].map((d) => d.code);
 };
 
+/* A residual axis, for spans anchored by a component: `at_residual` (or
+ * `at_I1` / `at_I2` / `at_I0`) has nothing to convert to on a phase
+ * sheet with no fault type to derive from, exactly as a bare current
+ * does not. */
+const RESIDUAL_BASE = `
+system { voltages { "HV" { V = 33 kV; } } }
+faults { "F" { I = 6 kA; residual = 18 kA; type = single_phase_earth; voltage = "HV"; } }
+relay R { voltage = "HV"; ct_ratio = 600/5;
+  element 51G { function = earth_fault; curve = iec.si; I_pickup = 400 A; tms = 0.2; } }
+view { voltage = "HV"; quantity = 3I0; current_min = 100 A; current_max = 50 kA;
+       time_min = 10 ms; time_max = 100 s; }
+`;
+const drawnResidual = (annotate: string): string =>
+  parseAndRender(`${RESIDUAL_BASE}\n${annotate}`, { theme: 'light' }).svg;
+const codesResidual = (annotate: string): string[] => {
+  const r = process(`${RESIDUAL_BASE}\n${annotate}`);
+  return [...r.parseErrors, ...r.diagnostics].map((d) => d.code);
+};
+
 /** Text of every label drawn on the sheet. */
 const labels = (svg: string): string =>
   [...svg.matchAll(/>([^<>]+)</g)].map((m) => m[1]).join(' | ');
@@ -66,6 +85,35 @@ describe('a span between two times', () => {
   it('needs a current to stand at', () => {
     expect(codes('annotate { from = 300 ms; to = 800 ms; label = "band"; }'))
       .toContain('SPAN_NO_ANCHOR');
+  });
+
+  /*
+   * A regression pin: the anchor check and the renderer both used to
+   * read only `at_I`, so a span on an earth-fault or sequence sheet --
+   * anchored the way every other annotation on that sheet is, with
+   * `at_residual` or a component -- was refused as though nothing had
+   * been given at all.
+   */
+  it('stands at a declared residual component', () => {
+    expect(codesResidual('annotate { from = 300 ms; to = 800 ms; at_residual = 2 kA; label = "band"; }'))
+      .not.toContain('SPAN_NO_ANCHOR');
+    expect(labels(drawnResidual('annotate { from = 300 ms; to = 800 ms; at_residual = 2 kA; label = "band"; }')))
+      .toContain('band 500 ms');
+  });
+
+  it('takes at_3I0 as an alias for at_residual', () => {
+    const viaResidual = drawnResidual('annotate { from = 300 ms; to = 800 ms; at_residual = 2 kA; label = "band"; }');
+    const via3I0 = drawnResidual('annotate { from = 300 ms; to = 800 ms; at_3I0 = 2 kA; label = "band"; }');
+    const x = (svg: string): string | undefined =>
+      /<line x1="([\d.]+)" y1="[\d.]+" x2="\1"/.exec(svg)?.[1];
+    expect(x(via3I0)).toBe(x(viaResidual));
+  });
+
+  it('stands at a declared I1, I2 or I0 component', () => {
+    for (const key of ['at_I1', 'at_I2', 'at_I0']) {
+      expect(codesResidual(`annotate { from = 300 ms; to = 800 ms; ${key} = 2 kA; label = "band"; }`),
+        key).not.toContain('SPAN_NO_ANCHOR');
+    }
   });
 });
 

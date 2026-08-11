@@ -48,6 +48,8 @@ export interface VoltageLevelDecl extends BaseNode {
   name: string;
   kV: number;
   description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 export interface SystemBlock extends BaseNode {
@@ -83,6 +85,8 @@ export interface SystemBlock extends BaseNode {
   I_base_A?: number;
   I_units?: 'primary' | 'secondary';
   voltages: VoltageLevelDecl[];
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 /**
@@ -126,6 +130,8 @@ export interface FaultDecl extends BaseNode, ComponentRange {
   I2_A?: number;
   voltage?: string;
   description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 /**
@@ -210,6 +216,8 @@ export interface ScenarioBlock extends BaseNode {
   /** Fault type, as on a `fault`. */
   faultType?: FaultTypeKeyword;
   description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
   levels: ScenarioLevelDecl[];
   shares: ScenarioShareDecl[];
 }
@@ -269,6 +277,8 @@ export interface TimeDecl extends BaseNode {
   at_earth_A?: number;
   faultType?: FaultTypeKeyword;
   description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 export interface TimesBlock extends BaseNode {
@@ -544,6 +554,8 @@ export interface AnnotateBlock extends BaseNode {
   color?: string;
   /** Append the `(current, time)` coordinate to the drawn label. */
   coords?: boolean;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -573,6 +585,8 @@ export interface GroupBlock extends BaseNode {
   id: string;
   name?: string;
   description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
   /** Relay ids, upstream first. */
   members: string[];
 }
@@ -631,6 +645,8 @@ export interface CombineBlock extends BaseNode {
   color?: string;
   style?: 'solid' | 'dashed' | 'dotted';
   label?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 export interface ViewBlock extends BaseNode {
@@ -753,6 +769,8 @@ export interface ViewBlock extends BaseNode {
   time_pad?: number;
   time_pad_low?: number;
   time_pad_high?: number;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 export interface PageMargins extends BaseNode {
@@ -1043,6 +1061,8 @@ export interface PointBlock extends BaseNode {
   /** Append the `(current, time)` coordinate to the drawn label. */
   coords?: boolean;
   description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
 }
 
 export interface NotesBlock extends BaseNode {

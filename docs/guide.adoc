@@ -900,6 +900,30 @@ the frame claims a current it does not have, which is a worse answer
 than an absent mark the legend still accounts for.
 ====
 
+=== group
+
+A protection chain: the relays in series on one path, upstream first.
+
+[source,tc]
+----
+group FEEDER_1 { members = [R_INCOMER, R_FDR_1, R_RMU_1]; }
+----
+
+A view names a group with `group = FEEDER_1;` and draws exactly those
+relays' elements, instead of every element listing every sheet it
+belongs on. `name` and `description` are the same two tiers every
+other block takes.
+
+A group holds *relays*, not marks. `times`, `point` and `annotate` are
+scoped by `view` / `views`, the same as every other mark -- a group
+selects which relays a sheet draws, not which requirements or
+observations belong on it, and a mark that matters to one chain's sheet
+names that sheet directly.
+
+Ordered because the order is what a grading pair reads: upstream first
+is what makes "the relay after this one in its group" a real question
+once a study grades a whole chain rather than one pair at a time.
+
 === point and annotate
 
 Marked coordinates and callouts. These are how a study *argues* --
@@ -973,9 +997,10 @@ derive it. `at_I` still means phase current, so nothing written
 before this moves.
 
 Every component has a spelling: `at_I` for phase, `at_I1`, `at_I2`,
-`at_I0`, and `at_residual` for `3*I0`. There is also `at_t`, which
-places the mark by *time* rather than current -- for reading a curve
-the other way round, "what current gives me 300 ms?".
+`at_I0`, and `at_residual` for `3*I0` -- or `at_3I0`, an alias for the
+same figure spelled the way `quantity` itself names the axis. There is
+also `at_t`, which places the mark by *time* rather than current -- for
+reading a curve the other way round, "what current gives me 300 ms?".
 
 [source,tc]
 ----

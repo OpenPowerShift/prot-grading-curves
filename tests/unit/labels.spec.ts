@@ -460,48 +460,13 @@ view { voltage = hv; current_min = 100 A; current_max = 30 kA; }
 
   it('wraps to a column instead of running out as one long line', () => {
     /*
-     * A caption this long, printed as one line, is wide enough to span
-     * several fault lines at once no matter where the placer puts it --
-     * there is no position left or right that dodges all of them.
-     * Wrapping it narrower gives the search room a single line does
-     * not have.
+     * A caption this long, printed as one line, is wider than most of
+     * the plot it sits on -- narrower and taller reads better, and
+     * gives the placer's search more positions that are actually clear
+     * of the other things on the sheet.
      */
     const svg = parseAndRender(LONG_CAPTION, { theme: 'light' }).svg;
     const tspans = svg.match(/<tspan x="[\d.]+" dy="[\d.-]+">[^<]*<\/tspan>/g) ?? [];
     expect(tspans.length).toBeGreaterThan(1);
-  });
-});
-
-/* ---------------------------------------------------------------- */
-
-describe('a direct-labelled curve whose column would sit on a fault line', () => {
-  /*
-   * `directLabels` shares one right-hand edge across every curve's box,
-   * so unlike `LabelPlacer` it cannot step vertically to dodge a line --
-   * the row is already fixed by the curve's own last point. The only
-   * room it has is to pull the box further left, clear of the fault.
-   */
-  const svgFor = (kA: number): string => parseAndRender(`
-system { voltages { hv { V = 11 kV; } } }
-faults { "F" { I = ${kA} kA; voltage = hv; } }
-relay R { voltage = hv; element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.3; } }
-page { legend = { style = "direct"; }; }
-view { voltage = hv; current_min = 100 A; current_max = 30 kA; time_min = 10 ms; time_max = 100 s; }
-`, { theme: 'light' }).svg;
-
-  it('keeps the box clear of a fault sitting in its column', () => {
-    for (const kA of [15, 18, 20, 22, 24, 26]) {
-      const svg = svgFor(kA);
-      const faultLine = svg.match(/<line x1="([\d.]+)" y1="[\d.]+" x2="[\d.]+" y2="[\d.]+" class="tc-fault"/);
-      const box = svg.match(
-        /<rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)" height="[\d.]+" rx="3"[^>]*fill="[^"]+" fill-opacity="0\.94"/,
-      );
-      expect(faultLine, `${kA} kA`).not.toBeNull();
-      expect(box, `${kA} kA`).not.toBeNull();
-      const fx = Number(faultLine![1]);
-      const bx = Number(box![1]);
-      const bw = Number(box![2]);
-      expect(fx < bx || fx > bx + bw, `${kA} kA: fault at ${fx}, box ${bx}..${bx + bw}`).toBe(true);
-    }
   });
 });

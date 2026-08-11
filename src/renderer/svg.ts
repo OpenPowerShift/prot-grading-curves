@@ -3031,8 +3031,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /*
    * The rules are drawn lines too. A required-time label printed along
    * its own rule is the worst case of all -- the line runs through the
-   * text it belongs to -- and a caption lying on a fault's vertical is
-   * no better.
+   * text it belongs to.
+   *
+   * A fault's vertical is deliberately not registered here. It is a
+   * reference line, not a drawn characteristic, and the plot's whole
+   * right-hand region can be walled off by a tight cluster of them --
+   * which pushed captions far from what they describe to dodge a line
+   * that costs nothing to read through. Curves and time rules are what
+   * a caption must stay legible against; a fault line underneath it is
+   * only ever a coincidence.
    */
   for (const t of timesOnPlot) {
     const py = yScale.toPx(t.t_s);
@@ -3040,20 +3047,10 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       placer.avoidLine([{ x: leftMargin, y: py }, { x: leftMargin + plotW, y: py }]);
     }
   }
-  const faultXs: number[] = [];
-  for (const f of faults) {
-    const I = f.I_view ?? f.I_A;
-    if (!inDomain(I)) continue;
-    const fx = xScale.toPx(I);
-    if (Number.isFinite(fx)) {
-      placer.avoidLine([{ x: fx, y: topMargin }, { x: fx, y: topMargin + plotH }]);
-      faultXs.push(fx);
-    }
-  }
 
   if (legendMode === 'direct') {
     const direct = directLabels(curves, {
-      leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground, faultXs,
+      leftMargin, topMargin, plotW, plotH, background: th.background, ink: th.foreground,
     });
     layer('curve-labels', () => { out.push(...direct.markup); });
     /* The direct-label column is drawn first and must not be written
@@ -3462,11 +3459,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       const hi = Math.max(span.from, span.to);
 
       if (span.quantity === 'time') {
-        /* A vertical dimension needs a current to stand at. */
-        const I = annotation.condition
-          ? (faults.find((f) => f.name === annotation.condition)?.I_view
-            ?? faults.find((f) => f.name === annotation.condition)?.I_A ?? null)
-          : annotation.at_I_A ?? null;
+        /*
+         * A vertical dimension needs a current to stand at, resolved
+         * the same way any other annotation's does: through whichever
+         * component the sheet's own axis reads, not the phase figure
+         * alone. A span on an earth-fault sheet is routinely anchored
+         * with `at_residual` or a condition; taking only `at_I_A` (or
+         * only a fault's phase current) refused both.
+         */
+        const I = annotationCurrent(
+          study, annotation, annotation.voltage ?? viewLevelName, viewQuantity,
+        );
         if (I == null || !(I > 0)) {
           unplaceableAnnotations.push(annotation.label ?? 'a span');
           continue;
@@ -5178,29 +5181,6 @@ interface DirectLabelGeometry {
   plotH: number;
   background: string;
   ink: string;
-  /** Pixel x of every fault line on this axis, so a box can dodge them. */
-  faultXs?: readonly number[];
-}
-
-/**
- * The largest right edge no greater than `right` whose box -- `width` wide --
- * clears every x in `faultXs`, without crossing `minRight`.
- *
- * A direct-label box shares one right-hand edge with its neighbours
- * ({@link directLabels}), so unlike {@link LabelPlacer} it cannot step
- * vertically to dodge a line: it is already pinned to its curve's row. The
- * only room to move is left, past the fault the box would otherwise sit on.
- */
-function dodgeFaultLines(right: number, width: number, faultXs: readonly number[], minRight: number): number {
-  if (faultXs.length === 0) return right;
-  const clearGap = 6;
-  for (let i = 0; i <= faultXs.length && right > minRight; i++) {
-    const left = right - width;
-    const blocking = faultXs.find((fx) => fx > left && fx < right);
-    if (blocking === undefined) break;
-    right = Math.max(minRight, blocking - clearGap);
-  }
-  return right;
 }
 
 /**
@@ -5281,25 +5261,15 @@ function directLabels(
     placed[i].y = Math.min(placed[i].y, ceiling);
   }
 
-  const faultXs = geo.faultXs ?? [];
   const out: string[] = [];
   for (const p of placed) {
-    /*
-     * Each box hangs off the right edge; the leader is the short run
+    /* Each box hangs off the right edge; the leader is the short run
      * from the curve to the box's own left edge. Drawn first, so the
-     * box paints over its end.
-     *
-     * A box that would otherwise straddle a fault's vertical is pulled
-     * further left, clear of it -- the only direction open to a column
-     * that is already pinned to its row. Its leader lengthens to match,
-     * which is the same trade the point and annotation labels make when
-     * they step away from a line.
-     */
-    const right = dodgeFaultLines(boxRight, p.width, faultXs, leftMargin + 4 + p.width);
-    const boxX = Math.max(leftMargin + 4, right - p.width);
+     * box paints over its end. */
+    const boxX = Math.max(leftMargin + 4, boxRight - p.width);
     out.push(
       `<path d="M${p.anchorX.toFixed(1)} ${p.anchorY.toFixed(1)} ` +
-      `L${(right + 8).toFixed(1)} ${p.y.toFixed(1)} L${right.toFixed(1)} ${p.y.toFixed(1)}" ` +
+      `L${(boxRight + 8).toFixed(1)} ${p.y.toFixed(1)} L${boxRight.toFixed(1)} ${p.y.toFixed(1)}" ` +
       `fill="none" stroke="${p.color}" stroke-width="1" stroke-opacity="0.8"/>`,
     );
     out.push(

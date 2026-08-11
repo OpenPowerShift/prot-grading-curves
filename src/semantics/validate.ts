@@ -1703,10 +1703,20 @@ function checkAnnotationSpan(ctx: Ctx, item: AnnotateBlock): void {
 
   /* The other coordinate: where along the perpendicular axis it sits. */
   if (from.quantity === 'time') {
-    if (item.at_I_A == null && (item.conditions?.length ?? 0) === 0) {
+    /*
+     * Any current the span could be read in anchors it -- not only
+     * `at_I`. A span on an earth-fault sheet is routinely given
+     * `at_residual` or `at_I0`, and refusing those while accepting only
+     * the phase figure meant the one anchor an earth or sequence study
+     * would actually write was rejected as though none had been given.
+     */
+    const hasAnchor = item.at_I_A != null || item.at_I1_A != null
+      || item.at_I2_A != null || item.at_I0_A != null || item.at_earth_A != null;
+    if (!hasAnchor && (item.conditions?.length ?? 0) === 0) {
       add(ctx, 'SPAN_NO_ANCHOR', 'error',
         'a span between two times is drawn vertically, so it needs a current ' +
-        'to stand at: give at_I, or name a fault or scenario',
+        'to stand at: give at_I (or at_I1 / at_I2 / at_I0 / at_residual), or ' +
+        'name a fault or scenario',
         item.loc);
     }
     return;

@@ -334,15 +334,15 @@ domain-t 0.01,1584.893192
 [annotations] polygon 3 pts
 [annotations] line 832.7,436.2..844.7,436.2
 [annotations] line 832.7,407.7..844.7,407.7
-[annotations] path n=2 bbox=838.7,388.4..848.7,421.9
-[annotations] text 848.7,390.7 text-anchor=start font-size=11 font-weight=600 "CTI 1.1 s"
+[annotations] path n=2 bbox=809.0,388.3..838.7,421.9
+[annotations] text 809.0,390.6 text-anchor=start font-size=11 font-weight=600 "CTI 1.1 s"
 [annotations] line 797.0,452.9..797.0,429.1
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
 [annotations] line 791.0,452.9..803.0,452.9
 [annotations] line 791.0,429.1..803.0,429.1
-[annotations] path n=2 bbox=797.0,441.0..807.0,441.0
-[annotations] text 807.0,443.3 text-anchor=start font-size=11 font-weight=600 "CTI 538 ms"
+[annotations] path n=2 bbox=787.0,441.0..797.0,474.5
+[annotations] text 787.0,476.8 text-anchor=end font-size=11 font-weight=600 "CTI 538 ms"
 [annotations] line 732.4,492.2..732.4,441.9
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
@@ -357,8 +357,8 @@ domain-t 0.01,1584.893192
 [annotations] line 627.3,453.2..639.3,453.2
 [annotations] text 643.3,499.0 text-anchor=start font-size=11 font-weight=600 "CTI 530 ms"
 [annotations] circle 838.7,407.7 r=3.5
-[annotations] path n=3 bbox=838.7,346.7..862.7,407.7
-[annotations] text 862.7,351.3 text-anchor=start font-size=11 "Incomer at bus fault (8.2kA, 2.03 s)"
+[annotations] path n=3 bbox=746.2,339.4..838.7,407.7
+[annotations] text 756.2,344.0 text-anchor=start font-size=11 "Incomer at bus fault (8.2kA, 2.03 s)"
 [fault-band] line 603.3,602.0..603.3,627.0 class=tc-fault
 [fault-band] text 605.3,636.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "Sub min · 950 A"
 [fault-band] line 633.3,602.0..633.3,641.0 class=tc-fault

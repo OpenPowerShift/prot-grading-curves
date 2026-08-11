@@ -217,7 +217,7 @@ export const KEYWORDS = new Set([
   'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max',
   'residual_min', 'residual_max',
   'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target',
-  'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t',
+  'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'at_t',
   'rating_I', 'rating_V', 'rating_S',
   /* Recognised only to be refused with the new spelling. */
   'I_A', 'min_A', 'max_A', 'earth_A', 'I0_A', 'I2_A', 't_s',
@@ -890,6 +890,7 @@ class Parser {
         case 'color': p.color = this.parseStringOrIdent(); break;
         case 'description': p.description = this.parseStringOrIdent(); break;
         case 'coords': p.coords = this.parseBool(); break;
+        case 'comment': p.comment = this.parseStringOrIdent(); break;
         case 'shape': {
           const v = this.matchKeyword('circle','square','diamond','triangle','cross','x');
           if (v) p.shape = v as import('./ast.js').PointBlock['shape'];
@@ -899,7 +900,7 @@ class Parser {
           this.parseScalarValue();
           this.noteUnknownKey('a point', k, ['I', 'I1', 'I2', 'I0', 'residual', 't',
             'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'voltage',
-            'view', 'views', 'color', 'description', 'coords', 'shape', 'on_curve']);
+            'view', 'views', 'color', 'description', 'coords', 'shape', 'on_curve', 'comment']);
           break;
       }
       this.eat('SEMI');
@@ -971,8 +972,10 @@ class Parser {
                 if (k.image === 'V') lvl.kV = this.parseNumberWithUnit_kV('V');
                 else if (k.image === 'description') {
                   lvl.description = String(this.parseScalarValue());
+                } else if (k.image === 'comment') {
+                  lvl.comment = String(this.parseScalarValue());
                 } else {
-                  this.noteUnknownKey('a voltage level', k, ['V', 'description']);
+                  this.noteUnknownKey('a voltage level', k, ['V', 'description', 'comment']);
                   this.parseScalarValue();
                 }
                 this.eat('SEMI');
@@ -1075,11 +1078,15 @@ class Parser {
               if (k) sys.I_units = k as 'primary' | 'secondary';
               this.eat('SEMI');
             } continue;
+          case 'comment':
+            this.pos++; this.expect('EQUALS', '=');
+            sys.comment = this.parseStringOrIdent();
+            this.eat('SEMI'); continue;
           default:
             /* `t` is the switch subject here, the loop reading tokens
              * rather than a `k` bound per arm. */
             this.noteUnknownKey('system', t,
-              ['voltages', 'zero_sequence', 'base_S', 'I_base', 'I_units']);
+              ['voltages', 'zero_sequence', 'base_S', 'I_base', 'I_units', 'comment']);
             this.pos++;
             continue;
         }
@@ -1207,6 +1214,14 @@ class Parser {
         continue;
       }
 
+      if (t.image === 'comment') {
+        this.pos++;
+        this.expect('EQUALS', '=');
+        block.comment = this.parseStringOrIdent();
+        this.eat('SEMI');
+        continue;
+      }
+
       if (t.image === 'type') {
         this.pos++;
         this.expect('EQUALS', '=');
@@ -1242,7 +1257,7 @@ class Parser {
        * so -- silently skipped, a mistyped `level` or `sees` took a
        * whole level's figures out of the study without a word. */
       this.pos++;
-      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'name', 'description', 'view', 'views']);
+      this.noteUnknownKey('a scenario', t, ['level', 'sees', 'type', 'name', 'description', 'comment', 'view', 'views']);
       if (this.at('EQUALS')) { this.pos++; this.parseScalarValue(); this.eat('SEMI'); }
       else {
         /*
@@ -1332,6 +1347,11 @@ class Parser {
               if (tok) f.description = unquote(tok.image);
               break;
             }
+            case 'comment': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) f.comment = unquote(tok.image);
+              break;
+            }
             default: /* ignore */ this.parseScalarValue();
               /*
                * Strict, like every other block whose keys are numbers.
@@ -1343,7 +1363,7 @@ class Parser {
                * at exit 0. A wrong key is a wrong number, and a
                * `faults` block is nothing but numbers.
                */
-              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max', 'residual_min', 'residual_max', 'type', 'voltage', 'view', 'views', 'name', 'description'], /* strict */ true);
+              this.noteUnknownKey('a fault', k, ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max', 'residual_min', 'residual_max', 'type', 'voltage', 'view', 'views', 'name', 'description', 'comment'], /* strict */ true);
           }
           this.eat('SEMI');
         }
@@ -1383,7 +1403,8 @@ class Parser {
             case 'at_I2': t.at_I2_A = this.parseNumberWithUnit_A('at_I2'); break;
             case 'at_I0': t.at_I0_A = this.parseNumberWithUnit_A('at_I0'); break;
             case 'at_residual':
-              t.at_earth_A = this.parseNumberWithUnit_A('at_residual'); break;
+            case 'at_3I0':
+              t.at_earth_A = this.parseNumberWithUnit_A(k.image); break;
             case 'type': {
               const kw = this.matchKeyword(
                 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
@@ -1406,11 +1427,16 @@ class Parser {
               if (tok) t.description = unquote(tok.image);
               break;
             }
+            case 'comment': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) t.comment = unquote(tok.image);
+              break;
+            }
             default:
               this.parseScalarValue();
               this.noteUnknownKey('a time', k, [
-                't', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'type',
-                'view', 'views', 'description']);
+                't', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'type',
+                'view', 'views', 'description', 'comment']);
           }
           this.eat('SEMI');
         }
@@ -2066,8 +2092,13 @@ if (kwName === 'flex_points') {
             a.at_I2_A = this.parseNumberWithUnit_A('at_I2'); this.eat('SEMI'); break;
           case 'at_I0':
             a.at_I0_A = this.parseNumberWithUnit_A('at_I0'); this.eat('SEMI'); break;
+          /* `at_3I0` is the same figure under the spec's own name for
+           * it -- residual is `3*I0`, and a study that thinks of the
+           * axis as `3I0` (as `quantity` itself may be spelled) should
+           * not have to translate the anchor to a different word. */
           case 'at_residual':
-            a.at_earth_A = this.parseNumberWithUnit_A('at_residual'); this.eat('SEMI'); break;
+          case 'at_3I0':
+            a.at_earth_A = this.parseNumberWithUnit_A(k.image); this.eat('SEMI'); break;
           case 'type': {
             const kw = this.matchKeyword(
               'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
@@ -2171,8 +2202,15 @@ if (kwName === 'flex_points') {
               if (tok) a.color = unquote(tok.image);
             }
             break;
+          case 'comment':
+            {
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) a.comment = unquote(tok.image);
+            }
+            break;
           default:
-            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_t', 'from', 'to', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords', 'view', 'views']);
+            this.noteUnknownKey('an annotate', k, ['on_curve', 'primary', 'backup', 'point', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'at_t', 'from', 'to', 'voltage', 'type', 'fault', 'faults', 'scenario', 'scenarios', 'label', 'style', 'color', 'coords', 'view', 'views', 'comment']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -2216,8 +2254,14 @@ if (kwName === 'flex_points') {
             if (tok) g.description = unquote(tok.image);
             break;
           }
+          case 'comment': {
+            const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+            this.eat('SEMI');
+            if (tok) g.comment = unquote(tok.image);
+            break;
+          }
           default:
-            this.noteUnknownKey('a group', k, ['members', 'name', 'description']);
+            this.noteUnknownKey('a group', k, ['members', 'name', 'description', 'comment']);
             this.parseScalarValue();
             this.eat('SEMI');
         }
@@ -2288,9 +2332,16 @@ if (kwName === 'flex_points') {
               if (tok) c.label = unquote(tok.image);
             }
             break;
+          case 'comment':
+            {
+              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              this.eat('SEMI');
+              if (tok) c.comment = unquote(tok.image);
+            }
+            break;
           default:
             this.noteUnknownKey('a combine', k,
-              ['name', 'sources', 'as', 'voltage', 'color', 'style', 'label']);
+              ['name', 'sources', 'as', 'voltage', 'color', 'style', 'label', 'comment']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -2471,8 +2522,10 @@ if (kwName === 'flex_points') {
           /* Which sheet a non-interactive render draws. */
           case 'default':
             v.isDefault = this.parseBool(); this.eat('SEMI'); break;
+          case 'comment':
+            v.comment = this.parseStringOrIdent(); this.eat('SEMI'); break;
           default:
-            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'nudge_px', 'reference_ct']);
+            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'nudge_px', 'reference_ct', 'comment']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }

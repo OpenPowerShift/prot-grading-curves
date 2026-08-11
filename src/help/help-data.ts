@@ -56,6 +56,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   device:      M('top', 'Auxiliary TCC asset: fuse, cable, transformer damage, recloser, motor.', 'device "ferraz_abc_100a" { kind = fuse; ... }'),
   grade:       M('top', 'A grading pair: primary / backup / fault / margin, optionally solved.', 'grade { primary = R_FDR:51; backup = R_INC:51; ... }'),
   combine:     M('top', 'Synthetic curve -- pointwise min/max/sum of source curves.', 'combine { name = "OR"; sources = [R_FDR:51, R_INC:51]; as = envelope_min; }'),
+  group:       M('top', 'A protection chain: the relays in series on one path, upstream first. A view names a group to draw exactly that chain.', 'group BESS_CHAIN { members = [R_INCOMER, R_FEEDER, R_RMU]; }'),
   scenario:    M('top', 'One condition with its currents at every level, so nothing is referred across a transformer. As a field on grade, annotate or point, it names one.', 'scenario "LV earth fault" { type = single_phase_earth; level "LV" { I = 460 A; I0 = 153 A; } }'),
   annotate:    M('top', 'A leader-line annotation on a curve at a specific current, or the margin between two.', 'annotate { on_curve = R_FDR:51; at_I = 8 kA; label = "Trip"; }'),
   point:       M('top', 'A marked (current, time) coordinate. Declares its current as a fault does -- I, I2, I0, residual -- or takes it from a named condition.', 'point "inrush" { I = 2.4 kA; t = 100 ms; label = "Inrush"; }'),
@@ -171,6 +172,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   I0_max: M('faults', 'Highest zero-sequence current for this condition.', 'I0_max = 150 A;'),
   residual_min: M('faults', 'Lowest residual (3*I0) for this condition.', 'residual_min = 150 A;'),
   residual_max: M('faults', 'Highest residual (3*I0) for this condition.', 'residual_max = 450 A;'),
+  members:     M('group', 'Relays in series on one path, upstream first. A view naming this group draws these relays and no others.', 'members = [R_INCOMER, R_FEEDER, R_RMU];'),
   'group.members': M('group', 'Relays in series on one path, upstream first. A view naming this group draws these relays and no others.', 'members = [R_INCOMER, R_FEEDER, R_RMU];'),
   'view.group': M('view', 'The protection chain this sheet draws. An element\u2019s own view/views still wins, for exceptions.', 'group = BESS_CHAIN;'),
   views:       M('faults', 'Sheets this belongs to, as a list -- the same key as `view`, spelled for more than one.', 'views = ["Phase", "Earth"];'),
@@ -238,7 +240,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   at_I1:       M('annotate', 'Position the mark at a positive-sequence current.', 'at_I1 = 800 A;'),
   at_I2:       M('annotate', 'Position the mark at a negative-sequence current.', 'at_I2 = 225 A;'),
   at_I0:       M('annotate', 'Position the mark at a zero-sequence component.', 'at_I0 = 150 A;'),
-  at_residual: M('annotate', 'Position the mark at the residual 3*I0.', 'at_residual = 2.4 kA;'),
+  at_residual: M('annotate', 'Position the mark at the residual 3*I0. Same figure as `at_3I0`, spelled the way the language names the component elsewhere.', 'at_residual = 2.4 kA;'),
+  at_3I0:      M('annotate', 'Position the mark at the residual 3*I0 -- an alias for `at_residual`, spelled to match `quantity = 3I0`.', 'at_3I0 = 2.4 kA;'),
   as:          M('combine', 'How the source curves are combined: envelope_min, envelope_max, sum or select_first.', 'as = envelope_min;'),
   sources:     M('combine', 'The curves being combined, by reference.', 'sources = [R_FDR:51, R_INC:51];'),
   default:     M('view', 'Draw this sheet when nothing else names one.', 'default = true;'),
@@ -323,7 +326,7 @@ export const CURVE_HELP: Record<string, string> = (() => {
  */
 export const TOP_BLOCK_KEYWORDS = [
   'meta', 'system', 'faults', 'times', 'scenario', 'relay', 'element', 'device',
-  'grade', 'combine', 'annotate', 'point', 'view', 'page', 'notes',
+  'grade', 'combine', 'group', 'annotate', 'point', 'view', 'page', 'notes',
 ] as const;
 
 /**
@@ -336,13 +339,14 @@ export const TOP_BLOCK_KEYWORDS = [
  */
 export const BLOCK_FIELDS: Record<string, string[]> = {
   meta:        ['project', 'study', 'engineer', 'date', 'standard', 'margin'],
-  system:      ['voltages', 'zero_sequence', 'transformer', 'base_S', 'I_base', 'I_units'],
-  'system.voltages': ['V', 'description'],
+  system:      ['voltages', 'zero_sequence', 'transformer', 'base_S', 'I_base', 'I_units',
+               'comment'],
+  'system.voltages': ['V', 'description', 'comment'],
   faults:      ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type',
-               'voltage', 'view', 'views', 'description'],
-  times:       ['t', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'type',
-               'view', 'views', 'description'],
-  scenario:    ['type', 'description', 'level', 'sees'],
+               'voltage', 'view', 'views', 'description', 'comment'],
+  times:       ['t', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'type',
+               'view', 'views', 'description', 'comment'],
+  scenario:    ['type', 'description', 'comment', 'level', 'sees'],
   'scenario.level': ['I', 'I1', 'I2', 'I0', 'residual', 'share'],
   relay:       ['name', 'voltage', 'maker', 'model', 'ct_ratio', 'faults',
                'comment', 'description', 'reference'],
@@ -365,7 +369,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'second_axis', 'nudge_px', 'reference_ct', 'stages',
                'current_min', 'current_max', 'time_min', 'time_max',
                'current_pad', 'current_pad_low', 'current_pad_high',
-               'time_pad', 'time_pad_low', 'time_pad_high'],
+               'time_pad', 'time_pad_low', 'time_pad_high', 'comment'],
   page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
                'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders',
                'faults', 'times'],
@@ -385,16 +389,24 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
    * highlighter drew them as values while `left` and `right` -- which
    * the footer also uses -- came out as fields. */
   margins_mm:  ['top', 'right', 'bottom', 'left'],
-  combined:    ['name', 'sources', 'as', 'voltage', 'color', 'style', 'label'],
+  /*
+   * Keyed by the keyword that opens the block (`detectActiveBlock`
+   * reads it from the brace, not from the block's own name for
+   * itself) -- this used to be spelled `combined` and so was never
+   * matched, and a `combine { }` body offered nothing but `comment`.
+   */
+  combine:     ['name', 'sources', 'as', 'voltage', 'color', 'style', 'label', 'comment'],
+  group:       ['members', 'name', 'description', 'comment'],
   /* `fault`/`scenario` (and their plurals) all name conditions: the
    * current comes from the study rather than being typed in. */
   annotate:    ['view', 'views', 'on_curve', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual',
+               'at_3I0',
                'type', 'at_t', 'from', 'to', 'voltage', 'primary', 'backup', 'point',
                'fault', 'faults', 'scenario', 'scenarios',
-               'label', 'style', 'color', 'coords'],
+               'label', 'style', 'color', 'coords', 'comment'],
   point:       ['view', 'views', 'I', 'I1', 'I2', 'I0', 'residual', 'type', 't',
                'fault', 'faults', 'scenario', 'scenarios', 'voltage',
-               'label', 'shape', 'color', 'coords', 'description'],
+               'label', 'shape', 'color', 'coords', 'description', 'comment'],
   notes:       ['engineer', 'date', 'revision'],
 };
 
@@ -634,7 +646,7 @@ export const UNIT_FAMILY: Record<string, keyof typeof FIELD_UNITS> = {
   residual: '__current', I0: '__current', I2: '__current',
   I_base: '__current', rating_I: '__current',
   at_I: '__current', at_I1: '__current', at_I2: '__current',
-  at_I0: '__current', at_residual: '__current',
+  at_I0: '__current', at_residual: '__current', at_3I0: '__current',
   current_min: '__current', current_max: '__current', I_cutoff: '__current',
   upstream_to: '__current',
   t_delay: '__time', t: '__time', at_t: '__time',

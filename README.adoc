@@ -1283,8 +1283,9 @@ TIP: Open it in the playground: https://openpowershift.github.io/time-current-gr
 # operates at all, so `measures` has no default and must be stated.
 #
 # `annotate` can name the component it is placed at — `at_I` for phase,
-# `at_I1`, `at_I2`, `at_I0`, `at_residual` — instead of leaving the
-# reader to work out which current a bare number meant.
+# `at_I1`, `at_I2`, `at_I0`, `at_residual` (or `at_3I0`, the same figure
+# spelled the way `quantity` names it) — instead of leaving the reader
+# to work out which current a bare number meant.
 
 meta {
   project = "Cardross 33 kV";
@@ -1524,7 +1525,7 @@ annotate {
 
 annotate {
   on_curve = R_TEE:51G;
-  at_residual = 1.2 kA;
+  at_3I0 = 1.2 kA;                # same figure as at_residual
   style = pin;                    # a marker only — no label to lose
   views = [Phase, NEGATIVE_SEQUENCE, Residual];
 }
@@ -1555,7 +1556,7 @@ times {
   EARTH_FAULT_CLEARANCE {
     name = "Earth-fault clearance";
     t = 800 ms;
-    at_residual = 1.2 kA;
+    at_3I0 = 1.2 kA;    # same figure as at_residual, spelled to match `quantity = 3I0`
     views = [Residual];
   }
 

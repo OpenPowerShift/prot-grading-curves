@@ -72,6 +72,7 @@ export interface VoltageLevel {
   name: string;
   kV: number;
   description?: string;
+  comment?: string;
   /** Where it was written; see the note on `Fault.loc`. */
   loc?: SourceLocation;
 }
@@ -105,6 +106,7 @@ export interface Fault {
   voltage?: string;
   voltage_kV?: number;
   description?: string;
+  comment?: string;
   /**
    * Where it was written.
    *
@@ -306,6 +308,7 @@ export interface Group {
   id: string;
   name?: string;
   description?: string;
+  comment?: string;
   /** Relay ids, upstream first. */
   members: string[];
   /** Where it was written; see the note on `Fault.loc`. */
@@ -321,6 +324,7 @@ export interface Scenario {
   /** Fault type, as on a `Fault`. */
   type?: FaultType;
   description?: string;
+  comment?: string;
   loc?: SourceLocation;
   levels: Map<string, ScenarioLevel>;
   /** Share of a level's current a given relay carries, in percent. */
@@ -346,6 +350,7 @@ export interface Device {
   total_clear?: FlexPoint[];
   t_delay_s?: number;
   description?: string;
+  comment?: string;
 }
 
 export interface Combine {
@@ -367,6 +372,7 @@ export interface Combine {
   color?: string;
   style?: string;
   label?: string;
+  comment?: string;
 }
 
 export interface Grade {
@@ -418,6 +424,7 @@ export interface RequiredTime {
   at_earth_A?: number;
   type?: FaultType;
   description?: string;
+  comment?: string;
   loc?: SourceLocation;
 }
 
@@ -461,6 +468,7 @@ export interface StudyPoint {
   shape?: 'circle' | 'square' | 'diamond' | 'triangle' | 'cross' | 'x';
   coords?: boolean;
   description?: string;
+  comment?: string;
   /** Where it was written; see the note on `Fault.loc`. */
   loc?: SourceLocation;
 }
@@ -512,6 +520,7 @@ export interface Annotation {
   style: 'leader' | 'pin' | 'tag';
   color?: string;
   coords?: boolean;
+  comment?: string;
 }
 
 export interface Study {
@@ -705,6 +714,7 @@ export function buildStudy(doc: Document): Study {
             name: lvl.name,
             kV: lvl.kV,
             description: lvl.description,
+            comment: lvl.comment,
             loc: lvl.loc ?? item.loc,
           });
         }
@@ -714,6 +724,7 @@ export function buildStudy(doc: Document): Study {
           id: item.id,
           name: item.name,
           description: item.description,
+          comment: item.comment,
           members: item.members,
           loc: item.loc,
         });
@@ -734,6 +745,7 @@ export function buildStudy(doc: Document): Study {
             type: isFaultType(t.faultType) ? t.faultType : undefined,
             views: t.views,
             description: t.description,
+            comment: t.comment,
             loc: t.loc,
           });
         }
@@ -789,6 +801,7 @@ export function buildStudy(doc: Document): Study {
       name: displayName(item),
       type: isFaultType(item.faultType) ? item.faultType : undefined,
       description: item.description,
+      comment: item.comment,
       loc: item.loc,
       levels,
       shares: new Map(item.shares.map((sh) => [sh.relay, sh.current_pct])),
@@ -822,6 +835,7 @@ export function buildStudy(doc: Document): Study {
         voltage: f.voltage,
         voltage_kV: kV,
         description: f.description,
+        comment: f.comment,
         loc: f.loc,
       });
     }
@@ -857,6 +871,7 @@ export function buildStudy(doc: Document): Study {
           total_clear: sortPoints(item.total_clear),
           t_delay_s: item.t_delay,
           description: item.description,
+          comment: item.comment,
         });
         break;
       case 'point':
@@ -898,6 +913,7 @@ export function buildStudy(doc: Document): Study {
               shape: item.shape,
               coords: item.coords,
               description: item.description,
+              comment: item.comment,
               loc: item.loc,
             });
           }
@@ -957,6 +973,7 @@ export function buildStudy(doc: Document): Study {
             style: item.style ?? 'leader',
             color: item.color,
             coords: item.coords,
+            comment: item.comment,
           });
         }
         break;
@@ -969,6 +986,7 @@ export function buildStudy(doc: Document): Study {
           color: item.color,
           style: item.style,
           label: item.label,
+          comment: item.comment,
         });
         break;
       case 'grade':

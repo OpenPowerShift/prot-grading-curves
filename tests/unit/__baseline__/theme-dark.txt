@@ -331,7 +331,7 @@ domain-t 0.01,1000
 [curves] path n=125 bbox=471.7,66.0..1056.0,645.3 class=tc-curve data-curve=R_FDR:51X data-ref=R_FDR:51X data-voltage=LV
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
-[points] text 680.2,590.0 text-anchor=start font-size=11 "TX1 inrush12 x FLC, 100 ms"
+[points] text 743.0,613.8 text-anchor=start font-size=11 "TX1 inrush12 x FLC, 100 ms"
 [annotations] line 650.5,650.1..650.5,435.2
 [annotations] polygon 3 pts
 [annotations] polygon 3 pts
@@ -340,8 +340,8 @@ domain-t 0.01,1000
 [annotations] path n=2 bbox=650.5,542.6..660.5,559.4
 [annotations] text 660.5,561.7 text-anchor=start font-size=11 font-weight=600 "CTI 1.86 s"
 [annotations] circle 848.0,500.9 r=3.5
-[annotations] path n=3 bbox=848.0,484.2..872.0,500.9
-[annotations] text 872.0,486.5 text-anchor=start font-size=11 "HV max fault"
+[annotations] path n=3 bbox=798.4,470.0..848.0,500.9
+[annotations] text 808.4,472.3 text-anchor=start font-size=11 "HV max fault"
 [fault-band] line 517.4,745.0..517.4,770.0 class=tc-fault
 [fault-band] text 519.4,779.0 class=tc-fault-label text-anchor=start font-size=11 font-weight=600 "LV min · 500 A"
 [fault-band] line 650.5,745.0..650.5,770.0 class=tc-fault

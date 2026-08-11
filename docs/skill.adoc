@@ -176,6 +176,7 @@ Work down it. Stop at the first row that does not apply to your report.
 | 7 | states a required clearance time | a `times` block, <<times>>
 | 8 | includes a fuse or cable damage curve | a `device`, <<devices>>
 | 9 | is several chains, or needs several sheets | `group` and `view`, <<sheets>>
+| 10 | needs a mark or margin figure | `point` / `annotate`, <<marks>>
 |===
 
 Rows 1--4 cover most reports. Rows 5--9 are the advanced cases: use
@@ -253,13 +254,10 @@ view EARTH { quantity = 3I0;   voltage = MV; title = "Earth grading"; }
 [#levels]
 == 4. Across a transformer
 
-Declare both levels. Each relay says which one it is on, and the tool
-refers currents between them by the turns ratio.
-
-Declare both levels **and the transformer between them**. The turns
-ratio alone refers a balanced fault correctly and nothing else, so the
-vector group is not optional decoration -- write what the nameplate
-says.
+Declare both levels **and the transformer between them**. Each relay
+says which one it is on. The turns ratio alone refers a balanced fault
+correctly and nothing else, so the vector group is not optional
+decoration -- write what the nameplate says.
 
 [source,tc]
 ----
@@ -422,6 +420,31 @@ view F1_PHASE {
     times { T_LOCAL { name = "RMU limit"; t = 500 ms; at_I = 4 kA; } }
 }
 ----
+
+[#marks]
+== 10. Marking the sheet: points and annotations
+
+A `point` is a coordinate -- inrush, a damage point -- a curve must
+sit clear of. An `annotate` is a caption or a margin figure. Both take
+a current as a `fault` does, or a *condition*: `fault = F_BUS;`, a
+`scenario`, or a list for one annotation per condition. `annotate`
+has three shapes:
+
+[cols="1,3", options="header"]
+|===
+| Shape | Written
+
+| A caption on one curve | `on_curve` + a current (`at_I` or a
+  component), or `at_t` to read the curve at a time instead.
+| A margin between two things | `primary` + `backup`, or `primary` +
+  `point = "..."`. Vertical (time gap) unless `at_t` asks for current.
+| A span, no curve at either end | `from` + `to`, both currents or both
+  times -- a grading band, a supplier's range.
+|===
+
+`style` is `leader` (default, elbowed to a clear label), `pin`, or
+`tag` (caption above, no leader). `label`, `color`, `coords` work as on
+a `point`. Both take `view` / `views`, as `faults` do.
 
 == Naming
 

@@ -565,14 +565,36 @@ class Parser {
     if (this.eat('LBRACK')) {
       const names: string[] = [];
       if (!this.at('RBRACK')) {
-        names.push(this.parseStringOrIdent());
-        while (this.eat('COMMA')) names.push(this.parseStringOrIdent());
+        names.push(this.parseConditionOrName());
+        while (this.eat('COMMA')) names.push(this.parseConditionOrName());
       }
       this.expect('RBRACK', ']');
       return names;
     }
-    const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
-    return tok ? [unquote(tok.image)] : [];
+    const name = this.parseConditionOrName();
+    return name ? [name] : [];
+  }
+
+  /**
+   * One name, or `name.level` -- a scenario condition read at one of
+   * its own declared levels, rather than whatever the marker's own
+   * `voltage` would otherwise pick.
+   *
+   * Only meaningful where the name refers to a `scenario`, so a `views`
+   * list never writes one; harmless everywhere else, since a plain name
+   * with no `.` following it is unaffected. `resolveCondition` is where
+   * the split actually happens -- this only has to keep the two halves
+   * from being read as separate tokens.
+   */
+  private parseConditionOrName(): string {
+    const base = this.parseStringOrIdent();
+    if (!base) return base;
+    if (this.at('DOT')) {
+      this.pos++; // '.'
+      const level = this.parseStringOrIdent();
+      if (level) return `${base}.${level}`;
+    }
+    return base;
   }
 
   /**

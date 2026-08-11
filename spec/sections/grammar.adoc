@@ -427,7 +427,11 @@ condition-asg   ::= condition-key "=" condition-list ";" ;
 condition-key   ::= "fault" | "faults" | "scenario" | "scenarios" ;
 condition-list  ::= condition-name
                   | "[" condition-name { "," condition-name } "]" ;
-condition-name  ::= string | identifier ;
+(* The `.level` suffix names one of a scenario's own declared levels
+   directly, overriding whatever level a marker's `voltage` or the
+   element it is on would otherwise supply. Meaningless for a `fault`,
+   which has only the one level it was declared at. *)
+condition-name  ::= ( string | identifier ) [ "." ( string | identifier ) ] ;
 ----
 
 A block naming several conditions is drawn once per condition, each at

@@ -71,6 +71,32 @@ export function resolveCondition(
   name: string,
   level?: string,
 ): ResolvedCondition | null {
+  /*
+   * `"S.HV"` names one of a scenario's own levels directly, in the
+   * list a `fault`/`scenario` field already takes -- so `fault = [S.HV,
+   * S.LV]` draws one mark per level without two separate blocks, and
+   * without depending on a marker's `voltage` or its `on_curve` to
+   * infer which level was meant.
+   *
+   * Only split where the whole name does not already resolve: a fault
+   * or scenario is never declared with a literal `.` in its id, but
+   * checking first means one never could be shadowed by this. The
+   * explicit level then wins over whatever the caller passed in --
+   * naming it in the reference is more specific than inferring it from
+   * context.
+   */
+  if (!study.faults.has(name) && !study.scenarios.has(name)) {
+    const dot = name.indexOf('.');
+    if (dot > 0) {
+      const base = name.slice(0, dot);
+      const explicitLevel = name.slice(dot + 1);
+      if (explicitLevel && study.scenarios.has(base)) {
+        name = base;
+        level = explicitLevel;
+      }
+    }
+  }
+
   const fault = study.faults.get(name);
   if (fault) {
     return {

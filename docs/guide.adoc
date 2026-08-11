@@ -1189,6 +1189,16 @@ error rather than a precedence rule to remember. Naming a scenario that
 declares nothing at the point's level is an error too: the mark asks for
 a position that was never measured.
 
+A scenario condition may name its level directly, `name.level`, instead
+of a `voltage` field:
+
+[source,tc]
+----
+point "LV" { scenario = "system normal".LV; t = 500 ms; }
+----
+
+A list draws one mark per level; the named level wins over context.
+
 ==== Which current the sheet is drawn against
 
 By default the axis is simply *current*, and every curve is drawn

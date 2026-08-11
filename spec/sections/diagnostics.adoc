@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-135 codes.
+137 codes.
 
 === Lexing and parsing
 
@@ -218,6 +218,8 @@ each, most serious first.
 |===
 | Code | Severity | Meaning
 
+| `EXCLUSION_EMPTIES_SCOPE` | warning | A `~` exclusion list naming every declared view or condition, leaving nothing included.
+| `MIXED_INCLUSION_EXCLUSION` | error | A views/condition list mixing a plain name with `~` exclusions, which has no single reading.
 | `PAGE_MARGIN_NEGATIVE` | error | A negative paper margin.
 | `PAGE_SCALE_INVERTED` | error | A manual axis scale whose minimum is at or above its maximum.
 | `PAGE_SIZE_INCOMPLETE` | error | A custom sheet giving only one of `width_mm` and `height_mm`.

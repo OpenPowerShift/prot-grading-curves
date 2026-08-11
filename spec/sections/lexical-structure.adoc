@@ -21,6 +21,13 @@
 * `// ...` (to end of line) -- accepted for parity with C / JavaScript.
 * `/* ... */` -- block comments; do *not* nest.
 
+=== Exclusion
+
+`~` prefixes one entry of a `views` list or a condition list
+(`fault` / `faults` / `scenario` / `scenarios`), reading "every
+declared one except this" rather than naming one. See
+<<grammar,Grammar>> `name-or-list` and `condition-name`.
+
 === Identifiers
 
 There are three kinds, with different rules.

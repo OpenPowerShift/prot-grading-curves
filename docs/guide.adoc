@@ -1498,8 +1498,7 @@ annotate { on_curve = R:46; at_I = 800 A; label = "I2 only"; view = "I2"; }
 ----
 
 A study with a phase sheet and a sequence sheet carries marks that mean
-something on one and nothing on the other -- an inrush figure in phase
-amps, a clearance belonging only to the earth-fault story.
+something on one and nothing on the other.
 
 An `element` takes it too, which keeps a whole *curve* to the sheets it
 belongs on rather than only the marks around it:
@@ -1515,8 +1514,9 @@ A curve kept off a sheet is left out of that sheet's axis fit, so it
 cannot widen the scale for something not drawn; nor is it listed among
 the curves the sheet could not place.
 
-Leaving `view` off means every sheet, so nothing written before this
-changes.
+Leaving `view` off means every sheet. `~name` means every sheet but
+that one; mixing `~` with a plain name is refused. Works in `fault`
+lists too.
 
 === view -- one per sheet
 

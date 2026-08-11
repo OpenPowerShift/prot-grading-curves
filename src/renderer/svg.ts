@@ -893,7 +893,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * nothing, silently, on every sheet.
      */
     const here = view?.id ?? view?.name;
-    return here != null && scoped.views.includes(here);
+    if (here == null) return false;
+    /*
+     * `~NAME` reads as "every sheet except NAME". A list is validated
+     * to be all-positive or all-negative and never both, so the first
+     * entry says which this is; a study with only a `check` (no
+     * render) can still declare an exclusion the validator never saw
+     * checked here, so this reads the list rather than trusting that.
+     */
+    if (scoped.views.some((v) => v.startsWith('~'))) {
+      return !scoped.views.some((v) => v.slice(1) === here);
+    }
+    return scoped.views.includes(here);
   };
 
   const times = [...study.times.values()]

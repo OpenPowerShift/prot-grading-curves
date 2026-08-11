@@ -151,6 +151,8 @@ const parser: StreamParser<TcState> = {
     if (stream.match(';')) { state.afterEquals = false; return 'punctuation'; }
     if (stream.match(/^[(),]/)) return 'punctuation';
     if (stream.match(/^[:/]/)) return 'operator';
+    /* `~name` in a list: "every declared one except this". */
+    if (stream.match('~')) return 'operator';
 
     /* ---- identifiers ---------------------------------------------- */
     const word = stream.match(/^[A-Za-z_][\w]*/) as RegExpMatchArray | null;

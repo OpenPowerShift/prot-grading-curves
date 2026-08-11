@@ -272,7 +272,7 @@ export const KEYWORDS = new Set([
 
 export type TokenKind =
   | 'LBRACE' | 'RBRACE' | 'LBRACK' | 'RBRACK' | 'LPAREN' | 'RPAREN'
-  | 'SEMI' | 'COMMA' | 'EQUALS' | 'PERCENT' | 'SLASH' | 'DOT' | 'COLON'
+  | 'SEMI' | 'COMMA' | 'EQUALS' | 'PERCENT' | 'SLASH' | 'DOT' | 'COLON' | 'TILDE'
   | 'NUMBER' | 'STRING' | 'IDENT' | 'KW' | 'EOF';
 
 export interface Token {
@@ -359,13 +359,13 @@ export function tokenize(source: string): { tokens: Token[]; errors: ParseError[
 
     // punctuation
     const pu = c;
-    if ('{}[](),;=%./:'.includes(pu)) {
+    if ('{}[](),;=%./:~'.includes(pu)) {
       const kMap: Record<string, TokenKind> = {
         '{': 'LBRACE', '}': 'RBRACE',
         '[': 'LBRACK', ']': 'RBRACK',
         '(': 'LPAREN', ')': 'RPAREN',
         ',': 'COMMA', ';': 'SEMI', '=': 'EQUALS',
-        '%': 'PERCENT', '/': 'SLASH', '.': 'DOT', ':': 'COLON',
+        '%': 'PERCENT', '/': 'SLASH', '.': 'DOT', ':': 'COLON', '~': 'TILDE',
       };
       emit(kMap[pu], pu, i);
       i++; col++;
@@ -576,25 +576,36 @@ class Parser {
   }
 
   /**
-   * One name, or `name.level` -- a scenario condition read at one of
-   * its own declared levels, rather than whatever the marker's own
-   * `voltage` would otherwise pick.
+   * One name, optionally `~`-negated and optionally `name.level` -- a
+   * scenario condition read at one of its own declared levels, rather
+   * than whatever the marker's own `voltage` would otherwise pick.
    *
-   * Only meaningful where the name refers to a `scenario`, so a `views`
-   * list never writes one; harmless everywhere else, since a plain name
-   * with no `.` following it is unaffected. `resolveCondition` is where
-   * the split actually happens -- this only has to keep the two halves
-   * from being read as separate tokens.
+   * The `~` is kept as part of the returned string rather than parsed
+   * into a separate flag: every caller of `parseNameList` already
+   * carries the result as `string[]` into the AST and the model
+   * unchanged, and a single marker character survives that trip
+   * without a new field threaded through every one of them. Resolution
+   * -- turning `~X` into "every declared name except X" -- happens
+   * once, at the two places a list is actually read against the full
+   * set it is drawn from: `onThisSheet` for a `views` list, and
+   * `expandConditions` for a condition list.
+   *
+   * The dotted-level suffix is only meaningful where the name refers
+   * to a `scenario`, so a `views` list never writes one; harmless
+   * everywhere else, since a plain name with no `.` following it is
+   * unaffected.
    */
   private parseConditionOrName(): string {
+    const negated = this.eat('TILDE') != null;
     const base = this.parseStringOrIdent();
-    if (!base) return base;
+    if (!base) return negated ? '~' : base;
+    let name = base;
     if (this.at('DOT')) {
       this.pos++; // '.'
       const level = this.parseStringOrIdent();
-      if (level) return `${base}.${level}`;
+      if (level) name = `${base}.${level}`;
     }
-    return base;
+    return negated ? `~${name}` : name;
   }
 
   /**

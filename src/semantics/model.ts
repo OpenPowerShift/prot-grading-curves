@@ -646,8 +646,22 @@ function has(host: AnyMembered, key: string): boolean {
  * naming a fault twice should draw one annotation, not two on top of
  * each other.
  */
-function expandConditions(names: string[] | undefined): Array<string | undefined> {
+function expandConditions(
+  names: string[] | undefined,
+  allConditions: readonly string[],
+): Array<string | undefined> {
   if (!names || names.length === 0) return [undefined];
+  /*
+   * `~X` reads as "every declared condition except X" -- every fault
+   * and scenario the study names, not only the ones already used
+   * elsewhere on this mark. A list mixing `~` and plain names is
+   * refused by the validator before this runs, so the first entry
+   * settles which reading the whole list gets.
+   */
+  if (names.some((n) => n.startsWith('~'))) {
+    const excluded = new Set(names.filter((n) => n.startsWith('~')).map((n) => n.slice(1)));
+    return allConditions.filter((c) => !excluded.has(c));
+  }
   return [...new Set(names)];
 }
 
@@ -899,6 +913,10 @@ export function buildStudy(doc: Document): Study {
     }
   }
 
+  /* Every declared condition, for a `~X` in a point/annotate condition
+   * list -- resolved now that faults and scenarios are both built. */
+  const allConditionNames = [...study.faults.keys(), ...study.scenarios.keys()];
+
   /* Pass 3 -- relays, elements, devices, combines, grades. */
   for (const item of items) {
     switch (item.type) {
@@ -942,7 +960,7 @@ export function buildStudy(doc: Document): Study {
         {
           /* Counted after de-duplication, so a name written twice still
            * produces one unqualified marker. */
-          const conditions = expandConditions(item.conditions);
+          const conditions = expandConditions(item.conditions, allConditionNames);
           for (const condition of conditions) {
             const suffix = conditions.length > 1 && condition ? ` · ${condition}` : '';
             study.points.push({
@@ -978,7 +996,7 @@ export function buildStudy(doc: Document): Study {
         }
         break;
       case 'annotate':
-        for (const condition of expandConditions(item.conditions)) {
+        for (const condition of expandConditions(item.conditions, allConditionNames)) {
           study.annotations.push({
             /* Two references means a margin; one means a point. */
             /* Two references and a time is a current margin; two and a

@@ -122,6 +122,7 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateTimes(ctx);
   validateCurrents(ctx);
   validateAnnotations(ctx);
+  validatePointConditionLists(ctx);
   validatePoints(ctx);
   validateView(ctx);
   validatePage(ctx);
@@ -200,6 +201,52 @@ function validateTransformers(ctx: Ctx): void {
 /* ------------------------------------------------------------------ */
 
 /**
+ * The two ways a `~`-mixed or `~`-emptied list goes wrong, shared by
+ * every list that accepts `~name` -- `views` and a condition list
+ * alike.
+ *
+ * A list is read as an *include* list or an *exclude* list, decided by
+ * whichever the first entry is; mixing the two has no single reading,
+ * so it is refused rather than guessed at (`[A, ~B]` could mean "A, but
+ * never B" or "everything except A and B", and the two disagree the
+ * moment a third name is declared). An exclude list that names every
+ * declared thing is a plain mistake with a specific shape -- almost
+ * always a name copied from the wrong list -- so it is called out
+ * rather than silently drawing nothing, the way a `views` typo used to.
+ */
+function checkExclusionList(
+  ctx: Ctx,
+  raw: readonly string[],
+  universe: ReadonlySet<string> | readonly string[],
+  what: string,
+  kind: 'view' | 'condition',
+  loc?: SourceLocation,
+): void {
+  const negated = raw.filter((n) => n.startsWith('~'));
+  const positive = raw.filter((n) => !n.startsWith('~'));
+  if (negated.length === 0) return;
+
+  if (positive.length > 0) {
+    add(ctx, 'MIXED_INCLUSION_EXCLUSION', 'error',
+      `${what} mixes a plain name with \`~\` exclusions in one list; `
+      + 'write either the names it belongs to, or the names it does not -- not both, '
+      + 'since a list cannot be read as two different things at once',
+      loc);
+    return;
+  }
+
+  const all = universe instanceof Set ? universe : new Set(universe);
+  const excluded = new Set(negated.map((n) => n.slice(1)));
+  const remaining = [...all].filter((name) => !excluded.has(name));
+  if (all.size > 0 && remaining.length === 0) {
+    add(ctx, 'EXCLUSION_EMPTIES_SCOPE', 'warning',
+      `${what} excludes every declared ${kind}, which is the same as excluding it `
+      + `from all of them; check the ${kind === 'view' ? 'sheet' : 'condition'} names`,
+      loc);
+  }
+}
+
+/**
  * A `views` entry naming no declared sheet.
  *
  * `views` is an *include* list, so a name that matches nothing removes
@@ -223,14 +270,17 @@ function validateViewScopes(ctx: Ctx): void {
   if (study.views.length === 0) return;
 
   const check = (views: string[] | undefined, what: string, loc?: SourceLocation): void => {
-    for (const name of views ?? []) {
+    if (!views || views.length === 0) return;
+    checkExclusionList(ctx, views, declared, what, 'view', loc);
+    for (const raw of views) {
+      const name = raw.startsWith('~') ? raw.slice(1) : raw;
       if (declared.has(name)) continue;
       add(ctx, 'UNRESOLVED_VIEW', 'error',
-        `${what} is scoped to view ${name}, which is not declared; `
+        `${what} is scoped to view ${raw}, which is not declared; `
         + `it would be drawn on no sheet at all. Declared: `
         + [...declared].map((d) => d).join(', ')
         + didYouMean(suggest(name, declared)),
-        loc, name.length);
+        loc, raw.length);
     }
   };
 
@@ -1642,6 +1692,7 @@ function validateCurrents(ctx: Ctx): void {
 
 function validateAnnotations(ctx: Ctx): void {
   if (!ctx.doc) return;
+  const allConditionNames = [...ctx.study.faults.keys(), ...ctx.study.scenarios.keys()];
 
   for (const item of ctx.doc.items) {
     if (item.type !== 'annotate') continue;
@@ -1696,17 +1747,38 @@ function validateAnnotations(ctx: Ctx): void {
     checkAnnotationSpan(ctx, item);
     checkAnnotationPlacement(ctx, item, target);
 
-    for (const name of item.conditions ?? []) {
+    checkExclusionList(ctx, item.conditions ?? [], allConditionNames, 'annotate', 'condition', item.loc);
+    for (const raw of item.conditions ?? []) {
       /*
        * Judged at the level of whatever the annotation points at: each
        * side of a margin is evaluated in its own frame, exactly as
        * grading does, so that is the level a scenario has to cover.
+       *
+       * `~X` still has X checked for existence -- the exclusion is
+       * only meaningless when the thing excluded was never real.
        */
+      const name = raw.startsWith('~') ? raw.slice(1) : raw;
       const ref = item.on_curve ?? item.primary ?? item.backup;
       const target = ref ? resolveRef(ctx.study, ref) : undefined;
       const level = target?.element?.voltage ?? target?.device?.voltage;
       checkConditionReference(ctx, name, 'annotate', level, item.loc);
     }
+  }
+}
+
+/**
+ * A `point`'s own `fault` / `scenario` list, checked the same way an
+ * `annotate`'s is (`checkExclusionList`) -- a mixed or self-emptying
+ * list is the same mistake wherever it is written. Existence of each
+ * name is checked separately, once the point has been resolved to one
+ * condition per name; this only has the *list* in view.
+ */
+function validatePointConditionLists(ctx: Ctx): void {
+  if (!ctx.doc) return;
+  const allConditionNames = [...ctx.study.faults.keys(), ...ctx.study.scenarios.keys()];
+  for (const item of ctx.doc.items) {
+    if (item.type !== 'point') continue;
+    checkExclusionList(ctx, item.conditions ?? [], allConditionNames, `point "${item.id}"`, 'condition', item.loc);
   }
 }
 

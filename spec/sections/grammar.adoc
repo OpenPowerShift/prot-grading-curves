@@ -138,11 +138,19 @@ time-anchor-asg ::= ( "at_I" | "at_I1" | "at_I2" | "at_I0"
                     "=" number current-unit ";" ;
 
 (* Which sheets a mark belongs to, by `view` name. Absent means every
-   sheet. Accepted on `faults`, `times`, `point` and `annotate`: a
-   study with a phase sheet and a sequence sheet routinely carries
-   marks that mean something on one and nothing on the other. *)
+   sheet. Accepted on `faults`, `times`, `currents`, `point` and
+   `annotate`: a study with a phase sheet and a sequence sheet
+   routinely carries marks that mean something on one and nothing on
+   the other.
+
+   `~name` reads "every declared one except this" instead of naming
+   one. A list is read as an include list or an exclude list, decided
+   by its first entry; mixing the two (`[A, ~B]`) is refused, since
+   there is no single reading of it. The same `~` works in a
+   `condition-list` (see "Faults" / "Named conditions" above). *)
 scoped-view-asg ::= ( "view" | "views" ) "=" name-or-list ";" ;
-name-or-list    ::= string | "[" [ string { "," string } [ "," ] ] "]" ;
+name-or-list    ::= list-name | "[" [ list-name { "," list-name } [ "," ] ] "]" ;
+list-name       ::= [ "~" ] string ;
 ----
 
 === Currents (named plant/equipment ratings)
@@ -459,8 +467,12 @@ condition-list  ::= condition-name
 (* The `.level` suffix names one of a scenario's own declared levels
    directly, overriding whatever level a marker's `voltage` or the
    element it is on would otherwise supply. Meaningless for a `fault`,
-   which has only the one level it was declared at. *)
-condition-name  ::= ( string | identifier ) [ "." ( string | identifier ) ] ;
+   which has only the one level it was declared at.
+
+   A leading `~` reads "every declared fault and scenario except this
+   one", the same as in a `views` list; a list mixing `~` with a plain
+   name is refused for the same reason. *)
+condition-name  ::= [ "~" ] ( string | identifier ) [ "." ( string | identifier ) ] ;
 ----
 
 A block naming several conditions is drawn once per condition, each at

@@ -324,6 +324,10 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A reference to a group the study does not declare.' },
   UNRESOLVED_GROUP_MEMBER: { severity: ['error'],
     gloss: 'A group naming a member the study does not declare.' },
+  MIXED_INCLUSION_EXCLUSION: { severity: ['error'],
+    gloss: 'A views/condition list mixing a plain name with `~` exclusions, which has no single reading.' },
+  EXCLUSION_EMPTIES_SCOPE: { severity: ['warning'],
+    gloss: 'A `~` exclusion list naming every declared view or condition, leaving nothing included.' },
 };
 
 /** Every code the processor documents, sorted. */

@@ -135,10 +135,12 @@ interface SnapState {
   target?: 'curve' | 'fault' | 'point' | 'time';
   /**
    * Which form declared a condition rule: a `fault` is one current at
-   * one level, a `scenario` the same condition at every level. The
-   * readout says which, since "fault level" is wrong for a scenario.
+   * one level, a `scenario` the same condition at every level, and a
+   * `rating` is a plant/equipment limit rather than a condition at
+   * all. The readout says which, since "fault level" is wrong for
+   * either of the other two.
    */
-  conditionKind?: 'fault' | 'scenario';
+  conditionKind?: 'fault' | 'scenario' | 'rating';
 }
 
 @customElement('tc-viewer')
@@ -500,7 +502,8 @@ export class TcViewer extends LitElement {
           protocol: 'snap',
           pathD: '',
           target: 'fault',
-          conditionKind: line.getAttribute('data-kind') === 'scenario' ? 'scenario' : 'fault',
+          conditionKind: line.getAttribute('data-kind') === 'scenario' ? 'scenario'
+            : line.getAttribute('data-kind') === 'rating' ? 'rating' : 'fault',
         };
       }
     }
@@ -1721,11 +1724,17 @@ render() {
     if (hover.target !== 'fault') lines.push({ text: `t = ${prettyTime(hover.t_s)}` });
     if (hover.target === 'time') lines.push({ text: 'required time' });
     if (hover.target === 'fault') {
-      /* A scenario's figure was declared for this level, not referred
+      /*
+       * A scenario's figure was declared for this level, not referred
        * to it, so calling it a fault level would misstate where it
-       * came from. */
+       * came from. A rating is not a condition at all -- it names no
+       * fault and stands at no particular level -- so it gets a third
+       * word rather than being folded into either.
+       */
       lines.push({
-        text: hover.conditionKind === 'scenario' ? 'scenario, this level' : 'fault level',
+        text: hover.conditionKind === 'scenario' ? 'scenario, this level'
+          : hover.conditionKind === 'rating' ? 'rated current'
+            : 'fault level',
       });
     }
 

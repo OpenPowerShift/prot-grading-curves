@@ -761,6 +761,20 @@ times {
   }
 }
 
+# ---- A rating, as a vertical rule. ------------------------------------
+#      `currents` is `times`'s answer in the other direction: a plant or
+#      equipment limit rather than a required time, and never usable in
+#      a grade or scenario -- it names no condition, only a figure from
+#      a nameplate. `at_t` places its caption, mirroring `at_I` above.
+currents {
+  BUSBAR_RATING {
+    name = "11 kV busbar rating";
+    I = 12.5 kA;
+    at_t = 300 ms;
+    description = "Switchgear short-time withstand, 1 s";
+  }
+}
+
 # ---- The board feeder. -----------------------------------------------
 relay R_FDR {
   name = "11 kV feeder";

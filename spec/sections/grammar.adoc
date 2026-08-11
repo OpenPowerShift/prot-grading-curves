@@ -15,6 +15,7 @@ top-level       ::= meta-block
                   | system-block
                   | faults-block
                   | times-block
+                  | currents-block
                   | scenario-block
                   | relay-block
                   | device-block
@@ -142,6 +143,31 @@ time-anchor-asg ::= ( "at_I" | "at_I1" | "at_I2" | "at_I0"
    marks that mean something on one and nothing on the other. *)
 scoped-view-asg ::= ( "view" | "views" ) "=" name-or-list ";" ;
 name-or-list    ::= string | "[" [ string { "," string } [ "," ] ] "]" ;
+----
+
+=== Currents (named plant/equipment ratings)
+
+`times`'s counterpart in the other direction: a rating drawn as a
+vertical rule rather than a condition curves are evaluated at. It
+carries the same component vocabulary a `fault` does, and no voltage
+level -- there is nothing to refer a nameplate figure *from*. Never
+usable where a `grade` or `scenario` takes a condition.
+
+[source,ebnf]
+----
+currents-block  ::= "currents" "{" { current-asg } "}" ;
+current-asg     ::= string "{" { current-member } "}" ;
+current-member  ::= "I"          "=" number current-unit ";"
+                  | "I1"         "=" number current-unit ";"
+                  | "I2"         "=" number current-unit ";"
+                  | "I0"         "=" number current-unit ";"
+                  | "residual"   "=" number current-unit ";"
+                  | "at_t"       "=" number time-unit ";"
+                  | "type"       "=" fault-type-keyword ";"
+                  | scoped-view-asg
+                  | "name"       "=" string ";"
+                  | "description" "=" string ";"
+                  | comment-asg ;
 ----
 
 === Relay

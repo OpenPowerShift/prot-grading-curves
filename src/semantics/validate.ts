@@ -120,6 +120,7 @@ export function validate(study: Study, doc?: Document): Diagnostic[] {
   validateGrades(ctx);
   validateUnits(ctx);
   validateTimes(ctx);
+  validateCurrents(ctx);
   validateAnnotations(ctx);
   validatePoints(ctx);
   validateView(ctx);
@@ -1589,6 +1590,53 @@ function validateTimes(ctx: Ctx): void {
         'a place on a logarithmic axis',
         t.loc, t.name.length);
     }
+  }
+}
+
+/**
+ * `currents` ratings: `times`'s answer in the other direction, and
+ * checked the same way -- a duplicate id, and a figure that has to be
+ * finite and positive to have a place on a log axis at all. Component
+ * declarations get the same validity and residual-consistency checks
+ * a fault's do, since a rating carries the same vocabulary.
+ */
+function validateCurrents(ctx: Ctx): void {
+  const seen = new Map<string, number>();
+  for (const item of ctx.doc?.items ?? []) {
+    if (item.type !== 'currents') continue;
+    for (const c of item.currents) {
+      const first = seen.get(c.id);
+      if (first != null) {
+        add(ctx, 'DUPLICATE_RATING', 'error',
+          `rating ${c.id} is declared more than once (first at line ${first}); ` +
+          'the later declaration silently replaces the earlier',
+          c.loc, c.id.length);
+      } else {
+        seen.set(c.id, c.loc?.line ?? 0);
+      }
+    }
+  }
+
+  for (const rating of ctx.study.currents.values()) {
+    if (!(rating.I_A > 0)) {
+      add(ctx, 'RATING_CURRENT_INVALID', 'error',
+        `rating "${rating.name}" declares I = ${rating.I_A}; it must be strictly positive ` +
+        'to have a place on a logarithmic axis',
+        rating.loc, rating.name.length);
+    }
+
+    for (const [field, value] of [
+      ['I1', rating.I1_A], ['I2', rating.I2_A],
+      ['I0', rating.I0_A], ['residual', rating.earth_A],
+    ] as Array<[string, number | undefined]>) {
+      if (value != null && (!Number.isFinite(value) || value < 0)) {
+        add(ctx, 'RATING_CURRENT_INVALID', 'error',
+          `rating "${rating.name}" declares ${field} = ${value}; `
+          + 'a current must be finite and not negative', rating.loc);
+      }
+    }
+
+    checkResidual(ctx, `rating "${rating.name}"`, rating.I0_A, rating.earth_A, rating.loc);
   }
 }
 

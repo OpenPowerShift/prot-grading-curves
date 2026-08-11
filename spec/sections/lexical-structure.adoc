@@ -62,8 +62,9 @@ a suffix, while `67N` is one identifier.
 The following are reserved and cannot be used as identifiers:
 
 ====
-*Top-level blocks* -- meta, system, faults, scenario, relay, element,
-device, grade, annotate, combine, group, view, page, point, notes
+*Top-level blocks* -- meta, system, faults, times, currents, scenario,
+relay, element, device, grade, annotate, combine, group, view, page,
+point, notes
 
 *Inside `scenario`* -- description, level, sees
 
@@ -92,6 +93,9 @@ type, voltage, view, views, description, comment
 
 *Inside `times.<name>`* -- t, at_I, at_I1, at_I2, at_I0, at_residual,
 at_3I0, type, view, views, description, comment
+
+*Inside `currents.<name>`* -- I, I1, I2, I0, residual, at_t, type,
+name, view, views, description, comment
 
 *Inside `scenario`* -- type, description, comment, level, sees
 

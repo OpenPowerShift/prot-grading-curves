@@ -51,6 +51,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   system:      M('top', 'Network-level declarations: named voltage levels, the transformers between them, zero-sequence continuity, and the per-unit base.', 'system { voltages { ... } transformer HV to LV { vector_group = "Dyn11"; } }'),
   faults:      M('top', 'Named fault-current table; each fault has a current and a voltage.', 'faults { "F1" { I = 6.4 kA; type = three_phase; voltage = "LV"; } }'),
   times:       M('top', 'Named required times, drawn as horizontal rules: the other axis\u2019s answer to a fault. An arc-flash limit, a withstand, a grid-code clearance.', 'times { "Arc flash limit" { t = 200 ms; at_I = 3 kA; } }'),
+  currents:    M('top', '`times`\u2019s answer in the other direction: named plant/equipment ratings, drawn as vertical rules. A cable withstand, a transformer through-fault limit -- a current the curves are judged against, not a condition. Never usable in a grade or scenario.', 'currents { "Cable withstand" { I = 8.5 kA; at_t = 1 s; } }'),
   relay:       M('top', 'A relay instance with its voltage level and current transformer ratio.', 'relay R_FDR { voltage = "LV"; ct_ratio = 600/5; ... }'),
   element:     M('top', 'A protection function on a relay -- IDMT, instantaneous, etc.', 'element 51 { curve = iec.si; ... }'),
   device:      M('top', 'Auxiliary TCC asset: fuse, cable, transformer damage, recloser, motor.', 'device "ferraz_abc_100a" { kind = fuse; ... }'),
@@ -144,12 +145,12 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   quantity:    M('view', 'Which current the abscissa is: any (the default), phase, I1, I2, 3I2, I0, 3I0. Naming one opts into a strict sheet.', 'quantity = I2;'),
   condition:   M('view', 'The fault or scenario this sheet depicts. Gives the ratios that convert curves onto the axis and suppress what the condition cannot operate.', 'condition = "1ph min";'),
   subtitle:    M('view', 'Second line of the sheet\u2019s heading; overrides page { title { subtitle } }.', 'subtitle = "480 V earth fault at 33 kV";'),
-  currents:    M('page', 'Which amps the legend quotes a pickup in: primary, secondary, or both. Independent of view { axis }.', 'currents = "both";'),
+  'legend.currents': M('page', 'Which amps the legend quotes a pickup in: primary, secondary, or both. Independent of view { axis }.', 'currents = "both";'),
 
   // annotate -- where it goes
   on_curve:    M('annotate', 'The characteristic being marked.', 'on_curve = R_FDR:51;'),
   at_I:        M('annotate', 'Current to place the mark at, read off the sheet\u2019s own axis. On an annotate, use at_I2 / at_I0 / at_residual to name a component instead, or `type` to derive it. On a time, it is where along the rule the caption sits -- the rule spans the plot, so its name has no natural anchor and defaults to the left-hand end.', 'at_I = 6.4 kA;'),
-  at_t:        M('annotate', 'Time at which to measure a *current* margin \u2014 the horizontal counterpart of the vertical arrow, reported as a percentage.', 'at_t = 20 ms;'),
+  at_t:        M('annotate', 'Time at which to measure a *current* margin \u2014 the horizontal counterpart of the vertical arrow, reported as a percentage. On a `currents` rating, it is where along the vertical rule the caption sits, mirroring `at_I` on a `times` rule.', 'at_t = 20 ms;'),
   coords:      M('annotate', 'Append the (current, time) coordinate to the drawn label.', 'coords = true;'),
 
   // solve
@@ -325,7 +326,7 @@ export const CURVE_HELP: Record<string, string> = (() => {
  * left margin of a .ptc file).
  */
 export const TOP_BLOCK_KEYWORDS = [
-  'meta', 'system', 'faults', 'times', 'scenario', 'relay', 'element', 'device',
+  'meta', 'system', 'faults', 'times', 'currents', 'scenario', 'relay', 'element', 'device',
   'grade', 'combine', 'group', 'annotate', 'point', 'view', 'page', 'notes',
 ] as const;
 
@@ -345,6 +346,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   faults:      ['I', 'I_min', 'I_max', 'I1', 'I2', 'I0', 'residual', 'type',
                'voltage', 'view', 'views', 'description', 'comment'],
   times:       ['t', 'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'type',
+               'view', 'views', 'description', 'comment'],
+  currents:    ['I', 'I1', 'I2', 'I0', 'residual', 'at_t', 'type', 'name',
                'view', 'views', 'description', 'comment'],
   scenario:    ['type', 'description', 'comment', 'level', 'sees'],
   'scenario.level': ['I', 'I1', 'I2', 'I0', 'residual', 'share'],

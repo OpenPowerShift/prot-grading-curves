@@ -456,6 +456,16 @@ A `style` the tool cannot draw is `CURVE_STYLE_INVALID`, not a silent
 fallback: a solid line the source calls dashed is a drawing that
 disagrees with its own file.
 
+=== currents
+
+`times`'s answer the other way: a rating, drawn as a vertical rule,
+headed *Ratings* apart from the fault rules:
+
+[source,tc]
+----
+currents { "Busbar rating" { I = 12.5 kA; at_t = 300 ms; } }
+----
+
 === relay and element
 
 [source,tc]
@@ -1119,8 +1129,8 @@ and identical whichever end you declare as the `primary`.
 Which way round it runs is left to the arrow and the legend, both of
 which are already on the sheet saying it.
 
-NOTE: Once a signed difference against the primary, which gave one gap
-two magnitudes depending on which end you wrote first.
+NOTE: Used to be signed against the primary, so one gap read as two
+different magnitudes depending on which end you wrote first.
 
 A current is read as *the smallest current whose operate time is at or
 below* `at_t`. On an inverse curve that is the point where it crosses;
@@ -1138,24 +1148,16 @@ the dimension directly:
 ----
 annotate { from = 500 ms; to = 800 ms; at_I = 6 kA;  label = "band"; }
 annotate { from = 1.2 kA; to = 3.2 kA; at_t = 4 s;   label = "window"; }
+annotate { from = 840 A;  to = F1;     at_t = 8 s;   label = "reach"; }
 ----
 
-The *unit* decides which way it runs. Two times draw a vertical span
-and need a current to stand at (`at_I`, or a named condition); two
-currents draw a horizontal one and need a time to sit at (`at_t`).
-Mixing the two is `SPAN_MIXED_QUANTITIES` -- there is no distance
-between a current and a time.
+The *unit* decides which way it runs: two times draw a vertical span
+(`at_I` or a condition), two currents a horizontal one (`at_t`) -- and
+either currents end may name a condition instead, as line three does.
 
 A vertical span is labelled with the elapsed time, a horizontal one
 with the larger over the smaller, exactly as a current margin is. Both
 read the same written either way round.
-
-A currents end may name a condition instead:
-
-[source,tc]
-----
-annotate { from = 840 A; to = F1; at_t = 8 s; label = "x"; }
-----
 
 ==== Taking the current from a condition
 
@@ -1196,12 +1198,7 @@ error rather than a precedence rule to remember. Naming a scenario that
 declares nothing at the point's level is an error too: the mark asks for
 a position that was never measured.
 
-A condition may name its level, `name.level`:
-
-[source,tc]
-----
-point "LV" { scenario = "normal".LV; t = 500 ms; }
-----
+A condition may name its level: `scenario = "S".LV;`.
 
 ==== Which current the sheet is drawn against
 

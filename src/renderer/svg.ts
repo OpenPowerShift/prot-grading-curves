@@ -417,8 +417,14 @@ interface CurveEntry {
  */
 interface FaultEntry {
   name: string;
-  /** Which form declared it. */
-  kind: 'fault' | 'scenario';
+  /**
+   * Which form declared it. `rating` is a `currents` entry: a plant or
+   * equipment limit, not a condition -- it carries no voltage level and
+   * is never referred across one, and is styled and headed apart from
+   * a fault or scenario so the two kinds of vertical rule are never
+   * mistaken for each other.
+   */
+  kind: 'fault' | 'scenario' | 'rating';
   /** Author's note on what the fault is; shown under the legend entry. */
   description?: string;
   I_A: number;            // original current, at the level it was declared on
@@ -1017,6 +1023,45 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         });
       }
     }
+  }
+
+  /*
+   * Plant and equipment ratings -- a cable withstand, a transformer
+   * through-fault limit -- drawn as the same kind of vertical rule a
+   * fault is, styled and headed apart so the two are never mistaken.
+   *
+   * No voltage level and no referral: a rating is a figure from a
+   * nameplate or a standard, not a current that exists at a bus, so
+   * there is nothing to refer it *from*. It resolves onto whichever
+   * component the sheet's axis reads exactly as a fault's declared
+   * current does, and stands there unchanged wherever the sheet is
+   * framed.
+   */
+  for (const rating of study.currents.values()) {
+    if (!Number.isFinite(rating.I_A)) continue;
+    if (!onThisSheet(rating)) continue;
+    const resolved = resolveCurrent(
+      viewQuantity,
+      { phase: rating.I_A, I2: rating.I2_A, I0: rating.I0_A, residual: rating.earth_A },
+      rating.type,
+    );
+    if (resolved == null) {
+      unmarkedScenarios.push(
+        `${rating.name} declares no ${quantityLabel(viewQuantity)}`
+        + (rating.type ? '' : '; give it a type, or the component itself'),
+      );
+      continue;
+    }
+    const I_view = resolved.value;
+    if (I_view * 0.8 < I_lo) I_lo = I_view * 0.8;
+    if (I_view * 1.5 > I_hi) I_hi = I_view * 1.5;
+    faults.push({
+      name: rating.name,
+      kind: 'rating',
+      description: rating.description,
+      I_A: resolved.value,
+      I_view,
+    });
   }
 
   /* Left to right, as the rules stand on the sheet. */
@@ -2888,23 +2933,30 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   /* ---- clipped group: everything inside the axes ---- */
   out.push(`<g clip-path="url(#${clipId})">`);
 
-  /* fault-current vertical markers */
+  /* fault-current vertical markers, and plant/equipment ratings among them */
   const faultRuleLayer = openLayer('faults');
   for (const [i, f] of faults.entries()) {
     const I = f.I_view ?? f.I_A;
     if (!inDomain(I)) continue;
     const px = xScale.toPx(I);
     if (!Number.isFinite(px)) continue;
-    const dash = faultDash(i);
+    /*
+     * A rating is styled with the times' ink, not the faults', so a
+     * cable withstand reads as a limit and not as a condition: the
+     * same distinction `times` already draws against `faults` on the
+     * other axis, carried onto this one.
+     */
+    const isRating = f.kind === 'rating';
+    const dash = isRating ? timeDash : faultDash(i);
     out.push(
-      `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="tc-fault" ` +
+      `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="${isRating ? 'tc-current-rating' : 'tc-fault'}" ` +
       /* `data-fault` and `data-current` stay adjacent: they are scraped
        * as a pair, and a new attribute between them breaks that. */
       `data-fault="${escapeXml(f.name)}" data-current="${attrNum(I)}" data-kind="${f.kind}" ` +
       /* Full strength, matching the legend swatch. At 0.7 the rule read
        * as a fainter colour than the entry naming it, so the two did not
        * obviously belong together. */
-      `stroke="${faultColour}" stroke-width="${faultWidth}"` +
+      `stroke="${isRating ? timeColour : faultColour}" stroke-width="${isRating ? timeWidth : faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
   }
@@ -4077,16 +4129,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   layer('fault-band', () => {
     for (const { i, px, row, flipped, caption } of faultLayout) {
       const labelY = faultBandY + row * (LINE_DETAIL - 1);
-      const dash = faultDash(i);
+      const isRating = faults[i]?.kind === 'rating';
+      const dash = isRating ? timeDash : faultDash(i);
+      const colour = isRating ? timeColour : faultColour;
       out.push(
         `<line x1="${px.toFixed(1)}" y1="${(topMargin + plotH).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY - 9).toFixed(1)}" ` +
-        `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
+        `class="${isRating ? 'tc-current-rating' : 'tc-fault'}" stroke="${colour}" stroke-width="${isRating ? timeWidth : faultWidth}"` +
         `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
       );
       out.push(
         `<text x="${(px + (flipped ? -FAULT_LABEL_DX : FAULT_LABEL_DX)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
         `text-anchor="${flipped ? 'end' : 'start'}" ` +
-        `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
+        `class="${isRating ? 'tc-current-rating-label' : 'tc-fault-label'}" fill="${colour}" font-weight="600" font-size="${FONT_DETAIL}">` +
         `${escapeXml(caption)}</text>`,
       );
     }
@@ -4107,16 +4161,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      */
     for (const { i, px, row, flipped, caption } of faultLayoutTop) {
       const labelY = topMargin - TOP_FAULT_BAND_DY - row * (LINE_DETAIL - 1);
-      const dash = faultDash(i);
+      const isRating = faults[i]?.kind === 'rating';
+      const dash = isRating ? timeDash : faultDash(i);
+      const colour = isRating ? timeColour : faultColour;
       out.push(
         `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY + 3).toFixed(1)}" ` +
-        `class="tc-fault" stroke="${faultColour}" stroke-width="${faultWidth}"` +
+        `class="${isRating ? 'tc-current-rating' : 'tc-fault'}" stroke="${colour}" stroke-width="${isRating ? timeWidth : faultWidth}"` +
         `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
       );
       out.push(
         `<text x="${(px + (flipped ? -FAULT_LABEL_DX : FAULT_LABEL_DX)).toFixed(1)}" y="${labelY.toFixed(1)}" ` +
         `text-anchor="${flipped ? 'end' : 'start'}" ` +
-        `class="tc-fault-label" fill="${faultColour}" font-weight="600" font-size="${FONT_DETAIL}">` +
+        `class="${isRating ? 'tc-current-rating-label' : 'tc-fault-label'}" fill="${colour}" font-weight="600" font-size="${FONT_DETAIL}">` +
         `${escapeXml(caption)}</text>`,
       );
     }
@@ -4669,7 +4725,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * because on a sheet of nothing but scenarios a full sentence
          * repeats itself down the whole panel.
          */
-        const provenance = f.kind === 'scenario' ? ['scenario'] : [];
+        const provenance = f.kind === 'scenario' ? ['scenario'] : f.kind === 'rating' ? ['rating'] : [];
         /* And what it reads on the second scale, where there is one --
          * the same figure the rule's own caption carries. */
         const onSecond = secondAxis && f.I_view != null
@@ -4708,10 +4764,18 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        * "Faults" while they all are; "Conditions" once a scenario is
        * among them, since a scenario is not a fault current and heading
        * a list of both with the narrower word misnames half of it.
+       * "Ratings" once a `currents` entry is among them and nothing
+       * else is -- a rating is not a condition at all -- and "Faults &
+       * ratings" where both share the panel.
        */
-      const heading = shownFaults.some((i) => faults[i].kind === 'scenario')
-        ? 'Conditions'
-        : 'Faults';
+      const hasScenario = shownFaults.some((i) => faults[i].kind === 'scenario');
+      const hasRating = shownFaults.some((i) => faults[i].kind === 'rating');
+      const hasFault = shownFaults.some((i) => faults[i].kind === 'fault');
+      const heading = hasRating && !hasFault && !hasScenario
+        ? 'Ratings'
+        : hasRating
+          ? (hasScenario ? 'Conditions and ratings' : 'Faults and ratings')
+          : hasScenario ? 'Conditions' : 'Faults';
       lines.push(
         `<text x="${originX}" y="${faultsY}" font-size="${FONT_HEADING}" font-weight="600" fill="${faultColour}">${heading}</text>`,
       );
@@ -4719,10 +4783,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
       for (const i of shownFaults) {
         const swatchY = faultsY - FONT_LABEL / 3;
-        const dash = faultDash(i);
+        const isRating = faults[i].kind === 'rating';
+        const dash = isRating ? timeDash : faultDash(i);
+        const swatchColour = isRating ? timeColour : faultColour;
         lines.push(
           `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
-          `stroke="${faultColour}" stroke-width="${Math.max(faultWidth, 1.5)}"` +
+          `stroke="${swatchColour}" stroke-width="${Math.max(isRating ? timeWidth : faultWidth, 1.5)}"` +
           `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
         );
         for (const wrapped of faultText.get(i) ?? []) {

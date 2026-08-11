@@ -286,6 +286,51 @@ export interface TimesBlock extends BaseNode {
   times: TimeDecl[];
 }
 
+/**
+ * A plant or equipment rating, drawn as a vertical rule.
+ *
+ * `times`'s answer in the other direction: a cable's short-circuit
+ * withstand, a transformer's through-fault limit, a busbar rating --
+ * a current the study is judged against rather than a condition it is
+ * evaluated at. Unlike a `fault` it names nothing that happens; it
+ * names a figure from a nameplate or a standard, so it is never usable
+ * where a `grade` or a `scenario` takes a condition.
+ */
+export interface CurrentDecl extends BaseNode {
+  /** Sheets this belongs to, by `view` name. Absent means every sheet. */
+  views?: string[];
+
+  /** How the study refers to this rating. A bare identifier. */
+  id: string;
+  /** What the reader sees. Defaults to the id. */
+  name?: string;
+  /** The rated current, in primary amps. */
+  I_A: number;
+  /**
+   * The same component vocabulary a `fault` uses, for a rating stated
+   * in a sequence component rather than phase current.
+   */
+  I1_A?: number;
+  I2_A?: number;
+  I0_A?: number;
+  earth_A?: number;
+  faultType?: FaultTypeKeyword;
+  /**
+   * Where along the rule to put its caption, as a time. The rule spans
+   * the whole plot height, so its name has no natural anchor; without
+   * this it goes at the bottom, mirroring `times`'s left-hand default.
+   */
+  at_t_s?: number;
+  description?: string;
+  /** Inline documentation. Free text, read by nothing but a later reader. */
+  comment?: string;
+}
+
+export interface CurrentsBlock extends BaseNode {
+  type: 'currents';
+  currents: CurrentDecl[];
+}
+
 export type RelayMember = RelayScalarMember | RelayElementMember;
 
 export interface RelayScalarMember {
@@ -1120,6 +1165,7 @@ export type TopLevel =
   | SystemBlock
   | FaultsBlock
   | TimesBlock
+  | CurrentsBlock
   | ScenarioBlock
   | RelayBlock
   | ElementBlock        // standalone element block (also inside relay.member)

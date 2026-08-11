@@ -189,7 +189,7 @@ export const REMOVED_KEYS: Readonly<Record<string, string>> = {
 
 export const KEYWORDS = new Set([
   // top-level blocks
-  'meta', 'system', 'faults', 'times', 'scenario', 'level', 'sees',
+  'meta', 'system', 'faults', 'times', 'currents', 'scenario', 'level', 'sees',
   'relay', 'element', 'device', 'grade',
   'annotate', 'combine', 'view', 'views', 'page', 'notes', 'stage', 'stages', 'point',
   'group', 'members',
@@ -790,6 +790,7 @@ class Parser {
       case 'system':  return this.parseSystem();
       case 'faults':  return this.parseFaults();
       case 'times':   return this.parseTimes();
+      case 'currents':return this.parseCurrents();
       case 'scenario':return this.parseScenario();
       case 'relay':   return this.parseRelay();
       case 'element': return this.parseElement(/*topLevel*/ true);
@@ -1466,6 +1467,79 @@ class Parser {
         list.push(t);
       }
       return { type: 'times', times: list, loc: this.loc(head) } as import('./ast.js').TimesBlock;
+    }, '}');
+  }
+
+  /**
+   * `currents { "Cable withstand" { I = 8.5 kA; } }`
+   *
+   * `times`'s vertical counterpart: a rating rather than a required
+   * time, so it takes the same component vocabulary a `fault` does
+   * (not just a bare phase figure) and is anchored by `at_t` instead
+   * of `at_I` -- the rule runs the height of the plot, so a time is
+   * what says where along it the caption sits.
+   */
+  private parseCurrents(): import('./ast.js').CurrentsBlock | null {
+    const head = this.peek();
+    return this.parseBlock('currents', () => {
+      const list: import('./ast.js').CurrentDecl[] = [];
+      while (!this.at('RBRACE') && !this.at('EOF')) {
+        const nameTok = this.eat('STRING') ?? this.eat('IDENT');
+        if (!nameTok) { this.pos++; continue; }
+        const c: import('./ast.js').CurrentDecl = {
+          id: unquote(nameTok.image), I_A: NaN, loc: this.loc(nameTok),
+        };
+        this.expect('LBRACE', '{');
+        while (!this.at('RBRACE') && !this.at('EOF')) {
+          const k = this.eat('KW') ?? this.eat('IDENT');
+          if (!k) { this.pos++; continue; }
+          this.expect('EQUALS', '=');
+          switch (k.image) {
+            case 'I': c.I_A = this.parseNumberWithUnit_A('I'); break;
+            case 'I1': c.I1_A = this.parseNumberWithUnit_A('I1'); break;
+            case 'I2': c.I2_A = this.parseNumberWithUnit_A('I2'); break;
+            case 'I0': c.I0_A = this.parseNumberWithUnit_A('I0'); break;
+            case 'residual': c.earth_A = this.parseNumberWithUnit_A('residual'); break;
+            case 'at_t': c.at_t_s = this.parseNumberWithUnit_s('at_t'); break;
+            case 'type': {
+              const kw = this.matchKeyword(
+                'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+              if (kw) c.faultType = kw as import('./ast.js').FaultTypeKeyword;
+              break;
+            }
+            case 'view':
+            case 'views': {
+              const names = this.parseNameList();
+              if (names.length > 0) c.views = [...(c.views ?? []), ...names];
+              break;
+            }
+            case 'name': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) c.name = unquote(tok.image);
+              break;
+            }
+            case 'description': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) c.description = unquote(tok.image);
+              break;
+            }
+            case 'comment': {
+              const tok = this.eat('STRING') ?? this.eat('KW') ?? this.eat('IDENT');
+              if (tok) c.comment = unquote(tok.image);
+              break;
+            }
+            default:
+              this.parseScalarValue();
+              this.noteUnknownKey('a current rating', k, [
+                'I', 'I1', 'I2', 'I0', 'residual', 'at_t', 'type',
+                'view', 'views', 'name', 'description', 'comment'], /* strict */ true);
+          }
+          this.eat('SEMI');
+        }
+        this.expect('RBRACE', '}');
+        list.push(c);
+      }
+      return { type: 'currents', currents: list, loc: this.loc(head) } as import('./ast.js').CurrentsBlock;
     }, '}');
   }
 

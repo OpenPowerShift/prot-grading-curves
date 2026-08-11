@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-133 codes.
+135 codes.
 
 === Lexing and parsing
 
@@ -127,6 +127,7 @@ each, most serious first.
 
 | `DUPLICATE_FAULT` | error | Two faults sharing an id, where the later would silently replace the earlier.
 | `DUPLICATE_POINT` | error | Two marked points sharing an id.
+| `DUPLICATE_RATING` | error | Two `currents` ratings sharing an id.
 | `DUPLICATE_SCENARIO` | error | Two scenarios sharing an id.
 | `DUPLICATE_TIME` | error | Two required-clearance entries sharing an id.
 | `FAULT_CURRENT_INVALID` | error | A declared fault current that is not finite and positive.
@@ -138,6 +139,7 @@ each, most serious first.
 | `POINT_TIME_INVALID` | error | A marked point whose time is not positive.
 | `RANGE_INCOMPLETE` | error | One end of a component range declared without the other.
 | `RANGE_WITHOUT_CENTRE` | error | A component range declared with no centre value, so the two come from different sources.
+| `RATING_CURRENT_INVALID` | error | A `currents` rating whose declared current is not finite and positive.
 | `SCENARIO_LEVEL_MISSING` | error | A scenario that says nothing at the level a graded relay sits on.
 | `SCENARIO_NO_LEVELS` | error | A scenario with no `level` block, so no relay can be evaluated against it.
 | `SEQUENCE_ACROSS_LEVELS` | error | A zero-sequence quantity that would have to cross a transformer that blocks it.

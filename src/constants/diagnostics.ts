@@ -208,6 +208,10 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A marked point whose time is not positive.' },
   TIME_INVALID: { severity: ['error'],
     gloss: 'A required-clearance entry whose time is not positive.' },
+  DUPLICATE_RATING: { severity: ['error'],
+    gloss: 'Two `currents` ratings sharing an id.' },
+  RATING_CURRENT_INVALID: { severity: ['error'],
+    gloss: 'A `currents` rating whose declared current is not finite and positive.' },
 
   /* ---- grading and the solver ------------------------------------- */
   DUPLICATE_GRADE: { severity: ['error'],

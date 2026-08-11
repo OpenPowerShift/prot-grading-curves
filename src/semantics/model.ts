@@ -428,6 +428,34 @@ export interface RequiredTime {
   loc?: SourceLocation;
 }
 
+/**
+ * A plant or equipment rating, drawn as a vertical rule.
+ *
+ * `RequiredTime`'s answer in the other direction: a cable withstand, a
+ * transformer through-fault limit, a busbar rating -- a current the
+ * curves are judged against, not a condition they are evaluated at.
+ * Never usable where a `grade` or `scenario` takes a condition.
+ */
+export interface RequiredCurrent {
+  /** How the study refers to it. The key of `study.currents`. */
+  id: string;
+  /** Sheets this belongs to, by `view` name. Absent means every sheet. */
+  views?: string[];
+
+  name: string;
+  I_A: number;
+  I1_A?: number;
+  I2_A?: number;
+  I0_A?: number;
+  earth_A?: number;
+  type?: FaultType;
+  /** Caption anchor along the rule, in seconds. */
+  at_t_s?: number;
+  description?: string;
+  comment?: string;
+  loc?: SourceLocation;
+}
+
 /** A marked (I, t) coordinate -- inrush, motor start, damage point. */
 export interface StudyPoint {
   /** Drawn once per condition, so the caption names which. */
@@ -560,6 +588,8 @@ export interface Study {
   groups: Map<string, Group>;
   /** Named times the sheet rules across, keyed by name. */
   times: Map<string, RequiredTime>;
+  /** Named plant/equipment ratings the sheet rules up, keyed by name. */
+  currents: Map<string, RequiredCurrent>;
   relays: Map<string, Relay>;
   /** Elements declared at the top level, outside any relay. */
   looseElements: Element[];
@@ -634,6 +664,7 @@ export function buildStudy(doc: Document): Study {
     scenarios: new Map(),
     groups: new Map(),
     times: new Map(),
+    currents: new Map(),
     zeroSequence: new Map(),
     transformers: new Map(),
     relays: new Map(),
@@ -755,6 +786,25 @@ export function buildStudy(doc: Document): Study {
             description: t.description,
             comment: t.comment,
             loc: t.loc,
+          });
+        }
+        break;
+      case 'currents':
+        for (const c of item.currents) {
+          study.currents.set(c.id, {
+            id: c.id,
+            name: displayName(c),
+            I_A: c.I_A,
+            I1_A: c.I1_A,
+            I2_A: c.I2_A,
+            I0_A: c.I0_A,
+            earth_A: c.earth_A,
+            type: isFaultType(c.faultType) ? c.faultType : undefined,
+            at_t_s: c.at_t_s,
+            views: c.views,
+            description: c.description,
+            comment: c.comment,
+            loc: c.loc,
           });
         }
         break;

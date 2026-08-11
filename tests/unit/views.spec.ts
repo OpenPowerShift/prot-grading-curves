@@ -165,3 +165,51 @@ describe('the syntax', () => {
     expect(names).toEqual(['By position', 'By field']);
   });
 });
+
+describe('a `views` entry naming a view that has its own id', () => {
+  /*
+   * Regression pin: `onThisSheet` (the renderer) resolves a `views`
+   * entry against a view's `id`, falling back to its `name` only
+   * where no id was declared -- but validation used to accept *either*
+   * unconditionally, so `views = ["Phase grading"]` against a view
+   * declaring both `PHASE` and "Phase grading" passed clean while the
+   * renderer, matching on the id alone, drew the thing on no sheet at
+   * all. The two must agree on what a `views` entry may name.
+   */
+  const STUDY = `
+system { voltages { "HV" { V = 33 kV; } } }
+relay R { voltage = "HV"; ct_ratio = 250/1;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 105 A; tms = 0.1; } }
+view PHASE { name = "Phase grading"; voltage = "HV"; }
+`;
+
+  it('refuses a reference by the view\'s display name, since its id is the handle', () => {
+    const r = process(`${STUDY}\nannotate { on_curve = R:51; at_I = 100 A; label = "x"; view = "Phase grading"; }`);
+    expect(r.diagnostics.map((d) => d.code)).toContain('UNRESOLVED_VIEW');
+  });
+
+  it('does not silently drop the annotation once that reference is refused', () => {
+    /* The bug this pins: no diagnostic *and* nothing drawn. Now that
+     * there is a diagnostic, confirm the annotation still does not
+     * appear on the sheet it was never actually scoped onto. */
+    const r = process(`${STUDY}\nannotate { on_curve = R:51; at_I = 100 A; label = "unique-marker"; view = "Phase grading"; }`);
+    const svg = renderStudy(r, { theme: 'light' });
+    expect(svg).not.toContain('unique-marker');
+  });
+
+  it('accepts a reference by the id', () => {
+    const r = process(`${STUDY}\nannotate { on_curve = R:51; at_I = 100 A; label = "x"; view = "PHASE"; }`);
+    expect(r.diagnostics.map((d) => d.code)).not.toContain('UNRESOLVED_VIEW');
+  });
+
+  it('still accepts a reference by name for a view declaring no id of its own', () => {
+    const noId = `
+system { voltages { "HV" { V = 33 kV; } } }
+relay R { voltage = "HV"; ct_ratio = 250/1;
+  element 51 { function = "phase_oc"; curve = iec.si; I_pickup = 105 A; tms = 0.1; } }
+view { name = "Phase grading"; voltage = "HV"; }
+`;
+    const r = process(`${noId}\nannotate { on_curve = R:51; at_I = 100 A; label = "x"; view = "Phase grading"; }`);
+    expect(r.diagnostics.map((d) => d.code)).not.toContain('UNRESOLVED_VIEW');
+  });
+});

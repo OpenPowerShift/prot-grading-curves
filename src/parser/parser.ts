@@ -2074,17 +2074,55 @@ if (kwName === 'flex_points') {
             }
             break;
           case 'scenario':
-            {
-              const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
-              this.eat('SEMI');
-              if (tok) g.scenario = unquote(tok.image);
-            }
-            break;
           case 'fault':
             {
+              /*
+               * A grade names exactly one condition -- one primary,
+               * one backup, one thing to grade them against -- unlike
+               * `annotate`/`point`/`times`, which draw one mark per
+               * condition and so accept a list, a `~` exclusion, or a
+               * `NAME.LEVEL` reference into any of it. Written here
+               * anyway (a list to check several faults at once, a
+               * dotted level to pick one of a scenario's), the bare
+               * eat-one-token read left the rest sitting in the
+               * stream: silently skipped by the block's own token
+               * loop, surfacing as an unrelated "unknown key" a
+               * moment later for whatever word came after the `.` or
+               * inside the `[`. Caught here instead, close to what
+               * was actually written.
+               */
+              if (this.at('LBRACK')) {
+                const open = this.peek();
+                this.errors.push({
+                  message: 'a grade names one condition, not a list; each pair is graded '
+                    + 'against a single fault or scenario',
+                  line: open.line, column: open.col, offset: open.start,
+                  length: open.end - open.start, severity: 'error', code: 'EXPECTED_TOKEN',
+                });
+                this.pos++; // the '['
+                while (!this.at('RBRACK') && !this.at('RBRACE') && !this.at('EOF')) this.pos++;
+                this.eat('RBRACK');
+                this.eat('SEMI');
+                break;
+              }
               const tok = this.eat('STRING') ?? this.eat('IDENT') ?? this.eat('KW');
+              if (this.at('DOT')) {
+                const dot = this.peek();
+                this.errors.push({
+                  message: 'a grade names a scenario by itself, not one of its levels; '
+                    + 'it is graded at the level its primary and backup share',
+                  line: dot.line, column: dot.col, offset: dot.start,
+                  length: dot.end - dot.start, severity: 'error', code: 'EXPECTED_TOKEN',
+                });
+                this.pos++; // the '.'
+                const level = this.eat('IDENT') ?? this.eat('KW') ?? this.eat('STRING');
+                void level;
+              }
               this.eat('SEMI');
-              if (tok) g.fault = unquote(tok.image);
+              if (tok) {
+                if (k.image === 'scenario') g.scenario = unquote(tok.image);
+                else g.fault = unquote(tok.image);
+              }
             }
             break;
           case 'margin':

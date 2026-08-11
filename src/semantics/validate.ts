@@ -260,9 +260,20 @@ function checkExclusionList(
 function validateViewScopes(ctx: Ctx): void {
   const { study } = ctx;
   const declared = new Set<string>();
+  /*
+   * The same handle `onThisSheet` in the renderer resolves a sheet by
+   * -- `id`, falling back to `name` only where no id was declared --
+   * and nothing else. This used to also accept the *name* even where
+   * an id existed, so `views = ["Phase grading"]` passed validation
+   * silently while the renderer, matching on the handle alone, drew
+   * the curve on no sheet at all: the two disagreed about what a
+   * `views` entry may name, and the disagreement was invisible on
+   * both sides. A name is still a valid way to name a view that
+   * declared no id of its own -- the `??` below -- since that is the
+   * only handle it has.
+   */
   for (const [i, v] of study.views.entries()) {
     declared.add(v.id ?? v.name ?? String(i + 1));
-    if (v.name) declared.add(v.name);
   }
   /* A study with no `view` block draws one default sheet, which
    * nothing can name -- so scoping is meaningless rather than wrong,

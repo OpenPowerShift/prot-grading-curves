@@ -167,7 +167,13 @@ trigger autocompletion, `Ctrl-S` to download SVG.
   LICENSE).
 * [x] `scripts/prepublish.js` / `postpublish.js` -- npm renders
   Markdown, not AsciiDoc, so the published tarball carries a generated
-  `README.md` and the repo keeps `README.adoc`.
+  `README.md` and the repo keeps `README.adoc`. +
+  Superseded 2026-08-12 by `downdoc --prepublish` / `--postpublish`:
+  the hand-rolled regex pass converted headers and links only, so
+  every code block, table, admonition and cross-reference in the
+  README rendered as broken raw AsciiDoc on the published npm page.
+  `downdoc` is a real (if deliberately partial) AsciiDoc parser built
+  for exactly this job.
 * [x] `.github/workflows/deploy.yml` -- typecheck, lint, test, build,
   then GitHub Pages.
 * [x] `.github/workflows/release-please.yml` -- release PR, then npm

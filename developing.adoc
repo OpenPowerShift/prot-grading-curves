@@ -108,14 +108,15 @@ neither has been exercised yet:
   gives it nothing to work from and it silently declines to open a
   release PR at all rather than guessing.
 * *A trusted publisher for this package* has to be configured once on
-  npmjs.com (repository + the exact workflow filename), before the
-  `publish` job's OIDC exchange has anything to authenticate against.
-  This is a web UI step for whoever owns the npm org; nothing in this
-  repository can do it. Configure it against the repository the
-  workflow actually runs in -- `package.json`'s own `repository.url`
-  currently names a different one than `git remote -v` does, and the
-  OIDC claim GitHub presents is the real remote, not the field in
-  `package.json`.
+  npmjs.com, before the `publish` job's OIDC exchange has anything to
+  authenticate against -- a web UI step for whoever owns the npm org;
+  nothing in this repository can do it. The values it needs:
+  organisation or user `OpenPowerShift`, repository
+  `prot-time-current-curves`, workflow filename
+  `release-please.yml`, environment left blank. The GitHub side is
+  already set up to match -- `permissions: id-token: write` and
+  `npm publish --provenance` with no `NPM_TOKEN` -- so this is the one
+  remaining step before the `publish` job can authenticate at all.
 
 Bootstrapping the very first release -- before any tag exists and before
 the commit history has anything Conventional Commits can parse -- is a

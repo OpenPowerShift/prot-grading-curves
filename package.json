@@ -20,9 +20,9 @@
   "author": "Daniel Mulholland",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OpenPowerShift/time-current-grading-language.git"
+    "url": "git+https://github.com/OpenPowerShift/prot-time-current-curves.git"
   },
-  "homepage": "https://github.com/OpenPowerShift/time-current-grading-language#readme",
+  "homepage": "https://github.com/OpenPowerShift/prot-time-current-curves#readme",
   "type": "module",
   "engines": {
     "node": ">=20"

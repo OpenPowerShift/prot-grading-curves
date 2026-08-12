@@ -9,7 +9,7 @@ a publication-quality log-log TCC — as SVG, PNG, or PDF.
 
 [TIP]
 ====
-*Try it in the browser: https://openpowershift.github.io/time-current-grading-language/[openpowershift.github.io/time-current-grading-language]*
+*Try it in the browser: https://openpowershift.github.io/prot-time-current-curves/[openpowershift.github.io/prot-time-current-curves]*
 — a live playground: type `.ptc` on the left, see the curves and the margin report
 on the right.
 
@@ -253,7 +253,7 @@ by how much.
 
 image::media/minimal.png[Two graded curves and the fault they are checked at,align="center"]
 
-TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=minimal[Gallery 1 — try it]. It is also in the picker, listed as *Gallery 1*.
+TIP: Open it in the playground: https://openpowershift.github.io/prot-time-current-curves/?example=minimal[Gallery 1 — try it]. It is also in the picker, listed as *Gallery 1*.
 
 .Source — `examples/00-minimal.ptc`
 [%collapsible]
@@ -323,7 +323,7 @@ by the upper.
 
 image::media/cascade.png[Six curves cascading, with CTI arrows and a fuse band,align="center"]
 
-TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=cascade[Gallery 2 — try it]. It is also in the picker, listed as *Gallery 2*.
+TIP: Open it in the playground: https://openpowershift.github.io/prot-time-current-curves/?example=cascade[Gallery 2 — try it]. It is also in the picker, listed as *Gallery 2*.
 
 .Source — `examples/10-substation-cascade.ptc`
 [%collapsible]
@@ -654,7 +654,7 @@ largest fault its bus can deliver, rather than running to the frame.
 
 image::media/clearance-times.png[Curves against arc-flash, grid-code and withstand limits,align="center"]
 
-TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=clearance[Gallery 3 — try it]. It is also in the picker, listed as *Gallery 3*.
+TIP: Open it in the playground: https://openpowershift.github.io/prot-time-current-curves/?example=clearance[Gallery 3 — try it]. It is also in the picker, listed as *Gallery 3*.
 
 .Source — `examples/13-clearance-times.ptc`
 [%collapsible]
@@ -967,7 +967,7 @@ fastest of a group, the slowest, their sum.
 
 image::media/devices.png[A device library: fuse band, damage curves, motor start and combined envelopes,align="center"]
 
-TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=devices[Gallery 4 — try it]. It is also in the picker, listed as *Gallery 4*.
+TIP: Open it in the playground: https://openpowershift.github.io/prot-time-current-curves/?example=devices[Gallery 4 — try it]. It is also in the picker, listed as *Gallery 4*.
 
 .Source — `examples/14-devices-and-combine.ptc`
 [%collapsible]
@@ -1276,7 +1276,7 @@ condition's own declared figures, with the conversion factor stated.
 
 image::media/sequence-sheets.png[The same study drawn against negative-sequence current,align="center"]
 
-TIP: Open it in the playground: https://openpowershift.github.io/time-current-grading-language/?example=sheets[Gallery 5 — try it]. It is also in the picker, listed as *Gallery 5*.
+TIP: Open it in the playground: https://openpowershift.github.io/prot-time-current-curves/?example=sheets[Gallery 5 — try it]. It is also in the picker, listed as *Gallery 5*.
 
 .Source — `examples/17-sequence-sheets.ptc`
 [%collapsible]

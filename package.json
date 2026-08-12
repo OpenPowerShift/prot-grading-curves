@@ -1,6 +1,6 @@
 {
   "name": "@openpowershift/time-current-grading-language",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "Render protection-relay time-current grading curves (TCC) from a compact text language to SVG, PNG, or PDF.",
   "keywords": [
     "protection-relay",

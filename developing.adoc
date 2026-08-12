@@ -1,0 +1,128 @@
+= Developing tc-curves
+
+Where `CONTRIBUTING.adoc` states the rules a change must follow, this is the
+map for finding your way around while making one: how the pieces fit, what
+to touch when the language grows, and how a release actually gets cut.
+
+== Setup
+
+[source,bash]
+----
+npm install
+npm run dev        # playground at the printed URL
+----
+
+The full command list -- tests, typecheck, lint, both builds -- is in
+`CONTRIBUTING.adoc`, kept there rather than duplicated here so the two
+cannot drift apart.
+
+== Layout, in one pass
+
+`README.adoc`'s _Project layout_ table is the map of `src/`. The one thing
+worth adding to it: data flows in one direction only. `parse` produces an
+AST that faithfully records what was written; `buildStudy` resolves that
+into a study model with every unit folded to base units and every
+shorthand expanded. The solver, the validator, and the renderer all read
+the *study*, never the raw AST -- which is what guarantees the numbers on
+the chart and the numbers in the report agree, since both are computed
+from the one resolved model rather than two independent readings of the
+source.
+
+`docs/` is a separate case: those four files ship *inside* the built
+playground (the Guide panel), so a change there is a change to the
+product, not just to project documentation. See README's _Documentation_
+section for what each of the four is for.
+
+== Adding a field or a block to the language
+
+A new keyword touches more files than it looks like it should, in a fixed
+order, because each stage only knows what the one before it decided:
+
+. *Grammar* -- `spec/sections/grammar.adoc` and `lexical-structure.adoc`.
+  The spec is normative; a behaviour starts here, not in the code.
+. *Parser* -- `src/parser/ast.ts` (the field on the node) and
+  `src/parser/parser.ts` (read it, and add it to the block's
+  `noteUnknownKey(...)` accepts-list -- every block is strict about what
+  it takes, so a typo is refused rather than silently ignored).
+. *Model* -- `src/semantics/model.ts`, wiring the parsed field onto the
+  resolved study type. This is also where a level name becomes a
+  `voltage_kV` looked up from `study.voltages`, if the field is one.
+. *Validation* -- `src/semantics/validate.ts`, if the field can be
+  written wrong (an unknown reference, an out-of-range figure). Give the
+  diagnostic a stable `code`; codes are public API (the editor's lint
+  gutter and the CLI's exit status key off them), so treat renaming one
+  as a breaking change and assert both code and severity in
+  `tests/unit/validate.spec.ts`.
+. *Renderer*, if the field affects the drawing -- `src/renderer/svg.ts`.
+. *Completions and hover* -- `src/help/help-data.ts`'s `BLOCK_FIELDS` (so
+  `?` on a blank line offers it) and `KEYWORD_HELP` (so hovering the
+  keyword explains it). A flat key already used for another block's field
+  needs a scoped `'block.field'` entry instead of colliding with it.
+. *Docs and examples* -- `docs/guide.adoc`, plus the spec's own prose.
+  `tests/unit/coverage.spec.ts` fails if a `BLOCK_FIELDS` entry is not
+  both demonstrated in `examples/*.ptc` and documented in the guide, so
+  this step is enforced, not just requested.
+. *Tests* -- a dedicated `tests/unit/*.spec.ts` for the feature, and if it
+  changes what gets drawn, expect `tests/unit/visual-baseline.spec.ts` to
+  need `npm run test:visual:update` -- see _Visual regression_ in
+  `CONTRIBUTING.adoc` for reading that diff before accepting it.
+
+Skipping the completions/docs/coverage steps is the most common way to
+half-ship a feature: the language accepts it, nothing offers it, and
+nothing explains it.
+
+== The guide's size budget
+
+`docs/guide.adoc` and `docs/skill.adoc` are held under a byte ceiling each
+(`tests/unit/guide.spec.ts`, `skill.spec.ts` -- currently 71,000 and
+18,000), on purpose: the guide is meant to be a digest a reader gets
+through in one sitting, or hands whole to a language model, not a second
+copy of the spec. Adding a section without cutting one elsewhere is the
+default failure mode.
+
+When a change needs documenting and the budget is already close to full,
+trim prose near the addition before reaching for a different section --
+a redundant clause, a repeated qualifier, a sentence that restates what
+the code block just showed. `node -e "console.log(require('fs').readFileSync('docs/guide.adoc','utf8').length)"`
+gives the exact count `wc -c` can be off by if the file has any non-ASCII
+characters. Never shorten a `[source,tc]` block to make room -- those are
+parsed and checked by the test suite, and cutting one loses real
+verification coverage, not just words.
+
+== Releasing
+
+Cut by `release-please` (`.github/workflows/release-please.yml`): it
+watches every push to `main`, maintains a rolling "release PR" that rolls
+up Conventional-Commit changes since the last tag, bumps `package.json`,
+and updates `CHANGELOG.md`. Merging that PR is what tags the version and
+creates the GitHub Release; a second job then builds and publishes to npm
+via OIDC trusted publishing -- no `NPM_TOKEN`, no manual `npm publish`.
+
+Two things have to be true for that to work, and as of this writing
+neither has been exercised yet:
+
+* *Every commit message needs a Conventional Commits prefix*
+  (`feat:`, `fix:`, `docs:`, ...) -- see `CONTRIBUTING.adoc`'s
+  _Commit messages_. `release-please` classifies a release entirely from
+  the prefix; a history of unprefixed messages, however well written,
+  gives it nothing to work from and it silently declines to open a
+  release PR at all rather than guessing.
+* *A trusted publisher for this package* has to be configured once on
+  npmjs.com (repository + the exact workflow filename), before the
+  `publish` job's OIDC exchange has anything to authenticate against.
+  This is a web UI step for whoever owns the npm org; nothing in this
+  repository can do it. Configure it against the repository the
+  workflow actually runs in -- `package.json`'s own `repository.url`
+  currently names a different one than `git remote -v` does, and the
+  OIDC claim GitHub presents is the real remote, not the field in
+  `package.json`.
+
+Bootstrapping the very first release -- before any tag exists and before
+the commit history has anything Conventional Commits can parse -- is a
+one-off manual step for that reason, not a bug to work around
+permanently: tag `v0.1.0`, push the tag, create the GitHub Release from
+`CHANGELOG.md`'s existing entry, and publish to npm by hand once (or via
+a manually triggered run, after the trusted publisher above is
+configured). Every release after that should go through the PR that
+`release-please` maintains -- which only starts happening once new
+commits carry the prefix it needs.

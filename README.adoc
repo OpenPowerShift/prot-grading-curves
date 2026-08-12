@@ -131,6 +131,10 @@ npm run typecheck  # tsc --noEmit
 npm run lint       # eslint
 ----
 
+See link:developing.adoc[] for the project layout, what to touch when the
+language grows, and how a release is cut; link:CONTRIBUTING.adoc[] for the
+rules a change must follow.
+
 === Documentation
 
 Four documents, deliberately separate:

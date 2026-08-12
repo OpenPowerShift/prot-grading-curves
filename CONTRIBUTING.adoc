@@ -1,5 +1,8 @@
 = Contributing to tc-curves
 
+See link:developing.adoc[] for the project layout, what to touch when the
+language grows, and how a release is cut.
+
 == Getting set up
 
 Node 20+ is required; the playground is developed on Node 24 (see `.nvmrc`).
